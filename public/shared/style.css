@@ -117,3 +117,5 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .tool-list a { display: block; text-decoration: none; color: inherit; }
 .tool-list a:hover .card { border-color: var(--accent); }
 .tool-list strong { display: block; color: var(--accent); }
+
+[hidden] { display: none !important; }
