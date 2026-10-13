@@ -35,4 +35,6 @@ Adding a new tool: see the "Add a new tool" steps in `README.md` (new `src/<tool
 
 Changes are managed with OpenSpec (`openspec/`): `specs/` holds the current capability specs (`csv-file-store`, `user-story-editor`), `changes/` holds proposals/archives. Use the `opsx:*` skills (propose / apply / archive). Commits use conventional-commit prefixes (`feat:`, `style:`, `chore(openspec):`).
 
+The `review-backlog` skill (`.claude/skills/review-backlog/SKILL.md`) reviews a backlog CSV against `product-management.md` (hierarchy, INVEST, acceptance criteria) and only reports; it never edits the CSV.
+
 `product-management.md` is reference material on the Agile hierarchy (epic/feature/story/AC) that the story tool's format follows; `src/user-story-generator/sprint-points-guideline.md` covers point sizing.

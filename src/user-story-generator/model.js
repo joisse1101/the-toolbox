@@ -7,7 +7,7 @@ import { renumber } from './ids.js';
 import { composeStory, parseStory, composeCriteria, parseCriteria } from '../shared/story-text.js';
 
 export const COLUMNS = [
-  'ID', 'Epic', 'Capability', 'Feature', 'User Story', 'Sprint points', 'Priority', 'Depends On', 'Acceptance Criteria', 'Notes',
+  'ID', 'Epic', 'Feature', 'Title', 'User Story', 'Sprint points', 'Priority', 'Depends On', 'Acceptance Criteria', 'Notes',
 ];
 export const POINTS = [1, 2, 3, 5, 8, 13, 21, 34, 55];
 export const SPLIT_ABOVE = 13;
@@ -38,7 +38,7 @@ export function newStory(headers) {
     code: '', // story ID, derived from epic and position (see ids.js); '' until the story has an epic
     dependsOn: [], // IDs of the stories this one depends on
     ambiguous: [], // dependsOn entries that named an ID several stories held in the loaded file
-    epic: '', codedEpic: '', capability: '', feature: '', // codedEpic: the epic the ID was last computed for
+    epic: '', codedEpic: '', feature: '', title: '', // codedEpic: the epic the ID was last computed for
     asA: '', iWant: '', soThat: '',
     points: '', priority: '', notes: '',
     criteria: [emptyCriterion()],
@@ -55,8 +55,8 @@ function storyFromCells(cells, idx) {
   story.codedEpic = story.epic;
   story.code = get('ID').trim();
   story.dependsOn = [...new Set(get('Depends On').split(';').map((e) => e.trim()).filter(Boolean))];
-  story.capability = get('Capability');
   story.feature = get('Feature');
+  story.title = get('Title');
   story.points = get('Sprint points');
   story.priority = get('Priority');
   story.notes = get('Notes');
@@ -118,8 +118,8 @@ export function serializeBacklog(backlog) {
     while (cells.length < backlog.headers.length) cells.push('');
     cells[idx['ID']] = s.code;
     cells[idx['Epic']] = s.epic;
-    cells[idx['Capability']] = s.capability;
     cells[idx['Feature']] = s.feature;
+    cells[idx['Title']] = s.title;
     cells[idx['User Story']] = storyCellText(s);
     cells[idx['Sprint points']] = s.points;
     cells[idx['Priority']] = s.priority;
@@ -148,7 +148,7 @@ const blank = (v) => !String(v ?? '').trim();
 // `problems` = dependency warnings for this story from backlogProblems().
 export function storyIssues(story, problems = []) {
   const errors = [];
-  for (const [key, label] of [['epic', 'Epic'], ['capability', 'Capability'], ['feature', 'Feature']]) {
+  for (const [key, label] of [['epic', 'Epic'], ['feature', 'Feature'], ['title', 'Title']]) {
     if (blank(story[key])) errors.push(`${label} is missing`);
   }
   if (story.rawUserStory === null) {
@@ -189,12 +189,12 @@ export function displayOrder(stories) {
 }
 
 // Bulk edit. Only defined fields are set: priority undefined = no change ('' clears it); a blank epic or
-// capability means no change. Returns the number of stories changed.
-export function applyBulk(stories, ids, { priority, epic, capability } = {}) {
+// feature means no change. Returns the number of stories changed.
+export function applyBulk(stories, ids, { priority, epic, feature } = {}) {
   const patch = {};
   if (priority !== undefined) patch.priority = priority;
   if (!blank(epic)) patch.epic = epic.trim();
-  if (!blank(capability)) patch.capability = capability.trim();
+  if (!blank(feature)) patch.feature = feature.trim();
   let count = 0;
   for (const s of stories) {
     if (!ids.has(s.id)) continue;
@@ -204,8 +204,7 @@ export function applyBulk(stories, ids, { priority, epic, capability } = {}) {
   return count;
 }
 
-// Story list title: "capability: feature", one part alone if the other is blank.
+// Story list label: the title, or 'New story' while it is blank.
 export function storyLabel(story) {
-  const parts = [story.capability, story.feature].map((v) => String(v ?? '').trim()).filter(Boolean);
-  return parts.length ? parts.join(': ') : 'New story';
+  return String(story.title ?? '').trim() || 'New story';
 }

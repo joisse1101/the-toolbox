@@ -7,7 +7,7 @@ import {
 } from '../src/user-story-generator/model.js';
 
 const SAMPLE =
-  '﻿Jira Key,Feature,Sprint points,Epic,User Story,Capability,Acceptance Criteria,Priority,Notes\r\n' +
+  '﻿Jira Key,Title,Sprint points,Epic,User Story,Feature,Acceptance Criteria,Priority,Notes\r\n' +
   'ABC-1,Export,4,Reporting,As a lead I want export so that share,Files,"AC1: Given a, when I b, then c\nAC2: Given d, when I e, then f",Urgent,"line1\nline2"\r\n' +
   'ABC-2,Import,100,Reporting,Free text story,Files,,,\r\n';
 
@@ -17,7 +17,8 @@ test('loads by header name in any order, keeps extras and odd values', () => {
   assert.equal(b.stories.length, 2);
   const s = b.stories[0];
   assert.equal(s.epic, 'Reporting');
-  assert.equal(s.feature, 'Export');
+  assert.equal(s.title, 'Export');
+  assert.equal(s.feature, 'Files');
   assert.equal(s.iWant, 'export');
   assert.equal(s.criteria.length, 2);
   assert.equal(s.points, '4');
@@ -72,7 +73,7 @@ test('missing recognised columns are appended', () => {
 const complete = () => {
   const s = newStory(COLUMNS);
   Object.assign(s, {
-    epic: 'E', capability: 'C', feature: 'F', asA: 'a', iWant: 'b', soThat: 'c', points: '5', priority: 'High',
+    epic: 'E', feature: 'F', title: 'T', asA: 'a', iWant: 'b', soThat: 'c', points: '5', priority: 'High',
   });
   s.criteria = [{ given: 'g', when: 'w', then: 't' }];
   return s;
@@ -82,12 +83,38 @@ test('complete story has no issues', () => {
   assert.deepEqual(storyIssues(complete()), { errors: [], warnings: [] });
 });
 
-test('blank capability is an error', () => {
+test('blank feature is an error', () => {
   const s = complete();
-  s.capability = '  ';
+  s.feature = '  ';
   const { errors } = storyIssues(s);
   assert.equal(errors.length, 1);
-  assert.match(errors[0], /Capability/);
+  assert.match(errors[0], /Feature/);
+});
+
+test('blank title is an error', () => {
+  const s = complete();
+  s.title = '';
+  const { errors } = storyIssues(s);
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /Title/);
+});
+
+test('an old Capability column is kept as an unknown column and not copied into Feature or Title', () => {
+  const b = loadBacklog('Epic,Capability\r\nE,Authentication\r\n');
+  const s = b.stories[0];
+  assert.equal(s.feature, ''); // headers are matched by name, so nothing is translated
+  assert.equal(s.title, '');
+  const rows = parseCsv(serializeBacklog(b));
+  assert.equal(rows[1][rows[0].indexOf('Capability')], 'Authentication');
+  assert.equal(rows[1][rows[0].indexOf('Feature')], '');
+  assert.equal(rows[1][rows[0].indexOf('Title')], '');
+});
+
+test('a file without a Title column gets one on save', () => {
+  const b = loadBacklog('Epic,Feature\r\nE,F\r\n');
+  const rows = parseCsv(serializeBacklog(b));
+  assert.ok(rows[0].includes('Title'));
+  assert.equal(rows[1][rows[0].indexOf('Feature')], 'F');
 });
 
 test('half-filled criterion is an error; no criterion is an error', () => {
@@ -125,10 +152,10 @@ test('raw text cells count as present', () => {
 test('storyLabel', () => {
   const s = newStory(COLUMNS);
   assert.equal(storyLabel(s), 'New story');
-  s.feature = 'Export';
-  assert.equal(storyLabel(s), 'Export');
-  s.capability = 'Invoices';
-  assert.equal(storyLabel(s), 'Invoices: Export');
+  s.feature = 'Authentication';
+  assert.equal(storyLabel(s), 'New story');
+  s.title = '  Local Login ';
+  assert.equal(storyLabel(s), 'Local Login');
 });
 
 test('loaded story with empty criteria cell shows one blank criterion and saves an empty cell', () => {
@@ -152,11 +179,11 @@ test('groupByEpic and displayOrder group by first occurrence without reordering 
 });
 
 test('applyBulk sets only the chosen fields on the selected stories', () => {
-  const stories = [1, 2, 3].map((id) => Object.assign(newStory(COLUMNS), { id, epic: 'E', capability: 'C', priority: 'Low' }));
-  assert.equal(applyBulk(stories, new Set([1, 3]), { priority: 'High', epic: ' ', capability: 'New' }), 2);
-  assert.deepEqual(stories.map((s) => [s.epic, s.capability, s.priority]), [['E', 'New', 'High'], ['E', 'C', 'Low'], ['E', 'New', 'High']]);
+  const stories = [1, 2, 3].map((id) => Object.assign(newStory(COLUMNS), { id, epic: 'E', feature: 'C', priority: 'Low' }));
+  assert.equal(applyBulk(stories, new Set([1, 3]), { priority: 'High', epic: ' ', feature: 'New' }), 2);
+  assert.deepEqual(stories.map((s) => [s.epic, s.feature, s.priority]), [['E', 'New', 'High'], ['E', 'C', 'Low'], ['E', 'New', 'High']]);
   applyBulk(stories, new Set([1]), { priority: '', epic: 'Billing' });
   assert.deepEqual([stories[0].epic, stories[0].priority], ['Billing', '']);
   applyBulk(stories, new Set([2]), {});
-  assert.deepEqual([stories[1].epic, stories[1].capability, stories[1].priority], ['E', 'C', 'Low']);
+  assert.deepEqual([stories[1].epic, stories[1].feature, stories[1].priority], ['E', 'C', 'Low']);
 });

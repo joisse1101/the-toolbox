@@ -10,7 +10,7 @@ const distinct = (stories, key) => [...new Set(stories.map((o) => o[key].trim())
 export default function StoriesTab({ stories, problems, checked, lastChecked, hidden, onOpen, onCheck, onCheckAll, onApplyBulk }) {
   const [priority, setPriority] = useState(KEEP);
   const [epic, setEpic] = useState('');
-  const [capability, setCapability] = useState('');
+  const [feature, setFeature] = useState('');
   const selectAll = useRef(null);
 
   const rows = displayOrder(stories);
@@ -23,9 +23,9 @@ export default function StoriesTab({ stories, problems, checked, lastChecked, hi
   const patch = {
     priority: priority === KEEP ? undefined : priority,
     epic: epic.trim(),
-    capability: capability.trim(),
+    feature: feature.trim(),
   };
-  const isEmpty = patch.priority === undefined && !patch.epic && !patch.capability;
+  const isEmpty = patch.priority === undefined && !patch.epic && !patch.feature;
 
   const tick = (id, on, shift) => {
     const ids = rows.map((r) => r.id);
@@ -43,12 +43,12 @@ export default function StoriesTab({ stories, problems, checked, lastChecked, hi
     if (patch.priority !== undefined) parts.push(patch.priority ? `Priority to "${patch.priority}"` : 'Priority to none');
     if (patch.epic) parts.push(`Epic to "${patch.epic}"`);
     const renumbered = patch.epic ? stories.filter((s) => checked.has(s.id) && s.epic.trim() !== patch.epic).length : 0;
-    if (patch.capability) parts.push(`Capability to "${patch.capability}"`);
+    if (patch.feature) parts.push(`Feature to "${patch.feature}"`);
     if (!confirm(`Set ${parts.join(', ')} on ${n} ${n === 1 ? 'story' : 'stories'}?${renumbered ? `\n\n${renumbered} ${renumbered === 1 ? 'story gets' : 'stories get'} new IDs, and links to them are updated.` : ''}\n\nThis cannot be undone.`)) return;
     onApplyBulk(patch);
     setPriority(KEEP);
     setEpic('');
-    setCapability('');
+    setFeature('');
   };
 
   return (
@@ -68,8 +68,8 @@ export default function StoriesTab({ stories, problems, checked, lastChecked, hi
           <input type="text" id="bulkEpic" list="bulkEpicList" autoComplete="off" placeholder="No change" value={epic} onChange={(e) => setEpic(e.target.value)} />
         </div>
         <div>
-          <label htmlFor="bulkCapability">Capability</label>
-          <input type="text" id="bulkCapability" list="bulkCapabilityList" autoComplete="off" placeholder="No change" value={capability} onChange={(e) => setCapability(e.target.value)} />
+          <label htmlFor="bulkFeature">Feature</label>
+          <input type="text" id="bulkFeature" list="bulkFeatureList" autoComplete="off" placeholder="No change" value={feature} onChange={(e) => setFeature(e.target.value)} />
         </div>
         <button type="button" id="bulkApplyBtn" className="primary" disabled={isEmpty} onClick={apply}>Apply to selected</button>
       </div>
@@ -84,7 +84,7 @@ export default function StoriesTab({ stories, problems, checked, lastChecked, hi
                   onChange={(e) => onCheckAll(e.target.checked, rows.map((r) => r.id))}
                 />
               </th>
-              <th>ID</th><th>Epic</th><th>Capability</th><th>Feature</th><th className="num">Points</th><th>Priority</th><th>Depends On</th>
+              <th>ID</th><th>Epic</th><th>Feature</th><th>Title</th><th className="num">Points</th><th>Priority</th><th>Depends On</th>
             </tr>
           </thead>
           <tbody id="storiesBody">
@@ -102,8 +102,8 @@ export default function StoriesTab({ stories, problems, checked, lastChecked, hi
                   </td>
                   <td>{s.code}</td>
                   <td>{s.epic}</td>
-                  <td>{s.capability}</td>
-                  <td><button type="button" className="link-btn" onClick={() => onOpen(s.id)}>{s.feature.trim() || 'New story'}</button></td>
+                  <td>{s.feature}</td>
+                  <td><button type="button" className="link-btn" onClick={() => onOpen(s.id)}>{storyLabel(s)}</button></td>
                   <td className="num">{s.points}</td>
                   <td>{s.priority}</td>
                   <td>{s.dependsOn.join(', ')}</td>
@@ -115,7 +115,7 @@ export default function StoriesTab({ stories, problems, checked, lastChecked, hi
       </div>
       <p id="storiesEmpty" className="muted" hidden={rows.length > 0}>No stories yet.</p>
       <datalist id="bulkEpicList">{distinct(stories, 'epic').map((v) => <option key={v} value={v} />)}</datalist>
-      <datalist id="bulkCapabilityList">{distinct(stories, 'capability').map((v) => <option key={v} value={v} />)}</datalist>
+      <datalist id="bulkFeatureList">{distinct(stories, 'feature').map((v) => <option key={v} value={v} />)}</datalist>
     </section>
   );
 }

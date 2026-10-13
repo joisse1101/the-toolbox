@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { storyIssues } from '../model.js';
+import { storyIssues, storyLabel } from '../model.js';
 import { wouldCycle } from '../ids.js';
 import { layoutGraph, relatedIds, fitView, zoomAt, panBy, toGraphPoint } from '../graph.js';
 import { issueClass, rowTooltip } from './issues.js';
@@ -14,7 +14,7 @@ const ZOOM_STEP = 1.25;
 
 const pos = (node) => ({ x: node.layer * (NODE_W + GAP_X), y: node.row * (NODE_H + GAP_Y) });
 const edgeKey = (e) => `${e.from}>${e.to}`;
-const title = (s) => s.feature.trim() || 'New story';
+const title = storyLabel;
 const clip = (text) => (text.length > MAX_TITLE ? `${text.slice(0, MAX_TITLE - 1)}…` : text);
 
 // From the dependent's left edge to the dependency's right edge, so arrows run right to left.

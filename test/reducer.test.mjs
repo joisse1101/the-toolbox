@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { reducer } from '../src/user-story-generator/hooks/useBacklog.js';
 import { loadBacklog, applyBulk } from '../src/user-story-generator/model.js';
 
-const FILE = 'Epic,Feature,Depends On\r\nBilling,A,\r\nBilling,B,\r\nOnboarding,C,\r\n';
+const FILE = 'Epic,Title,Depends On\r\nBilling,A,\r\nBilling,B,\r\nOnboarding,C,\r\n';
 
 function opened(text = FILE) {
   const backlog = loadBacklog(text);
@@ -13,14 +13,14 @@ function opened(text = FILE) {
   state = reducer(state, { type: 'loaded', name: 'x.csv', backlog });
   return state;
 }
-const byFeature = (state, f) => state.backlog.stories.find((s) => s.feature === f);
+const byTitle = (state, f) => state.backlog.stories.find((s) => s.title === f);
 const edit = (state, id, change) => reducer(state, { type: 'edit', id, change });
 
 test('loaded: IDs assigned on load count as an edit so they get saved; an up-to-date file does not', () => {
   const state = opened();
   assert.equal(state.edits, 1);
   assert.deepEqual(state.backlog.stories.map((s) => s.code), ['B-0001', 'B-0002', 'O-0001']);
-  const clean = opened('ID,Epic,Feature,Depends On\r\nB-0001,Billing,A,\r\n');
+  const clean = opened('ID,Epic,Title,Depends On\r\nB-0001,Billing,A,\r\n');
   assert.equal(clean.edits, 0);
 });
 
@@ -35,12 +35,12 @@ test('delete: closes the gap, strips links, keeps another story selected', () =>
 
 test('commitEpic: typing changes no ID; committing does; a second commit is a no-op that bumps nothing', () => {
   let state = opened();
-  const a = byFeature(state, 'A');
+  const a = byTitle(state, 'A');
   state = edit(state, a.id, (d) => { d.epic = 'Onboarding'; });
-  assert.equal(byFeature(state, 'A').code, 'B-0001');
+  assert.equal(byTitle(state, 'A').code, 'B-0001');
   state = reducer(state, { type: 'commitEpic', id: a.id });
-  assert.equal(byFeature(state, 'A').code, 'O-0002');
-  assert.equal(byFeature(state, 'B').code, 'B-0001');
+  assert.equal(byTitle(state, 'A').code, 'O-0002');
+  assert.equal(byTitle(state, 'B').code, 'B-0001');
   const after = reducer(state, { type: 'commitEpic', id: a.id });
   assert.equal(after, state);
 });
@@ -53,8 +53,8 @@ test('move: reorders, keeps the dragged story selected, same position bumps noth
   const moved = reducer(state, { type: 'move', id: b.id, epic: 'Billing', beforeId: a.id });
   assert.equal(moved.selectedId, b.id);
   assert.equal(moved.edits, edits + 1);
-  assert.equal(byFeature(moved, 'B').code, 'B-0001');
-  assert.equal(byFeature(moved, 'A').code, 'B-0002');
+  assert.equal(byTitle(moved, 'B').code, 'B-0001');
+  assert.equal(byTitle(moved, 'A').code, 'B-0002');
   assert.equal(reducer(state, { type: 'move', id: a.id, epic: 'Billing', beforeId: b.id }), state);
 });
 
@@ -64,7 +64,7 @@ test('bulk epic change: moved stories go to the bottom of the new epic and links
   state = edit(state, c.id, (d) => { d.dependsOn = [a.code]; });
   state = reducer(state, { type: 'check', ids: [a.id, b.id], on: true, anchor: a.id });
   state = reducer(state, { type: 'bulk', patch: { epic: 'Onboarding' } });
-  assert.deepEqual(state.backlog.stories.map((s) => s.feature), ['C', 'A', 'B']);
+  assert.deepEqual(state.backlog.stories.map((s) => s.title), ['C', 'A', 'B']);
   assert.deepEqual(state.backlog.stories.map((s) => s.code), ['O-0001', 'O-0002', 'O-0003']);
   assert.deepEqual(state.backlog.stories[0].dependsOn, ['O-0002']);
   // priority only: IDs untouched
@@ -80,7 +80,7 @@ test('addDependency / removeDependency: edit links, ignore self, repeats, cycles
   const edits = state.edits;
 
   state = link(b, a);
-  assert.deepEqual(byFeature(state, 'B').dependsOn, [a.code]);
+  assert.deepEqual(byTitle(state, 'B').dependsOn, [a.code]);
   assert.equal(state.edits, edits + 1);
 
   for (const next of [link(b, a), link(a, a), link(a, b), reducer(state, { type: 'addDependency', id: a.id, code: 'Z-9' })]) {
@@ -88,10 +88,10 @@ test('addDependency / removeDependency: edit links, ignore self, repeats, cycles
   }
 
   state = link(c, b);
-  assert.deepEqual(byFeature(state, 'C').dependsOn, [b.code]);
+  assert.deepEqual(byTitle(state, 'C').dependsOn, [b.code]);
   assert.equal(link(a, c), state); // indirect cycle: a -> c -> b -> a
 
   const removed = reducer(state, { type: 'removeDependency', id: b.id, code: a.code });
-  assert.deepEqual(byFeature(removed, 'B').dependsOn, []);
+  assert.deepEqual(byTitle(removed, 'B').dependsOn, []);
   assert.equal(reducer(removed, { type: 'removeDependency', id: b.id, code: a.code }), removed);
 });

@@ -157,12 +157,12 @@ test('backlogProblems: self, dangling, cycle', () => {
 });
 
 test('load: old file gets IDs, saves with ID and Depends On columns, other columns keep their order', () => {
-  const text = 'Jira Key,Epic,Capability,Feature\r\nJ-1,Billing & Invoicing,C,F1\r\nJ-2,Billing & Invoicing,C,F2\r\nJ-3,,C,F3\r\n';
+  const text = 'Jira Key,Epic,Feature,Title\r\nJ-1,Billing & Invoicing,C,F1\r\nJ-2,Billing & Invoicing,C,F2\r\nJ-3,,C,F3\r\n';
   const b = loadBacklog(text);
   assert.equal(b.changed, true);
   assert.deepEqual(codes(b.stories), ['BI-0001', 'BI-0002', '']);
   const rows = parseCsv(serializeBacklog(b));
-  assert.deepEqual(rows[0].slice(0, 4), ['Jira Key', 'Epic', 'Capability', 'Feature']);
+  assert.deepEqual(rows[0].slice(0, 4), ['Jira Key', 'Epic', 'Feature', 'Title']);
   assert.ok(rows[0].includes('ID') && rows[0].includes('Depends On'));
   assert.equal(rows[1][rows[0].indexOf('ID')], 'BI-0001');
   assert.equal(rows[1][0], 'J-1');

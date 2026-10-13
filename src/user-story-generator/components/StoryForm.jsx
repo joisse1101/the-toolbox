@@ -14,7 +14,7 @@ const distinct = (values) => [...new Set(values.map((v) => v.trim()).filter(Bool
 // Rows of focusable fields for arrow-key navigation: Where it fits, User story, points, each criterion, notes.
 function navRows(story) {
   return [
-    ['epic', 'capability', 'feature'].map($),
+    ['epic', 'feature', 'title'].map($),
     ['asA', 'iWant', 'soThat'].map($),
     [...$('pointsGroup').children],
     ...story.criteria.map((_, i) => ['given', 'when', 'then'].map((k) => $(`criterion-${i}-${k}`))),
@@ -138,7 +138,7 @@ export default function StoryForm({ story: s, stories, problems, focusRequest, o
   };
   const cls = issueClass(errors, warnings);
 
-  // Suggestions come from the open backlog: Capability is narrowed by Epic, Feature by Epic and Capability.
+  // Suggestions come from the open backlog: Feature is narrowed by Epic. Title has none.
   const sameEpic = stories.filter((o) => o.epic === s.epic);
   const priorityOptions = ['', ...PRIORITIES];
   if (s.priority && !priorityOptions.includes(s.priority)) priorityOptions.push(s.priority); // never silently change a loaded value
@@ -160,8 +160,8 @@ export default function StoryForm({ story: s, stories, problems, focusRequest, o
         <legend>Where it fits</legend>
         <div className="grid3">
           <div><label htmlFor="epic">Epic</label><input type="text" id="epic" list="epicList" autoComplete="off" value={s.epic} onChange={onEpicInput} onBlur={() => onCommitEpic(s.id)} /></div>
-          <div><label htmlFor="capability">Capability</label><input type="text" id="capability" list="capabilityList" autoComplete="off" value={s.capability} onChange={setField('capability')} /></div>
           <div><label htmlFor="feature">Feature</label><input type="text" id="feature" list="featureList" autoComplete="off" value={s.feature} onChange={setField('feature')} /></div>
+          <div><label htmlFor="title">Title</label><input type="text" id="title" autoComplete="off" value={s.title} onChange={setField('title')} /></div>
         </div>
       </fieldset>
 
@@ -320,10 +320,7 @@ export default function StoryForm({ story: s, stories, problems, focusRequest, o
       </fieldset>
 
       <datalist id="epicList">{distinct(stories.map((o) => o.epic)).map((v) => <option key={v} value={v} />)}</datalist>
-      <datalist id="capabilityList">{distinct(sameEpic.map((o) => o.capability)).map((v) => <option key={v} value={v} />)}</datalist>
-      <datalist id="featureList">
-        {distinct(sameEpic.filter((o) => o.capability === s.capability).map((o) => o.feature)).map((v) => <option key={v} value={v} />)}
-      </datalist>
+      <datalist id="featureList">{distinct(sameEpic.map((o) => o.feature)).map((v) => <option key={v} value={v} />)}</datalist>
     </section>
   );
 }
