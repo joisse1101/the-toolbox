@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseCsv } from '../public/shared/csv.js';
 import {
-  loadBacklog, serializeBacklog, newStory, newBacklogText, shouldSplit, COLUMNS,
+  loadBacklog, serializeBacklog, newStory, newBacklogText, shouldSplit, storyIssues, storyLabel, COLUMNS,
 } from '../public/user-story-generator/model.js';
 
 const SAMPLE =
@@ -66,4 +66,73 @@ test('missing recognised columns are appended', () => {
   const b = loadBacklog('Epic\r\nE1\r\n');
   assert.deepEqual(b.headers, ['Epic', ...COLUMNS.filter((c) => c !== 'Epic')]);
   assert.equal(b.stories[0].epic, 'E1');
+});
+
+const complete = () => {
+  const s = newStory(COLUMNS);
+  Object.assign(s, {
+    epic: 'E', capability: 'C', feature: 'F', asA: 'a', iWant: 'b', soThat: 'c', points: '5', priority: 'High',
+  });
+  s.criteria = [{ given: 'g', when: 'w', then: 't' }];
+  return s;
+};
+
+test('complete story has no issues', () => {
+  assert.deepEqual(storyIssues(complete()), { errors: [], warnings: [] });
+});
+
+test('blank capability is an error', () => {
+  const s = complete();
+  s.capability = '  ';
+  const { errors } = storyIssues(s);
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /Capability/);
+});
+
+test('half-filled criterion is an error; no criterion is an error', () => {
+  const s = complete();
+  s.criteria = [{ given: 'g', when: 'w', then: '' }];
+  assert.match(storyIssues(s).errors[0], /Acceptance criteria/);
+  s.criteria = [];
+  assert.match(storyIssues(s).errors[0], /Acceptance criteria/);
+});
+
+test('missing points and priority are warnings only', () => {
+  const s = complete();
+  s.points = '';
+  s.priority = '';
+  const r = storyIssues(s);
+  assert.equal(r.errors.length, 0);
+  assert.equal(r.warnings.length, 2);
+});
+
+test('red and split together', () => {
+  const s = complete();
+  s.epic = '';
+  s.points = '21';
+  const r = storyIssues(s);
+  assert.equal(r.errors.length, 1);
+  assert.match(r.warnings[0], /splitting/);
+});
+
+test('raw text cells count as present', () => {
+  const s = complete();
+  Object.assign(s, { asA: '', iWant: '', soThat: '', rawUserStory: 'free text', rawCriteria: 'free', criteria: [] });
+  assert.equal(storyIssues(s).errors.length, 0);
+});
+
+test('storyLabel', () => {
+  const s = newStory(COLUMNS);
+  assert.equal(storyLabel(s), 'New story');
+  s.feature = 'Export';
+  assert.equal(storyLabel(s), 'Export');
+  s.capability = 'Invoices';
+  assert.equal(storyLabel(s), 'Invoices: Export');
+});
+
+test('loaded story with empty criteria cell shows one blank criterion and saves an empty cell', () => {
+  const text = 'Epic,Capability,Feature,User Story,Sprint points,Priority,Acceptance Criteria,Notes' + String.fromCharCode(13,10) + 'E,C,F,,,,,' + String.fromCharCode(13,10) + '';
+  const b = loadBacklog(text);
+  assert.deepEqual(b.stories[0].criteria, [{ given: '', when: '', then: '' }]);
+  assert.equal(serializeBacklog(b), text);
 });

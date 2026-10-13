@@ -64,7 +64,7 @@ function storyFromCells(cells, idx) {
   }
 
   const ac = parseCriteria(get('Acceptance Criteria'));
-  if (ac.ok) story.criteria = ac.criteria;
+  if (ac.ok) story.criteria = ac.criteria.length ? ac.criteria : [emptyCriterion()]; // always show one; blank composes to an empty cell
   else {
     story.criteria = [];
     story.rawCriteria = get('Acceptance Criteria');
@@ -128,4 +128,37 @@ export function newBacklogText() {
 // Advisory only: derived from the points, never stored. Off-scale values above 13 count too.
 export function shouldSplit(story) {
   return Number(story.points) > SPLIT_ABOVE;
+}
+
+const blank = (v) => !String(v ?? '').trim();
+
+// Advisory completeness check. errors = incomplete (red), warnings = estimate problems (yellow).
+// A cell kept as raw text counts as present.
+export function storyIssues(story) {
+  const errors = [];
+  for (const [key, label] of [['epic', 'Epic'], ['capability', 'Capability'], ['feature', 'Feature']]) {
+    if (blank(story[key])) errors.push(`${label} is missing`);
+  }
+  if (story.rawUserStory === null) {
+    for (const [key, label] of [['asA', 'As a'], ['iWant', 'I want'], ['soThat', 'So that']]) {
+      if (blank(story[key])) errors.push(`${label} is missing`);
+    }
+  }
+  if (story.rawCriteria === null) {
+    if (!story.criteria.length) errors.push('Acceptance criteria are missing');
+    else if (story.criteria.some((c) => blank(c.given) || blank(c.when) || blank(c.then))) {
+      errors.push('Acceptance criteria are incomplete: each needs Given, When and Then');
+    }
+  }
+  const warnings = [];
+  if (blank(story.points)) warnings.push('Sprint points are missing');
+  if (blank(story.priority)) warnings.push('Priority is missing');
+  if (shouldSplit(story)) warnings.push('Consider splitting this story: estimates above 13 points are usually too big for one sprint.');
+  return { errors, warnings };
+}
+
+// Story list title: "capability: feature", one part alone if the other is blank.
+export function storyLabel(story) {
+  const parts = [story.capability, story.feature].map((v) => String(v ?? '').trim()).filter(Boolean);
+  return parts.length ? parts.join(': ') : 'New story';
 }

@@ -2,7 +2,7 @@ import { createFileStore } from '/shared/files.js';
 import {
   POINTS, SPLIT_ABOVE, PRIORITIES,
   loadBacklog, serializeBacklog, newBacklogText, newStory, emptyCriterion,
-  storyCellText, criteriaCellText, shouldSplit,
+  storyCellText, criteriaCellText, storyIssues, storyLabel,
 } from './model.js';
 
 const store = createFileStore('user-stories');
@@ -183,6 +183,12 @@ function renderAll() {
   fillForm();
 }
 
+// Red wins over yellow.
+function issueClass(errors, warnings) {
+  if (errors.length) return 'incomplete';
+  return warnings.length ? 'warn' : '';
+}
+
 function renderStoryList() {
   const list = $('storyList');
   const stories = state.backlog?.stories ?? [];
@@ -190,11 +196,12 @@ function renderStoryList() {
     ...stories.map((s) => {
       const li = document.createElement('li');
       li.dataset.id = s.id;
-      li.className = [s.id === state.selectedId ? 'selected' : '', shouldSplit(s) ? 'split' : ''].join(' ').trim();
-      if (shouldSplit(s)) li.title = 'Consider splitting this story';
+      const { errors, warnings } = storyIssues(s);
+      li.className = [s.id === state.selectedId ? 'selected' : '', issueClass(errors, warnings)].join(' ').trim();
+      li.title = [storyCellText(s), [...errors, ...warnings].join('\n')].filter(Boolean).join('\n\n');
       const title = document.createElement('span');
       title.className = 'title';
-      title.textContent = s.iWant || s.feature || 'New story';
+      title.textContent = storyLabel(s);
       const badge = document.createElement('span');
       badge.className = 'badge';
       badge.textContent = s.points || '–';
@@ -241,7 +248,9 @@ function renderCriteria() {
       remove.type = 'button';
       remove.className = 'danger criterion-remove';
       remove.textContent = '✕';
-      remove.title = 'Remove criterion';
+      const last = s.criteria.length === 1;
+      remove.disabled = last; // every story keeps at least one criterion
+      remove.title = last ? 'A story needs at least one criterion' : 'Remove criterion';
       remove.setAttribute('aria-label', 'Remove criterion');
       remove.addEventListener('click', () => {
         s.criteria.splice(i, 1);
@@ -268,6 +277,14 @@ function renderCriteria() {
           refreshDerived();
           markDirty();
         });
+        if (key === 'then') {
+          input.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' || e.isComposing || e.ctrlKey || e.altKey || e.shiftKey || e.metaKey) return;
+            e.preventDefault();
+            addCriterion();
+            $(`criterion-${s.criteria.length - 1}-when`).focus();
+          });
+        }
         wrap.append(lab, input);
         fields.append(wrap);
       }
@@ -290,10 +307,32 @@ function refreshDerived() {
   for (const btn of $('pointsGroup').children) {
     btn.setAttribute('aria-checked', String(String(s.points) === btn.dataset.points));
   }
-  const split = shouldSplit(s);
-  $('storyForm').classList.toggle('split', split);
-  $('splitWarning').hidden = !split;
+  const { errors, warnings } = storyIssues(s);
+  const cls = issueClass(errors, warnings);
+  $('storyForm').classList.toggle('incomplete', cls === 'incomplete');
+  $('storyForm').classList.toggle('warn', cls === 'warn');
+  showBanner($('incompleteBanner'), errors.length ? `Incomplete: ${errors.join('; ')}.` : '');
+  showBanner($('warningBanner'), warnings.join(' '));
+  refreshSuggestions(s);
   renderStoryList();
+}
+
+function showBanner(el, text) {
+  el.hidden = !text;
+  el.textContent = text;
+}
+
+// Suggestions come from the open backlog: Capability is narrowed by Epic, Feature by Epic and Capability.
+function refreshSuggestions(s) {
+  const stories = state.backlog.stories;
+  const fill = (id, values) => {
+    const distinct = [...new Set(values.map((v) => v.trim()).filter(Boolean))];
+    $(id).replaceChildren(...distinct.map((v) => new Option(v)));
+  };
+  const sameEpic = stories.filter((o) => o.epic === s.epic);
+  fill('epicList', stories.map((o) => o.epic));
+  fill('capabilityList', sameEpic.map((o) => o.capability));
+  fill('featureList', sameEpic.filter((o) => o.capability === s.capability).map((o) => o.feature));
 }
 
 function showCellWarning(el, raw, message) {
@@ -326,13 +365,16 @@ $('priority').addEventListener('change', () => {
   markDirty();
 });
 
-$('addCriterionBtn').addEventListener('click', () => {
+function addCriterion() {
   const s = selected();
   s.criteria.push(emptyCriterion());
+  s.rawCriteria = null;
   renderCriteria();
   refreshDerived();
   markDirty();
-});
+}
+
+$('addCriterionBtn').addEventListener('click', addCriterion);
 
 // Sprint points: one-click Fibonacci buttons; click the selected one again to clear.
 for (const p of POINTS) {
@@ -378,7 +420,7 @@ $('addStoryBtn').addEventListener('click', () => {
   $('epic').focus();
 });
 
-$('deleteStoryBtn').addEventListener('click', () => {
+function deleteStory() {
   const s = selected();
   if (!s || !confirm('Delete the selected story?')) return;
   const stories = state.backlog.stories;
@@ -388,24 +430,26 @@ $('deleteStoryBtn').addEventListener('click', () => {
   renderStoryList();
   fillForm();
   markDirty();
-});
+}
+
+$('deleteStoryBtn').addEventListener('click', deleteStory);
+
+// Select the neighbouring story. The focused form field keeps focus (falling back to Epic).
+function moveSelection(delta) {
+  const stories = state.backlog?.stories ?? [];
+  const next = stories[stories.findIndex((s) => s.id === state.selectedId) + delta];
+  if (!next) return;
+  const focusedId = document.activeElement?.id;
+  state.selectedId = next.id;
+  renderStoryList();
+  fillForm();
+  const target = (focusedId && $(focusedId)) || $('epic');
+  target.focus();
+}
 
 // ---------- file actions ----------
 
-$('fileSelect').addEventListener('change', async () => {
-  const target = $('fileSelect').value;
-  showMessage(null);
-  try {
-    if (!(await leaveCurrentFile())) return renderFileBar();
-    state.selectedId = null;
-    await loadFile(target);
-  } catch (err) {
-    showMessage(err.message);
-    renderFileBar();
-  }
-});
-
-$('newBtn').addEventListener('click', async () => {
+async function newBacklog() {
   showMessage(null);
   try {
     if (!(await leaveCurrentFile())) return;
@@ -418,6 +462,21 @@ $('newBtn').addEventListener('click', async () => {
     $('fileName').select();
   } catch (err) {
     showMessage(err.message);
+  }
+}
+
+$('newBtn').addEventListener('click', newBacklog);
+
+$('fileSelect').addEventListener('change', async () => {
+  const target = $('fileSelect').value;
+  showMessage(null);
+  try {
+    if (!(await leaveCurrentFile())) return renderFileBar();
+    state.selectedId = null;
+    await loadFile(target);
+  } catch (err) {
+    showMessage(err.message);
+    renderFileBar();
   }
 });
 
@@ -470,18 +529,61 @@ async function loadGuideline() {
   }
 }
 
-function setPinned(pinned) {
-  $('guideline').classList.toggle('pinned', pinned);
-  $('guidelineBtn').setAttribute('aria-expanded', String(pinned));
+// ---------- popovers (guideline and shortcuts): hover/focus shows, click pins, Escape or outside click closes ----------
+
+function setPinned(info, pinned) {
+  info.classList.toggle('pinned', pinned);
+  info.querySelector('.info-btn').setAttribute('aria-expanded', String(pinned));
 }
 
-$('guidelineBtn').addEventListener('click', () => setPinned(!$('guideline').classList.contains('pinned')));
+for (const btn of document.querySelectorAll('.info-btn')) {
+  btn.addEventListener('click', () => {
+    const info = btn.closest('.info');
+    setPinned(info, !info.classList.contains('pinned'));
+  });
+}
 document.addEventListener('click', (e) => {
-  if (!e.target.closest('#guideline')) setPinned(false);
+  for (const info of document.querySelectorAll('.info')) if (!info.contains(e.target)) setPinned(info, false);
 });
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') setPinned(false);
+  if (e.key === 'Escape') for (const info of document.querySelectorAll('.info')) setPinned(info, false);
 });
+
+// ---------- keyboard shortcuts ----------
+// One table drives both the key handler and the helper popover. Matched on e.code so keyboard layouts and
+// the Mac Option key (which changes e.key) do not matter. Ctrl+N, Ctrl+Shift+N and Ctrl+D are reserved by browsers.
+
+const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform);
+const ALT = IS_MAC ? 'Option' : 'Alt';
+
+const SHORTCUTS = [
+  { code: 'KeyN', alt: true, label: `${ALT}+N`, action: 'Add story', run: () => { addStory(); $('epic').focus(); }, enabled: () => !!state.backlog },
+  { code: 'KeyN', alt: true, shift: true, label: `${ALT}+Shift+N`, action: 'New backlog', run: newBacklog, enabled: () => true },
+  { code: 'KeyD', alt: true, label: `${ALT}+D`, action: 'Delete selected story', run: deleteStory, enabled: () => !!selected() },
+  { code: 'ArrowUp', ctrl: true, label: 'Ctrl+Up', action: 'Previous story', run: () => moveSelection(-1), enabled: () => !!selected() },
+  { code: 'ArrowDown', ctrl: true, label: 'Ctrl+Down', action: 'Next story', run: () => moveSelection(1), enabled: () => !!selected() },
+];
+
+document.addEventListener('keydown', (e) => {
+  if (e.metaKey || e.isComposing) return;
+  const hit = SHORTCUTS.find((k) => k.code === e.code && !!k.alt === e.altKey && !!k.ctrl === e.ctrlKey && !!k.shift === e.shiftKey);
+  if (!hit || !hit.enabled()) return;
+  e.preventDefault();
+  hit.run();
+});
+
+$('shortcutsText').replaceChildren(
+  Object.assign(document.createElement('dl'), { className: 'shortcut-list' }),
+);
+$('shortcutsText').firstChild.append(
+  ...SHORTCUTS.flatMap((k) => {
+    const dt = document.createElement('dt');
+    dt.textContent = k.label;
+    const dd = document.createElement('dd');
+    dd.textContent = k.action;
+    return [dt, dd];
+  }),
+);
 
 // ---------- start ----------
 

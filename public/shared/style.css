@@ -11,6 +11,8 @@
   --warn-text: #8a4b00;
   --ok: #1a7f4b;
   --bad: #c0332b;
+  --bad-bg: #fdecea;
+  --bad-border: #e57368;
   --radius: 6px;
   color-scheme: light dark;
 }
@@ -29,6 +31,8 @@
     --warn-text: #ffcf8a;
     --ok: #55c58a;
     --bad: #ff8a80;
+    --bad-bg: #3d1a18;
+    --bad-border: #c4574d;
   }
 }
 
@@ -109,6 +113,14 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   background: var(--warn-bg);
   border: 1px solid var(--warn-border);
   color: var(--warn-text);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+}
+
+.error {
+  background: var(--bad-bg);
+  border: 1px solid var(--bad-border);
+  color: var(--bad);
   border-radius: var(--radius);
   padding: 6px 10px;
 }
