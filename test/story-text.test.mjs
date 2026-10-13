@@ -32,12 +32,12 @@ test('criteria round trip with several lines', () => {
 });
 
 test('criteria: AC label ignored, renumbered, case-insensitive, CRLF', () => {
-  const r = parseCriteria('AC7: given a, WHEN I b, Then I Am c\r\nGiven d when i e then i am f');
+  const r = parseCriteria('AC7: given a, WHEN I b, Then c\r\nGiven d when i e then f');
   assert.deepEqual(r.criteria, [
     { given: 'a', when: 'b', then: 'c' },
     { given: 'd', when: 'e', then: 'f' },
   ]);
-  assert.equal(composeCriteria(r.criteria).startsWith('AC1: Given a, when I b, then I am c\nAC2:'), true);
+  assert.equal(composeCriteria(r.criteria).startsWith('AC1: Given a, when I b, then c\nAC2:'), true);
 });
 
 test('criteria: missing keyword fails, empty ok, blank criteria skipped', () => {

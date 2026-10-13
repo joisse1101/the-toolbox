@@ -82,7 +82,7 @@ The tool SHALL show an info control next to the Sprint points field that reveals
 - **WHEN** the guideline file cannot be loaded
 - **THEN** the info control shows a short message that the guideline is unavailable and the rest of the form still works
 ### Requirement: Multiple acceptance criteria
-Each story SHALL support any number of acceptance criteria, each made of "Given", "When" and "Then I am" text fields. The user SHALL be able to add and remove criteria.
+Each story SHALL support any number of acceptance criteria, each made of "Given", "When" and "Then" text fields. The user SHALL be able to add and remove criteria.
 
 #### Scenario: Add criterion
 - **WHEN** the user clicks "Add criterion"
@@ -103,7 +103,7 @@ A backlog file SHALL hold many stories, one per CSV row. The tool SHALL let the 
 Each story SHALL be stored as one row with exactly these columns: `Epic, Capability, Feature, User Story, Sprint points, Priority, Acceptance Criteria, Notes`.
 
 - `User Story` SHALL hold one sentence in the form `As a <as a>, I want <i want>, so that <so that>`.
-- `Acceptance Criteria` SHALL hold one line per criterion, lines separated by a line break within the cell, each in the form `AC<n>: Given <given>, when I <when>, then I am <then>`, where `<n>` is the criterion's position starting at 1.
+- `Acceptance Criteria` SHALL hold one line per criterion, lines separated by a line break within the cell, each in the form `AC<n>: Given <given>, when I <when>, then <then>`, where `<n>` is the criterion's position starting at 1.
 
 Values containing commas, quotes or line breaks SHALL be correctly quoted so the file round-trips and opens correctly in Excel.
 
@@ -124,7 +124,7 @@ Values containing commas, quotes or line breaks SHALL be correctly quoted so the
 - **THEN** its `Acceptance Criteria` cell is empty
 
 ### Requirement: Parsing story and criteria text
-When loading a file, the tool SHALL split the `User Story` cell into As a / I want / So that using the literal keywords `As a`, `I want` and `so that` (case-insensitive, first occurrence of each, in that order), and SHALL split the `Acceptance Criteria` cell into criteria by line, each into Given / When / Then I am using the keywords `Given`, `when I` and `then I am` (case-insensitive, first occurrence of each, in that order). The comma immediately before a keyword SHALL be treated as a separator and removed from the preceding field, and a missing comma SHALL be tolerated. The leading `AC<n>:` label SHALL be ignored and criteria renumbered from their position.
+When loading a file, the tool SHALL split the `User Story` cell into As a / I want / So that using the literal keywords `As a`, `I want` and `so that` (case-insensitive, first occurrence of each, in that order), and SHALL split the `Acceptance Criteria` cell into criteria by line, each into Given / When / Then using the keywords `Given`, `when I` and `then` (case-insensitive, first occurrence of each, in that order). The comma immediately before a keyword SHALL be treated as a separator and removed from the preceding field, and a missing comma SHALL be tolerated. The leading `AC<n>:` label SHALL be ignored and criteria renumbered from their position.
 
 #### Scenario: Comma-separated syntax
 - **WHEN** a cell reads `As a team lead, I want to export, so that I can share`
@@ -151,7 +151,7 @@ Beneath the user story fields and beneath the acceptance criteria group, the too
 
 #### Scenario: Criteria preview
 - **WHEN** the user has two criteria
-- **THEN** the preview shows two lines, `AC1: Given …, when I …, then I am …` and `AC2: …`
+- **THEN** the preview shows two lines, `AC1: Given …, when I …, then …` and `AC2: …`
 
 ### Requirement: Unknown columns are preserved
 When a loaded CSV contains columns the tool does not recognise, the tool SHALL keep those columns and each row's values for them, and write them back unchanged when saving. Columns the tool recognises SHALL be matched by header name, not position.

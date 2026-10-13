@@ -253,7 +253,7 @@ function renderCriteria() {
       head.append(remove);
       const fields = document.createElement('div');
       fields.className = 'fields';
-      for (const [key, label] of [['given', 'Given'], ['when', 'When I'], ['then', 'Then I am']]) {
+      for (const [key, label] of [['given', 'Given'], ['when', 'When I'], ['then', 'Then']]) {
         const wrap = document.createElement('div');
         const id = `criterion-${i}-${key}`;
         const lab = document.createElement('label');
@@ -286,7 +286,7 @@ function refreshDerived() {
   $('criteriaPreview').textContent = criteriaCellText(s);
 
   showCellWarning($('storyWarning'), s.rawUserStory, 'The User Story cell does not follow "As a …, I want …, so that …", so it is kept as it is');
-  showCellWarning($('criteriaWarning'), s.rawCriteria, 'The Acceptance Criteria cell does not follow "AC1: Given …, when I …, then I am …", so it is kept as it is');
+  showCellWarning($('criteriaWarning'), s.rawCriteria, 'The Acceptance Criteria cell does not follow "AC1: Given …, when I …, then …", so it is kept as it is');
 
   for (const btn of $('pointsGroup').children) {
     btn.setAttribute('aria-checked', String(String(s.points) === btn.dataset.points));
@@ -365,13 +365,17 @@ $('storyList').addEventListener('click', (e) => {
   fillForm();
 });
 
-$('addStoryBtn').addEventListener('click', () => {
+function addStory() {
   const s = newStory(state.backlog.headers);
   state.backlog.stories.push(s);
   state.selectedId = s.id;
   renderStoryList();
   fillForm();
   markDirty();
+}
+
+$('addStoryBtn').addEventListener('click', () => {
+  addStory();
   $('epic').focus();
 });
 
@@ -410,6 +414,7 @@ $('newBtn').addEventListener('click', async () => {
     await refreshFiles();
     state.selectedId = null;
     await loadFile(name);
+    addStory(); // a new backlog starts with one blank story
     $('fileName').focus();
     $('fileName').select();
   } catch (err) {
