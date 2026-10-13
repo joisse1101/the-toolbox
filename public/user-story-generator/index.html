@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>User story generator</title>
+  <link rel="stylesheet" href="/shared/style.css">
+  <link rel="stylesheet" href="tool.css">
+</head>
+<body>
+  <main class="page">
+    <header class="top">
+      <h1><a href="/" class="home" title="All tools">&larr;</a> User story generator</h1>
+      <span id="saveStatus" class="status-chip" role="status" aria-live="polite">No file</span>
+    </header>
+
+    <section class="card file-bar">
+      <div class="row">
+        <div class="grow">
+          <label for="fileSelect">Backlog</label>
+          <select id="fileSelect"></select>
+        </div>
+        <div class="grow">
+          <label for="fileName">File name</label>
+          <input type="text" id="fileName" autocomplete="off" spellcheck="false">
+        </div>
+        <button type="button" id="newBtn">New</button>
+        <button type="button" id="openBtn">Open folder</button>
+      </div>
+      <p id="message" class="warning" hidden></p>
+    </section>
+
+    <p id="emptyPrompt" class="card muted" hidden>
+      There are no backlogs in <code>user-stories/</code> yet. Click <strong>New</strong> to create one.
+    </p>
+
+    <div id="editor" class="editor" hidden>
+      <aside class="card story-list-panel">
+        <h2>Stories</h2>
+        <ul id="storyList" class="story-list"></ul>
+        <div class="row">
+          <button type="button" id="addStoryBtn" class="primary">Add story</button>
+          <button type="button" id="deleteStoryBtn" class="danger">Delete selected</button>
+        </div>
+      </aside>
+
+      <section id="storyForm" class="card story-form" hidden>
+        <p id="splitWarning" class="warning" hidden>
+          Consider splitting this story: estimates above 13 points are usually too big for one sprint.
+        </p>
+
+        <fieldset>
+          <legend>Where it fits</legend>
+          <div class="grid3">
+            <div><label for="epic">Epic</label><input type="text" id="epic"></div>
+            <div><label for="capability">Capability</label><input type="text" id="capability"></div>
+            <div><label for="feature">Feature</label><input type="text" id="feature"></div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>User story</legend>
+          <div class="grid3">
+            <div><label for="asA">As a</label><input type="text" id="asA"></div>
+            <div><label for="iWant">I want</label><input type="text" id="iWant"></div>
+            <div><label for="soThat">So that</label><input type="text" id="soThat"></div>
+          </div>
+          <p id="storyWarning" class="warning" hidden></p>
+          <div class="preview-label">Saved as</div>
+          <pre id="storyPreview" class="preview"></pre>
+        </fieldset>
+
+        <fieldset>
+          <legend>Estimate</legend>
+          <div class="row">
+            <div>
+              <div class="label-row">
+                <span id="pointsLabel" class="label-text">Sprint points</span>
+                <span class="info" id="guideline">
+                  <button type="button" class="info-btn" id="guidelineBtn" aria-label="Sprint points guideline"
+                          aria-expanded="false" aria-controls="guidelineText">i</button>
+                  <div class="popover" id="guidelineText" role="tooltip">Loading guideline&hellip;</div>
+                </span>
+              </div>
+              <div id="pointsGroup" class="points" role="radiogroup" aria-labelledby="pointsLabel"></div>
+            </div>
+            <div>
+              <label for="priority">Priority</label>
+              <select id="priority"></select>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Acceptance criteria</legend>
+          <div id="criteria"></div>
+          <button type="button" id="addCriterionBtn">Add criterion</button>
+          <p id="criteriaWarning" class="warning" hidden></p>
+          <div class="preview-label">Saved as</div>
+          <pre id="criteriaPreview" class="preview"></pre>
+        </fieldset>
+
+        <fieldset>
+          <legend>Notes</legend>
+          <label for="notes" class="sr-only">Notes</label>
+          <textarea id="notes" rows="3"></textarea>
+        </fieldset>
+      </section>
+    </div>
+  </main>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
