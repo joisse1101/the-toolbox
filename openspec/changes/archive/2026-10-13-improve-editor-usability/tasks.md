@@ -27,7 +27,7 @@
 - [x] 5.2 Make Alt+N, Alt+Shift+N and Alt+D reuse the existing add/new/delete code paths; verify delete still asks for confirmation and a new backlog still focuses the file name
 - [x] 5.3 Keep focus in the current form field after Ctrl+Up/Down, falling back to Epic; verify while editing Notes and with nothing focused
 - [x] 5.4 Add the "Shortcuts" button and popover to the header, generated from the shortcut table, with Option labelling on Mac; generalise the existing pin / outside-click / Escape handling to both popovers; verify hover, keyboard focus, click-to-pin and Escape for both the shortcuts and the guideline popovers
-- [ ] 5.5 Manually verify Alt+N, Alt+Shift+N and Alt+D are not intercepted by the browser in Chrome, Edge and Firefox
+- [x] 5.5 Manually verify Alt+N, Alt+Shift+N and Alt+D are not intercepted by the browser in Chrome, Edge and Firefox
 
 ## 6. Layout
 
