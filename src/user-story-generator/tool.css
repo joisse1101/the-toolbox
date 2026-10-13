@@ -123,3 +123,50 @@ legend { font-weight: 600; padding: 0 6px; }
 .dep-list li.dangling { border-color: var(--warn-border); background: var(--warn-bg); }
 .dep-list .remove { border: 0; background: none; padding: 0 2px; color: var(--muted); cursor: pointer; }
 .dep-heading { margin: 10px 0 4px; font-size: 12px; color: var(--muted); }
+
+/* Graph tab */
+.graph-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 6px; }
+.graph-zoom { min-width: 3.5em; text-align: center; font-variant-numeric: tabular-nums; font-size: 13px; color: var(--muted); }
+.graph-sep { flex: 1; }
+.graph-bar button[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.graph-hint { margin: 0 0 8px; font-size: 13px; min-height: 1.4em; }
+.graph-note { margin: 0 0 8px; }
+.graph-notes { margin: 8px 0 0; padding-left: 20px; }
+.graph-panel { height: 62vh; min-height: 280px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); overflow: hidden; }
+.graph-svg { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; user-select: none; }
+.graph-svg:active { cursor: grabbing; }
+.graph-svg.linking, .graph-svg.linking * { cursor: crosshair; }
+.graph-svg.choosing .graph-node { cursor: crosshair; }
+.graph-empty { margin: 8px 0; }
+
+.graph-edge { cursor: pointer; outline: none; }
+.graph-edge-line { fill: none; stroke: var(--muted); stroke-width: 1.5; }
+.graph-edge-hit { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; }
+.graph-edge:hover .graph-edge-line, .graph-edge:focus-visible .graph-edge-line { stroke: var(--accent); stroke-width: 2.5; }
+.graph-edge.selected .graph-edge-line { stroke: var(--accent); stroke-width: 3; }
+.graph-edge.back .graph-edge-line { stroke: var(--bad); stroke-dasharray: 5 4; }
+.graph-edge.dim { opacity: 0.15; }
+.graph-arrow { fill: var(--muted); }
+.graph-arrow.hi { fill: var(--accent); }
+.graph-arrow.back { fill: var(--bad); }
+
+.graph-node { cursor: pointer; outline: none; }
+.graph-node-box { fill: var(--surface); stroke: var(--border); stroke-width: 1.5; }
+.graph-node-epic { fill: var(--muted); }
+.graph-node.incomplete .graph-node-box { fill: var(--bad-bg); stroke: var(--bad-border); }
+.graph-node.warn .graph-node-box { fill: var(--warn-bg); stroke: var(--warn-border); }
+.graph-node:hover .graph-node-box, .graph-node:focus-visible .graph-node-box { stroke: var(--accent); }
+.graph-node.selected .graph-node-box, .graph-node.source .graph-node-box { stroke: var(--accent); stroke-width: 3; }
+.graph-node.dim { opacity: 0.25; }
+.graph-node-code { font: 11px ui-monospace, Consolas, monospace; fill: var(--muted); }
+.graph-node-title { font-size: 13px; fill: var(--text); }
+.graph-handle { fill: var(--accent); stroke: var(--surface); stroke-width: 2; opacity: 0; cursor: crosshair; }
+.graph-node:hover .graph-handle, .graph-node:focus-visible .graph-handle, .graph-node.selected .graph-handle { opacity: 1; }
+.graph-rubber { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 6 4; pointer-events: none; }
+
+.graph-unlinked ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.graph-unlinked li { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; }
+.graph-unlinked li.incomplete { background: var(--bad-bg); border-color: var(--bad-border); }
+.graph-unlinked li.warn { background: var(--warn-bg); border-color: var(--warn-border); }
+.graph-unlinked .code { font: 11px ui-monospace, Consolas, monospace; color: var(--muted); }
+.graph-link-btn { padding: 1px 8px; font-size: 12px; }

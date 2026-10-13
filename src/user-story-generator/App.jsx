@@ -6,6 +6,7 @@ import Info from './components/Info.jsx';
 import StoryList from './components/StoryList.jsx';
 import StoryForm from './components/StoryForm.jsx';
 import StoriesTab from './components/StoriesTab.jsx';
+import GraphTab from './components/GraphTab.jsx';
 
 const STATUS_TEXT = { saved: 'Saved', saving: 'Saving…', failed: 'Save failed', idle: 'No file' };
 
@@ -122,6 +123,7 @@ export default function App() {
         <div id="tabs" className="tabs" role="tablist" aria-label="Views" hidden={!current}>
           <button type="button" role="tab" id="tabEditor" className="tab" aria-controls="editor" aria-selected={view === 'editor'} onClick={() => actions.setView('editor')}>Editor</button>
           <button type="button" role="tab" id="tabStories" className="tab" aria-controls="storiesView" aria-selected={view === 'stories'} onClick={() => actions.setView('stories')}>Stories</button>
+          <button type="button" role="tab" id="tabGraph" className="tab" aria-controls="graphView" aria-selected={view === 'graph'} onClick={() => actions.setView('graph')}>Graph</button>
         </div>
 
         <div id="editor" className="editor" role="tabpanel" aria-labelledby="tabEditor" hidden={!current || view !== 'editor'}>
@@ -137,6 +139,11 @@ export default function App() {
         <StoriesTab
           stories={stories} problems={problems} checked={checked} lastChecked={lastChecked} hidden={!current || view !== 'stories'}
           onOpen={openInEditor} onCheck={actions.toggleChecked} onCheckAll={actions.checkAll} onApplyBulk={actions.applyBulkPatch}
+        />
+
+        <GraphTab
+          stories={stories} problems={problems} current={current} hidden={!current || view !== 'graph'}
+          onOpen={openInEditor} onAddDependency={actions.addDependency} onRemoveDependency={actions.removeDependency}
         />
       </main>
     </>

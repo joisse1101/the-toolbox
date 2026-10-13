@@ -72,3 +72,26 @@ test('bulk epic change: moved stories go to the bottom of the new epic and links
   assert.deepEqual(prio.backlog.stories.map((s) => s.code), ['O-0001', 'O-0002', 'O-0003']);
   assert.ok(applyBulk);
 });
+
+test('addDependency / removeDependency: edit links, ignore self, repeats, cycles and unknown codes', () => {
+  let state = opened();
+  const [a, b, c] = state.backlog.stories;
+  const link = (from, to) => reducer(state, { type: 'addDependency', id: from.id, code: to.code });
+  const edits = state.edits;
+
+  state = link(b, a);
+  assert.deepEqual(byFeature(state, 'B').dependsOn, [a.code]);
+  assert.equal(state.edits, edits + 1);
+
+  for (const next of [link(b, a), link(a, a), link(a, b), reducer(state, { type: 'addDependency', id: a.id, code: 'Z-9' })]) {
+    assert.equal(next, state); // repeat, self, cycle, unknown
+  }
+
+  state = link(c, b);
+  assert.deepEqual(byFeature(state, 'C').dependsOn, [b.code]);
+  assert.equal(link(a, c), state); // indirect cycle: a -> c -> b -> a
+
+  const removed = reducer(state, { type: 'removeDependency', id: b.id, code: a.code });
+  assert.deepEqual(byFeature(removed, 'B').dependsOn, []);
+  assert.equal(reducer(removed, { type: 'removeDependency', id: b.id, code: a.code }), removed);
+});

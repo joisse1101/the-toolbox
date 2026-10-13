@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { createFileStore } from '../../shared/files.js';
 import { loadBacklog, newBacklogText, newStory, displayOrder, applyBulk } from '../model.js';
-import { commitEpic, commitEpics, moveStory, removeStory } from '../ids.js';
+import { commitEpic, commitEpics, moveStory, removeStory, wouldCycle } from '../ids.js';
 import { useAutosave } from './useAutosave.js';
 
 const store = createFileStore('user-stories');
@@ -12,7 +12,7 @@ const initial = {
   current: null, // selected file name
   backlog: null, // { headers, stories, hasBom }
   selectedId: null,
-  view: 'editor', // 'editor' | 'stories'
+  view: 'editor', // 'editor' | 'stories' | 'graph'
   checked: new Set(), // story ids ticked in the Stories tab (separate from selectedId)
   lastChecked: null, // id of the last ticked row, for shift-click ranges
   edits: 0, // bumped by every change to the backlog; the auto-save runs when it changes
@@ -77,6 +77,21 @@ export function reducer(state, action) {
       if (i < 0) return state;
       const rest = removeStory(stories, action.id);
       return withStories(state, rest, { selectedId: rest.length ? rest[Math.min(i, rest.length - 1)].id : null });
+    }
+    // Link/unlink from the Graph tab. A link to a missing story, to itself, a repeat or one that closes a cycle is ignored.
+    case 'addDependency': {
+      const { stories } = state.backlog;
+      const from = stories.find((s) => s.id === action.id);
+      const to = stories.find((s) => s.code === action.code);
+      if (!from?.code || !to || from.dependsOn.includes(action.code) || wouldCycle(stories, from.code, action.code)) return state;
+      return withStories(state, stories.map((s) => (s === from ? { ...s, dependsOn: [...s.dependsOn, action.code] } : s)));
+    }
+    case 'removeDependency': {
+      const { stories } = state.backlog;
+      const from = stories.find((s) => s.id === action.id);
+      if (!from?.dependsOn.includes(action.code)) return state;
+      const dependsOn = from.dependsOn.filter((c) => c !== action.code);
+      return withStories(state, stories.map((s) => (s === from ? { ...s, dependsOn, ambiguous: s.ambiguous.filter((c) => c !== action.code) } : s)));
     }
     case 'check': {
       const checked = new Set(state.checked);
@@ -234,6 +249,8 @@ export function useBacklog() {
 
       editStory: edit,
       commitEpic: (id) => dispatch({ type: 'commitEpic', id }),
+      addDependency: (id, code) => dispatch({ type: 'addDependency', id, code }),
+      removeDependency: (id, code) => dispatch({ type: 'removeDependency', id, code }),
       moveStory: (id, epic, beforeId) => dispatch({ type: 'move', id, epic, beforeId }),
 
       toggleChecked: (ids, on, anchor) => dispatch({ type: 'check', ids, on, anchor }),
