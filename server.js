@@ -1,5 +1,5 @@
 'use strict';
-// Local server for the team-lead tools: static pages from public/ plus a CSV file API
+// Local server for the team-lead tools: the built app from dist/ plus a CSV file API
 // restricted to the folders registered in STORES. Node built-ins only.
 
 const http = require('http');
@@ -9,7 +9,7 @@ const { spawn } = require('child_process');
 
 const HOST = '127.0.0.1';
 const PORT = Number(process.env.PORT) || 3000;
-const PUBLIC_DIR = path.join(__dirname, 'public');
+const DIST_DIR = path.join(__dirname, 'dist'); // built by `npm run build`
 const MAX_BODY = 10 * 1024 * 1024;
 
 // Allow-list of data folders. Adding a tool's data folder is one line.
@@ -256,8 +256,9 @@ async function handleStatic(req, res, pathname) {
     throw new HttpError(404, 'Not found');
   }
   if (rel.endsWith('/')) rel += 'index.html';
-  const full = path.resolve(PUBLIC_DIR, '.' + rel);
-  if (full !== PUBLIC_DIR && !full.startsWith(PUBLIC_DIR + path.sep)) throw new HttpError(404, 'Not found');
+  if (!fs.existsSync(DIST_DIR)) throw new HttpError(503, 'The app has not been built yet. Run `npm run build`, then reload.');
+  const full = path.resolve(DIST_DIR, '.' + rel);
+  if (full !== DIST_DIR && !full.startsWith(DIST_DIR + path.sep)) throw new HttpError(404, 'Not found');
   let target = full;
   try {
     const st = await fs.promises.stat(target);
@@ -299,6 +300,7 @@ const server = http.createServer(async (req, res) => {
 if (require.main === module) {
   server.listen(PORT, HOST, () => {
     console.log(`Team lead tools running at http://localhost:${PORT}/`);
+    if (!fs.existsSync(DIST_DIR)) console.log('The app has not been built yet. Run `npm run build` first.');
   });
 }
 
