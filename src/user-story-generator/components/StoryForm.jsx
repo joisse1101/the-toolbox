@@ -209,38 +209,6 @@ export default function StoryForm({ story: s, stories, problems, focusRequest, o
       </fieldset>
 
       <fieldset>
-        <legend>Dependencies</legend>
-        <label htmlFor="dependsOn">Depends on</label>
-        <ul id="dependsOnList" className="dep-list">
-          {s.dependsOn.map((code) => {
-            const target = byCode.get(code);
-            return (
-              <li key={code} className={target ? '' : 'dangling'}>
-                {target
-                  ? <button type="button" className="link-btn" title={storyLabel(target)} onClick={() => onOpen(target.id)}>{`${code} ${storyLabel(target)}`}</button>
-                  : <span title="No story has this ID">{code}</span>}
-                <button type="button" className="remove" aria-label={`Remove ${code}`} onClick={() => edit((d) => { d.dependsOn = d.dependsOn.filter((c) => c !== code); })}>✕</button>
-              </li>
-            );
-          })}
-        </ul>
-        <input
-          type="text" id="dependsOn" list="dependsOnChoices" autoComplete="off" disabled={!s.code}
-          placeholder={s.code ? 'Type or pick a story ID' : 'Set an Epic first'} value={depInput} onChange={pickDependency}
-        />
-        <datalist id="dependsOnChoices">
-          {choices.map((o) => <option key={o.id} value={o.code}>{storyLabel(o)}</option>)}
-        </datalist>
-        <div className="dep-heading">Required by</div>
-        <ul id="requiredByList" className="dep-list">
-          {requiredBy.map((o) => (
-            <li key={o.id}><button type="button" className="link-btn" onClick={() => onOpen(o.id)}>{`${o.code} ${storyLabel(o)}`}</button></li>
-          ))}
-          {!requiredBy.length && <li className="muted">No story depends on this one.</li>}
-        </ul>
-      </fieldset>
-
-      <fieldset>
         <legend>Acceptance criteria</legend>
         <div id="criteria">
           {s.criteria.map((c, i) => {
@@ -311,6 +279,38 @@ export default function StoryForm({ story: s, stories, problems, focusRequest, o
         <CellWarning id="criteriaWarning" raw={s.rawCriteria} message={CRITERIA_WARNING} />
         <div className="preview-label">Saved as</div>
         <pre id="criteriaPreview" className="preview">{criteriaCellText(s)}</pre>
+      </fieldset>
+
+      <fieldset>
+        <legend>Dependencies</legend>
+        <label htmlFor="dependsOn">Depends on</label>
+        <ul id="dependsOnList" className="dep-list">
+          {s.dependsOn.map((code) => {
+            const target = byCode.get(code);
+            return (
+              <li key={code} className={target ? '' : 'dangling'}>
+                {target
+                  ? <button type="button" className="link-btn" title={storyLabel(target)} onClick={() => onOpen(target.id)}>{`${code} ${storyLabel(target)}`}</button>
+                  : <span title="No story has this ID">{code}</span>}
+                <button type="button" className="remove" aria-label={`Remove ${code}`} onClick={() => edit((d) => { d.dependsOn = d.dependsOn.filter((c) => c !== code); })}>✕</button>
+              </li>
+            );
+          })}
+        </ul>
+        <input
+          type="text" id="dependsOn" list="dependsOnChoices" autoComplete="off" disabled={!s.code}
+          placeholder={s.code ? 'Type or pick a story ID' : 'Set an Epic first'} value={depInput} onChange={pickDependency}
+        />
+        <datalist id="dependsOnChoices">
+          {choices.map((o) => <option key={o.id} value={o.code}>{storyLabel(o)}</option>)}
+        </datalist>
+        <div className="dep-heading">Required by</div>
+        <ul id="requiredByList" className="dep-list">
+          {requiredBy.map((o) => (
+            <li key={o.id}><button type="button" className="link-btn" onClick={() => onOpen(o.id)}>{`${o.code} ${storyLabel(o)}`}</button></li>
+          ))}
+          {!requiredBy.length && <li className="muted">No story depends on this one.</li>}
+        </ul>
       </fieldset>
 
       <fieldset>
