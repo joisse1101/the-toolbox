@@ -15,6 +15,7 @@ const MAX_BODY = 10 * 1024 * 1024;
 // Allow-list of data folders. Adding a tool's data folder is one line.
 const STORES = {
   'user-stories': path.join(__dirname, 'user-stories'),
+  reviews: path.join(__dirname, 'reviews'), // review suggestions, written by the review-backlog skill's script
 };
 
 const MIME = {

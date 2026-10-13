@@ -5,6 +5,7 @@ import {
 import { dependencyChoices, dependentsOf } from '../ids.js';
 import { issueClass } from './issues.js';
 import Info from './Info.jsx';
+import SuggestionList from './Suggestions.jsx';
 import guideline from '../sprint-points-guideline.md?raw';
 
 const $ = (id) => document.getElementById(id);
@@ -91,7 +92,9 @@ const STORY_WARNING = 'The User Story cell does not follow "As a …, I want …
 const CRITERIA_WARNING = 'The Acceptance Criteria cell does not follow "AC1: Given …, when …, then …", so it is kept as it is';
 
 // `focusRequest` = { id } or null: focus the element with that id (default: Epic) once rendered, then call onFocused.
-export default function StoryForm({ story: s, stories, problems, focusRequest, onFocused, onEdit, onCommitEpic, onOpen }) {
+// `suggestions`: the open review units for this story ({ key, group, rows }); see review.js. Ungrouped ones sit next to
+// their field, split groups in their own section.
+export default function StoryForm({ story: s, stories, problems, suggestions = [], focusRequest, onFocused, onEdit, onCommitEpic, onOpen, onApplySuggestion, onDismissSuggestion }) {
   const [depInput, setDepInput] = useState('');
   useEffect(() => {
     if (!focusRequest) return;
@@ -137,6 +140,11 @@ export default function StoryForm({ story: s, stories, problems, focusRequest, o
     if (e.nativeEvent.inputType === 'insertReplacementText') onCommitEpic(s.id);
   };
   const cls = issueClass(errors, warnings);
+  const forField = (...fields) => suggestions.filter((u) => !u.group && fields.includes(u.rows[0].field));
+  const groups = suggestions.filter((u) => u.group);
+  const list = (...fields) => (
+    <SuggestionList units={forField(...fields)} stories={stories} onApply={onApplySuggestion} onDismiss={onDismissSuggestion} />
+  );
 
   // Suggestions come from the open backlog: Feature is narrowed by Epic. Title has none.
   const sameEpic = stories.filter((o) => o.epic === s.epic);
@@ -159,9 +167,9 @@ export default function StoryForm({ story: s, stories, problems, focusRequest, o
       <fieldset>
         <legend>Where it fits</legend>
         <div className="grid3">
-          <div><label htmlFor="epic">Epic</label><input type="text" id="epic" list="epicList" autoComplete="off" value={s.epic} onChange={onEpicInput} onBlur={() => onCommitEpic(s.id)} /></div>
-          <div><label htmlFor="feature">Feature</label><input type="text" id="feature" list="featureList" autoComplete="off" value={s.feature} onChange={setField('feature')} /></div>
-          <div><label htmlFor="title">Title</label><input type="text" id="title" autoComplete="off" value={s.title} onChange={setField('title')} /></div>
+          <div><label htmlFor="epic">Epic</label><input type="text" id="epic" list="epicList" autoComplete="off" value={s.epic} onChange={onEpicInput} onBlur={() => onCommitEpic(s.id)} />{list('Epic')}</div>
+          <div><label htmlFor="feature">Feature</label><input type="text" id="feature" list="featureList" autoComplete="off" value={s.feature} onChange={setField('feature')} />{list('Feature')}</div>
+          <div><label htmlFor="title">Title</label><input type="text" id="title" autoComplete="off" value={s.title} onChange={setField('title')} />{list('Title')}</div>
         </div>
       </fieldset>
 
@@ -172,6 +180,7 @@ export default function StoryForm({ story: s, stories, problems, focusRequest, o
           <div><label htmlFor="iWant">I want</label><input type="text" id="iWant" value={s.iWant} onChange={setStoryPart('iWant')} /></div>
           <div><label htmlFor="soThat">So that</label><input type="text" id="soThat" value={s.soThat} onChange={setStoryPart('soThat')} /></div>
         </div>
+        {list('User Story')}
         <CellWarning id="storyWarning" raw={s.rawUserStory} message={STORY_WARNING} />
         <div className="preview-label">Saved as</div>
         <pre id="storyPreview" className="preview">{storyCellText(s)}</pre>
@@ -198,12 +207,14 @@ export default function StoryForm({ story: s, stories, problems, focusRequest, o
                 </button>
               ))}
             </div>
+            {list('Sprint points')}
           </div>
           <div>
             <label htmlFor="priority">Priority</label>
             <select id="priority" value={s.priority} onChange={setField('priority')}>
               {priorityOptions.map((p) => <option key={p} value={p}>{p || 'None'}</option>)}
             </select>
+            {list('Priority')}
           </div>
         </div>
       </fieldset>
@@ -276,6 +287,7 @@ export default function StoryForm({ story: s, stories, problems, focusRequest, o
           })}
         </div>
         <button type="button" id="addCriterionBtn" onClick={addCriterion}>Add criterion</button>
+        {list('Acceptance Criteria')}
         <CellWarning id="criteriaWarning" raw={s.rawCriteria} message={CRITERIA_WARNING} />
         <div className="preview-label">Saved as</div>
         <pre id="criteriaPreview" className="preview">{criteriaCellText(s)}</pre>
@@ -304,6 +316,7 @@ export default function StoryForm({ story: s, stories, problems, focusRequest, o
         <datalist id="dependsOnChoices">
           {choices.map((o) => <option key={o.id} value={o.code}>{storyLabel(o)}</option>)}
         </datalist>
+        {list('Depends On')}
         <div className="dep-heading">Required by</div>
         <ul id="requiredByList" className="dep-list">
           {requiredBy.map((o) => (
@@ -317,7 +330,15 @@ export default function StoryForm({ story: s, stories, problems, focusRequest, o
         <legend>Notes</legend>
         <label htmlFor="notes" className="sr-only">Notes</label>
         <textarea id="notes" rows={3} value={s.notes} onChange={setField('notes')} />
+        {list('Notes')}
       </fieldset>
+
+      {groups.length > 0 && (
+        <fieldset>
+          <legend>Suggested split</legend>
+          <SuggestionList units={groups} stories={stories} onApply={onApplySuggestion} onDismiss={onDismissSuggestion} />
+        </fieldset>
+      )}
 
       <datalist id="epicList">{distinct(stories.map((o) => o.epic)).map((v) => <option key={v} value={v} />)}</datalist>
       <datalist id="featureList">{distinct(sameEpic.map((o) => o.feature)).map((v) => <option key={v} value={v} />)}</datalist>

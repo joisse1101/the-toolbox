@@ -5,7 +5,7 @@ import { issueClass, rowTooltip } from './issues.js';
 // Drag a story to reorder it inside its epic, or onto another epic's group to move it there. Dropping on the
 // "(No epic)" group does nothing. `drag` is the story being dragged, `drop` = { epic, beforeId } where it would land
 // (beforeId null = at the end of the group).
-export default function StoryList({ stories, problems, selectedId, onSelect, onAdd, onDelete, onMove }) {
+export default function StoryList({ stories, problems, suggestionCounts = new Map(), selectedId, onSelect, onAdd, onDelete, onMove }) {
   const [drag, setDrag] = useState(null);
   const [drop, setDrop] = useState(null);
 
@@ -64,6 +64,9 @@ export default function StoryList({ stories, problems, selectedId, onSelect, onA
               >
                 {s.code && <span className="code">{s.code}</span>}
                 <span className="title">{storyLabel(s)}</span>
+                {suggestionCounts.get(s.code) > 0 && (
+                  <span className="suggestion-badge" title={`${suggestionCounts.get(s.code)} review suggestion(s)`} aria-label={`${suggestionCounts.get(s.code)} review suggestions`}>{suggestionCounts.get(s.code)}</span>
+                )}
                 <span className="badge">{s.points || '–'}</span>
               </li>
             );

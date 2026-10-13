@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { backlogProblems } from './ids.js';
+import { unitsOf, unitStoryCode, openCounts, orphanUnits, reviewOverview } from './review.js';
 import { useBacklog } from './hooks/useBacklog.js';
+import { useReview } from './hooks/useReview.js';
 import FileBar from './components/FileBar.jsx';
 import Info from './components/Info.jsx';
 import StoryList from './components/StoryList.jsx';
 import StoryForm from './components/StoryForm.jsx';
 import StoriesTab from './components/StoriesTab.jsx';
 import GraphTab from './components/GraphTab.jsx';
+import ReviewTab from './components/ReviewTab.jsx';
 
 const STATUS_TEXT = { saved: 'Saved', saving: 'Saving…', failed: 'Save failed', idle: 'No file' };
 
@@ -36,6 +39,27 @@ export default function App() {
   const stories = backlog?.stories ?? [];
   const problems = useMemo(() => backlogProblems(stories), [stories]);
 
+  // Review suggestions for the open backlog (reviews/<same name>), shown next to the fields they concern.
+  const review = useReview(current);
+  const reload = review.reload;
+  const reviewUnits = useMemo(() => unitsOf(review.rows), [review.rows]);
+  const suggestionCounts = useMemo(() => openCounts(review.rows, stories), [review.rows, stories]);
+  const orphans = useMemo(() => orphanUnits(review.rows, stories), [review.rows, stories]);
+  const selectedUnits = selected?.code ? reviewUnits.filter((u) => unitStoryCode(u) === selected.code) : [];
+  const applyUnit = (unit) => {
+    const result = actions.applySuggestions(unit.rows);
+    if (result.error) review.notify(result.error);
+    else review.decide(unit.indexes, 'applied');
+  };
+  const dismissUnit = (unit) => review.decide(unit.indexes, 'dismissed');
+  const openReviewCount = useMemo(() => reviewOverview(review.rows, stories).openCount, [review.rows, stories]);
+  const dismissOrphans = () => review.decide(orphans.flatMap((u) => u.indexes), 'dismissed');
+  // The Review tab only exists while the backlog has a review file; leave it when the file goes away.
+  const leaveReview = view === 'review' && !review.exists;
+  useEffect(() => {
+    if (leaveReview) actions.setView('editor');
+  }, [leaveReview, actions]);
+
   // Ask the Story form to focus a field once it has rendered (default: Epic).
   const [focusRequest, setFocusRequest] = useState(null);
   const [focusNameToken, setFocusNameToken] = useState(0);
@@ -44,11 +68,14 @@ export default function App() {
   useEffect(() => {
     actions.init();
     const onVisible = () => {
-      if (document.visibilityState === 'visible') actions.refreshFromDisk();
+      if (document.visibilityState === 'visible') {
+        actions.refreshFromDisk();
+        reload();
+      }
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
-  }, [actions]);
+  }, [actions, reload]);
 
   const addStory = () => {
     actions.addStory();
@@ -116,6 +143,19 @@ export default function App() {
           onSelect={actions.selectFile} onRename={actions.renameFile} onNew={newBacklog} onOpenFolder={actions.openFolder}
         />
 
+        {(review.message || review.notice || orphans.length > 0) && (
+          <div id="reviewNotices" role="status">
+            {review.message && <p className="warning">{review.message}</p>}
+            {review.notice && <p className="error">{review.notice}</p>}
+            {orphans.length > 0 && (
+              <p className="warning">
+                {`${orphans.length} review suggestion${orphans.length > 1 ? 's' : ''} no longer match a story (it was renumbered, moved or deleted). Run /review-backlog again, or `}
+                <button type="button" className="link-btn" onClick={dismissOrphans}>dismiss {orphans.length > 1 ? 'them' : 'it'}</button>.
+              </p>
+            )}
+          </div>
+        )}
+
         <p id="emptyPrompt" className="card muted" hidden={!!current}>
           There are no backlogs in <code>user-stories/</code> yet. Click <strong>New</strong> to create one.
         </p>
@@ -124,14 +164,20 @@ export default function App() {
           <button type="button" role="tab" id="tabEditor" className="tab" aria-controls="editor" aria-selected={view === 'editor'} onClick={() => actions.setView('editor')}>Editor</button>
           <button type="button" role="tab" id="tabStories" className="tab" aria-controls="storiesView" aria-selected={view === 'stories'} onClick={() => actions.setView('stories')}>Stories</button>
           <button type="button" role="tab" id="tabGraph" className="tab" aria-controls="graphView" aria-selected={view === 'graph'} onClick={() => actions.setView('graph')}>Graph</button>
+          {review.exists && (
+            <button type="button" role="tab" id="tabReview" className="tab" aria-controls="reviewView" aria-selected={view === 'review'} onClick={() => actions.setView('review')}>
+              {openReviewCount ? `Review (${openReviewCount})` : 'Review'}
+            </button>
+          )}
         </div>
 
         <div id="editor" className="editor" role="tabpanel" aria-labelledby="tabEditor" hidden={!current || view !== 'editor'}>
-          <StoryList stories={stories} problems={problems} selectedId={selectedId} onSelect={actions.selectStory} onAdd={addStory} onDelete={actions.deleteSelected} onMove={actions.moveStory} />
+          <StoryList stories={stories} problems={problems} suggestionCounts={suggestionCounts} selectedId={selectedId} onSelect={actions.selectStory} onAdd={addStory} onDelete={actions.deleteSelected} onMove={actions.moveStory} />
           {selected && (
             <StoryForm
-              story={selected} stories={stories} problems={problems} focusRequest={focusRequest}
+              story={selected} stories={stories} problems={problems} suggestions={selectedUnits} focusRequest={focusRequest}
               onFocused={() => setFocusRequest(null)} onEdit={actions.editStory} onCommitEpic={actions.commitEpic} onOpen={actions.selectStory}
+              onApplySuggestion={applyUnit} onDismissSuggestion={dismissUnit}
             />
           )}
         </div>
@@ -140,6 +186,13 @@ export default function App() {
           stories={stories} problems={problems} checked={checked} lastChecked={lastChecked} hidden={!current || view !== 'stories'}
           onOpen={openInEditor} onCheck={actions.toggleChecked} onCheckAll={actions.checkAll} onApplyBulk={actions.applyBulkPatch}
         />
+
+        {review.exists && (
+          <ReviewTab
+            rows={review.rows} stories={stories} hidden={!current || view !== 'review'}
+            onOpen={openInEditor} onApply={applyUnit} onDismiss={dismissUnit}
+          />
+        )}
 
         <GraphTab
           stories={stories} problems={problems} current={current} hidden={!current || view !== 'graph'}

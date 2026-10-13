@@ -20,6 +20,8 @@ For development, keep `node server.js` running and run `npm run dev`; Vite serve
 | --- | --- | --- |
 | User story generator | `/user-story-generator/` | `user-stories/*.csv` |
 
+The `/review-backlog` skill writes its suggestions to `reviews/<backlog>.csv` (second store, `reviews`), only through `.claude/skills/review-backlog/write-review.mjs`. The story form shows them next to the field they concern, with Apply and Dismiss.
+
 The user story CSVs open directly in Excel. Close the file in Excel (or accept that the tool shows "Save failed" and keeps retrying) before editing the same backlog in the tool.
 
 ### Story IDs and dependencies

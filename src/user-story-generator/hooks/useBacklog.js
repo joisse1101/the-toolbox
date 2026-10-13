@@ -2,6 +2,7 @@ import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { createFileStore } from '../../shared/files.js';
 import { loadBacklog, newBacklogText, newStory, displayOrder, applyBulk } from '../model.js';
 import { commitEpic, commitEpics, moveStory, removeStory, wouldCycle } from '../ids.js';
+import { applySuggestions } from '../review.js';
 import { useAutosave } from './useAutosave.js';
 
 const store = createFileStore('user-stories');
@@ -12,7 +13,7 @@ const initial = {
   current: null, // selected file name
   backlog: null, // { headers, stories, hasBom }
   selectedId: null,
-  view: 'editor', // 'editor' | 'stories' | 'graph'
+  view: 'editor', // 'editor' | 'stories' | 'graph' | 'review'
   checked: new Set(), // story ids ticked in the Stories tab (separate from selectedId)
   lastChecked: null, // id of the last ticked row, for shift-click ranges
   edits: 0, // bumped by every change to the backlog; the auto-save runs when it changes
@@ -92,6 +93,12 @@ export function reducer(state, action) {
       if (!from?.dependsOn.includes(action.code)) return state;
       const dependsOn = from.dependsOn.filter((c) => c !== action.code);
       return withStories(state, stories.map((s) => (s === from ? { ...s, dependsOn, ambiguous: s.ambiguous.filter((c) => c !== action.code) } : s)));
+    }
+    // Apply one review suggestion or a whole split group. A failed apply (stale row, cycle) leaves the state alone;
+    // the caller runs applySuggestions first to show the reason.
+    case 'applySuggestions': {
+      const result = applySuggestions(state.backlog.stories, action.rows, state.backlog.headers);
+      return result.error ? state : withStories(state, result.stories);
     }
     case 'check': {
       const checked = new Set(state.checked);
@@ -256,6 +263,15 @@ export function useBacklog() {
       toggleChecked: (ids, on, anchor) => dispatch({ type: 'check', ids, on, anchor }),
       checkAll: (on, ids) => dispatch({ type: 'checkAll', on, ids }),
       applyBulkPatch: (patch) => dispatch({ type: 'bulk', patch }),
+
+      // Resolves { ok: true } or { error } (the edit is not made on error).
+      applySuggestions(rows) {
+        const { backlog } = stateRef.current;
+        const result = applySuggestions(backlog.stories, rows, backlog.headers);
+        if (result.error) return { error: result.error };
+        dispatch({ type: 'applySuggestions', rows });
+        return { ok: true };
+      },
     };
   }, [autosave]);
 

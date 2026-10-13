@@ -95,3 +95,56 @@ test('addDependency / removeDependency: edit links, ignore self, repeats, cycles
   assert.deepEqual(byTitle(removed, 'B').dependsOn, []);
   assert.equal(reducer(removed, { type: 'removeDependency', id: b.id, code: a.code }), removed);
 });
+
+// ---- review suggestions ----
+
+const sRow = (over) => ({
+  storyId: 'B-0001', field: 'Title', action: 'replace', current: 'A', suggested: 'Renamed', reason: 'r', area: 'INVEST',
+  confidence: 'ready', group: '', status: 'open', ...over,
+});
+
+test('applySuggestions: replace goes through the reducer as an edit (bumps edits so it autosaves)', () => {
+  const state = opened();
+  const next = reducer(state, { type: 'applySuggestions', rows: [sRow()] });
+  assert.equal(byTitle(next, 'Renamed').code, 'B-0001');
+  assert.equal(next.edits, state.edits + 1);
+});
+
+test('applySuggestions: a stale row leaves the state untouched', () => {
+  const state = opened();
+  const next = reducer(state, { type: 'applySuggestions', rows: [sRow({ current: 'something else' })] });
+  assert.equal(next, state);
+});
+
+test('applySuggestions: changing the Epic renumbers and moves links with the story', () => {
+  let state = opened();
+  const [a, b] = state.backlog.stories;
+  state = edit(state, b.id, (d) => { d.dependsOn = [a.code]; });
+  const next = reducer(state, { type: 'applySuggestions', rows: [sRow({ field: 'Epic', current: 'Billing', suggested: 'Onboarding' })] });
+  const moved = byTitle(next, 'A');
+  assert.match(moved.code, /^O-/);
+  assert.deepEqual(byTitle(next, 'B').dependsOn, [moved.code]);
+});
+
+test('applySuggestions: Depends On cycle is refused, a valid link is added', () => {
+  let state = opened();
+  const [a, b] = state.backlog.stories;
+  state = edit(state, b.id, (d) => { d.dependsOn = [a.code]; });
+  const cycle = reducer(state, { type: 'applySuggestions', rows: [sRow({ field: 'Depends On', action: 'add', current: '', suggested: 'B-0002' })] });
+  assert.equal(cycle, state);
+  const ok = reducer(state, { type: 'applySuggestions', rows: [sRow({ storyId: 'O-0001', field: 'Depends On', action: 'add', current: '', suggested: 'B-0001' })] });
+  assert.deepEqual(byTitle(ok, 'C').dependsOn, ['B-0001']);
+});
+
+test('applySuggestions: a split group narrows the original and adds stories in one edit', () => {
+  const state = opened();
+  const rows = [
+    sRow({ suggested: 'A narrowed', group: 'g', confidence: 'confirm' }),
+    sRow({ storyId: 'NEW-1', field: 'Title', action: 'add-story', current: '', suggested: 'A second part', group: 'g', confidence: 'confirm' }),
+  ];
+  const next = reducer(state, { type: 'applySuggestions', rows });
+  assert.equal(next.backlog.stories.length, state.backlog.stories.length + 1);
+  assert.equal(next.edits, state.edits + 1);
+  assert.equal(byTitle(next, 'A second part').epic, 'Billing');
+  assert.equal(byTitle(next, 'A second part').code, 'B-0003');
+});
