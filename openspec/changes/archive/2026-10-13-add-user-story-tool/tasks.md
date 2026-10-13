@@ -31,5 +31,5 @@
 
 ## 4. End-to-end check
 
-- [ ] 4.1 Walk through: start the server, New backlog, rename it, enter a story with two acceptance criteria containing commas, quotes and a line break, open the CSV in Excel, confirm columns/values, edit in Excel, return to the tool and confirm it picks up the edit
+- [x] 4.1 Walk through: start the server, New backlog, rename it, enter a story with two acceptance criteria containing commas, quotes and a line break, open the CSV in Excel, confirm columns/values, edit in Excel, return to the tool and confirm it picks up the edit
 - [x] 4.2 Add a short `README.md` with how to start the server and how to add a new tool/store; verify a fresh reader can follow it to launch the tool
