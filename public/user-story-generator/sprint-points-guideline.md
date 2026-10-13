@@ -1,23 +1,21 @@
 SPRINT POINTS GUIDELINE
-(Edit this file to change what the info button shows. Reload the page to see it.)
 
-Scale: 1, 2, 3, 5, 8, 13
-  1  - trivial change, well understood, almost no risk
-  2  - small and clear
-  3  - moderate, a few moving parts
-  5  - sizeable, some unknowns
-  8  - large, several parts or real unknowns
-  13 - very large, the most one story should be
+Scale: 1, 2, 3, 5, 8, 13  (> 13 → MUST split)
 
-Above 13 (21, 34, 55): split the story.
+Quick Benchmark (Effort & Scope):
+  1 pt  - Trivial / 1 component / < 0.5 day   (e.g., text/UI fix, minor config)
+  2 pt  - Small / 1-2 components / ~1 day     (e.g., simple API field, basic bug fix)
+  3 pt  - Moderate / 2-3 components / ~2-3 days (e.g., new standard endpoint, form validation)
+  5 pt  - Sizeable / Multi-layer / ~3-5 days  (e.g., new feature UI + API + database changes)
+  8 pt  - Large / Complex setup / ~1-2 weeks   (e.g., third-party integration, risky refactor)
+ 13 pt  - Max story size / Significant unknowns (e.g., end-to-end multi-team feature)
 
-How to choose - weigh four things together:
-  1. Complexity   - how many parts, rules and edge cases?
-  2. Effort       - how much plain work is there?
-  3. Uncertainty  - how much is unknown, new or risky?
-  4. Reference    - compare with a story the team already finished.
+Decision Checklist:
+  • Effort: Days/hours of hands-on work
+  • Scope: Touchpoints (UI, API, DB, 3rd party)
+  • Risk & Uncertainty: New tech, vague specs, unknown dependencies
 
-Reference stories (add your own anchors):
-  1 pt  = <story the team has done that was a 1>
-  3 pt  = <story the team has done that was a 3>
-  8 pt  = <story the team has done that was an 8>
+Team Reference Anchors:
+  1 pt = <e.g., Update button styling / label text>
+  3 pt = <e.g., Add new CSV export endpoint>
+  8 pt = <e.g., Integrate Stripe payment gateway>
