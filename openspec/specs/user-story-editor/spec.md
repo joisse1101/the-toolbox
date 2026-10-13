@@ -237,7 +237,7 @@ The tool SHALL save the current backlog to its CSV file automatically shortly af
 - **THEN** the browser warns that changes are unsaved
 
 ### Requirement: Keyboard shortcuts
-The tool SHALL provide these keyboard shortcuts, active anywhere on the page including while a text field has focus: Alt+N adds a story, Alt+Shift+N creates a new backlog, Alt+D deletes the selected story, Ctrl+Up selects the previous story and Ctrl+Down selects the next story. Previous and next SHALL follow the order the stories are shown in the grouped story list, not the order of rows in the file. Each shortcut SHALL do exactly what the matching button or click does today, including the delete confirmation. A shortcut that has nothing to act on (no story selected, no backlog loaded, already at the first or last story) SHALL do nothing. The tool SHALL prevent the browser's default action for a shortcut it handles.
+The tool SHALL provide these keyboard shortcuts, active anywhere on the page including while a text field has focus: Alt+N adds a story, Alt+Shift+N creates a new backlog, Alt+D deletes the selected story, Ctrl+Up selects the previous story and Ctrl+Down selects the next story. Previous and next SHALL follow the order the stories are shown in the grouped story list, not the order of rows in the file. Each shortcut SHALL do exactly what the matching button or click does today, including the delete confirmation. A shortcut that has nothing to act on (no story selected, no backlog loaded, already at the first or last story) SHALL do nothing. The story shortcuts (add, delete, previous and next) SHALL act only while the Editor tab is shown and do nothing on the Stories tab; Alt+Shift+N works on either tab. The tool SHALL prevent the browser's default action for a shortcut it handles.
 
 #### Scenario: Add story by keyboard
 - **WHEN** a backlog is open and the user presses Alt+N
@@ -258,6 +258,10 @@ The tool SHALL provide these keyboard shortcuts, active anywhere on the page inc
 #### Scenario: Move follows the grouped order
 - **WHEN** the file has stories A (Billing), B (Onboarding), C (Billing) and A is selected, so the list shows A, C, B
 - **THEN** pressing Ctrl+Down selects C, not B
+
+#### Scenario: Story shortcuts on the Stories tab
+- **WHEN** the Stories tab is shown and the user presses Alt+N, Alt+D, Ctrl+Up or Ctrl+Down
+- **THEN** nothing happens
 
 #### Scenario: Edge of the list
 - **WHEN** the first story is selected and the user presses Ctrl+Up
