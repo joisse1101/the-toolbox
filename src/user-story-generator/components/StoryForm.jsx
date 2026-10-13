@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
-  POINTS, SPLIT_ABOVE, PRIORITIES, emptyCriterion, storyCellText, criteriaCellText, storyIssues,
+  POINTS, SPLIT_ABOVE, PRIORITIES, emptyCriterion, storyCellText, criteriaCellText, storyIssues, storyLabel,
 } from '../model.js';
+import { dependencyChoices, dependentsOf } from '../ids.js';
 import { issueClass } from './issues.js';
 import Info from './Info.jsx';
 import guideline from '../sprint-points-guideline.md?raw';
@@ -90,7 +91,8 @@ const STORY_WARNING = 'The User Story cell does not follow "As a …, I want …
 const CRITERIA_WARNING = 'The Acceptance Criteria cell does not follow "AC1: Given …, when …, then …", so it is kept as it is';
 
 // `focusRequest` = { id } or null: focus the element with that id (default: Epic) once rendered, then call onFocused.
-export default function StoryForm({ story: s, stories, focusRequest, onFocused, onEdit }) {
+export default function StoryForm({ story: s, stories, problems, focusRequest, onFocused, onEdit, onCommitEpic, onOpen }) {
+  const [depInput, setDepInput] = useState('');
   useEffect(() => {
     if (!focusRequest) return;
     ($(focusRequest.id) ?? $('epic'))?.focus();
@@ -109,7 +111,23 @@ export default function StoryForm({ story: s, stories, focusRequest, onFocused, 
   };
   const addCriterion = () => edit((d) => { d.criteria.push(emptyCriterion()); d.rawCriteria = null; });
 
-  const { errors, warnings } = storyIssues(s);
+  const { errors, warnings } = storyIssues(s, problems.get(s.id));
+
+  // Dependencies are stored as IDs. The picker offers the stories that can still be linked without a cycle.
+  const choices = dependencyChoices(stories, s);
+  const byCode = new Map(stories.filter((o) => o.code).map((o) => [o.code, o]));
+  const requiredBy = dependentsOf(stories, s.code);
+  const pickDependency = (e) => {
+    const value = e.target.value.trim();
+    if (!choices.some((o) => o.code === value)) return setDepInput(e.target.value);
+    setDepInput('');
+    edit((d) => { d.dependsOn = [...d.dependsOn, value]; });
+  };
+  // The Epic is committed (and the ID follows it) when the field is left, or a suggestion is picked.
+  const onEpicInput = (e) => {
+    setField('epic')(e);
+    if (e.nativeEvent.inputType === 'insertReplacementText') onCommitEpic(s.id);
+  };
   const cls = issueClass(errors, warnings);
 
   // Suggestions come from the open backlog: Capability is narrowed by Epic, Feature by Epic and Capability.
@@ -126,10 +144,14 @@ export default function StoryForm({ story: s, stories, focusRequest, onFocused, 
       <div id="incompleteBanner" className="error" hidden={!errors.length}>{errors.length ? `Incomplete: ${errors.join('; ')}.` : ''}</div>
       <div id="warningBanner" className="warning" hidden={!warnings.length}>{warnings.join(' ')}</div>
 
+      <div className="story-code" id="storyCode">
+        {s.code ? <>ID: <strong>{s.code}</strong></> : 'No ID yet: one is assigned once an Epic is set.'}
+      </div>
+
       <fieldset>
         <legend>Where it fits</legend>
         <div className="grid3">
-          <div><label htmlFor="epic">Epic</label><input type="text" id="epic" list="epicList" autoComplete="off" value={s.epic} onChange={setField('epic')} /></div>
+          <div><label htmlFor="epic">Epic</label><input type="text" id="epic" list="epicList" autoComplete="off" value={s.epic} onChange={onEpicInput} onBlur={() => onCommitEpic(s.id)} /></div>
           <div><label htmlFor="capability">Capability</label><input type="text" id="capability" list="capabilityList" autoComplete="off" value={s.capability} onChange={setField('capability')} /></div>
           <div><label htmlFor="feature">Feature</label><input type="text" id="feature" list="featureList" autoComplete="off" value={s.feature} onChange={setField('feature')} /></div>
         </div>
@@ -176,6 +198,38 @@ export default function StoryForm({ story: s, stories, focusRequest, onFocused, 
             </select>
           </div>
         </div>
+      </fieldset>
+
+      <fieldset>
+        <legend>Dependencies</legend>
+        <label htmlFor="dependsOn">Depends on</label>
+        <ul id="dependsOnList" className="dep-list">
+          {s.dependsOn.map((code) => {
+            const target = byCode.get(code);
+            return (
+              <li key={code} className={target ? '' : 'dangling'}>
+                {target
+                  ? <button type="button" className="link-btn" title={storyLabel(target)} onClick={() => onOpen(target.id)}>{`${code} ${storyLabel(target)}`}</button>
+                  : <span title="No story has this ID">{code}</span>}
+                <button type="button" className="remove" aria-label={`Remove ${code}`} onClick={() => edit((d) => { d.dependsOn = d.dependsOn.filter((c) => c !== code); })}>✕</button>
+              </li>
+            );
+          })}
+        </ul>
+        <input
+          type="text" id="dependsOn" list="dependsOnChoices" autoComplete="off" disabled={!s.code}
+          placeholder={s.code ? 'Type or pick a story ID' : 'Set an Epic first'} value={depInput} onChange={pickDependency}
+        />
+        <datalist id="dependsOnChoices">
+          {choices.map((o) => <option key={o.id} value={o.code}>{storyLabel(o)}</option>)}
+        </datalist>
+        <div className="dep-heading">Required by</div>
+        <ul id="requiredByList" className="dep-list">
+          {requiredBy.map((o) => (
+            <li key={o.id}><button type="button" className="link-btn" onClick={() => onOpen(o.id)}>{`${o.code} ${storyLabel(o)}`}</button></li>
+          ))}
+          {!requiredBy.length && <li className="muted">No story depends on this one.</li>}
+        </ul>
       </fieldset>
 
       <fieldset>

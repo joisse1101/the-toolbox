@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { createFileStore } from '../../shared/files.js';
 import { loadBacklog, newBacklogText, newStory, displayOrder, applyBulk } from '../model.js';
+import { commitEpic, commitEpics, moveStory, removeStory } from '../ids.js';
 import { useAutosave } from './useAutosave.js';
 
 const store = createFileStore('user-stories');
@@ -25,7 +26,8 @@ function withStories(state, stories, extra = {}) {
   return { ...state, backlog: { ...state.backlog, stories }, checked, edits: state.edits + 1, ...extra };
 }
 
-function reducer(state, action) {
+// IDs and links are recomputed by the ids.js function a case calls; an unchanged result leaves the state alone.
+export function reducer(state, action) {
   switch (action.type) {
     case 'files':
       return { ...state, files: action.files };
@@ -39,6 +41,7 @@ function reducer(state, action) {
         selectedId: stories.length ? stories[Math.min(Math.max(previousIndex, 0), stories.length - 1)].id : null,
         checked: new Set(), // ids are assigned per load, so a selection cannot survive a reload
         lastChecked: null,
+        edits: state.edits + (action.backlog.changed ? 1 : 0), // IDs assigned on load must be saved
       };
     }
     case 'cleared':
@@ -60,11 +63,19 @@ function reducer(state, action) {
     }
     case 'add':
       return withStories(state, [...state.backlog.stories, action.story], { selectedId: action.story.id });
+    case 'commitEpic': {
+      const stories = commitEpic(state.backlog.stories, action.id);
+      return stories === state.backlog.stories ? state : withStories(state, stories);
+    }
+    case 'move': {
+      const stories = moveStory(state.backlog.stories, action.id, action.epic, action.beforeId);
+      return stories === state.backlog.stories ? state : withStories(state, stories, { selectedId: action.id });
+    }
     case 'delete': {
       const stories = state.backlog.stories;
       const i = stories.findIndex((s) => s.id === action.id);
       if (i < 0) return state;
-      const rest = stories.filter((s) => s.id !== action.id);
+      const rest = removeStory(stories, action.id);
       return withStories(state, rest, { selectedId: rest.length ? rest[Math.min(i, rest.length - 1)].id : null });
     }
     case 'check': {
@@ -77,7 +88,7 @@ function reducer(state, action) {
     case 'bulk': {
       const stories = state.backlog.stories.map((s) => ({ ...s }));
       applyBulk(stories, state.checked, action.patch);
-      return withStories(state, stories);
+      return withStories(state, commitEpics(stories, state.checked));
     }
     default:
       return state;
@@ -222,6 +233,8 @@ export function useBacklog() {
       },
 
       editStory: edit,
+      commitEpic: (id) => dispatch({ type: 'commitEpic', id }),
+      moveStory: (id, epic, beforeId) => dispatch({ type: 'move', id, epic, beforeId }),
 
       toggleChecked: (ids, on, anchor) => dispatch({ type: 'check', ids, on, anchor }),
       checkAll: (on, ids) => dispatch({ type: 'checkAll', on, ids }),

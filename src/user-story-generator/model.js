@@ -3,10 +3,11 @@
 // `story.cells` untouched. Unparseable User Story / Acceptance Criteria cells keep their raw text.
 
 import { parseCsv, toCsv } from '../shared/csv.js';
+import { renumber } from './ids.js';
 import { composeStory, parseStory, composeCriteria, parseCriteria } from '../shared/story-text.js';
 
 export const COLUMNS = [
-  'Epic', 'Capability', 'Feature', 'User Story', 'Sprint points', 'Priority', 'Acceptance Criteria', 'Notes',
+  'ID', 'Epic', 'Capability', 'Feature', 'User Story', 'Sprint points', 'Priority', 'Depends On', 'Acceptance Criteria', 'Notes',
 ];
 export const POINTS = [1, 2, 3, 5, 8, 13, 21, 34, 55];
 export const SPLIT_ABOVE = 13;
@@ -34,7 +35,10 @@ export function newStory(headers) {
   return {
     id: nextId++,
     cells: headers.map(() => ''),
-    epic: '', capability: '', feature: '',
+    code: '', // story ID, derived from epic and position (see ids.js); '' until the story has an epic
+    dependsOn: [], // IDs of the stories this one depends on
+    ambiguous: [], // dependsOn entries that named an ID several stories held in the loaded file
+    epic: '', codedEpic: '', capability: '', feature: '', // codedEpic: the epic the ID was last computed for
     asA: '', iWant: '', soThat: '',
     points: '', priority: '', notes: '',
     criteria: [emptyCriterion()],
@@ -48,6 +52,9 @@ function storyFromCells(cells, idx) {
   const story = newStory(cells);
   story.cells = cells;
   story.epic = get('Epic');
+  story.codedEpic = story.epic;
+  story.code = get('ID').trim();
+  story.dependsOn = [...new Set(get('Depends On').split(';').map((e) => e.trim()).filter(Boolean))];
   story.capability = get('Capability');
   story.feature = get('Feature');
   story.points = get('Sprint points');
@@ -82,7 +89,7 @@ export function loadBacklog(text) {
       headers.push(col);
     }
   }
-  const stories = rows
+  const loaded = rows
     .slice(1)
     .filter((r) => r.some((c) => c !== ''))
     .map((r) => {
@@ -90,7 +97,9 @@ export function loadBacklog(text) {
       while (cells.length < headers.length) cells.push('');
       return storyFromCells(cells, idx);
     });
-  return { headers, stories, hasBom: text.charCodeAt(0) === 0xfeff };
+  // IDs follow position, so recompute them (this also gives IDs to files that have none). `changed` = needs saving.
+  const stories = renumber(loaded);
+  return { headers, stories, hasBom: text.charCodeAt(0) === 0xfeff, changed: stories !== loaded };
 }
 
 // The text written into the User Story / Acceptance Criteria cells (also feeds the previews).
@@ -107,12 +116,14 @@ export function serializeBacklog(backlog) {
   const rows = backlog.stories.map((s) => {
     const cells = s.cells.slice();
     while (cells.length < backlog.headers.length) cells.push('');
+    cells[idx['ID']] = s.code;
     cells[idx['Epic']] = s.epic;
     cells[idx['Capability']] = s.capability;
     cells[idx['Feature']] = s.feature;
     cells[idx['User Story']] = storyCellText(s);
     cells[idx['Sprint points']] = s.points;
     cells[idx['Priority']] = s.priority;
+    cells[idx['Depends On']] = s.dependsOn.join(';');
     cells[idx['Acceptance Criteria']] = criteriaCellText(s);
     cells[idx['Notes']] = s.notes;
     return cells;
@@ -134,7 +145,8 @@ const blank = (v) => !String(v ?? '').trim();
 
 // Advisory completeness check. errors = incomplete (red), warnings = estimate problems (yellow).
 // A cell kept as raw text counts as present.
-export function storyIssues(story) {
+// `problems` = dependency warnings for this story from backlogProblems().
+export function storyIssues(story, problems = []) {
   const errors = [];
   for (const [key, label] of [['epic', 'Epic'], ['capability', 'Capability'], ['feature', 'Feature']]) {
     if (blank(story[key])) errors.push(`${label} is missing`);
@@ -150,7 +162,7 @@ export function storyIssues(story) {
       errors.push('Acceptance criteria are incomplete: each needs Given, When and Then');
     }
   }
-  const warnings = [];
+  const warnings = [...problems];
   if (blank(story.points)) warnings.push('Sprint points are missing');
   if (blank(story.priority)) warnings.push('Priority is missing');
   if (shouldSplit(story)) warnings.push('Consider splitting this story: estimates above 13 points are usually too big for one sprint.');

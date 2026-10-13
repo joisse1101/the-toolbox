@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { backlogProblems } from './ids.js';
 import { useBacklog } from './hooks/useBacklog.js';
 import FileBar from './components/FileBar.jsx';
 import Info from './components/Info.jsx';
@@ -32,6 +33,7 @@ export default function App() {
   const { state, selected, status, message, actions } = useBacklog();
   const { files, current, backlog, selectedId, view, checked, lastChecked } = state;
   const stories = backlog?.stories ?? [];
+  const problems = useMemo(() => backlogProblems(stories), [stories]);
 
   // Ask the Story form to focus a field once it has rendered (default: Epic).
   const [focusRequest, setFocusRequest] = useState(null);
@@ -123,17 +125,17 @@ export default function App() {
         </div>
 
         <div id="editor" className="editor" role="tabpanel" aria-labelledby="tabEditor" hidden={!current || view !== 'editor'}>
-          <StoryList stories={stories} selectedId={selectedId} onSelect={actions.selectStory} onAdd={addStory} onDelete={actions.deleteSelected} />
+          <StoryList stories={stories} problems={problems} selectedId={selectedId} onSelect={actions.selectStory} onAdd={addStory} onDelete={actions.deleteSelected} onMove={actions.moveStory} />
           {selected && (
             <StoryForm
-              story={selected} stories={stories} focusRequest={focusRequest}
-              onFocused={() => setFocusRequest(null)} onEdit={actions.editStory}
+              story={selected} stories={stories} problems={problems} focusRequest={focusRequest}
+              onFocused={() => setFocusRequest(null)} onEdit={actions.editStory} onCommitEpic={actions.commitEpic} onOpen={actions.selectStory}
             />
           )}
         </div>
 
         <StoriesTab
-          stories={stories} checked={checked} lastChecked={lastChecked} hidden={!current || view !== 'stories'}
+          stories={stories} problems={problems} checked={checked} lastChecked={lastChecked} hidden={!current || view !== 'stories'}
           onOpen={openInEditor} onCheck={actions.toggleChecked} onCheckAll={actions.checkAll} onApplyBulk={actions.applyBulkPatch}
         />
       </main>

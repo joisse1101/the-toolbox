@@ -103,3 +103,19 @@ legend { font-weight: 600; padding: 0 6px; }
 .criterion-remove { padding: 9px 8px; line-height: 1; }
 .criterion-remove:disabled { cursor: not-allowed; }
 .criterion .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+
+/* Drag and drop in the story list */
+.story-list li[draggable="true"] { cursor: grab; }
+.story-list li.dragging { opacity: 0.45; }
+.story-list li.drop-before { box-shadow: 0 -2px 0 var(--accent); }
+.story-list li.drop-after { box-shadow: 0 2px 0 var(--accent); }
+.story-list .code { flex: none; font: 11px ui-monospace, Consolas, monospace; color: var(--muted); }
+
+/* Dependencies */
+.story-code { font: 13px ui-monospace, Consolas, monospace; color: var(--muted); }
+.story-code strong { color: var(--text); }
+.dep-list { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.dep-list li { display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border: 1px solid var(--border); border-radius: 999px; font-size: 12px; }
+.dep-list li.dangling { border-color: var(--warn-border); background: var(--warn-bg); }
+.dep-list .remove { border: 0; background: none; padding: 0 2px; color: var(--muted); cursor: pointer; }
+.dep-heading { margin: 10px 0 4px; font-size: 12px; color: var(--muted); }

@@ -132,8 +132,9 @@ test('storyLabel', () => {
 });
 
 test('loaded story with empty criteria cell shows one blank criterion and saves an empty cell', () => {
-  const text = 'Epic,Capability,Feature,User Story,Sprint points,Priority,Acceptance Criteria,Notes' + String.fromCharCode(13,10) + 'E,C,F,,,,,' + String.fromCharCode(13,10) + '';
+  const text = COLUMNS.join(',') + String.fromCharCode(13,10) + 'E-0001,E,C,F,,,,,,' + String.fromCharCode(13,10) + '';
   const b = loadBacklog(text);
+  assert.equal(b.changed, false);
   assert.deepEqual(b.stories[0].criteria, [{ given: '', when: '', then: '' }]);
   assert.equal(serializeBacklog(b), text);
 });

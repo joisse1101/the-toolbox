@@ -7,7 +7,7 @@ const KEEP = 'keep'; // bulk Priority "No change" ('' is "None", which clears)
 const distinct = (stories, key) => [...new Set(stories.map((o) => o[key].trim()).filter(Boolean))];
 
 // Every story in one table, with ticks and a bulk edit bar. The table itself is read-only.
-export default function StoriesTab({ stories, checked, lastChecked, hidden, onOpen, onCheck, onCheckAll, onApplyBulk }) {
+export default function StoriesTab({ stories, problems, checked, lastChecked, hidden, onOpen, onCheck, onCheckAll, onApplyBulk }) {
   const [priority, setPriority] = useState(KEEP);
   const [epic, setEpic] = useState('');
   const [capability, setCapability] = useState('');
@@ -42,8 +42,9 @@ export default function StoriesTab({ stories, checked, lastChecked, hidden, onOp
     const parts = [];
     if (patch.priority !== undefined) parts.push(patch.priority ? `Priority to "${patch.priority}"` : 'Priority to none');
     if (patch.epic) parts.push(`Epic to "${patch.epic}"`);
+    const renumbered = patch.epic ? stories.filter((s) => checked.has(s.id) && s.epic.trim() !== patch.epic).length : 0;
     if (patch.capability) parts.push(`Capability to "${patch.capability}"`);
-    if (!confirm(`Set ${parts.join(', ')} on ${n} ${n === 1 ? 'story' : 'stories'}?\n\nThis cannot be undone.`)) return;
+    if (!confirm(`Set ${parts.join(', ')} on ${n} ${n === 1 ? 'story' : 'stories'}?${renumbered ? `\n\n${renumbered} ${renumbered === 1 ? 'story gets' : 'stories get'} new IDs, and links to them are updated.` : ''}\n\nThis cannot be undone.`)) return;
     onApplyBulk(patch);
     setPriority(KEEP);
     setEpic('');
@@ -83,12 +84,12 @@ export default function StoriesTab({ stories, checked, lastChecked, hidden, onOp
                   onChange={(e) => onCheckAll(e.target.checked, rows.map((r) => r.id))}
                 />
               </th>
-              <th>Epic</th><th>Capability</th><th>Feature</th><th className="num">Points</th><th>Priority</th>
+              <th>ID</th><th>Epic</th><th>Capability</th><th>Feature</th><th className="num">Points</th><th>Priority</th><th>Depends On</th>
             </tr>
           </thead>
           <tbody id="storiesBody">
             {rows.map((s) => {
-              const { errors, warnings } = storyIssues(s);
+              const { errors, warnings } = storyIssues(s, problems.get(s.id));
               const on = checked.has(s.id);
               return (
                 <tr key={s.id} className={[issueClass(errors, warnings), on ? 'checked' : ''].join(' ').trim()} title={rowTooltip(s, errors, warnings)}>
@@ -99,11 +100,13 @@ export default function StoriesTab({ stories, checked, lastChecked, hidden, onOp
                       onClick={(e) => tick(s.id, e.currentTarget.checked, e.shiftKey)}
                     />
                   </td>
+                  <td>{s.code}</td>
                   <td>{s.epic}</td>
                   <td>{s.capability}</td>
                   <td><button type="button" className="link-btn" onClick={() => onOpen(s.id)}>{s.feature.trim() || 'New story'}</button></td>
                   <td className="num">{s.points}</td>
                   <td>{s.priority}</td>
+                  <td>{s.dependsOn.join(', ')}</td>
                 </tr>
               );
             })}
