@@ -282,7 +282,7 @@ function renderCriteria() {
             if (e.key !== 'Enter' || e.isComposing || e.ctrlKey || e.altKey || e.shiftKey || e.metaKey) return;
             e.preventDefault();
             addCriterion();
-            $(`criterion-${s.criteria.length - 1}-when`).focus();
+            $(`criterion-${s.criteria.length - 1}-given`).focus();
           });
         }
         wrap.append(lab, input);
