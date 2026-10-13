@@ -56,6 +56,6 @@ legend { font-weight: 600; padding: 0 6px; }
 }
 .info:hover .popover, .info:focus-within .popover, .info.pinned .popover { display: block; }
 
-.criterion { display: grid; gap: 8px; margin-bottom: 10px; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius); }
-.criterion-head { display: flex; justify-content: space-between; align-items: center; font-weight: 600; }
+.criterion { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: end; margin-bottom: 10px; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius); }
+.criterion-remove { padding: 4px 8px; line-height: 1; }
 .criterion .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }

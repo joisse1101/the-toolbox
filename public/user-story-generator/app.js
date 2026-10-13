@@ -237,12 +237,12 @@ function renderCriteria() {
     ...s.criteria.map((c, i) => {
       const box = document.createElement('div');
       box.className = 'criterion';
-      const head = document.createElement('div');
-      head.className = 'criterion-head';
       const remove = document.createElement('button');
       remove.type = 'button';
-      remove.className = 'danger';
-      remove.textContent = 'Remove';
+      remove.className = 'danger criterion-remove';
+      remove.textContent = '✕';
+      remove.title = 'Remove criterion';
+      remove.setAttribute('aria-label', 'Remove criterion');
       remove.addEventListener('click', () => {
         s.criteria.splice(i, 1);
         s.rawCriteria = null;
@@ -250,7 +250,6 @@ function renderCriteria() {
         refreshDerived();
         markDirty();
       });
-      head.append(remove);
       const fields = document.createElement('div');
       fields.className = 'fields';
       for (const [key, label] of [['given', 'Given'], ['when', 'When I'], ['then', 'Then']]) {
@@ -272,7 +271,7 @@ function renderCriteria() {
         wrap.append(lab, input);
         fields.append(wrap);
       }
-      box.append(head, fields);
+      box.append(fields, remove);
       return box;
     }),
   );
