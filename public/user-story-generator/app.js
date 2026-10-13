@@ -239,7 +239,6 @@ function renderCriteria() {
       box.className = 'criterion';
       const head = document.createElement('div');
       head.className = 'criterion-head';
-      head.append(`Criterion ${i + 1}`);
       const remove = document.createElement('button');
       remove.type = 'button';
       remove.className = 'danger';
