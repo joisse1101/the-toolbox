@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { parseCsv } from '../public/shared/csv.js';
 import {
   loadBacklog, serializeBacklog, newStory, newBacklogText, shouldSplit, storyIssues, storyLabel, COLUMNS,
+  groupByEpic, displayOrder, applyBulk,
 } from '../public/user-story-generator/model.js';
 
 const SAMPLE =
@@ -135,4 +136,26 @@ test('loaded story with empty criteria cell shows one blank criterion and saves 
   const b = loadBacklog(text);
   assert.deepEqual(b.stories[0].criteria, [{ given: '', when: '', then: '' }]);
   assert.equal(serializeBacklog(b), text);
+});
+
+const withEpic = (epic, id) => Object.assign(newStory(COLUMNS), { epic, id });
+
+test('groupByEpic and displayOrder group by first occurrence without reordering the input', () => {
+  const stories = [withEpic('Billing', 1), withEpic('Onboarding', 2), withEpic('Billing', 3), withEpic('  ', 4), withEpic('', 5)];
+  const groups = groupByEpic(stories);
+  assert.deepEqual(groups.map((g) => [g.label, g.stories.map((s) => s.id)]), [
+    ['Billing', [1, 3]], ['Onboarding', [2]], ['(No epic)', [4, 5]],
+  ]);
+  assert.deepEqual(displayOrder(stories).map((s) => s.id), [1, 3, 2, 4, 5]);
+  assert.deepEqual(stories.map((s) => s.id), [1, 2, 3, 4, 5]);
+});
+
+test('applyBulk sets only the chosen fields on the selected stories', () => {
+  const stories = [1, 2, 3].map((id) => Object.assign(newStory(COLUMNS), { id, epic: 'E', capability: 'C', priority: 'Low' }));
+  assert.equal(applyBulk(stories, new Set([1, 3]), { priority: 'High', epic: ' ', capability: 'New' }), 2);
+  assert.deepEqual(stories.map((s) => [s.epic, s.capability, s.priority]), [['E', 'New', 'High'], ['E', 'C', 'Low'], ['E', 'New', 'High']]);
+  applyBulk(stories, new Set([1]), { priority: '', epic: 'Billing' });
+  assert.deepEqual([stories[0].epic, stories[0].priority], ['Billing', '']);
+  applyBulk(stories, new Set([2]), {});
+  assert.deepEqual([stories[1].epic, stories[1].capability, stories[1].priority], ['E', 'C', 'Low']);
 });

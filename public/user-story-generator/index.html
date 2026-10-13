@@ -41,7 +41,12 @@
       There are no backlogs in <code>user-stories/</code> yet. Click <strong>New</strong> to create one.
     </p>
 
-    <div id="editor" class="editor" hidden>
+    <div id="tabs" class="tabs" role="tablist" aria-label="Views" hidden>
+      <button type="button" role="tab" id="tabEditor" class="tab" data-view="editor" aria-controls="editor" aria-selected="true">Editor</button>
+      <button type="button" role="tab" id="tabStories" class="tab" data-view="stories" aria-controls="storiesView" aria-selected="false">Stories</button>
+    </div>
+
+    <div id="editor" class="editor" role="tabpanel" aria-labelledby="tabEditor" hidden>
       <aside class="card story-list-panel">
         <h2>Stories</h2>
         <ul id="storyList" class="story-list"></ul>
@@ -113,10 +118,42 @@
         </fieldset>
       </section>
     </div>
+    <section id="storiesView" class="card stories-view" role="tabpanel" aria-labelledby="tabStories" hidden>
+      <div id="bulkBar" class="bulk-bar" hidden>
+        <strong id="selectedCount" role="status" aria-live="polite"></strong>
+        <div>
+          <label for="bulkPriority">Priority</label>
+          <select id="bulkPriority"></select>
+        </div>
+        <div>
+          <label for="bulkEpic">Epic</label>
+          <input type="text" id="bulkEpic" list="bulkEpicList" autocomplete="off" placeholder="No change">
+        </div>
+        <div>
+          <label for="bulkCapability">Capability</label>
+          <input type="text" id="bulkCapability" list="bulkCapabilityList" autocomplete="off" placeholder="No change">
+        </div>
+        <button type="button" id="bulkApplyBtn" class="primary" disabled>Apply to selected</button>
+      </div>
+      <div class="table-wrap">
+        <table class="stories-table">
+          <thead>
+            <tr>
+              <th class="check"><input type="checkbox" id="selectAll" aria-label="Select all stories"></th>
+              <th>Epic</th><th>Capability</th><th>Feature</th><th class="num">Points</th><th>Priority</th>
+            </tr>
+          </thead>
+          <tbody id="storiesBody"></tbody>
+        </table>
+      </div>
+      <p id="storiesEmpty" class="muted" hidden>No stories yet.</p>
+    </section>
   </main>
   <datalist id="epicList"></datalist>
   <datalist id="capabilityList"></datalist>
   <datalist id="featureList"></datalist>
+  <datalist id="bulkEpicList"></datalist>
+  <datalist id="bulkCapabilityList"></datalist>
   <script type="module" src="app.js"></script>
 </body>
 </html>

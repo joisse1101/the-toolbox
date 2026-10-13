@@ -157,6 +157,41 @@ export function storyIssues(story) {
   return { errors, warnings };
 }
 
+export const NO_EPIC = '(No epic)';
+
+// Display grouping, never stored: groups in order of first occurrence, stories in backlog order within a group.
+// Blank and whitespace-only epics share one group whose `epic` is ''.
+export function groupByEpic(stories) {
+  const groups = new Map();
+  for (const s of stories) {
+    const epic = String(s.epic ?? '').trim();
+    if (!groups.has(epic)) groups.set(epic, { epic, label: epic || NO_EPIC, stories: [] });
+    groups.get(epic).stories.push(s);
+  }
+  return [...groups.values()];
+}
+
+// The order stories are shown in (panel, Stories tab, Ctrl+Up/Down). The file order is untouched.
+export function displayOrder(stories) {
+  return groupByEpic(stories).flatMap((g) => g.stories);
+}
+
+// Bulk edit. Only defined fields are set: priority undefined = no change ('' clears it); a blank epic or
+// capability means no change. Returns the number of stories changed.
+export function applyBulk(stories, ids, { priority, epic, capability } = {}) {
+  const patch = {};
+  if (priority !== undefined) patch.priority = priority;
+  if (!blank(epic)) patch.epic = epic.trim();
+  if (!blank(capability)) patch.capability = capability.trim();
+  let count = 0;
+  for (const s of stories) {
+    if (!ids.has(s.id)) continue;
+    Object.assign(s, patch);
+    count++;
+  }
+  return count;
+}
+
 // Story list title: "capability: feature", one part alone if the other is blank.
 export function storyLabel(story) {
   const parts = [story.capability, story.feature].map((v) => String(v ?? '').trim()).filter(Boolean);

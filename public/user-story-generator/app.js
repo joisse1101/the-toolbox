@@ -3,6 +3,7 @@ import {
   POINTS, SPLIT_ABOVE, PRIORITIES,
   loadBacklog, serializeBacklog, newBacklogText, newStory, emptyCriterion,
   storyCellText, criteriaCellText, storyIssues, storyLabel,
+  groupByEpic, displayOrder, applyBulk,
 } from './model.js';
 
 const store = createFileStore('user-stories');
@@ -20,6 +21,9 @@ const state = {
   dirty: false, // edits not yet written
   inFlight: null, // promise of the write in progress
   status: 'idle',
+  view: 'editor', // 'editor' | 'stories'
+  checked: new Set(), // story ids ticked in the Stories tab (separate from selectedId)
+  lastChecked: null, // id of the last ticked row, for shift-click ranges
 };
 
 let saveTimer = null;
@@ -128,6 +132,7 @@ async function loadFile(name) {
   const stories = state.backlog.stories;
   state.selectedId = stories.length ? stories[Math.min(Math.max(previousIndex, 0), stories.length - 1)].id : null;
   state.dirty = false;
+  clearChecked(); // ids are assigned per load, so a selection cannot survive a reload
   setStatus('saved');
   renderAll();
 }
@@ -137,6 +142,7 @@ function clearCurrent() {
   state.backlog = null;
   state.selectedId = null;
   state.lastText = null;
+  clearChecked();
   setStatus('idle');
   renderAll();
 }
@@ -178,9 +184,24 @@ function renderFileBar() {
 function renderAll() {
   renderFileBar();
   $('emptyPrompt').hidden = !!state.current;
-  $('editor').hidden = !state.current;
+  $('tabs').hidden = !state.current;
+  renderView();
   renderStoryList();
   fillForm();
+  renderStoriesTab();
+}
+
+function renderView() {
+  const editor = state.view === 'editor';
+  $('editor').hidden = !state.current || !editor;
+  $('storiesView').hidden = !state.current || editor;
+  for (const tab of document.querySelectorAll('.tab')) tab.setAttribute('aria-selected', String(tab.dataset.view === state.view));
+}
+
+function setView(view) {
+  state.view = view;
+  renderView();
+  if (view === 'stories') renderStoriesTab();
 }
 
 // Red wins over yellow.
@@ -193,20 +214,12 @@ function renderStoryList() {
   const list = $('storyList');
   const stories = state.backlog?.stories ?? [];
   list.replaceChildren(
-    ...stories.map((s) => {
-      const li = document.createElement('li');
-      li.dataset.id = s.id;
-      const { errors, warnings } = storyIssues(s);
-      li.className = [s.id === state.selectedId ? 'selected' : '', issueClass(errors, warnings)].join(' ').trim();
-      li.title = [storyCellText(s), [...errors, ...warnings].join('\n')].filter(Boolean).join('\n\n');
-      const title = document.createElement('span');
-      title.className = 'title';
-      title.textContent = storyLabel(s);
-      const badge = document.createElement('span');
-      badge.className = 'badge';
-      badge.textContent = s.points || '–';
-      li.append(title, badge);
-      return li;
+    ...groupByEpic(stories).flatMap((group) => {
+      const head = document.createElement('li');
+      head.className = 'epic-head'; // no data-id, so clicks on it are ignored
+      head.textContent = `${group.label} (${group.stories.length})`;
+      head.title = group.label;
+      return [head, ...group.stories.map(storyItem)];
     }),
   );
   if (!stories.length) {
@@ -218,6 +231,24 @@ function renderStoryList() {
   }
   $('deleteStoryBtn').disabled = !selected();
 }
+
+function storyItem(s) {
+  const li = document.createElement('li');
+  li.dataset.id = s.id;
+  const { errors, warnings } = storyIssues(s);
+  li.className = [s.id === state.selectedId ? 'selected' : '', issueClass(errors, warnings)].join(' ').trim();
+  li.title = rowTooltip(s, errors, warnings);
+  const title = document.createElement('span');
+  title.className = 'title';
+  title.textContent = storyLabel(s);
+  const badge = document.createElement('span');
+  badge.className = 'badge';
+  badge.textContent = s.points || '–';
+  li.append(title, badge);
+  return li;
+}
+
+const rowTooltip = (s, errors, warnings) => [storyCellText(s), [...errors, ...warnings].join('\n')].filter(Boolean).join('\n\n');
 
 function fillForm() {
   const s = selected();
@@ -396,6 +427,76 @@ for (const p of POINTS) {
   $('pointsGroup').append(btn);
 }
 
+// ---------- arrow-key navigation between fields ----------
+// Left/right move within a row of fields (text inputs only at the caret edge, so editing still works), up/down
+// move between rows. Sprint points: left/right step through the buttons, Alt+Right goes to Priority, Alt+Left back.
+
+function navRows() {
+  const s = selected();
+  return [
+    ['epic', 'capability', 'feature'].map($),
+    ['asA', 'iWant', 'soThat'].map($),
+    [...$('pointsGroup').children],
+    ...s.criteria.map((_, i) => ['given', 'when', 'then'].map((k) => $(`criterion-${i}-${k}`))),
+    [$('notes')],
+  ];
+}
+
+function focusRow(row, col) {
+  if (row.length && row[0].parentElement === $('pointsGroup')) {
+    (row.find((b) => b.getAttribute('aria-checked') === 'true') ?? row[0]).focus();
+  } else {
+    row[Math.min(col, row.length - 1)].focus();
+  }
+}
+
+$('storyForm').addEventListener('keydown', (e) => {
+  if (e.isComposing || (e.ctrlKey && !e.altKey) || e.metaKey || e.shiftKey || !e.key.startsWith('Arrow')) return;
+  const el = e.target;
+  const rows = navRows();
+  const pointsRow = rows[2];
+  const isPriority = el === $('priority');
+  const rowIdx = isPriority ? 2 : rows.findIndex((r) => r.includes(el));
+  if (rowIdx < 0) return;
+  const col = isPriority ? pointsRow.length : rows[rowIdx].indexOf(el);
+
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    const dir = e.key === 'ArrowLeft' ? -1 : 1;
+    if (el.parentElement === $('pointsGroup')) {
+      if (e.altKey) {
+        if (dir !== 1) return;
+        $('priority').focus();
+      } else {
+        pointsRow[col + dir]?.focus();
+      }
+    } else if (isPriority) {
+      if (!(e.altKey && dir === -1)) return;
+      focusRow(pointsRow, 0);
+    } else if (el.tagName === 'INPUT' && (!e.altKey || e.ctrlKey)) {
+      // Ctrl+Alt jumps regardless of the caret position
+      const atEdge = e.ctrlKey || (el.selectionStart === el.selectionEnd && el.selectionStart === (dir < 0 ? 0 : el.value.length));
+      const next = rows[rowIdx][col + dir];
+      if (!atEdge || !next) return;
+      next.focus();
+    } else {
+      return;
+    }
+    e.preventDefault();
+    return;
+  }
+
+  if (e.altKey) return;
+  const dir = e.key === 'ArrowUp' ? -1 : 1;
+  if (el.tagName === 'TEXTAREA') {
+    const hasLineThatWay = dir < 0 ? el.value.slice(0, el.selectionStart).includes('\n') : el.value.slice(el.selectionEnd).includes('\n');
+    if (hasLineThatWay) return;
+  }
+  const target = rows[rowIdx + dir];
+  if (!target) return;
+  e.preventDefault();
+  focusRow(target, col);
+});
+
 // ---------- story list ----------
 
 $('storyList').addEventListener('click', (e) => {
@@ -412,6 +513,7 @@ function addStory() {
   state.selectedId = s.id;
   renderStoryList();
   fillForm();
+  renderStoriesTab();
   markDirty();
 }
 
@@ -429,6 +531,7 @@ function deleteStory() {
   state.selectedId = stories.length ? stories[Math.min(i, stories.length - 1)].id : null;
   renderStoryList();
   fillForm();
+  renderStoriesTab();
   markDirty();
 }
 
@@ -436,7 +539,7 @@ $('deleteStoryBtn').addEventListener('click', deleteStory);
 
 // Select the neighbouring story. The focused form field keeps focus (falling back to Epic).
 function moveSelection(delta) {
-  const stories = state.backlog?.stories ?? [];
+  const stories = displayOrder(state.backlog?.stories ?? []);
   const next = stories[stories.findIndex((s) => s.id === state.selectedId) + delta];
   if (!next) return;
   const focusedId = document.activeElement?.id;
@@ -446,6 +549,148 @@ function moveSelection(delta) {
   const target = (focusedId && $(focusedId)) || $('epic');
   target.focus();
 }
+
+// ---------- stories tab ----------
+
+for (const btn of document.querySelectorAll('.tab')) btn.addEventListener('click', () => setView(btn.dataset.view));
+
+function clearChecked() {
+  state.checked.clear();
+  state.lastChecked = null;
+}
+
+function renderStoriesTab() {
+  const stories = displayOrder(state.backlog?.stories ?? []);
+  const ids = new Set(stories.map((s) => s.id));
+  for (const id of state.checked) if (!ids.has(id)) state.checked.delete(id); // deleted stories drop out
+
+  const cell = (child, className = '') => {
+    const td = document.createElement('td');
+    td.className = className;
+    td.append(child);
+    return td;
+  };
+  $('storiesBody').replaceChildren(
+    ...stories.map((s) => {
+      const { errors, warnings } = storyIssues(s);
+      const tr = document.createElement('tr');
+      tr.dataset.id = s.id;
+      tr.className = issueClass(errors, warnings);
+      tr.title = rowTooltip(s, errors, warnings);
+      const box = document.createElement('input');
+      box.type = 'checkbox';
+      box.setAttribute('aria-label', `Select ${storyLabel(s)}`);
+      const open = document.createElement('button');
+      open.type = 'button';
+      open.className = 'link-btn';
+      open.textContent = s.feature.trim() || 'New story';
+      tr.append(
+        cell(box, 'check'), cell(s.epic), cell(s.capability), cell(open),
+        cell(s.points, 'num'), cell(s.priority),
+      );
+      return tr;
+    }),
+  );
+  $('storiesEmpty').hidden = stories.length > 0;
+
+  const distinct = (key) => [...new Set((state.backlog?.stories ?? []).map((o) => o[key].trim()).filter(Boolean))];
+  $('bulkEpicList').replaceChildren(...distinct('epic').map((v) => new Option(v)));
+  $('bulkCapabilityList').replaceChildren(...distinct('capability').map((v) => new Option(v)));
+  syncSelectionUI();
+}
+
+// Ticks, count, select-all and bulk bar from state.checked, without rebuilding rows (keeps keyboard focus).
+function syncSelectionUI() {
+  const rows = [...$('storiesBody').children];
+  for (const tr of rows) {
+    const on = state.checked.has(Number(tr.dataset.id));
+    tr.classList.toggle('checked', on);
+    tr.querySelector('input').checked = on;
+  }
+  const n = state.checked.size;
+  const all = $('selectAll');
+  all.checked = rows.length > 0 && n === rows.length;
+  all.indeterminate = n > 0 && n < rows.length;
+  all.disabled = !rows.length;
+  $('bulkBar').hidden = n === 0;
+  $('selectedCount').textContent = `${n} selected`;
+  refreshBulkApply();
+}
+
+$('storiesBody').addEventListener('click', (e) => {
+  const tr = e.target.closest('tr[data-id]');
+  if (!tr) return;
+  const id = Number(tr.dataset.id);
+  if (e.target.matches('.link-btn')) {
+    state.selectedId = id;
+    setView('editor');
+    renderStoryList();
+    fillForm();
+    return;
+  }
+  if (!e.target.matches('input[type="checkbox"]')) return;
+  const on = e.target.checked;
+  const ids = [...$('storiesBody').children].map((r) => Number(r.dataset.id));
+  let range = [id];
+  if (e.shiftKey && state.lastChecked !== null && ids.includes(state.lastChecked)) {
+    const [from, to] = [ids.indexOf(state.lastChecked), ids.indexOf(id)].sort((a, b) => a - b);
+    range = ids.slice(from, to + 1);
+  }
+  for (const r of range) on ? state.checked.add(r) : state.checked.delete(r);
+  state.lastChecked = id;
+  syncSelectionUI();
+});
+
+$('selectAll').addEventListener('change', () => {
+  state.checked.clear();
+  if ($('selectAll').checked) for (const tr of $('storiesBody').children) state.checked.add(Number(tr.dataset.id));
+  state.lastChecked = null;
+  syncSelectionUI();
+});
+
+// ---------- bulk edit ----------
+
+const KEEP = 'keep'; // bulk Priority "No change" ('' is "None", which clears)
+
+$('bulkPriority').replaceChildren(
+  new Option('No change', KEEP), new Option('None', ''), ...PRIORITIES.map((p) => new Option(p)),
+);
+
+function bulkPatch() {
+  const priority = $('bulkPriority').value;
+  return {
+    priority: priority === KEEP ? undefined : priority,
+    epic: $('bulkEpic').value.trim(),
+    capability: $('bulkCapability').value.trim(),
+  };
+}
+
+const bulkIsEmpty = (p) => p.priority === undefined && !p.epic && !p.capability;
+
+function refreshBulkApply() {
+  $('bulkApplyBtn').disabled = bulkIsEmpty(bulkPatch());
+}
+
+for (const id of ['bulkPriority', 'bulkEpic', 'bulkCapability']) $(id).addEventListener('input', refreshBulkApply);
+
+$('bulkApplyBtn').addEventListener('click', () => {
+  const patch = bulkPatch();
+  const n = state.checked.size;
+  if (!n || bulkIsEmpty(patch)) return;
+  const parts = [];
+  if (patch.priority !== undefined) parts.push(patch.priority ? `Priority to "${patch.priority}"` : 'Priority to none');
+  if (patch.epic) parts.push(`Epic to "${patch.epic}"`);
+  if (patch.capability) parts.push(`Capability to "${patch.capability}"`);
+  if (!confirm(`Set ${parts.join(', ')} on ${n} ${n === 1 ? 'story' : 'stories'}?\n\nThis cannot be undone.`)) return;
+  applyBulk(state.backlog.stories, state.checked, patch);
+  $('bulkPriority').value = KEEP;
+  $('bulkEpic').value = '';
+  $('bulkCapability').value = '';
+  renderStoryList();
+  fillForm();
+  renderStoriesTab();
+  markDirty();
+});
 
 // ---------- file actions ----------
 
@@ -556,12 +801,24 @@ document.addEventListener('keydown', (e) => {
 const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform);
 const ALT = IS_MAC ? 'Option' : 'Alt';
 
+// Story shortcuts act on the Editor tab only.
+const inEditor = () => state.view === 'editor';
+
 const SHORTCUTS = [
-  { code: 'KeyN', alt: true, label: `${ALT}+N`, action: 'Add story', run: () => { addStory(); $('epic').focus(); }, enabled: () => !!state.backlog },
+  { code: 'KeyN', alt: true, label: `${ALT}+N`, action: 'Add story', run: () => { addStory(); $('epic').focus(); }, enabled: () => !!state.backlog && inEditor() },
   { code: 'KeyN', alt: true, shift: true, label: `${ALT}+Shift+N`, action: 'New backlog', run: newBacklog, enabled: () => true },
-  { code: 'KeyD', alt: true, label: `${ALT}+D`, action: 'Delete selected story', run: deleteStory, enabled: () => !!selected() },
-  { code: 'ArrowUp', ctrl: true, label: 'Ctrl+Up', action: 'Previous story', run: () => moveSelection(-1), enabled: () => !!selected() },
-  { code: 'ArrowDown', ctrl: true, label: 'Ctrl+Down', action: 'Next story', run: () => moveSelection(1), enabled: () => !!selected() },
+  { code: 'KeyD', alt: true, label: `${ALT}+D`, action: 'Delete selected story', run: deleteStory, enabled: () => !!selected() && inEditor() },
+  { code: 'ArrowUp', ctrl: true, label: 'Ctrl+Up', action: 'Previous story', run: () => moveSelection(-1), enabled: () => !!selected() && inEditor() },
+  { code: 'ArrowDown', ctrl: true, label: 'Ctrl+Down', action: 'Next story', run: () => moveSelection(1), enabled: () => !!selected() && inEditor() },
+];
+
+// Handled by the field navigation above; listed here only so the popover shows them.
+const NAV_HINTS = [
+  { label: 'Left / Right', action: 'Previous / next field (in text, at the start / end)' },
+  { label: 'Ctrl+Alt+Left / Right', action: 'Previous / next text field from anywhere in it' },
+  { label: 'Up / Down', action: 'Previous / next field group' },
+  { label: 'Left / Right (points)', action: 'Previous / next sprint point' },
+  { label: `${ALT}+Right / Left (points)`, action: 'Go to Priority / back to points' },
 ];
 
 document.addEventListener('keydown', (e) => {
@@ -576,7 +833,7 @@ $('shortcutsText').replaceChildren(
   Object.assign(document.createElement('dl'), { className: 'shortcut-list' }),
 );
 $('shortcutsText').firstChild.append(
-  ...SHORTCUTS.flatMap((k) => {
+  ...[...SHORTCUTS, ...NAV_HINTS].flatMap((k) => {
     const dt = document.createElement('dt');
     dt.textContent = k.label;
     const dd = document.createElement('dd');
