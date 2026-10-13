@@ -109,6 +109,14 @@ export default function StoryForm({ story: s, stories, problems, focusRequest, o
     const value = e.target.value;
     edit((d) => { d[key] = value; d.rawUserStory = null; });
   };
+  // Drag a criterion by its handle onto another to move it there; the AC numbers follow the new order.
+  const [dragAc, setDragAc] = useState(null);
+  const [overAc, setOverAc] = useState(null);
+  const endAcDrag = () => { setDragAc(null); setOverAc(null); };
+  const moveCriterion = (from, to) => edit((d) => {
+    d.criteria.splice(to, 0, d.criteria.splice(from, 1)[0]);
+    d.rawCriteria = null;
+  });
   const addCriterion = () => edit((d) => { d.criteria.push(emptyCriterion()); d.rawCriteria = null; });
 
   const { errors, warnings } = storyIssues(s, problems.get(s.id));
@@ -238,7 +246,33 @@ export default function StoryForm({ story: s, stories, problems, focusRequest, o
           {s.criteria.map((c, i) => {
             const last = s.criteria.length === 1;
             return (
-              <div className="criterion" key={i}>
+              <div
+                className={['criterion', i === dragAc ? 'dragging' : '', dragAc !== null && i === overAc && i !== dragAc ? (i < dragAc ? 'drop-before' : 'drop-after') : ''].join(' ').trim()}
+                key={i}
+                onDragOver={(e) => {
+                  if (dragAc === null) return;
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = 'move';
+                  if (overAc !== i) setOverAc(i);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (dragAc !== null && dragAc !== i) moveCriterion(dragAc, i);
+                  endAcDrag();
+                }}
+              >
+                <span
+                  className="criterion-handle" draggable title="Drag to reorder" aria-hidden="true"
+                  onDragStart={(e) => {
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', String(i)); // Firefox needs data to start a drag
+                    e.dataTransfer.setDragImage(e.currentTarget.parentElement, 0, 0);
+                    setDragAc(i);
+                  }}
+                  onDragEnd={endAcDrag}
+                >
+                  ⠿
+                </span>
                 <div className="fields">
                   {[['given', 'Given'], ['when', 'When'], ['then', 'Then']].map(([key, label]) => (
                     <div key={key}>
