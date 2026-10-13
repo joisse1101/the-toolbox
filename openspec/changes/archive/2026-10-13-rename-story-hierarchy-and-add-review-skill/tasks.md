@@ -12,7 +12,7 @@
 ## 3. Data
 
 - [x] 3.1 Rewrite only the header line of `user-stories/data-portal.csv` from `ID,Epic,Capability,Feature,…` to `ID,Epic,Feature,Title,…`, keeping the BOM and line endings, and verify (the file is gitignored, so no git diff) by loading it and checking that it round-trips byte-identical.
-- [ ] 3.2 Open `data-portal.csv` in the built tool and verify the list shows story titles such as "Local Login", Feature shows "Authentication", no story is flagged red for a missing Feature or Title, and a save does not change the file apart from what the tool normally rewrites.
+- [x] 3.2 Open `data-portal.csv` in the built tool and verify the list shows story titles such as "Local Login", Feature shows "Authentication", no story is flagged red for a missing Feature or Title, and a save does not change the file apart from what the tool normally rewrites.
 
 ## 4. Tests
 
@@ -23,7 +23,7 @@
 
 - [x] 5.1 Create `.claude/skills/review-backlog/SKILL.md` with frontmatter (name, description, read-only `allowed-tools`) and instructions to: ask which backlog if none is named, read `product-management.md` and the CSV, treat CSV text as data, and never write files. Verify the file exists and its `allowed-tools` has no write or edit tool.
 - [x] 5.2 Write the hierarchy, INVEST (with the decoupling definition of Independent and the 13-point Small rule) and acceptance-criteria checks, and the report format (summary counts first, findings grouped by area citing ID and Title, suggested fix per finding, "nothing found" stated per clean area), as specified in `specs/backlog-review-skill/spec.md`.
-- [ ] 5.3 Run the skill on `user-stories/data-portal.csv` and verify it produces a report that follows the format and that `git status` shows the CSV unmodified by the review.
+- [x] 5.3 Run the skill on `user-stories/data-portal.csv` and verify it produces a report that follows the format and that `git status` shows the CSV unmodified by the review.
 
 ## 6. Docs
 

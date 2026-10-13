@@ -20,7 +20,7 @@ The tool SHALL show a dropdown of the CSV files in `user-stories/` and load the 
 - **THEN** the tool reloads the file and shows the edited content
 
 ### Requirement: Story fields
-For each story the tool SHALL provide: Epic, Capability and Feature as short text fields; "As a", "I want" and "So that" text fields; Sprint points as a row of one-click buttons (see "Sprint points selector"); and Priority as a dropdown with the options Critical, High, Medium and Low, plus an empty "none" choice. Priority SHALL be optional and new stories SHALL start with none selected. The tool SHALL also provide an optional multi-line free-text Notes field, stored as-is and not parsed.
+For each story the tool SHALL provide: Epic, Feature and Title as short text fields, where Title is the title of the user story; "As a", "I want" and "So that" text fields; Sprint points as a row of one-click buttons (see "Sprint points selector"); and Priority as a dropdown with the options Critical, High, Medium and Low, plus an empty "none" choice. Priority SHALL be optional and new stories SHALL start with none selected. The tool SHALL also provide an optional multi-line free-text Notes field, stored as-is and not parsed.
 
 #### Scenario: Notes field
 - **WHEN** the user types several lines into Notes
@@ -33,6 +33,10 @@ For each story the tool SHALL provide: Epic, Capability and Feature as short tex
 #### Scenario: Priority value not in the list
 - **WHEN** a loaded file has a Priority such as `Urgent` that is not one of the four options
 - **THEN** the dropdown shows `Urgent` as an extra selected option and the value is written back unchanged unless the user picks another
+
+#### Scenario: Hierarchy fields
+- **WHEN** the user opens a story
+- **THEN** the form shows Epic, Feature and Title, and no Capability field
 
 ### Requirement: Sprint points selector
 Sprint points SHALL be chosen with a row of buttons, one per Fibonacci value: 1, 2, 3, 5, 8, 13, 21, 34 and 55. There SHALL be no free-text or number input for Sprint points. Clicking a button SHALL select that value; clicking the selected button again SHALL clear it. At most one value SHALL be selected, and the value SHALL be stored in the `Sprint points` cell as the plain number.
@@ -81,6 +85,7 @@ The tool SHALL show an info control next to the Sprint points field that reveals
 #### Scenario: Guideline file missing
 - **WHEN** the guideline file cannot be loaded
 - **THEN** the info control shows a short message that the guideline is unavailable and the rest of the form still works
+
 ### Requirement: Multiple acceptance criteria
 Each story SHALL support one or more acceptance criteria, each made of "Given", "When" and "Then" text fields. The user SHALL be able to add criteria and remove criteria, but SHALL NOT be able to remove the last remaining one: its remove control SHALL be disabled. A new story SHALL start with one empty criterion. A story loaded with an empty Acceptance Criteria cell SHALL show one empty criterion, without that alone causing the file to be saved. A story whose cell was kept as raw text because it did not parse SHALL be left as it is until the user edits its criteria. Pressing Enter in the Then field of a criterion SHALL add a new empty criterion after the last one and move focus to the When field of the new criterion.
 
@@ -109,7 +114,7 @@ Each story SHALL support one or more acceptance criteria, each made of "Given", 
 - **THEN** a new empty criterion is added and its When field has focus
 
 ### Requirement: Multiple stories per backlog
-A backlog file SHALL hold many stories, one per CSV row. The tool SHALL let the user add a story, switch between stories, and delete the selected story. A new story SHALL be appended to the end of the backlog. Deleting a story SHALL remove its ID from the `Depends On` of every other story and renumber the rest of its Epic as described in "Story IDs follow position". In the story list each story SHALL be labelled `<capability>: <feature>`; if only one of them is filled it SHALL show that one alone, and if both are blank it SHALL show "New story". Hovering a story in the list SHALL show a tooltip with the composed user story, followed by any completeness or warning reasons.
+A backlog file SHALL hold many stories, one per CSV row. The tool SHALL let the user add a story, switch between stories, and delete the selected story. A new story SHALL be appended to the end of the backlog. Deleting a story SHALL remove its ID from the `Depends On` of every other story and renumber the rest of its Epic as described in "Story IDs follow position". In the story list each story SHALL be labelled with its Title, and a story with a blank Title SHALL show "New story". Hovering a story in the list SHALL show a tooltip with the composed user story, followed by any completeness or warning reasons.
 
 #### Scenario: Add story
 - **WHEN** the user adds a story
@@ -120,26 +125,27 @@ A backlog file SHALL hold many stories, one per CSV row. The tool SHALL let the 
 - **THEN** `IAM-0003` no longer lists `IAM-0001` in its dependencies
 
 #### Scenario: List label
-- **WHEN** a story has Capability "Invoices" and Feature "Export"
-- **THEN** its list row reads "Invoices: Export"
+- **WHEN** a story has Feature "Authentication" and Title "Local Login"
+- **THEN** its list row reads "Local Login"
 
 #### Scenario: List label with one part
-- **WHEN** a story has only a Feature "Export"
-- **THEN** its list row reads "Export", without a colon
+- **WHEN** a story has a Feature "Authentication" but a blank Title
+- **THEN** its list row reads "New story"
 
 #### Scenario: Tooltip
 - **WHEN** the user hovers a story that is missing its Epic
 - **THEN** the tooltip shows the user story text and a line saying Epic is missing
 
 ### Requirement: CSV format
-Each story SHALL be stored as one row with exactly these columns: `ID, Epic, Capability, Feature, User Story, Sprint points, Priority, Depends On, Acceptance Criteria, Notes`.
+Each story SHALL be stored as one row with exactly these columns: `ID, Epic, Feature, Title, User Story, Sprint points, Priority, Depends On, Acceptance Criteria, Notes`.
 
 - `ID` SHALL hold the story ID, or be empty when the story has none.
+- `Title` SHALL hold the title of the user story.
 - `User Story` SHALL hold one sentence in the form `As a <as a>, I want <i want>, so that <so that>`.
 - `Depends On` SHALL hold the IDs of the stories this story depends on, separated by semicolons, or be empty.
 - `Acceptance Criteria` SHALL hold one line per criterion, lines separated by a line break within the cell, each in the form `AC<n>: Given <given>, when <when>, then <then>`, where `<n>` is the criterion's position starting at 1.
 
-Values containing commas, quotes or line breaks SHALL be correctly quoted so the file round-trips and opens correctly in Excel. A file that lacks the `ID` or `Depends On` column SHALL be accepted and the columns added to it when it is saved.
+Values containing commas, quotes or line breaks SHALL be correctly quoted so the file round-trips and opens correctly in Excel. A file that lacks the `ID`, `Depends On` or `Title` column SHALL be accepted and the columns added to it when it is saved. The tool SHALL NOT translate older column names: a `Capability` column SHALL be treated as an unknown column and kept unchanged.
 
 #### Scenario: Story sentence saved
 - **WHEN** the user enters As a "team lead", I want "to export a backlog", so that "I can share it"
@@ -162,8 +168,16 @@ Values containing commas, quotes or line breaks SHALL be correctly quoted so the
 - **THEN** its row has `IAM-0003` in `ID` and `IAM-0001;DD-0002` in `Depends On`
 
 #### Scenario: Columns added on save
-- **WHEN** a file without `ID` and `Depends On` columns is opened and saved
-- **THEN** the saved file has both columns and every other column keeps its values
+- **WHEN** a file without `ID`, `Depends On` and `Title` columns is opened and saved
+- **THEN** the saved file has all three columns and every other column keeps its values
+
+#### Scenario: Title and feature saved
+- **WHEN** a story has Feature "Authentication" and Title "Local Login"
+- **THEN** its row has `Authentication` in `Feature` and `Local Login` in `Title`
+
+#### Scenario: Old column names are not translated
+- **WHEN** a file with a `Capability` column is opened and saved
+- **THEN** the `Capability` column and its values are saved unchanged and no value is copied into `Feature` or `Title`
 
 ### Requirement: Parsing story and criteria text
 When loading a file, the tool SHALL split the `User Story` cell into As a / I want / So that using the literal keywords `As a`, `I want` and `so that` (case-insensitive, first occurrence of each, in that order), and SHALL split the `Acceptance Criteria` cell into criteria by line, each into Given / When / Then using the keywords `Given`, `when` and `then` (case-insensitive, first occurrence of each, in that order). The comma immediately before a keyword SHALL be treated as a separator and removed from the preceding field, and a missing comma SHALL be tolerated. The leading `AC<n>:` label SHALL be ignored and criteria renumbered from their position.
@@ -292,27 +306,35 @@ The page header SHALL contain a "Shortcuts" control that shows a popover listing
 - **WHEN** the popover has been pinned open by a click and the user presses Escape
 - **THEN** the popover closes
 
-### Requirement: Epic, Capability and Feature suggestions
-The Epic, Capability and Feature fields SHALL suggest values already used by stories in the currently open backlog, while still accepting any typed value. Epic SHALL suggest every distinct Epic. Capability SHALL suggest the distinct Capabilities of stories with the same Epic as the selected story. Feature SHALL suggest the distinct Features of stories with the same Epic and Capability. Blank values SHALL NOT be suggested.
+### Requirement: Epic and Feature suggestions
+The Epic and Feature fields SHALL suggest values already used by stories in the currently open backlog, while still accepting any typed value. Epic SHALL suggest every distinct Epic. Feature SHALL suggest the distinct Features of stories with the same Epic as the selected story. Title SHALL NOT offer suggestions. Blank values SHALL NOT be suggested.
 
 #### Scenario: Epic suggestions
 - **WHEN** the backlog has stories in epics "Billing" and "Onboarding" and the user focuses Epic on another story
 - **THEN** "Billing" and "Onboarding" are offered
 
 #### Scenario: Capability narrowed by epic
-- **WHEN** the selected story has Epic "Billing" and "Billing" stories use capabilities "Invoices" and "Payments" while "Onboarding" uses "Signup"
-- **THEN** Capability offers "Invoices" and "Payments" but not "Signup"
+- **WHEN** the selected story has Epic "Billing" and "Billing" stories use features "Invoices" and "Payments" while "Onboarding" uses "Signup"
+- **THEN** Feature offers "Invoices" and "Payments" but not "Signup"
 
 #### Scenario: New value
 - **WHEN** the user types an Epic that no story uses
 - **THEN** it is accepted and becomes a suggestion for other stories
 
+#### Scenario: No title suggestions
+- **WHEN** the user focuses Title on a story
+- **THEN** no suggestions are offered
+
 ### Requirement: Story completeness indicators
-The tool SHALL classify each story. A story is **incomplete** (red) when any of Epic, Capability, Feature, As a, I want or So that is blank, or when it has no acceptance criterion, or when any of its criteria has a blank Given, When or Then. A story whose User Story or Acceptance Criteria cell could not be parsed and is kept as raw text counts that cell as present. A story gets a **warning** (yellow) when Sprint points is missing, Priority is missing, or Sprint points is above 13. The indicator SHALL show on the story's row in the story list and on its form, SHALL list the reasons, and SHALL be advisory only and SHALL NOT block saving. When a story is both incomplete and has warnings, the row SHALL use the red style; the form SHALL show the red message first and the yellow message after it.
+The tool SHALL classify each story. A story is **incomplete** (red) when any of Epic, Feature, Title, As a, I want or So that is blank, or when it has no acceptance criterion, or when any of its criteria has a blank Given, When or Then. A story whose User Story or Acceptance Criteria cell could not be parsed and is kept as raw text counts that cell as present. A story gets a **warning** (yellow) when Sprint points is missing, Priority is missing, or Sprint points is above 13. The indicator SHALL show on the story's row in the story list and on its form, SHALL list the reasons, and SHALL be advisory only and SHALL NOT block saving. When a story is both incomplete and has warnings, the row SHALL use the red style; the form SHALL show the red message first and the yellow message after it.
 
 #### Scenario: Missing capability
-- **WHEN** a story has a blank Capability
-- **THEN** its list row is red and its form shows a red message naming Capability
+- **WHEN** a story has a blank Feature
+- **THEN** its list row is red and its form shows a red message naming Feature
+
+#### Scenario: Missing title
+- **WHEN** a story has a blank Title
+- **THEN** its list row is red and its form shows a red message naming Title
 
 #### Scenario: Half-filled criterion
 - **WHEN** a story's only criterion has Given and When filled but Then blank
@@ -365,19 +387,19 @@ The story list SHALL group stories under a subheader per Epic, with each group's
 - **THEN** the CSV rows are written in their original order
 
 ### Requirement: Stories tab
-The tool SHALL provide two tabs for an open backlog: **Editor**, showing the story list and story form, and **Stories**, showing every story of the backlog in one table. The table SHALL have a row per story with the columns ID, Epic, Capability, Feature, Sprint points, Priority and Depends On (the IDs, separated by commas), and SHALL show the same completeness indicator (red or yellow, with the reasons in a tooltip) as the story list. Rows SHALL be ordered the same as the grouped story list. The Stories tab SHALL NOT allow editing a single story's fields or reordering. Clicking a story's title in the table SHALL select that story and switch to the Editor tab. Switching tabs SHALL NOT change or reload the backlog.
+The tool SHALL provide two tabs for an open backlog: **Editor**, showing the story list and story form, and **Stories**, showing every story of the backlog in one table. The table SHALL have a row per story with the columns ID, Epic, Feature, Title, Sprint points, Priority and Depends On (the IDs, separated by commas), and SHALL show the same completeness indicator (red or yellow, with the reasons in a tooltip) as the story list. Rows SHALL be ordered the same as the grouped story list. The Stories tab SHALL NOT allow editing a single story's fields or reordering. Clicking a story's title in the table SHALL select that story and switch to the Editor tab. Switching tabs SHALL NOT change or reload the backlog.
 
 #### Scenario: Show all stories
 - **WHEN** the user opens the Stories tab on a backlog with 12 stories
-- **THEN** the table shows 12 rows with their ID, epic, capability, feature, points, priority and dependencies
+- **THEN** the table shows 12 rows with their ID, epic, feature, title, points, priority and dependencies
 
 #### Scenario: Open a story from the table
 - **WHEN** the user clicks the title of a story in the table
 - **THEN** the Editor tab is shown with that story selected
 
 #### Scenario: Indicators in the table
-- **WHEN** a story is missing its Capability
-- **THEN** its table row is red and its tooltip names Capability
+- **WHEN** a story is missing its Feature
+- **THEN** its table row is red and its tooltip names Feature
 
 #### Scenario: Edits show in the table
 - **WHEN** the user changes a story's Priority in the Editor tab and switches to the Stories tab
@@ -411,15 +433,15 @@ Each table row SHALL have a checkbox, and the header SHALL have a select-all che
 - **THEN** the same rows are still ticked
 
 ### Requirement: Bulk edit selected stories
-When at least one story is selected in the Stories tab, the tool SHALL show a bulk edit bar with a Priority dropdown, an Epic text field and a Capability text field. The Priority dropdown SHALL default to "No change" and offer "None", Critical, High, Medium and Low. The Epic and Capability fields SHALL suggest the values already used in the backlog, and an empty field SHALL mean "no change"; the tool SHALL NOT clear an Epic or Capability in bulk. The Apply button SHALL be disabled until at least one of the three is set. Applying SHALL first ask for confirmation naming what will change and how many stories are affected; when the Epic change gives stories new IDs, the confirmation SHALL say so. On confirmation the tool SHALL set only the chosen fields on every selected story, place the stories whose Epic changed at the bottom of the new Epic in their current row order, recompute IDs and rewrite dependencies as described in "Story IDs follow position", leave all other fields and unselected stories untouched, keep the selection, reset the bar to "no change", and save through the normal auto-save. If the user cancels, nothing SHALL change. There SHALL be no undo.
+When at least one story is selected in the Stories tab, the tool SHALL show a bulk edit bar with a Priority dropdown, an Epic text field and a Feature text field. The Priority dropdown SHALL default to "No change" and offer "None", Critical, High, Medium and Low. The Epic and Feature fields SHALL suggest the values already used in the backlog, and an empty field SHALL mean "no change"; the tool SHALL NOT clear an Epic or Feature in bulk. The Apply button SHALL be disabled until at least one of the three is set. Applying SHALL first ask for confirmation naming what will change and how many stories are affected; when the Epic change gives stories new IDs, the confirmation SHALL say so. On confirmation the tool SHALL set only the chosen fields on every selected story, place the stories whose Epic changed at the bottom of the new Epic in their current row order, recompute IDs and rewrite dependencies as described in "Story IDs follow position", leave all other fields and unselected stories untouched, keep the selection, reset the bar to "no change", and save through the normal auto-save. If the user cancels, nothing SHALL change. There SHALL be no undo.
 
 #### Scenario: Set priority only
-- **WHEN** 10 stories are selected, Priority is set to High, Epic and Capability are empty, and the user applies and confirms
-- **THEN** all 10 stories have Priority High and their Epic and Capability are unchanged
+- **WHEN** 10 stories are selected, Priority is set to High, Epic and Feature are empty, and the user applies and confirms
+- **THEN** all 10 stories have Priority High and their Epic and Feature are unchanged
 
 #### Scenario: Change epic
 - **WHEN** 4 stories are selected, Epic is set to "Billing", and the user applies and confirms
-- **THEN** those 4 stories have Epic "Billing", their Capability and Feature are unchanged, and the list shows them under "Billing"
+- **THEN** those 4 stories have Epic "Billing", their Feature and Title are unchanged, and the list shows them under "Billing"
 
 #### Scenario: Change epic renumbers
 - **WHEN** 2 stories `IAM-0001` and `IAM-0002` are moved to epic "Billing & Invoicing", which already has 3 stories, and a third story depends on `IAM-0001`
@@ -430,8 +452,8 @@ When at least one story is selected in the Stories tab, the tool SHALL show a bu
 - **THEN** the confirmation states that the affected stories will receive new IDs
 
 #### Scenario: Change capability
-- **WHEN** stories from two different epics are selected and Capability is set to "Invoices"
-- **THEN** after confirming, all selected stories have Capability "Invoices" and their IDs are unchanged
+- **WHEN** stories from two different epics are selected and Feature is set to "Invoices"
+- **THEN** after confirming, all selected stories have Feature "Invoices" and their IDs are unchanged
 
 #### Scenario: Clear priority
 - **WHEN** Priority is set to "None" and applied with confirmation
@@ -442,7 +464,7 @@ When at least one story is selected in the Stories tab, the tool SHALL show a bu
 - **THEN** both are applied to every selected story
 
 #### Scenario: Nothing to apply
-- **WHEN** stories are selected but Priority is "No change" and Epic and Capability are empty
+- **WHEN** stories are selected but Priority is "No change" and Epic and Feature are empty
 - **THEN** the Apply button is disabled
 
 #### Scenario: Confirmation
@@ -474,7 +496,7 @@ The tool SHALL provide a Graph tab, shown when a backlog is open, that draws eac
 
 #### Scenario: Node content
 - **WHEN** a node is shown
-- **THEN** it shows the story's ID and feature, and is coloured by its epic
+- **THEN** it shows the story's ID and Title, and is coloured by its epic
 
 #### Scenario: Indicators on nodes
 - **WHEN** a story is incomplete or has a dependency warning
@@ -578,7 +600,7 @@ Stories that neither depend on another story nor are depended on SHALL be listed
 
 #### Scenario: Unlinked stories listed
 - **WHEN** a backlog has linked and unlinked stories
-- **THEN** the graph holds only the linked stories, and the unlinked ones are listed under "No dependencies" with their ID and feature
+- **THEN** the graph holds only the linked stories, and the unlinked ones are listed under "No dependencies" with their ID and Title
 
 #### Scenario: Open an unlinked story
 - **WHEN** the user activates an entry of that list
