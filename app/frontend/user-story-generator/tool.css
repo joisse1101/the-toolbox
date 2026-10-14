@@ -62,7 +62,10 @@
 .story-form { display: grid; gap: 12px; }
 .story-form.incomplete { border-color: var(--bad-border); box-shadow: 0 0 0 2px var(--bad-bg); }
 .story-form.warn { border-color: var(--warn-border); box-shadow: 0 0 0 2px var(--warn-bg); }
-.story-form .error, .story-form .warning { margin: 8px 0 0; }
+.story-form .warning { margin: 8px 0 0; }
+.story-form input.missing, .story-form select.missing { border-color: var(--bad-border); }
+.story-form .missing-optional { border-color: var(--warn-border); }
+.points.missing-optional { border: 0; outline: 1px solid var(--warn-border); outline-offset: 3px; border-radius: var(--radius); width: fit-content; }
 
 fieldset { border: 1px solid var(--border); border-radius: var(--radius); margin: 0; padding: 10px 12px 12px; min-width: 0; }
 legend { font-weight: 600; padding: 0 6px; }

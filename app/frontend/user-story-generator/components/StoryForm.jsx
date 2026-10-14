@@ -140,6 +140,11 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
     if (e.nativeEvent.inputType === 'insertReplacementText') onCommitEpic(s.id);
   };
   const cls = issueClass(errors, warnings);
+  // A missing field gets a red (required) or yellow (optional) border instead of a banner.
+  const noValue = (v) => !String(v ?? '').trim();
+  const missing = (key) => (noValue(s[key]) ? 'missing' : undefined);
+  const partMissing = (key) => (s.rawUserStory === null && noValue(s[key]) ? 'missing' : undefined);
+  const optional = (key) => (noValue(s[key]) ? 'missing-optional' : undefined);
   const forField = (...fields) => suggestions.filter((u) => !u.group && fields.includes(u.rows[0].field));
   const groups = suggestions.filter((u) => u.group);
   const list = (...fields) => (
@@ -157,9 +162,6 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
       className={`card story-form${cls === 'incomplete' ? ' incomplete' : ''}${cls === 'warn' ? ' warn' : ''}`}
       onKeyDown={(e) => onNavKeyDown(e, s)}
     >
-      <div id="incompleteBanner" className="error" hidden={!errors.length}>{errors.length ? `Incomplete: ${errors.join('; ')}.` : ''}</div>
-      <div id="warningBanner" className="warning" hidden={!warnings.length}>{warnings.join(' ')}</div>
-
       <div className="story-code" id="storyCode">
         {s.code ? <>ID: <strong>{s.code}</strong></> : 'No ID yet: one is assigned once an Epic is set.'}
       </div>
@@ -167,18 +169,18 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
       <fieldset>
         <legend>Where it fits</legend>
         <div className="grid3">
-          <div><label htmlFor="epic">Epic</label><input type="text" id="epic" list="epicList" autoComplete="off" value={s.epic} onChange={onEpicInput} onBlur={() => onCommitEpic(s.id)} />{list('Epic')}</div>
-          <div><label htmlFor="feature">Feature</label><input type="text" id="feature" list="featureList" autoComplete="off" value={s.feature} onChange={setField('feature')} />{list('Feature')}</div>
-          <div><label htmlFor="title">Title</label><input type="text" id="title" autoComplete="off" value={s.title} onChange={setField('title')} />{list('Title')}</div>
+          <div><label htmlFor="epic">Epic</label><input type="text" id="epic" className={missing('epic')} list="epicList" autoComplete="off" value={s.epic} onChange={onEpicInput} onBlur={() => onCommitEpic(s.id)} />{list('Epic')}</div>
+          <div><label htmlFor="feature">Feature</label><input type="text" id="feature" className={missing('feature')} list="featureList" autoComplete="off" value={s.feature} onChange={setField('feature')} />{list('Feature')}</div>
+          <div><label htmlFor="title">Title</label><input type="text" id="title" className={missing('title')} autoComplete="off" value={s.title} onChange={setField('title')} />{list('Title')}</div>
         </div>
       </fieldset>
 
       <fieldset>
         <legend>User story</legend>
         <div className="grid3">
-          <div><label htmlFor="asA">As a</label><input type="text" id="asA" value={s.asA} onChange={setStoryPart('asA')} /></div>
-          <div><label htmlFor="iWant">I want</label><input type="text" id="iWant" value={s.iWant} onChange={setStoryPart('iWant')} /></div>
-          <div><label htmlFor="soThat">So that</label><input type="text" id="soThat" value={s.soThat} onChange={setStoryPart('soThat')} /></div>
+          <div><label htmlFor="asA">As a</label><input type="text" id="asA" className={partMissing('asA')} value={s.asA} onChange={setStoryPart('asA')} /></div>
+          <div><label htmlFor="iWant">I want</label><input type="text" id="iWant" className={partMissing('iWant')} value={s.iWant} onChange={setStoryPart('iWant')} /></div>
+          <div><label htmlFor="soThat">So that</label><input type="text" id="soThat" className={partMissing('soThat')} value={s.soThat} onChange={setStoryPart('soThat')} /></div>
         </div>
         {list('User Story')}
         <CellWarning id="storyWarning" raw={s.rawUserStory} message={STORY_WARNING} />
@@ -194,7 +196,7 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
               <span id="pointsLabel" className="label-text">Sprint points</span>
               <Info id="guideline" buttonId="guidelineBtn" label="Sprint points guideline" icon="i" popoverId="guidelineText">{guideline}</Info>
             </div>
-            <div id="pointsGroup" className="points" role="radiogroup" aria-labelledby="pointsLabel">
+            <div id="pointsGroup" className={`points${noValue(s.points) ? ' missing-optional' : ''}`} role="radiogroup" aria-labelledby="pointsLabel">
               {POINTS.map((p) => (
                 <button
                   key={p} type="button" role="radio" data-points={String(p)}
@@ -211,7 +213,7 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
           </div>
           <div>
             <label htmlFor="priority">Priority</label>
-            <select id="priority" value={s.priority} onChange={setField('priority')}>
+            <select id="priority" className={optional('priority')} value={s.priority} onChange={setField('priority')}>
               {priorityOptions.map((p) => <option key={p} value={p}>{p || 'None'}</option>)}
             </select>
             {list('Priority')}
@@ -258,6 +260,7 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
                       <label htmlFor={`criterion-${i}-${key}`}>{label}</label>
                       <input
                         type="text" id={`criterion-${i}-${key}`} value={c[key]}
+                        className={s.rawCriteria === null && noValue(c[key]) ? 'missing' : undefined}
                         onChange={(e) => {
                           const value = e.target.value;
                           edit((d) => { d.criteria[i][key] = value; d.rawCriteria = null; });
