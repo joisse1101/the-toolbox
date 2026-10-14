@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Lets the team lead review a user-story backlog CSV against the Epic > Feature > Story hierarchy, INVEST and acceptance-criteria guidance in `product-management.md`, and get a written report of findings with suggested fixes.
+Lets the team lead review a user-story backlog CSV against the Epic > Feature > Story hierarchy, INVEST and acceptance-criteria standards in `guidelines/product-backlog.md`, and get a written report of findings with suggested fixes.
 
 ## Requirements
 

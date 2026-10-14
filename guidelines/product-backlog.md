@@ -1,102 +1,101 @@
-Here is a complete summary, rule set, and example for each element in the core Agile hierarchy, moving from high-level vision down to specific verification criteria.
+# Product backlog guidelines
+
+The standards for every backlog in `user-stories/`. They are used both to write stories and to review them, and this file is the only place the rules are defined. Other files (such as the review skill) cite it.
+
+```
+Epic -> Feature -> User Story -> Acceptance criteria
+```
+
+An Epic contains several Features, a Feature several User Stories, and a Story is validated by several acceptance criteria.
 
 ---
 
-### 1. Epic
+## 1. Epic
 
-**What it is:**
-
-A large strategic goal or major initiative that brings significant business value but is too large to complete in a single sprint. It serves as an umbrella for multiple related features.
+**What it is:** a domain area of the product, named by a short noun phrase. It groups the Features that belong together.
 
 **Rules:**
 
-* Focuses on strategic outcomes, business capabilities, or major system overhauls.
-* Takes multiple sprints or quarters to complete.
-* Must be broken down into individual features before development begins.
+- Names an area, not an outcome or a project (for example "Identity & Access Management", not "Make logging in secure").
+- Spans several Features. An Epic with one Feature is a question: merge it or confirm it is intended.
+- Is not sized or described by how long it takes.
 
-**Example:**
-
-> **Epic:** Streamline E-Commerce Checkout Experience
+**Example:** `Identity & Access Management`
 
 ---
 
-### 2. Feature
+## 2. Feature
 
-**What it is:**
+**What it is:** a capability a user would recognise by name, named by a short noun phrase.
 
-A distinct functional component or service that delivers specific value to stakeholders or end users. It breaks down an Epic into manageable releases or increments.
+**A candidate is a Feature if:**
+
+- a user would recognise it by name ("Password Reset"),
+- when all its stories are done it can be demonstrated end to end, and
+- it is sliced into several stories. A Feature with one story is a question: split the story, merge the Feature into another, or confirm it is intended.
 
 **Rules:**
 
-* Focuses on system-level functionality and benefits.
-* Typically fits within a single release cycle or increment (usually 1–3 sprints).
-* Must be sliced into multiple user stories to be built by the team.
+- Belongs to exactly one Epic.
+- Is not sized or described by how long it takes.
+- A Feature that reads like a single story is a story; a Feature that reads like a whole area is an Epic.
 
-**Example:**
-
-> **Feature:** One-Click Guest Checkout via Digital Wallets
+**Example:** `Password Reset` (under the Epic `Identity & Access Management`)
 
 ---
 
-### 3. User Story
+## 3. User Story
 
-**What it is:**
-
-A small, actionable piece of work written from the end-user’s perspective. It describes a specific interaction, who needs it, and what value it provides.
+**What it is:** a small piece of work written from the end user's perspective: who needs it, what they do and why it matters.
 
 **Rules:**
 
-* Follows the standard structure: *"As a [user role], I want [action], so that [value/benefit]."*
-* Follows the **INVEST** principles (Independent, Negotiable, Valuable, Estimable, Small, Testable).
-* Must be small enough to complete within a single sprint (ideally 1–3 days of effort).
-* Multiple user stories belong to a single feature.
-
-• I — Independent: The story should stand on its own as much as possible, avoiding heavy coupling or dependency domino effects so it can be prioritized, scheduled, and built flexibly.
-• N — Negotiable: A user story is an invitation to a conversation, not a rigid, binding contract for features. Details can be adjusted and co-designed with developers and product owners.
-• V — Valuable: It must deliver a clear, tangible benefit or value to the end user or customer (the "so that" part of the story).
-• E — Estimable: The team must understand it well enough to size the relative effort required (using methods like t-shirt sizing or planning poker).
-• S — Small: It should be concise and small enough to be planned, built, and completed comfortably within a single sprint or iteration (typically a few days of work).
-• T — Testable: It must include clear acceptance criteria or conditions of satisfaction so everyone knows how to verify and test when the work is "done".
+- Format: *"As a [role], I want [action], so that [benefit]."* The "so that" is a real user or business benefit, not a restatement of the "I want".
+- The Title names one story (a single action), not a Feature or an Epic.
+- Belongs to exactly one Feature.
+- Follows INVEST (section 4).
+- **Size:** at most **13 sprint points**, on the scale 1, 2, 3, 5, 8, 13. A story above 13 is split. The tool also accepts 21, 34 and 55, but these are "too big, split" markers, not valid sizes. Stories are sized in points only, not in days. See [`src/user-story-generator/sprint-points-guideline.md`](../src/user-story-generator/sprint-points-guideline.md) for what each number means.
+- Does not prescribe the technical solution.
 
 **Example:**
 
-> **User Story:** As a return customer, I want to pay using Apple Pay on the product page, so that I can buy items immediately without going through the full cart flow.
+> **Title:** Request Password Reset Link
+>
+> **User Story:** As a user who forgot my password, I want to request a reset link by email, so that I can regain access without contacting an administrator.
 
 ---
 
-### 4. User Acceptance Criteria (AC)
+## 4. INVEST
 
-**What it is:**
+Every story is checked against these six principles.
 
-A set of explicit, testable conditions attached to a specific User Story. It defines the boundaries of the work and determines when the story is officially "Done."
+- **I - Independent:** decoupled for planning and development. The story can be prioritised, estimated and built in any order, using mocks, stubs or test doubles for upstream state (a stub session, token or record), so a developer never waits on another story mid-sprint.
+  - A real-world order is not a dependency problem. Logout happens after Login, but Logout can be built against a stubbed session.
+  - A **hard block** is a problem: the story cannot be built or tested without another story's code. Layer-by-layer slices (a schema story, then an API story, then a UI story) are the typical case; slice vertically instead, so each story delivers a thin working path through every layer.
+  - A **mockable** link is not a problem: a stub removes it. It may be recorded in Depends On, but it does not make the story dependent.
+- **N - Negotiable:** the story states a need and invites a conversation. Details can change between the team and the product owner.
+- **V - Valuable:** the "so that" states a tangible benefit to a user or the business.
+- **E - Estimable:** the team understands it well enough to size it, so Sprint points is filled in.
+- **S - Small:** at most 13 sprint points (section 3).
+- **T - Testable:** it has acceptance criteria that can pass or fail.
+
+---
+
+## 5. Acceptance criteria (AC)
+
+**What it is:** the explicit conditions attached to one story that define the boundary of the work and when it is done.
 
 **Rules:**
 
-* Must be unambiguous, objective, and testable (pass or fail).
-* Focuses on *what* the system must do to satisfy the user, not *how* to code it technically.
-* Written before development starts so the developer and tester share the exact same definition of success.
-* Often written as bullet points or in Given-When-Then (Gherkin) format.
+- Unambiguous and objective: each criterion passes or fails. No measure-less words such as "fast", "user friendly" or "properly"; give a number or an observable result.
+- Says *what* the system does, not *how* it is built. No table names, classes or libraries.
+- Can fail. A criterion that always holds tests nothing.
+- Together the criteria cover the story's Title and "I want", including the failure path (invalid input, not found, not allowed).
+- Written before development starts, so the developer and the tester share the same definition of success.
+- Written in Given-When-Then form, one criterion per line, labelled `AC1`, `AC2`, and so on.
 
-**Example:**
+**Example** (for the story above):
 
-> **Acceptance Criteria (for the User Story above):**
-> * **Scenario 1: Successful Apple Pay Checkout**
-> * **Given** a user is logged in on an iOS device with a valid Apple Pay card configured,
-> * **When** they tap the "Buy with Apple Pay" button on a product page,
-> * **Then** the native Apple Pay sheet opens displaying the item cost, shipping fee, and total amount.
-> 
-> 
-> * **Scenario 2: Out of Stock Item**
-> * **Given** an item's stock is zero,
-> * **When** the product page renders,
-> * **Then** the "Buy with Apple Pay" button is disabled.
-> 
-> 
-> 
-> 
-
----
-
-### Visual Hierarchy
-
-$$\text{Epic} \xrightarrow{\text{contains many}} \text{Features} \xrightarrow{\text{contains many}} \text{User Stories} \xrightarrow{\text{validated by many}} \text{Acceptance Criteria}$$
+- AC1: Given a registered email address, when I request a reset link, then an email with a single-use link is sent to that address
+- AC2: Given an email address that is not registered, when I request a reset link, then the same confirmation message is shown and no email is sent
+- AC3: Given a reset link older than 30 minutes, when I open it, then I am told it has expired and offered a new link
