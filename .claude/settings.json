@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./data/**)",
+      "Edit(./data/**)",
+      "WebFetch(domain:localhost)",
+      "WebFetch(domain:127.0.0.1)",
+      "Bash(cat data/*)",
+      "Bash(cat ./data/*)",
+      "Bash(type data/*)",
+      "Bash(head data/*)",
+      "Bash(tail data/*)",
+      "Bash(ls data*)",
+      "Bash(grep * data/*)",
+      "PowerShell(Get-Content data*)",
+      "PowerShell(Get-Content .\\data*)",
+      "PowerShell(type data*)",
+      "PowerShell(Get-ChildItem data*)"
+    ]
+  }
+}
