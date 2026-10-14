@@ -174,19 +174,27 @@ export const NO_EPIC = '(No epic)';
 
 // Display grouping, never stored: groups in order of first occurrence, stories in backlog order within a group.
 // Blank and whitespace-only epics share one group whose `epic` is ''.
+export const NO_FEATURE = '(No feature)';
+
+// Each epic group also has `features`: the same stories split by Feature, in order of first occurrence
+// (blank feature = one group whose `feature` is '').
 export function groupByEpic(stories) {
   const groups = new Map();
   for (const s of stories) {
     const epic = String(s.epic ?? '').trim();
-    if (!groups.has(epic)) groups.set(epic, { epic, label: epic || NO_EPIC, stories: [] });
-    groups.get(epic).stories.push(s);
+    if (!groups.has(epic)) groups.set(epic, { epic, label: epic || NO_EPIC, stories: [], features: new Map() });
+    const group = groups.get(epic);
+    group.stories.push(s);
+    const feature = String(s.feature ?? '').trim();
+    if (!group.features.has(feature)) group.features.set(feature, { feature, label: feature || NO_FEATURE, stories: [] });
+    group.features.get(feature).stories.push(s);
   }
-  return [...groups.values()];
+  return [...groups.values()].map((g) => ({ ...g, features: [...g.features.values()] }));
 }
 
-// The order stories are shown in (panel, Stories tab, Ctrl+Up/Down). The file order is untouched.
+// The order stories are shown in (panel, Stories tab, Ctrl+Up/Down): epic, then feature. The file order is untouched.
 export function displayOrder(stories) {
-  return groupByEpic(stories).flatMap((g) => g.stories);
+  return groupByEpic(stories).flatMap((g) => g.features.flatMap((f) => f.stories));
 }
 
 // Bulk edit. Only defined fields are set: priority undefined = no change ('' clears it); a blank epic or

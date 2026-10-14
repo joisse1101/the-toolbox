@@ -178,6 +178,19 @@ test('groupByEpic and displayOrder group by first occurrence without reordering 
   assert.deepEqual(stories.map((s) => s.id), [1, 2, 3, 4, 5]);
 });
 
+test('groupByEpic splits each epic by feature and displayOrder follows epic then feature', () => {
+  const s = (id, epic, feature) => Object.assign(withEpic(epic, id), { feature });
+  const stories = [s(1, 'Billing', 'Invoices'), s(2, 'Billing', 'Refunds'), s(3, 'Billing', 'Invoices'), s(4, 'Billing', ' '), s(5, 'Onboarding', '')];
+  const groups = groupByEpic(stories);
+  assert.deepEqual(groups.map((g) => [g.label, g.features.map((f) => [f.label, f.stories.map((x) => x.id)])]), [
+    ['Billing', [['Invoices', [1, 3]], ['Refunds', [2]], ['(No feature)', [4]]]],
+    ['Onboarding', [['(No feature)', [5]]]],
+  ]);
+  assert.deepEqual(groups[0].stories.map((x) => x.id), [1, 2, 3, 4]);
+  assert.deepEqual(displayOrder(stories).map((x) => x.id), [1, 3, 2, 4, 5]);
+  assert.deepEqual(stories.map((x) => x.id), [1, 2, 3, 4, 5]);
+});
+
 test('applyBulk sets only the chosen fields on the selected stories', () => {
   const stories = [1, 2, 3].map((id) => Object.assign(newStory(COLUMNS), { id, epic: 'E', feature: 'C', priority: 'Low' }));
   assert.equal(applyBulk(stories, new Set([1, 3]), { priority: 'High', epic: ' ', feature: 'New' }), 2);

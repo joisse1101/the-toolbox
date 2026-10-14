@@ -24,9 +24,15 @@
   font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted);
   cursor: default; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+.story-list li.accordion-head { cursor: pointer; user-select: none; }
+.story-list li.feature-head {
+  display: block; margin: 2px 0 0 8px; padding: 2px 4px; border: 0; border-radius: 0;
+  font-size: 11px; font-weight: 600; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.story-list li.in-feature { margin-left: 16px; }
 .story-list li.epic-head:first-child { margin-top: 0; }
 .story-list li:hover { border-color: var(--accent); }
-.story-list li.epic-head:hover { border-color: var(--border); }
+.story-list li.epic-head:hover, .story-list li.feature-head:hover { border-color: var(--border); }
 .story-list li.selected { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
 .story-list li.incomplete { background: var(--bad-bg); border-color: var(--bad-border); }
 .story-list li.warn { background: var(--warn-bg); border-color: var(--warn-border); }

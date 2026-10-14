@@ -8,6 +8,21 @@ import { issueClass, rowTooltip } from './issues.js';
 export default function StoryList({ stories, problems, suggestionCounts = new Map(), selectedId, onSelect, onAdd, onDelete, onMove, heading = 'Stories' }) {
   const [drag, setDrag] = useState(null);
   const [drop, setDrop] = useState(null);
+  const [closed, setClosed] = useState(() => new Set()); // collapsed accordion keys; everything starts open
+
+  const epicKey = (g) => `e:${g.epic}`;
+  const featureKey = (g, f) => `f:${g.epic}\n${f.feature}`;
+  const toggle = (key) => setClosed((prev) => {
+    const next = new Set(prev);
+    if (!next.delete(key)) next.add(key);
+    return next;
+  });
+  const toggleKey = (e, key) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      toggle(key);
+    }
+  };
 
   const over = (e, group, beforeId) => {
     if (drag === null || !group.epic) return; // not preventing default = not a drop target
@@ -32,21 +47,32 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
       <ul id="storyList" className="story-list" onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDrop(null); }}>
         {groupByEpic(stories).flatMap((group) => [
           <li
-            key={`epic:${group.epic}`} className="epic-head" title={group.label}
+            key={`epic:${group.epic}`} className="epic-head accordion-head" title={group.label}
+            role="button" tabIndex={0} aria-expanded={!closed.has(epicKey(group))}
+            onClick={() => toggle(epicKey(group))} onKeyDown={(e) => toggleKey(e, epicKey(group))}
             onDragOver={(e) => over(e, group, group.stories[0]?.id ?? null)} onDrop={dropHere}
           >
-            {`${group.label} (${group.stories.length})`}
+            {`${closed.has(epicKey(group)) ? '▸' : '▾'} ${group.label} (${group.stories.length})`}
           </li>,
-          ...group.stories.map((s, i) => {
+          ...(closed.has(epicKey(group)) ? [] : group.features.flatMap((fg) => [
+            <li
+              key={`feature:${group.epic}:${fg.feature}`} className="feature-head accordion-head" title={fg.label}
+              role="button" tabIndex={0} aria-expanded={!closed.has(featureKey(group, fg))}
+              onClick={() => toggle(featureKey(group, fg))} onKeyDown={(e) => toggleKey(e, featureKey(group, fg))}
+              onDragOver={(e) => over(e, group, fg.stories[0]?.id ?? null)} onDrop={dropHere}
+            >
+              {`${closed.has(featureKey(group, fg)) ? '▸' : '▾'} ${fg.label} (${fg.stories.length})`}
+            </li>,
+            ...(closed.has(featureKey(group, fg)) ? [] : fg.stories.map((s, i) => {
             const { errors, warnings } = storyIssues(s, problems.get(s.id));
-            const next = group.stories[i + 1];
+            const next = fg.stories[i + 1];
             const marker = drop?.epic === group.epic && drag !== null
               ? (drop.beforeId === s.id ? 'drop-before' : drop.beforeId === null && !next ? 'drop-after' : '')
               : '';
             return (
               <li
                 key={s.id}
-                className={[s.id === selectedId ? 'selected' : '', issueClass(errors, warnings), s.id === drag ? 'dragging' : '', marker].join(' ').trim()}
+                className={['in-feature', s.id === selectedId ? 'selected' : '', issueClass(errors, warnings), s.id === drag ? 'dragging' : '', marker].join(' ').trim()}
                 title={rowTooltip(s, errors, warnings)}
                 draggable
                 onClick={() => onSelect(s.id)}
@@ -70,7 +96,8 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
                 <span className="badge">{s.points || '–'}</span>
               </li>
             );
-          }),
+            })),
+          ])),
         ])}
         {!stories.length && <li className="muted" style={{ cursor: 'default' }}>No stories yet.</li>}
       </ul>
