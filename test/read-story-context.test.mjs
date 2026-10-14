@@ -56,3 +56,13 @@ test('CLI: lists backlogs, prints context, exits non-zero on a bad name or extra
   assert.equal(run('..\\x.csv').status, 1);
   assert.equal(run('a.csv', 'b.csv').status, 2);
 });
+
+test('benched proposed stories and the Benched column are left out of the proposals', () => {
+  const root = temp();
+  fs.mkdirSync(path.join(root, 'proposals'));
+  fs.writeFileSync(path.join(root, 'proposals', 'data.csv'), 'ID,Epic,Benched\r\nNEW-1,IAM,Yes\r\nNEW-2,IAM,\r\nNEW-3,PAY,yes\r\n');
+  const r = readStoryContext({ dataDir: root, guidelinesDir: path.join(root, 'guidelines'), name: 'data.csv' });
+  assert.equal(r.benched, 2);
+  assert.equal(r.proposals, 'ID,Epic\r\nNEW-2,IAM\r\n');
+  assert.match(formatContext(r), /=== proposals\/data.csv \(2 benched, left out: ignore them\) \(data/);
+});
