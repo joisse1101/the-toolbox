@@ -79,7 +79,8 @@ function storyFromCells(cells, idx) {
   return story;
 }
 
-export function loadBacklog(text) {
+// `placeholderIds`: a proposals file, whose NEW-<n> IDs are kept as written instead of being derived (see proposals.js).
+export function loadBacklog(text, { placeholderIds = false } = {}) {
   const rows = parseCsv(text);
   const headers = rows.length ? rows[0].slice() : [...COLUMNS];
   const idx = columnIndex(headers);
@@ -98,7 +99,7 @@ export function loadBacklog(text) {
       return storyFromCells(cells, idx);
     });
   // IDs follow position, so recompute them (this also gives IDs to files that have none). `changed` = needs saving.
-  const stories = renumber(loaded);
+  const stories = placeholderIds ? loaded : renumber(loaded);
   return { headers, stories, hasBom: text.charCodeAt(0) === 0xfeff, changed: stories !== loaded };
 }
 

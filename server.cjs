@@ -16,6 +16,7 @@ const MAX_BODY = 10 * 1024 * 1024;
 const STORES = {
   'user-stories': path.join(__dirname, 'user-stories'),
   reviews: path.join(__dirname, 'reviews'), // review suggestions, written by the review-backlog skill's script
+  proposals: path.join(__dirname, 'proposals'), // proposed stories awaiting acceptance, one file per backlog
 };
 
 const MIME = {

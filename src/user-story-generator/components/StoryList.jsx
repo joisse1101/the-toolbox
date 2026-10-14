@@ -5,7 +5,7 @@ import { issueClass, rowTooltip } from './issues.js';
 // Drag a story to reorder it inside its epic, or onto another epic's group to move it there. Dropping on the
 // "(No epic)" group does nothing. `drag` is the story being dragged, `drop` = { epic, beforeId } where it would land
 // (beforeId null = at the end of the group).
-export default function StoryList({ stories, problems, suggestionCounts = new Map(), selectedId, onSelect, onAdd, onDelete, onMove }) {
+export default function StoryList({ stories, problems, suggestionCounts = new Map(), selectedId, onSelect, onAdd, onDelete, onMove, heading = 'Stories' }) {
   const [drag, setDrag] = useState(null);
   const [drop, setDrop] = useState(null);
 
@@ -28,7 +28,7 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
 
   return (
     <aside className="card story-list-panel">
-      <h2>Stories</h2>
+      <h2>{heading}</h2>
       <ul id="storyList" className="story-list" onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDrop(null); }}>
         {groupByEpic(stories).flatMap((group) => [
           <li

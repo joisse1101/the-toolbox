@@ -2,3 +2,4 @@ user-stories/*
 node_modules/
 dist/
 reviews/*
+proposals/*

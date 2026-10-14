@@ -179,3 +179,9 @@ test('load: rows reordered outside the tool get new IDs and links are rewritten;
   const rows = parseCsv(serializeBacklog(b));
   assert.equal(rows[3][rows[0].indexOf('Depends On')], 'B-0002;B-0001');
 });
+
+test('backlogProblems: a missing NEW-<n> entry says it is still proposed, other missing entries keep their message', () => {
+  const [a] = renumber([st('Billing', { dependsOn: ['NEW-5', 'ZZ-0009'] })]);
+  const msgs = backlogProblems([a]).get(a.id);
+  assert.deepEqual(msgs, ['Depends On lists NEW-5, a story that is still proposed', 'Depends On lists ZZ-0009, which does not exist']);
+});

@@ -163,7 +163,9 @@ export function backlogProblems(stories) {
     const msgs = [];
     for (const e of s.dependsOn) {
       if (s.code && e === s.code) msgs.push('Depends On lists the story itself');
-      else if (!codes.has(e)) msgs.push(`Depends On lists ${e}, which does not exist`);
+      else if (!codes.has(e)) {
+        msgs.push(/^NEW-\d+$/.test(e) ? `Depends On lists ${e}, a story that is still proposed` : `Depends On lists ${e}, which does not exist`);
+      }
       else if (s.ambiguous.includes(e)) msgs.push(`Depends On lists ${e}, which more than one story had in the file: check that it points at the right story`);
     }
     if (s.code && s.dependsOn.some((e) => e !== s.code && reaches(stories, e, s.code))) msgs.push('Depends On is part of a dependency cycle');

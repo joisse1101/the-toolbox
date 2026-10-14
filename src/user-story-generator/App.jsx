@@ -3,6 +3,8 @@ import { backlogProblems } from './ids.js';
 import { unitsOf, unitStoryCode, openCounts, orphanUnits, reviewOverview } from './review.js';
 import { useBacklog } from './hooks/useBacklog.js';
 import { useReview } from './hooks/useReview.js';
+import { useProposals } from './hooks/useProposals.js';
+import { acceptProposed } from './proposals.js';
 import FileBar from './components/FileBar.jsx';
 import Info from './components/Info.jsx';
 import StoryList from './components/StoryList.jsx';
@@ -10,6 +12,7 @@ import StoryForm from './components/StoryForm.jsx';
 import StoriesTab from './components/StoriesTab.jsx';
 import GraphTab from './components/GraphTab.jsx';
 import ReviewTab from './components/ReviewTab.jsx';
+import ProposedTab from './components/ProposedTab.jsx';
 
 const STATUS_TEXT = { saved: 'Saved', saving: 'Saving…', failed: 'Save failed', idle: 'No file' };
 
@@ -60,6 +63,25 @@ export default function App() {
     if (leaveReview) actions.setView('editor');
   }, [leaveReview, actions]);
 
+  // Proposed stories for the open backlog (proposals/<same name>); the tab is always there, the file may not be.
+  const proposals = useProposals(current, backlog?.headers);
+  const refreshProposals = proposals.actions.refreshFromDisk;
+  const [proposedNotice, setProposedNotice] = useState(null);
+  useEffect(() => setProposedNotice(null), [current]);
+
+  // Move proposed stories into the backlog. Nothing changes when acceptProposed refuses. The backlog is replaced
+  // first and the proposals second, so a crash between the two saves leaves a duplicate rather than a lost story.
+  const accept = (ids) => {
+    const result = acceptProposed(stories, proposals.stories, ids, backlog.headers);
+    if (result.error) return setProposedNotice({ kind: 'error', text: result.error });
+    actions.replaceStories(result.backlog);
+    proposals.actions.replaceStories(result.proposals);
+    const names = result.accepted.map((s) => s.code).join(', ');
+    setProposedNotice({ kind: 'ok', text: `Accepted ${result.accepted.length === 1 ? '1 story' : `${result.accepted.length} stories`} into the backlog: ${names}.` });
+  };
+  const acceptSelected = () => proposals.selected && accept(new Set([proposals.selected.id]));
+  const acceptAll = () => accept(new Set(proposals.stories.map((s) => s.id)));
+
   // Ask the Story form to focus a field once it has rendered (default: Epic).
   const [focusRequest, setFocusRequest] = useState(null);
   const [focusNameToken, setFocusNameToken] = useState(0);
@@ -71,11 +93,12 @@ export default function App() {
       if (document.visibilityState === 'visible') {
         actions.refreshFromDisk();
         reload();
+        refreshProposals();
       }
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
-  }, [actions, reload]);
+  }, [actions, reload, refreshProposals]);
 
   const addStory = () => {
     actions.addStory();
@@ -164,6 +187,9 @@ export default function App() {
           <button type="button" role="tab" id="tabEditor" className="tab" aria-controls="editor" aria-selected={view === 'editor'} onClick={() => actions.setView('editor')}>Editor</button>
           <button type="button" role="tab" id="tabStories" className="tab" aria-controls="storiesView" aria-selected={view === 'stories'} onClick={() => actions.setView('stories')}>Stories</button>
           <button type="button" role="tab" id="tabGraph" className="tab" aria-controls="graphView" aria-selected={view === 'graph'} onClick={() => actions.setView('graph')}>Graph</button>
+          <button type="button" role="tab" id="tabProposed" className="tab" aria-controls="proposedView" aria-selected={view === 'proposed'} onClick={() => actions.setView('proposed')}>
+            {`Proposed (${proposals.stories.length})`}
+          </button>
           {review.exists && (
             <button type="button" role="tab" id="tabReview" className="tab" aria-controls="reviewView" aria-selected={view === 'review'} onClick={() => actions.setView('review')}>
               {openReviewCount ? `Review (${openReviewCount})` : 'Review'}
@@ -172,15 +198,27 @@ export default function App() {
         </div>
 
         <div id="editor" className="editor" role="tabpanel" aria-labelledby="tabEditor" hidden={!current || view !== 'editor'}>
-          <StoryList stories={stories} problems={problems} suggestionCounts={suggestionCounts} selectedId={selectedId} onSelect={actions.selectStory} onAdd={addStory} onDelete={actions.deleteSelected} onMove={actions.moveStory} />
-          {selected && (
-            <StoryForm
-              story={selected} stories={stories} problems={problems} suggestions={selectedUnits} focusRequest={focusRequest}
-              onFocused={() => setFocusRequest(null)} onEdit={actions.editStory} onCommitEpic={actions.commitEpic} onOpen={actions.selectStory}
-              onApplySuggestion={applyUnit} onDismissSuggestion={dismissUnit}
-            />
+          {inEditor && (
+            <>
+              <StoryList stories={stories} problems={problems} suggestionCounts={suggestionCounts} selectedId={selectedId} onSelect={actions.selectStory} onAdd={addStory} onDelete={actions.deleteSelected} onMove={actions.moveStory} />
+              {selected && (
+                <StoryForm
+                  story={selected} stories={stories} problems={problems} suggestions={selectedUnits} focusRequest={focusRequest}
+                  onFocused={() => setFocusRequest(null)} onEdit={actions.editStory} onCommitEpic={actions.commitEpic} onOpen={actions.selectStory}
+                  onApplySuggestion={applyUnit} onDismissSuggestion={dismissUnit}
+                />
+              )}
+            </>
           )}
         </div>
+
+        <ProposedTab
+          hidden={!current || view !== 'proposed'} proposed={proposals.stories} backlogStories={stories}
+          selected={proposals.selected} selectedId={proposals.state.selectedId} notice={proposedNotice}
+          onSelect={proposals.actions.selectStory} onAdd={() => proposals.actions.addStory(stories)} onDelete={proposals.actions.deleteSelected}
+          onEdit={proposals.actions.editStory} onCommitEpic={proposals.actions.commitEpic} onMove={proposals.actions.moveStory}
+          onOpenBacklogStory={openInEditor} onAccept={acceptSelected} onAcceptAll={acceptAll}
+        />
 
         <StoriesTab
           stories={stories} problems={problems} checked={checked} lastChecked={lastChecked} hidden={!current || view !== 'stories'}

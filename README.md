@@ -22,6 +22,8 @@ For development, keep `node server.cjs` running and run `npm run dev`; Vite serv
 
 The `/review-backlog` skill writes its suggestions to `reviews/<backlog>.csv` (second store, `reviews`), only through `.claude/skills/review-backlog/write-review.mjs`. The story form shows them next to the field they concern, with Apply and Dismiss.
 
+Proposed stories live in `proposals/<backlog>.csv` (third store, `proposals`): same columns as the backlog, with placeholder IDs `NEW-<n>`. The **Proposed** tab edits them; **Accept story** / **Accept all** move them to the end of their Epic in the backlog.
+
 The user story CSVs open directly in Excel. Close the file in Excel (or accept that the tool shows "Save failed" and keeps retrying) before editing the same backlog in the tool.
 
 ### Story IDs and dependencies

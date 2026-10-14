@@ -148,3 +148,64 @@ test('applySuggestions: a split group narrows the original and adds stories in o
   assert.equal(byTitle(next, 'A second part').epic, 'Billing');
   assert.equal(byTitle(next, 'A second part').code, 'B-0003');
 });
+
+test('replaceStories: stores the list, marks it edited, keeps the selection when it survives', () => {
+  const state = opened();
+  const [a, b, c] = state.backlog.stories;
+  const next = reducer({ ...state, selectedId: b.id }, { type: 'replaceStories', stories: [c, b] });
+  assert.deepEqual(next.backlog.stories, [c, b]);
+  assert.equal(next.selectedId, b.id);
+  assert.equal(next.edits, state.edits + 1);
+  const gone = reducer({ ...state, selectedId: a.id }, { type: 'replaceStories', stories: [c, b] });
+  assert.equal(gone.selectedId, c.id);
+  assert.equal(reducer(state, { type: 'replaceStories', stories: [] }).selectedId, null);
+});
+
+import { reducer as proposalsReducer } from '../src/user-story-generator/hooks/useProposals.js';
+
+const PROPOSALS = 'ID,Epic,Feature,Title,Depends On\r\nNEW-2,Billing,Invoices,A,\r\nNEW-5,Reports,Exports,B,NEW-2\r\n';
+
+function proposalsOpened(text = PROPOSALS) {
+  const backlog = loadBacklog(text, { placeholderIds: true });
+  return proposalsReducer({ current: null, backlog: null, selectedId: null, edits: 0 }, { type: 'loaded', name: 'x.csv', backlog });
+}
+
+test('proposals: opening changes nothing on disk (no edit counted) and keeps NEW-<n> IDs', () => {
+  const state = proposalsOpened();
+  assert.equal(state.edits, 0);
+  assert.deepEqual(state.backlog.stories.map((s) => s.code), ['NEW-2', 'NEW-5']);
+  assert.equal(state.selectedId, state.backlog.stories[0].id);
+});
+
+test('proposals: editing the Epic and committing it keeps the ID', () => {
+  let state = proposalsOpened();
+  const a = state.backlog.stories[0];
+  state = proposalsReducer(state, { type: 'edit', id: a.id, change: (d) => { d.epic = 'Reports'; } });
+  state = proposalsReducer(state, { type: 'commitEpic', id: a.id });
+  assert.equal(state.backlog.stories[0].code, 'NEW-2');
+  assert.equal(state.backlog.stories[0].codedEpic, 'Reports');
+  assert.equal(proposalsReducer(state, { type: 'commitEpic', id: a.id }), state);
+});
+
+test('proposals: add takes a number above the proposals and the backlog Depends On; delete and move keep IDs', () => {
+  let state = proposalsOpened();
+  const backlogStories = loadBacklog('ID,Epic,Title,Depends On\r\nB-0001,Billing,X,NEW-9\r\n').stories;
+  state = proposalsReducer(state, { type: 'add', story: { ...state.backlog.stories[0], id: 99, code: '' }, backlogStories });
+  assert.equal(state.backlog.stories[2].code, 'NEW-10');
+  assert.equal(state.selectedId, 99);
+  assert.equal(state.edits, 1);
+
+  const [a, b] = state.backlog.stories;
+  state = proposalsReducer(state, { type: 'move', id: b.id, epic: 'Billing', beforeId: a.id });
+  assert.deepEqual(state.backlog.stories.map((s) => s.code), ['NEW-5', 'NEW-2', 'NEW-10']);
+  state = proposalsReducer(state, { type: 'delete', id: a.id });
+  assert.deepEqual(state.backlog.stories.map((s) => s.code), ['NEW-5', 'NEW-10']);
+  assert.deepEqual(state.backlog.stories[0].dependsOn, []); // NEW-5 depended on the deleted NEW-2
+});
+
+test('proposals: replaceStories marks an edit', () => {
+  const state = proposalsOpened();
+  const next = proposalsReducer(state, { type: 'replaceStories', stories: [state.backlog.stories[1]] });
+  assert.equal(next.edits, 1);
+  assert.equal(next.selectedId, state.backlog.stories[1].id);
+});

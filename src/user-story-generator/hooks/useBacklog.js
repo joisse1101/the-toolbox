@@ -100,6 +100,12 @@ export function reducer(state, action) {
       const result = applySuggestions(state.backlog.stories, action.rows, state.backlog.headers);
       return result.error ? state : withStories(state, result.stories);
     }
+    // The whole story list was recomputed elsewhere (accepting proposed stories, see proposals.js): store it and save.
+    case 'replaceStories': {
+      const stories = action.stories;
+      const keep = stories.some((s) => s.id === state.selectedId);
+      return withStories(state, stories, { selectedId: keep ? state.selectedId : (stories[0]?.id ?? null) });
+    }
     case 'check': {
       const checked = new Set(state.checked);
       for (const id of action.ids) action.on ? checked.add(id) : checked.delete(id);
@@ -259,6 +265,8 @@ export function useBacklog() {
       addDependency: (id, code) => dispatch({ type: 'addDependency', id, code }),
       removeDependency: (id, code) => dispatch({ type: 'removeDependency', id, code }),
       moveStory: (id, epic, beforeId) => dispatch({ type: 'move', id, epic, beforeId }),
+
+      replaceStories: (stories) => dispatch({ type: 'replaceStories', stories }),
 
       toggleChecked: (ids, on, anchor) => dispatch({ type: 'check', ids, on, anchor }),
       checkAll: (on, ids) => dispatch({ type: 'checkAll', on, ids }),

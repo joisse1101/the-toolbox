@@ -187,3 +187,25 @@ test('applyBulk sets only the chosen fields on the selected stories', () => {
   applyBulk(stories, new Set([2]), {});
   assert.deepEqual([stories[1].epic, stories[1].feature, stories[1].priority], ['E', 'C', 'Low']);
 });
+
+const PROPOSED =
+  'ID,Epic,Feature,Title,Depends On\r\n' +
+  'NEW-3,Billing,Invoices,Create invoice,NEW-1;IAM-0002\r\n' +
+  'NEW-1,Billing,Invoices,Send invoice,\r\n';
+
+test('loadBacklog derives IDs by default, placeholderIds keeps the written ones', () => {
+  const derived = loadBacklog(PROPOSED);
+  assert.deepEqual(derived.stories.map((s) => s.code), ['B-0001', 'B-0002']);
+  assert.equal(derived.changed, true);
+
+  const kept = loadBacklog(PROPOSED, { placeholderIds: true });
+  assert.deepEqual(kept.stories.map((s) => s.code), ['NEW-3', 'NEW-1']);
+  assert.deepEqual(kept.stories[0].dependsOn, ['NEW-1', 'IAM-0002']);
+  assert.equal(kept.changed, false);
+});
+
+test('placeholder IDs and their Depends On survive a load/serialize round trip', () => {
+  const kept = loadBacklog(PROPOSED, { placeholderIds: true });
+  const again = loadBacklog(serializeBacklog(kept), { placeholderIds: true });
+  assert.deepEqual(again.stories.map((s) => [s.code, s.dependsOn]), [['NEW-3', ['NEW-1', 'IAM-0002']], ['NEW-1', []]]);
+});

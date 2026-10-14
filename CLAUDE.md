@@ -20,7 +20,7 @@ There is no linter or type checker. Tests cover only the pure modules (no DOM/Re
 
 Local tools for a team lead: each tool is a separate React page (multi-page Vite build, pages listed in `build.rollupOptions.input` in `vite.config.mjs`) whose data lives as plain `.csv` files in the repo. `server.cjs` is a Node-built-ins-only server (no Express) that serves `dist/` and a small CSV file API.
 
-- **Stores**: `STORES` at the top of `server.cjs` is an allow-list mapping store name -> folder (`user-stories/` for backlogs, `reviews/` for review suggestions). Only `.csv` files directly inside a registered folder are reachable. The client side counterpart is `createFileStore(name)` in `src/shared/files.js` (`list/read/create/write/rename/openFolder`).
+- **Stores**: `STORES` at the top of `server.cjs` is an allow-list mapping store name -> folder (`user-stories/` for backlogs, `reviews/` for review suggestions, `proposals/` for proposed stories not yet in the backlog). Only `.csv` files directly inside a registered folder are reachable. The client side counterpart is `createFileStore(name)` in `src/shared/files.js` (`list/read/create/write/rename/openFolder`).
 - **`src/shared/`**: tool-agnostic code — `csv.js` (parse/serialize), `files.js` (API client), `story-text.js` (compose/parse the "As a… I want… so that…" and acceptance-criteria cell text), `style.css`.
 - **`src/user-story-generator/`**: the only tool so far.
   - `model.js`: pure CSV <-> story model. Known columns (`COLUMNS`) are matched by header name; unknown columns round-trip untouched in `story.cells`; unparseable User Story / Acceptance Criteria cells keep raw text.

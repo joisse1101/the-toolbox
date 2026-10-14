@@ -303,7 +303,7 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
               <li key={code} className={target ? '' : 'dangling'}>
                 {target
                   ? <button type="button" className="link-btn" title={storyLabel(target)} onClick={() => onOpen(target.id)}>{`${code} ${storyLabel(target)}`}</button>
-                  : <span title="No story has this ID">{code}</span>}
+                  : <span title={/^NEW-\d+$/.test(code) ? 'This story is still proposed' : 'No story has this ID'}>{code}</span>}
                 <button type="button" className="remove" aria-label={`Remove ${code}`} onClick={() => edit((d) => { d.dependsOn = d.dependsOn.filter((c) => c !== code); })}>✕</button>
               </li>
             );
