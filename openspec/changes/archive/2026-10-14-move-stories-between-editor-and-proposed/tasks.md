@@ -22,5 +22,5 @@
 
 ## 4. Verify
 
-- [ ] 4.1 `npm test`, `npm run build`, and try both moves in the browser (locked-file retry path included)
+- [x] 4.1 `npm test`, `npm run build`, and try both moves in the browser (locked-file retry path included)
 - [x] 4.2 Update `CLAUDE.md` Architecture line for `proposals.js` if wording needs it
