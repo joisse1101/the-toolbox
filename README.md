@@ -7,12 +7,12 @@ Small local tools for a team lead. Each tool is a React page (built with Vite) t
 ```
 npm install      # once
 npm run build    # after every change to src/
-node server.js
+node server.cjs
 ```
 
 Open http://localhost:3000/ (set `PORT` to use another port). The server listens on `127.0.0.1` only. Stop it with Ctrl+C.
 
-For development, keep `node server.js` running and run `npm run dev`; Vite serves the pages with hot reload and proxies `/api` to the server.
+For development, keep `node server.cjs` running and run `npm run dev`; Vite serves the pages with hot reload and proxies `/api` to the server.
 
 ## Tools
 
@@ -41,7 +41,7 @@ npm test
 ## Add a new tool
 
 1. Create `src/<tool-name>/` with an `index.html` (a `#root` div and a `main.jsx` script, like `src/user-story-generator/index.html`) and a `main.jsx` that imports `../shared/style.css`. Import what you need from `../shared/` (`csv.js`, `files.js`, `story-text.js`). Add the page to `build.rollupOptions.input` in `vite.config.mjs`.
-2. Create the data folder (for example `my-data/`) and register it in `STORES` at the top of `server.js`:
+2. Create the data folder (for example `my-data/`) and register it in `STORES` at the top of `server.cjs`:
    ```js
    const STORES = {
      'user-stories': path.join(__dirname, 'user-stories'),

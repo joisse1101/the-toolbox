@@ -88,15 +88,22 @@ Build a JSON array, one object per row, with exactly these keys (no `current` an
 - A suggested rewording must not grow the story. Keep it to what the story already implies: do not add a capability, a user group, a permission or a rule (for example "only sees what they are entitled to" implies role-based access). If a better benefit would need new scope, use a modest benefit and raise the larger idea as a separate question in Notes.
 - Use story IDs exactly as they appear in the CSV.
 
-Write it by running the script with the findings on standard input and the backlog file name as the only argument:
+Write the findings in **batches of about 8-10 rows**, not as one large command (a long heredoc can fail). The first batch replaces the review; every later batch adds `--append`. Each command takes the findings on standard input and the backlog file name, with `--append` as the only other argument:
 
 ```bash
 node .claude/skills/review-backlog/write-review.mjs data-portal.csv <<'JSON'
-[ ...findings... ]
+[ ...first batch... ]
+JSON
+node .claude/skills/review-backlog/write-review.mjs data-portal.csv --append <<'JSON'
+[ ...next batch... ]
 JSON
 ```
 
-The script validates everything and writes nothing unless the whole input is valid. If it prints problems, fix the findings and run it again. It fills `Current` itself and keeps the status of suggestions the user already applied or dismissed in an earlier review. Do not write the review file any other way, and do not pass any other argument.
+- Forget `--append` on a later batch and that batch replaces everything written so far. The success line gives the number of rows in the file, so check it grows.
+- Keep every row of a split group (the `replace` rows and the `add-story` rows with the same `group`) inside one batch. A batch that reuses a group name already in the file is rejected.
+- Each batch is validated on its own and nothing is written unless the whole batch is valid. If a batch is rejected, fix and resend only that batch (with the same flags); batches already written stay. Problems name the finding by its position in that batch.
+- The script fills `Current` itself and keeps the status of suggestions the user already applied or dismissed in an earlier review.
+- Do not write the review file any other way, and do not pass any other argument.
 
 ## Report
 

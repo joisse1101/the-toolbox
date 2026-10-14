@@ -1,7 +1,11 @@
 // The only way the review-backlog skill writes anything. Usage:
-//   node .claude/skills/review-backlog/write-review.mjs <backlog file name>   (findings as JSON on stdin)
+//   node .claude/skills/review-backlog/write-review.mjs <backlog file name>            (findings as JSON on stdin)
+//   node .claude/skills/review-backlog/write-review.mjs <backlog file name> --append   (add a batch to the review)
 // Reads user-stories/<name>, validates the findings against it and writes reviews/<name>. There is no output
-// path argument: the target is fixed, and user-stories/ is only ever read.
+// path argument: the target is fixed, and user-stories/ is only ever read. Without --append the run replaces the
+// review; with it the batch is validated alone and its rows are added after the existing ones, so a long review
+// can be written as several small commands. Statuses the user already decided (applied/dismissed) are kept in
+// reviews/<name>.decided (not a .csv, so the file API never lists it) so later batches can restore them.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -13,10 +17,55 @@ import {
 } from '../../../src/user-story-generator/review.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
-const { validateName } = createRequire(import.meta.url)(path.join(ROOT, 'server.js')); // same name rules as the file API
+const { validateName } = createRequire(import.meta.url)(path.join(ROOT, 'server.cjs')); // same name rules as the file API
 
-// Returns { ok: true, file, count } or { ok: false, errors: [...] }. Writes nothing unless everything is valid.
-export function writeReview({ root = ROOT, name, input }) {
+// A JSON.parse failure message plus line, column and a short excerpt, so a missing comma can be found.
+function describeParseError(err, text) {
+  const message = err.message.replace(/\s*\(line \d+ column \d+\)/, ''); // the position is reported below
+  const at = /position (\d+)/.exec(message);
+  if (!at) return `The findings on stdin are not valid JSON: ${message}`;
+  const pos = Math.min(Number(at[1]), text.length);
+  const lines = text.slice(0, pos).split('\n');
+  const excerpt = text.slice(Math.max(0, pos - 30), pos + 30).replace(/\s+/g, ' ');
+  return `The findings on stdin are not valid JSON: ${message} (line ${lines.length}, column ${lines[lines.length - 1].length + 1}, near "${excerpt}")`;
+}
+
+// Rows already decided by the user, keyed like mergeStatus does; later lists win.
+function mergeDecided(...lists) {
+  const byKey = new Map();
+  for (const rows of lists) {
+    for (const r of rows) byKey.set(JSON.stringify([r.storyId, r.field, r.action, r.suggested]), r);
+  }
+  return [...byKey.values()];
+}
+
+// { ok: true, rows } (empty when the file is not there yet) or the parseReview error.
+function readRows(filePath) {
+  let text;
+  try {
+    text = fs.readFileSync(filePath, 'utf8');
+  } catch {
+    return { ok: true, rows: [] };
+  }
+  return parseReview(text);
+}
+
+// Write beside the target, then rename over it, so a failure never leaves a partly written file. A .tmp file is
+// not listed by the file API. Returns an error message, or null.
+function writeAtomic(dir, file, text) {
+  const tmp = path.join(dir, `${file}.${process.pid}.tmp`);
+  try {
+    fs.writeFileSync(tmp, text, 'utf8');
+    fs.renameSync(tmp, path.join(dir, file));
+  } catch (err) {
+    fs.rmSync(tmp, { force: true });
+    return `Could not write reviews/${file}: ${err.message} (is it open in Excel?)`;
+  }
+  return null;
+}
+
+// Returns { ok: true, file, added, count } or { ok: false, errors: [...] }. Writes nothing unless everything is valid.
+export function writeReview({ root = ROOT, name, input, append = false }) {
   let file;
   try {
     file = validateName(name);
@@ -39,47 +88,60 @@ export function writeReview({ root = ROOT, name, input }) {
   let findings;
   try {
     findings = JSON.parse(input);
-  } catch {
-    return { ok: false, errors: ['The findings on stdin are not valid JSON.'] };
+  } catch (err) {
+    return { ok: false, errors: [describeParseError(err, input)] };
   }
-  const errors = validateFindings(findings, backlog);
+  const errors = validateFindings(findings, backlog).map((e) => e.replace(/^Finding (\d+)/, 'Finding $1 in this batch'));
+
+  const old = readRows(path.join(reviewDir, file));
+  const earlier = readRows(path.join(reviewDir, `${file}.decided`));
+  if (append && !old.ok) errors.push(`reviews/${file} cannot be appended to: ${old.error}`);
+  if (append && old.ok && Array.isArray(findings)) {
+    const used = new Set(old.rows.map((r) => r.group).filter(Boolean));
+    const reused = new Set(findings.map((f) => String(f?.group ?? '').trim()).filter((g) => used.has(g)));
+    for (const g of reused) errors.push(`Group "${g}" is already in reviews/${file}: keep all rows of a group in one batch.`);
+  }
   if (errors.length) return { ok: false, errors };
 
-  const reviewPath = path.join(reviewDir, file);
-  let existing = [];
-  try {
-    const old = parseReview(fs.readFileSync(reviewPath, 'utf8'));
-    if (old.ok) existing = old.rows;
-  } catch {
-    // no earlier review
-  }
-  const rows = mergeStatus(fillCurrent(findings, backlog), existing);
+  // Decisions made before this run: those kept aside by the run that started this review, plus (for a run that
+  // replaces the review) the decided rows the file holds now.
+  const decided = mergeDecided(
+    earlier.ok ? earlier.rows : [],
+    !append && old.ok ? old.rows.filter((r) => r.status !== 'open') : [],
+  );
+  const batch = mergeStatus(fillCurrent(findings, backlog), decided);
+  const rows = append && old.ok ? [...old.rows, ...batch] : batch;
 
-  // Atomic: write beside the target, then rename over it. A .tmp file is not listed by the file API.
   fs.mkdirSync(reviewDir, { recursive: true });
-  const tmp = path.join(reviewDir, `${file}.${process.pid}.tmp`);
-  try {
-    fs.writeFileSync(tmp, serializeReview(rows), 'utf8');
-    fs.renameSync(tmp, reviewPath);
-  } catch (err) {
-    fs.rmSync(tmp, { force: true });
-    return { ok: false, errors: [`Could not write reviews/${file}: ${err.message} (is it open in Excel?)`] };
+  if (!append && decided.length) {
+    const failed = writeAtomic(reviewDir, `${file}.decided`, serializeReview(decided));
+    if (failed) return { ok: false, errors: [failed] };
   }
-  return { ok: true, file, count: rows.length };
+  const failed = writeAtomic(reviewDir, file, serializeReview(rows));
+  if (failed) return { ok: false, errors: [failed] };
+  return { ok: true, file, added: batch.length, count: rows.length };
+}
+
+// Accepts `<name>` or `<name> --append`; anything else is null.
+export function parseArgs(args) {
+  const [name, flag] = args;
+  if (!name || name === '--append' || args.length > 2) return null;
+  if (args.length === 2 && flag !== '--append') return null;
+  return { name, append: args.length === 2 };
 }
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
 if (isMain) {
-  const name = process.argv[2];
-  if (!name || process.argv.length > 3) {
-    console.error('Usage: node write-review.mjs <backlog file name>  (findings JSON on stdin)');
+  const args = parseArgs(process.argv.slice(2));
+  if (!args) {
+    console.error('Usage: node write-review.mjs <backlog file name> [--append]  (findings JSON on stdin)');
     process.exit(2);
   }
-  const result = writeReview({ name, input: fs.readFileSync(0, 'utf8') });
+  const result = writeReview({ ...args, input: fs.readFileSync(0, 'utf8') });
   if (!result.ok) {
     console.error(`Nothing was written. ${result.errors.length} problem${result.errors.length > 1 ? 's' : ''}:`);
     for (const e of result.errors) console.error(`- ${e}`);
     process.exit(1);
   }
-  console.log(`Wrote reviews/${result.file} with ${result.count} suggestion${result.count === 1 ? '' : 's'}.`);
+  console.log(`Wrote ${result.added} suggestion${result.added === 1 ? '' : 's'} to reviews/${result.file}; ${result.count} in the file now.`);
 }

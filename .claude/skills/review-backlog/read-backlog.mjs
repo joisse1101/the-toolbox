@@ -9,7 +9,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
-const { validateName } = createRequire(import.meta.url)(path.join(ROOT, 'server.js'));
+const { validateName } = createRequire(import.meta.url)(path.join(ROOT, 'server.cjs'));
 
 export function listBacklogs({ root = ROOT } = {}) {
   return fs.readdirSync(path.join(root, 'user-stories')).filter((f) => /\.csv$/i.test(f)).sort();

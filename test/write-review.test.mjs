@@ -106,3 +106,113 @@ test('CLI: bad name exits non-zero and writes nothing; extra arguments are refus
   const extra = spawnSync(process.execPath, [SCRIPT, 'data.csv', 'elsewhere.csv'], { input: '[]', encoding: 'utf8' });
   assert.equal(extra.status, 2);
 });
+
+// ---------- harden-review-scripts: parse errors, batches, decided statuses ----------
+
+import { parseArgs } from '../.claude/skills/review-backlog/write-review.mjs';
+
+const appendRun = (root, findings) => writeReview({ root, name: 'data.csv', input: JSON.stringify(findings), append: true });
+const readRows = (root) => parseReview(fs.readFileSync(reviewPath(root), 'utf8')).rows;
+const setStatus = (root, index, status) => {
+  const rows = readRows(root);
+  rows[index].status = status;
+  fs.writeFileSync(reviewPath(root), serializeReview(rows));
+};
+
+test('malformed JSON reports the parser message with line, column and an excerpt', () => {
+  const root = temp();
+  const text = '[\n  {"storyId": "IAM-0001"}\n  {"storyId": "IAM-0002"}\n]';
+  const r = writeReview({ root, name: 'data.csv', input: text });
+  assert.equal(r.ok, false);
+  assert.match(r.errors[0], /not valid JSON/);
+  assert.match(r.errors[0], /line 3, column 3/);
+  assert.match(r.errors[0], /near ".*IAM-0002/);
+  assert.equal(fs.existsSync(path.join(root, 'reviews')), false);
+});
+
+test('validation errors say they refer to this batch and keep the finding number', () => {
+  const root = temp();
+  const r = run(root, [finding(), finding({ storyId: 'ZZ-0009' })]);
+  assert.equal(r.ok, false);
+  assert.ok(r.errors.some((e) => e.startsWith('Finding 2 in this batch (ZZ-0009 Title)')), r.errors.join('\n'));
+});
+
+test('three batches give all rows; an invalid middle batch keeps the first and the third still appends', () => {
+  const root = temp();
+  assert.equal(run(root, [finding({ suggested: 'One' })]).ok, true);
+  const bad = appendRun(root, [finding({ storyId: 'ZZ-0009' })]);
+  assert.equal(bad.ok, false);
+  assert.equal(readRows(root).length, 1);
+  const third = appendRun(root, [finding({ suggested: 'Three' }), finding({ suggested: 'Four' })]);
+  assert.deepEqual([third.ok, third.added, third.count], [true, 2, 3]);
+  assert.deepEqual(readRows(root).map((x) => x.suggested), ['One', 'Three', 'Four']);
+});
+
+test('append creates the review when there is none and leaves the backlog alone', () => {
+  const root = temp();
+  const before = fs.readFileSync(path.join(root, 'user-stories', 'data.csv'));
+  const r = appendRun(root, [finding()]);
+  assert.deepEqual([r.ok, r.added, r.count], [true, 1, 1]);
+  assert.deepEqual(fs.readFileSync(path.join(root, 'user-stories', 'data.csv')), before);
+});
+
+test('a Group already in the review is rejected on append and nothing changes', () => {
+  const root = temp();
+  const grouped = (suggested) => [
+    finding({ storyId: 'IAM-0002', suggested, confidence: 'confirm', group: 'split-1' }),
+    finding({ storyId: 'NEW-1', action: 'add-story', suggested: 'Other', confidence: 'confirm', group: 'split-1' }),
+  ];
+  assert.equal(run(root, grouped('SSO sign-in')).ok, true);
+  const text = fs.readFileSync(reviewPath(root), 'utf8');
+  const r = appendRun(root, grouped('SSO sign-on'));
+  assert.equal(r.ok, false);
+  assert.match(r.errors.join('\n'), /Group "split-1" is already in reviews\/data.csv/);
+  assert.equal(fs.readFileSync(reviewPath(root), 'utf8'), text);
+});
+
+test('a decided row repeated in a later batch keeps its status', () => {
+  const root = temp();
+  run(root, [finding({ suggested: 'Keep' })]);
+  setStatus(root, 0, 'dismissed');
+  // New run: batch 1 replaces the review without that row, batch 2 repeats it.
+  assert.equal(run(root, [finding({ suggested: 'Other' })]).ok, true);
+  assert.equal(appendRun(root, [finding({ suggested: 'Keep' })]).ok, true);
+  assert.deepEqual(readRows(root).map((x) => [x.suggested, x.status]), [['Other', 'open'], ['Keep', 'dismissed']]);
+});
+
+test('decisions accumulate in .decided and are never listed as a review file', () => {
+  const root = temp();
+  run(root, [finding({ suggested: 'A' }), finding({ suggested: 'B' })]);
+  setStatus(root, 0, 'applied');
+  run(root, [finding({ suggested: 'B' })]);
+  setStatus(root, 0, 'dismissed');
+  run(root, [finding({ suggested: 'C' })]);
+  const decided = parseReview(fs.readFileSync(path.join(root, 'reviews', 'data.csv.decided'), 'utf8')).rows;
+  assert.deepEqual(decided.map((x) => [x.suggested, x.status]).sort(), [['A', 'applied'], ['B', 'dismissed']]);
+  assert.deepEqual(fs.readdirSync(path.join(root, 'reviews')).filter((f) => f.endsWith('.csv')), ['data.csv']);
+});
+
+test('only the review is a .csv file, so the file API (which lists *.csv) never shows .decided or .tmp', () => {
+  const root = temp();
+  run(root, [finding()]);
+  setStatus(root, 0, 'applied');
+  run(root, [finding({ suggested: 'New' })]);
+  fs.writeFileSync(path.join(root, 'reviews', 'data.csv.123.tmp'), '');
+  const files = fs.readdirSync(path.join(root, 'reviews'));
+  assert.ok(files.includes('data.csv.decided'));
+  assert.deepEqual(files.filter((f) => /.csv$/i.test(f)), ['data.csv']);
+});
+
+test('arguments: a name, or a name with --append; nothing else', () => {
+  assert.deepEqual(parseArgs(['data.csv']), { name: 'data.csv', append: false });
+  assert.deepEqual(parseArgs(['data.csv', '--append']), { name: 'data.csv', append: true });
+  for (const bad of [[], ['--append'], ['--append', 'data.csv'], ['data.csv', 'out.csv'], ['data.csv', '--append', 'x'], ['data.csv', '--appendx']]) {
+    assert.equal(parseArgs(bad), null, JSON.stringify(bad));
+  }
+});
+
+test('CLI: --append prints the batch size and the total; unknown arguments exit 2', () => {
+  const bad = spawnSync(process.execPath, [SCRIPT, 'data.csv', '--other'], { input: '[]', encoding: 'utf8' });
+  assert.equal(bad.status, 2);
+  assert.match(bad.stderr, /\[--append\]/);
+});
