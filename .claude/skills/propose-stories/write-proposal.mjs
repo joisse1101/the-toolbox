@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
-import { loadBacklog, serializeBacklog } from '../../../core/model.js';
+import { loadBacklog, serializeBacklog, proposalHeaders } from '../../../core/model.js';
 import { buildProposals } from '../../../core/proposal-input.js';
 
 const require = createRequire(import.meta.url);
@@ -79,7 +79,7 @@ export function writeProposal({ dataDir = DATA_DIR, name, input }) {
   if (!built.ok) return built;
 
   // A new file gets the backlog's columns and a BOM (Excel opens it as UTF-8), as the portal does.
-  const target = proposals ?? { headers: backlog.headers, stories: [], hasBom: true };
+  const target = proposals ?? { headers: proposalHeaders(backlog.headers), stories: [], hasBom: true };
   const all = { ...target, stories: [...target.stories, ...built.stories] };
   fs.mkdirSync(proposalDir, { recursive: true });
   const failed = writeAtomic(proposalDir, file, serializeBacklog(all));

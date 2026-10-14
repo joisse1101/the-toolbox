@@ -256,3 +256,14 @@ test('applyBulk: an Epic change skips locked stories but Priority and Feature st
   assert.deepEqual([stories[1].epic, stories[1].priority, stories[1].feature], ['E', 'High', 'F']);
   assert.deepEqual(applyBulk(stories, new Set([2]), { priority: 'Low' }), { changed: 1, skipped: 0 });
 });
+
+test('Benched: only a proposals file has the column, and it round-trips', async () => {
+  const { loadBacklog, serializeBacklog, proposalHeaders } = await import('../core/model.js');
+  assert.ok(!loadBacklog('ID,Epic\r\n').headers.includes('Benched'));
+  const loaded = loadBacklog('ID,Epic,Benched\r\nNEW-1,IAM,Yes\r\nNEW-2,IAM,\r\n', { placeholderIds: true });
+  assert.deepEqual(loaded.stories.map((s) => s.benched), [true, false]);
+  assert.match(serializeBacklog(loaded), /NEW-1,IAM,.*Yes/);
+  assert.ok(loadBacklog('ID,Epic\r\n', { placeholderIds: true }).headers.includes('Benched'));
+  assert.deepEqual(proposalHeaders(['ID', 'Benched']), ['ID', 'Benched']);
+  assert.equal(proposalHeaders(['ID']).at(-1), 'Benched');
+});

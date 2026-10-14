@@ -6,7 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { writeProposal } from '../.claude/skills/propose-stories/write-proposal.mjs';
-import { loadBacklog } from '../core/model.js';
+import { loadBacklog, proposalHeaders } from '../core/model.js';
 
 const SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../.claude/skills/propose-stories/write-proposal.mjs');
 
@@ -53,7 +53,7 @@ test('a new file has the backlog columns (extra ones too) and a BOM', () => {
   const text = fs.readFileSync(proposalPath(root), 'utf8');
   assert.equal(text.charCodeAt(0), 0xfeff);
   const p = load(root);
-  assert.deepEqual(p.headers, loadBacklog(CSV).headers);
+  assert.deepEqual(p.headers, proposalHeaders(loadBacklog(CSV).headers));
   assert.equal(p.stories[0].cells.length, p.headers.length);
 });
 
@@ -95,7 +95,7 @@ test('add-only: existing rows, order, unknown columns and user edits are kept, n
   // The user edits and reorders rows in the portal: the file now holds NEW-2 (with a Team value), then NEW-1.
   const edited = fs.readFileSync(proposalPath(root), 'utf8').split('\r\n');
   const [head, one, two] = edited;
-  fs.writeFileSync(proposalPath(root), [head, two.replace('Two', 'Edited by the user').replace(/,,$/, ',Red,'), one, ''].join('\r\n'));
+  fs.writeFileSync(proposalPath(root), [head, two.replace('Two', 'Edited by the user').replace(/,,,$/, ',Red,,'), one, ''].join('\r\n'));
   const before = load(root);
   assert.equal(before.stories[0].title, 'Edited by the user');
   assert.equal(before.stories[0].cells[before.headers.indexOf('Team')], 'Red');

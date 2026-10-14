@@ -9,12 +9,15 @@ import { composeStory, parseStory, composeCriteria, parseCriteria } from './stor
 export const COLUMNS = [
   'ID', 'Epic', 'Feature', 'Title', 'User Story', 'Sprint points', 'Priority', 'Depends On', 'Acceptance Criteria', 'Notes', 'Locked',
 ];
+// Only a proposals file has this column (see proposalHeaders): `Yes` or empty. A benched proposed story is parked: the
+// explore and propose skills do not see it. It changes nothing else (accepting works as for any other story).
+export const BENCHED_COLUMN = 'Benched';
 export const POINTS = [1, 2, 3, 5, 8, 13, 21, 34, 55];
 export const SPLIT_ABOVE = 13;
 export const PRIORITIES = ['Critical', 'High', 'Medium', 'Low'];
 
 const BOM = '﻿';
-const COLUMN_BY_LOWER = new Map(COLUMNS.map((c) => [c.toLowerCase(), c]));
+const COLUMN_BY_LOWER = new Map([...COLUMNS, BENCHED_COLUMN].map((c) => [c.toLowerCase(), c]));
 
 let nextId = 1;
 
@@ -41,6 +44,7 @@ export function newStory(headers) {
     epic: '', codedEpic: '', feature: '', title: '', // codedEpic: the epic the ID was last computed for
     asA: '', iWant: '', soThat: '',
     points: '', priority: '', notes: '',
+    benched: false, // proposed stories only: parked, hidden from the explore and propose skills
     locked: false, // reference only: keeps its ID, is not reordered, moved, deleted or reviewed (valid only with a code)
     criteria: [emptyCriterion()],
     rawUserStory: null, // original cell text when it did not follow the syntax
@@ -61,6 +65,7 @@ function storyFromCells(cells, idx) {
   story.points = get('Sprint points');
   story.priority = get('Priority');
   story.notes = get('Notes');
+  story.benched = get(BENCHED_COLUMN).trim().toLowerCase() === 'yes';
   story.locked = get('Locked').trim().toLowerCase() === 'yes' && !!story.code;
 
   const us = parseStory(get('User Story'));
@@ -81,12 +86,15 @@ function storyFromCells(cells, idx) {
   return story;
 }
 
+// The headers of a proposals file: the backlog's, plus the Benched column when missing.
+export const proposalHeaders = (headers) => (headers.some((h) => h.trim().toLowerCase() === 'benched') ? [...headers] : [...headers, BENCHED_COLUMN]);
+
 // `placeholderIds`: a proposals file, whose NEW-<n> IDs are kept as written instead of being derived (see proposals.js).
 export function loadBacklog(text, { placeholderIds = false } = {}) {
   const rows = parseCsv(text);
   const headers = rows.length ? rows[0].slice() : [...COLUMNS];
   const idx = columnIndex(headers);
-  for (const col of COLUMNS) {
+  for (const col of placeholderIds ? [...COLUMNS, BENCHED_COLUMN] : COLUMNS) {
     if (!(col in idx)) {
       idx[col] = headers.length;
       headers.push(col);
@@ -131,6 +139,7 @@ export function serializeBacklog(backlog) {
     cells[idx['Acceptance Criteria']] = criteriaCellText(s);
     cells[idx['Notes']] = s.notes;
     cells[idx['Locked']] = s.locked && s.code ? 'Yes' : '';
+    if (BENCHED_COLUMN in idx) cells[idx[BENCHED_COLUMN]] = s.benched ? 'Yes' : '';
     return cells;
   });
   return (backlog.hasBom ? BOM : '') + toCsv([backlog.headers, ...rows]);

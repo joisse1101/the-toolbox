@@ -92,7 +92,7 @@ export function acceptProposed(backlogStories, proposedStories, ids, headers) {
     const epic = liveEpic(s);
     const cells = s.cells.slice(0, headers.length);
     while (cells.length < headers.length) cells.push('');
-    return { ...s, locked: false, epic, codedEpic: epic, cells, dependsOn: [...s.dependsOn], ambiguous: [...s.ambiguous] };
+    return { ...s, locked: false, benched: false, epic, codedEpic: epic, cells, dependsOn: [...s.dependsOn], ambiguous: [...s.ambiguous] };
   });
 
   const placed = backlogStories.slice();

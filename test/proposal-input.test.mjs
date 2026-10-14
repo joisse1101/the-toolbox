@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildProposals } from '../core/proposal-input.js';
-import { loadBacklog, serializeBacklog, criteriaCellText, storyCellText } from '../core/model.js';
+import { loadBacklog, serializeBacklog, criteriaCellText, storyCellText, proposalHeaders } from '../core/model.js';
 
 const HEAD = 'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,Acceptance Criteria,Notes,Team\r\n';
 const BACKLOG =
@@ -139,7 +139,7 @@ test('Depends On: repeats and a cycle inside the input are refused', () => {
 
 test('built stories round-trip through the file with no raw-text fallback', () => {
   const r = build([story({ notes: 'n' }), story({ title: 'Two', points: '5', dependsOn: ['IAM-0001', 'NEW-1'] })]);
-  const file = { headers: backlog().headers, stories: r.stories, hasBom: true };
+  const file = { headers: proposalHeaders(backlog().headers), stories: r.stories, hasBom: true };
   const back = loadBacklog(serializeBacklog(file), { placeholderIds: true });
   assert.equal(back.stories.length, 2);
   back.stories.forEach((s, i) => {
@@ -151,7 +151,7 @@ test('built stories round-trip through the file with no raw-text fallback', () =
     assert.deepEqual(s.criteria, want.criteria);
     assert.equal(storyCellText(s), storyCellText(want));
     assert.equal(criteriaCellText(s), criteriaCellText(want));
-    assert.equal(s.cells.length, 12); // the Team column is padded
+    assert.equal(s.cells.length, 13); // the Team and Benched columns are padded
     assert.equal(s.cells[11], '');
   });
   assert.deepEqual(back.stories[1].dependsOn, ['IAM-0001', 'NEW-10']);
