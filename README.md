@@ -1,30 +1,43 @@
 # Team lead tools
 
-Small local tools for a team lead. Each tool is a React page (built with Vite) that keeps its data as plain files in this repo. The local server itself uses Node built-ins only.
+Small local tools for a team lead. Each tool is a React page (built with Vite) that keeps its data as plain CSV files in `data/`. The local server itself uses Node built-ins only.
+
+## Layout
+
+| Folder | What it is |
+| --- | --- |
+| `app/frontend/` | The React pages and the Vite config. Builds into `app/dist/`. |
+| `app/backend/` | `server.cjs`: serves `app/dist/` and the CSV file API. |
+| `core/` | Pure logic with no UI or server: CSV parsing, the story model, IDs, reviews, proposals. Used by the frontend and by the skill scripts. |
+| `data/` | Your private data (git-ignored): `user-stories/`, `reviews/`, `proposals/`. Set `TLT_DATA_DIR` to keep it somewhere else, for example outside the repo. |
+| `ai/` | What the AI works from: `guidelines/` (backlog standards, point sizing) and `launchers/` (the `.ps1` session starters). |
+| `.claude/skills/` | The skills and their guarded scripts (must stay here for Claude Code to find them). |
+| `openspec/` | Specs and change history (must stay at the root for the OpenSpec CLI). |
+| `test/` | Tests for `core/` and the skill scripts. |
 
 ## Run
 
 ```
 npm install      # once
-npm run build    # after every change to src/
-node server.cjs
+npm start        # builds if needed, runs the server, opens http://localhost:3000/
+npm start -- --dev   # server + Vite dev server with hot reload (http://localhost:5173/)
 ```
 
-Open http://localhost:3000/ (set `PORT` to use another port). The server listens on `127.0.0.1` only. Stop it with Ctrl+C.
+Options after `--`: `--build` forces a rebuild, `--no-open` skips opening the browser. Set `PORT` to use another port and `TLT_DATA_DIR` to keep the data elsewhere. The server listens on `127.0.0.1` only. Stop everything with Ctrl+C.
 
-For development, keep `node server.cjs` running and run `npm run dev`; Vite serves the pages with hot reload and proxies `/api` to the server.
+You can still run the pieces yourself: `npm run build`, `node app/backend/server.cjs`, `npm run dev` (needs the server running; it proxies `/api`).
 
 ## Tools
 
 | Tool | Page | Data |
 | --- | --- | --- |
-| User story generator | `/user-story-generator/` | `user-stories/*.csv` |
+| User story generator | `/user-story-generator/` | `data/user-stories/*.csv` |
 
-The `/review-backlog` skill writes its suggestions to `reviews/<backlog>.csv` (second store, `reviews`), only through `.claude/skills/review-backlog/write-review.mjs`. The story form shows them next to the field they concern, with Apply and Dismiss.
+The `/review-backlog` skill writes its suggestions to `data/reviews/<backlog>.csv` (second store, `reviews`), only through `.claude/skills/review-backlog/write-review.mjs`. The story form shows them next to the field they concern, with Apply and Dismiss.
 
-Proposed stories live in `proposals/<backlog>.csv` (third store, `proposals`): same columns as the backlog, with placeholder IDs `NEW-<n>`. The **Proposed** tab edits them; **Accept story** / **Accept all** move them to the end of their Epic in the backlog.
+Proposed stories live in `data/proposals/<backlog>.csv` (third store, `proposals`): same columns as the backlog, with placeholder IDs `NEW-<n>`. The **Proposed** tab edits them; **Accept story** / **Accept all** move them to the end of their Epic in the backlog.
 
-Two skills fill the Proposed tab. `/explore-stories` talks new stories through against the guidelines, the backlog and the proposals, and never writes a file. `/propose-stories` shows full drafts, asks yes/no, and only after you confirm writes them through `.claude/skills/propose-stories/write-proposal.mjs`, which validates them and **adds** them to `proposals/<backlog>.csv` with the next free `NEW-<n>` IDs (it never changes or removes existing proposals and never touches `user-stories/`; running the same batch twice adds it twice). Both read through `.claude/skills/explore-stories/read-story-context.mjs`. Start them with `.explore-stories.ps1 [backlog]` or `.propose-stories.ps1 [backlog]`, which limit the session to Bash, Skill and AskUserQuestion and load the skill's `locked-settings.json` (a Bash guard allowing only those scripts); `propose-stories.ps1` leaves the writer unapproved, so Claude Code asks before each write. The Proposed tab refreshes from disk when the browser tab is focused, so check it after a batch is written.
+Two skills fill the Proposed tab. `/explore-stories` talks new stories through against the guidelines, the backlog and the proposals, and never writes a file. `/propose-stories` shows full drafts, asks yes/no, and only after you confirm writes them through `.claude/skills/propose-stories/write-proposal.mjs`, which validates them and **adds** them to `data/proposals/<backlog>.csv` with the next free `NEW-<n>` IDs (it never changes or removes existing proposals and never touches `data/user-stories/`; running the same batch twice adds it twice). Both read through `.claude/skills/explore-stories/read-story-context.mjs`. Start them with `.\ai\launchers\explore-stories.ps1 [backlog]` or `.\ai\launchers\propose-stories.ps1 [backlog]`, which limit the session to Bash, Skill and AskUserQuestion and load the skill's `locked-settings.json` (a Bash guard allowing only those scripts); `propose-stories.ps1` leaves the writer unapproved, so Claude Code asks before each write. The Proposed tab refreshes from disk when the browser tab is focused, so check it after a batch is written.
 
 The user story CSVs open directly in Excel. Close the file in Excel (or accept that the tool shows "Save failed" and keeps retrying) before editing the same backlog in the tool.
 
@@ -44,13 +57,13 @@ npm test
 
 ## Add a new tool
 
-1. Create `src/<tool-name>/` with an `index.html` (a `#root` div and a `main.jsx` script, like `src/user-story-generator/index.html`) and a `main.jsx` that imports `../shared/style.css`. Import what you need from `../shared/` (`csv.js`, `files.js`, `story-text.js`). Add the page to `build.rollupOptions.input` in `vite.config.mjs`.
-2. Create the data folder (for example `my-data/`) and register it in `STORES` at the top of `server.cjs`:
+1. Create `app/frontend/<tool-name>/` with an `index.html` (a `#root` div and a `main.jsx` script, like `app/frontend/user-story-generator/index.html`) and a `main.jsx` that imports `../shared/style.css`. Import `files.js` from `../shared/` and any pure logic from `core/` (`csv.js`, `story-text.js`). Add the page to `build.rollupOptions.input` in `app/frontend/vite.config.mjs`.
+2. Register a data folder (for example `data/my-data/`) in `STORES` at the top of `app/backend/server.cjs`:
    ```js
    const STORES = {
-     'user-stories': path.join(__dirname, 'user-stories'),
-     'my-data': path.join(__dirname, 'my-data'),
+     'user-stories': path.join(DATA_DIR, 'user-stories'),
+     'my-data': path.join(DATA_DIR, 'my-data'),
    };
    ```
 3. In the tool, `createFileStore('my-data')` gives `list`, `read`, `create`, `write`, `rename` and `openFolder` for that folder. Only `.csv` files directly inside a registered folder are reachable.
-4. Add a link to the tool in `src/main.jsx`, then `npm run build`.
+4. Add a link to the tool in `app/frontend/main.jsx`, then `npm run build`.

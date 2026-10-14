@@ -2,12 +2,12 @@
 
 ## Purpose
 
-Lets the team lead review a user-story backlog CSV against the Epic > Feature > Story hierarchy, INVEST and acceptance-criteria standards in `guidelines/product-backlog.md`, and get a written report of findings with suggested fixes.
+Lets the team lead review a user-story backlog CSV against the Epic > Feature > Story hierarchy, INVEST and acceptance-criteria standards in `ai/guidelines/product-backlog.md`, and get a written report of findings with suggested fixes.
 
 ## Requirements
 
 ### Requirement: Review skill in the repository
-The repository SHALL contain a review skill at `.claude/skills/review-backlog/SKILL.md` that reviews a backlog CSV from `user-stories/` against the standards in `guidelines/product-backlog.md`. The skill SHALL take a backlog file as input and SHALL produce a written report. The skill SHALL NOT restate the guidelines' definitions or rules: it SHALL cite them and describe only how to review (what to report, how to classify it, how to write the findings). The skill SHALL NOT modify the backlog CSV or any file other than its review CSV: it reports findings and suggests fixes, and the user applies them. The only file it may write is `reviews/<backlog file name>`, and only through the script described by the `backlog-review-suggestions` capability. The skill SHALL NOT review Priority.
+The repository SHALL contain a review skill at `.claude/skills/review-backlog/SKILL.md` that reviews a backlog CSV from `user-stories/` against the standards in `ai/guidelines/product-backlog.md`. The skill SHALL take a backlog file as input and SHALL produce a written report. The skill SHALL NOT restate the guidelines' definitions or rules: it SHALL cite them and describe only how to review (what to report, how to classify it, how to write the findings). The skill SHALL NOT modify the backlog CSV or any file other than its review CSV: it reports findings and suggests fixes, and the user applies them. The only file it may write is `reviews/<backlog file name>`, and only through the script described by the `backlog-review-suggestions` capability. The skill SHALL NOT review Priority.
 
 #### Scenario: Report only
 - **WHEN** the skill reviews `user-stories/data-portal.csv`
@@ -26,7 +26,7 @@ The repository SHALL contain a review skill at `.claude/skills/review-backlog/SK
 - **THEN** the report and the review CSV do not mention Priority
 
 #### Scenario: Rules come from the guidelines
-- **WHEN** the size limit in `guidelines/product-backlog.md` changes
+- **WHEN** the size limit in `ai/guidelines/product-backlog.md` changes
 - **THEN** the skill's behaviour follows the guidelines without any edit to `SKILL.md`
 
 ### Requirement: Hierarchy review
@@ -71,7 +71,7 @@ The skill SHALL review each story against INVEST: Independent, Negotiable, Valua
 - **THEN** the report does not flag it for size
 
 ### Requirement: Acceptance criteria review
-The skill SHALL review each story's acceptance criteria against the acceptance-criteria rules in `guidelines/product-backlog.md`: each criterion SHALL be unambiguous, objective and testable as pass or fail, SHALL say what the system must do and not how to build it, and the criteria together SHALL cover the intent of the story's Title and "I want". It SHALL report vague wording (for example "fast" or "user friendly" with no measure), implementation detail, a criterion that cannot fail, and a story whose criteria leave an obvious case uncovered, such as a failure path. A suggested measurable wording for a vague criterion SHALL be marked as needing the user's confirmation of the threshold.
+The skill SHALL review each story's acceptance criteria against the acceptance-criteria rules in `ai/guidelines/product-backlog.md`: each criterion SHALL be unambiguous, objective and testable as pass or fail, SHALL say what the system must do and not how to build it, and the criteria together SHALL cover the intent of the story's Title and "I want". It SHALL report vague wording (for example "fast" or "user friendly" with no measure), implementation detail, a criterion that cannot fail, and a story whose criteria leave an obvious case uncovered, such as a failure path. A suggested measurable wording for a vague criterion SHALL be marked as needing the user's confirmation of the threshold.
 
 #### Scenario: Vague criterion
 - **WHEN** a criterion's Then says "the page loads quickly"

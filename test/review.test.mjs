@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { loadBacklog } from '../src/user-story-generator/model.js';
+import { loadBacklog } from '../core/model.js';
 import {
   parseReview, serializeReview, validateFindings, fillCurrent, mergeStatus, suggestionState, applySuggestions,
   unitsOf, unitState, openCounts, reviewOverview, REVIEW_COLUMNS,
-} from '../src/user-story-generator/review.js';
+} from '../core/review.js';
 
 const CSV =
   'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,Acceptance Criteria,Notes\r\n' +

@@ -6,7 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { writeReview } from '../.claude/skills/review-backlog/write-review.mjs';
-import { parseReview, serializeReview } from '../src/user-story-generator/review.js';
+import { parseReview, serializeReview } from '../core/review.js';
 
 const SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../.claude/skills/review-backlog/write-review.mjs');
 
@@ -26,7 +26,7 @@ const finding = (over = {}) => ({
   storyId: 'IAM-0001', field: 'Title', action: 'replace', suggested: 'Log in with a password', reason: 'Clearer',
   area: 'Hierarchy', confidence: 'ready', group: '', ...over,
 });
-const run = (root, findings, name = 'data.csv') => writeReview({ root, name, input: JSON.stringify(findings) });
+const run = (root, findings, name = 'data.csv') => writeReview({ dataDir: root, name, input: JSON.stringify(findings) });
 const reviewPath = (root) => path.join(root, 'reviews', 'data.csv');
 
 test('valid input writes reviews/<name> and leaves the backlog untouched', () => {
@@ -69,7 +69,7 @@ test('bad or missing backlog names are rejected', () => {
 
 test('input that is not JSON is rejected', () => {
   const root = temp();
-  assert.equal(writeReview({ root, name: 'data.csv', input: 'not json' }).ok, false);
+  assert.equal(writeReview({ dataDir: root, name: 'data.csv', input: 'not json' }).ok, false);
 });
 
 test('a split group and multi-line values are written and read back intact', () => {
@@ -111,7 +111,7 @@ test('CLI: bad name exits non-zero and writes nothing; extra arguments are refus
 
 import { parseArgs } from '../.claude/skills/review-backlog/write-review.mjs';
 
-const appendRun = (root, findings) => writeReview({ root, name: 'data.csv', input: JSON.stringify(findings), append: true });
+const appendRun = (root, findings) => writeReview({ dataDir: root, name: 'data.csv', input: JSON.stringify(findings), append: true });
 const readRows = (root) => parseReview(fs.readFileSync(reviewPath(root), 'utf8')).rows;
 const setStatus = (root, index, status) => {
   const rows = readRows(root);
@@ -122,7 +122,7 @@ const setStatus = (root, index, status) => {
 test('malformed JSON reports the parser message with line, column and an excerpt', () => {
   const root = temp();
   const text = '[\n  {"storyId": "IAM-0001"}\n  {"storyId": "IAM-0002"}\n]';
-  const r = writeReview({ root, name: 'data.csv', input: text });
+  const r = writeReview({ dataDir: root, name: 'data.csv', input: text });
   assert.equal(r.ok, false);
   assert.match(r.errors[0], /not valid JSON/);
   assert.match(r.errors[0], /line 3, column 3/);

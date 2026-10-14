@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { reducer } from '../src/user-story-generator/hooks/useBacklog.js';
-import { loadBacklog, applyBulk } from '../src/user-story-generator/model.js';
+import { reducer } from '../app/frontend/user-story-generator/hooks/useBacklog.js';
+import { loadBacklog, applyBulk } from '../core/model.js';
 
 const FILE = 'Epic,Title,Depends On\r\nBilling,A,\r\nBilling,B,\r\nOnboarding,C,\r\n';
 
@@ -161,7 +161,7 @@ test('replaceStories: stores the list, marks it edited, keeps the selection when
   assert.equal(reducer(state, { type: 'replaceStories', stories: [] }).selectedId, null);
 });
 
-import { reducer as proposalsReducer } from '../src/user-story-generator/hooks/useProposals.js';
+import { reducer as proposalsReducer } from '../app/frontend/user-story-generator/hooks/useProposals.js';
 
 const PROPOSALS = 'ID,Epic,Feature,Title,Depends On\r\nNEW-2,Billing,Invoices,A,\r\nNEW-5,Reports,Exports,B,NEW-2\r\n';
 

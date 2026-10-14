@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { composeStory, parseStory, composeCriteria, parseCriteria } from '../src/shared/story-text.js';
+import { composeStory, parseStory, composeCriteria, parseCriteria } from '../core/story-text.js';
 
 test('story round trip', () => {
   const f = { asA: 'team lead', iWant: 'to export a backlog', soThat: 'I can share it' };

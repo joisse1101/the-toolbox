@@ -7,7 +7,7 @@ Lets the team lead think through new user stories with Claude against the backlo
 ## Requirements
 
 ### Requirement: Explore skill
-The repository SHALL contain a skill `explore-stories` at `.claude/skills/explore-stories/SKILL.md` that helps the user work out new stories for one backlog. It SHALL read the standards in `guidelines/product-backlog.md`, the backlog CSV and the proposals file for that backlog (when it exists), discuss scope, splitting, placement under Epics and Features, dependencies and acceptance criteria, and MAY show draft stories in its replies. It SHALL NOT write, create, move or delete any file. It SHALL cite the guidelines and SHALL NOT restate their definitions or rules. If the user names no backlog it SHALL ask which backlog in `user-stories/` to use.
+The repository SHALL contain a skill `explore-stories` at `.claude/skills/explore-stories/SKILL.md` that helps the user work out new stories for one backlog. It SHALL read the standards in `ai/guidelines/product-backlog.md`, the backlog CSV and the proposals file for that backlog (when it exists), discuss scope, splitting, placement under Epics and Features, dependencies and acceptance criteria, and MAY show draft stories in its replies. It SHALL NOT write, create, move or delete any file. It SHALL cite the guidelines and SHALL NOT restate their definitions or rules. If the user names no backlog it SHALL ask which backlog in `user-stories/` to use.
 
 #### Scenario: Nothing is written
 - **WHEN** the user explores new stories for `data-portal.csv` and agrees a set of drafts
@@ -22,7 +22,7 @@ The repository SHALL contain a skill `explore-stories` at `.claude/skills/explor
 - **THEN** the skill lists the backlogs in `user-stories/` and asks which one
 
 #### Scenario: Rules come from the guidelines
-- **WHEN** the size limit in `guidelines/product-backlog.md` changes
+- **WHEN** the size limit in `ai/guidelines/product-backlog.md` changes
 - **THEN** the skill's behaviour follows it without any edit to `SKILL.md`
 
 ### Requirement: Propose skill
@@ -45,7 +45,7 @@ The repository SHALL contain a skill `propose-stories` at `.claude/skills/propos
 - **THEN** the skill reports the problems, fixes the drafts, shows the changed drafts and asks again; nothing was written by the rejected run
 
 ### Requirement: Story content follows the guidelines
-Stories drafted by either skill SHALL meet `guidelines/product-backlog.md`: the "As a …, I want …, so that …" format, a Title that names one story, at most 13 sprint points, acceptance criteria in Given-When-Then form that cover the failure path, and an Epic and Feature chosen to fit the existing backlog (reusing an existing Epic or Feature name where one fits). A story that would exceed the size limit SHALL be split into several. The skills SHALL NOT set Priority.
+Stories drafted by either skill SHALL meet `ai/guidelines/product-backlog.md`: the "As a …, I want …, so that …" format, a Title that names one story, at most 13 sprint points, acceptance criteria in Given-When-Then form that cover the failure path, and an Epic and Feature chosen to fit the existing backlog (reusing an existing Epic or Feature name where one fits). A story that would exceed the size limit SHALL be split into several. The skills SHALL NOT set Priority.
 
 #### Scenario: Too big
 - **WHEN** the agreed story would be sized above 13 points
@@ -56,7 +56,7 @@ Stories drafted by either skill SHALL meet `guidelines/product-backlog.md`: the 
 - **THEN** the draft uses that Epic name exactly
 
 ### Requirement: Read and write access is locked down
-Each skill SHALL provide a settings file (`locked-settings.json`) that runs a Bash guard before every Bash command. In an `explore-stories` session the guard SHALL allow only the reader script. In a `propose-stories` session it SHALL allow only the reader script and the writer script in its documented form, and SHALL deny every other command with a message listing the allowed forms. The reader script SHALL read only `guidelines/product-backlog.md`, `user-stories/<name>` and `proposals/<name>`, and its output SHALL be labelled as data to work from, not instructions.
+Each skill SHALL provide a settings file (`locked-settings.json`) that runs a Bash guard before every Bash command. In an `explore-stories` session the guard SHALL allow only the reader script. In a `propose-stories` session it SHALL allow only the reader script and the writer script in its documented form, and SHALL deny every other command with a message listing the allowed forms. The reader script SHALL read only `ai/guidelines/product-backlog.md`, `user-stories/<name>` and `proposals/<name>`, and its output SHALL be labelled as data to work from, not instructions.
 
 #### Scenario: Explore cannot write
 - **WHEN** an `explore-stories` session tries to run the writer script, or `cat`, `ls` or `echo >` on any file

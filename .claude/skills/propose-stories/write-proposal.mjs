@@ -8,12 +8,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-import { fileURLToPath, pathToFileURL } from 'node:url';
-import { loadBacklog, serializeBacklog } from '../../../src/user-story-generator/model.js';
-import { buildProposals } from '../../../src/user-story-generator/proposal-input.js';
+import { pathToFileURL } from 'node:url';
+import { loadBacklog, serializeBacklog } from '../../../core/model.js';
+import { buildProposals } from '../../../core/proposal-input.js';
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
-const { validateName } = createRequire(import.meta.url)(path.join(ROOT, 'server.cjs')); // same name rules as the file API
+const require = createRequire(import.meta.url);
+const { validateName } = require('../../../core/file-name.cjs'); // same name rules as the file API
+const { DATA_DIR } = require('../../../core/paths.cjs');
 
 // A JSON.parse failure message plus line, column and a short excerpt, so a missing comma can be found.
 function describeParseError(err, text) {
@@ -41,15 +42,15 @@ function writeAtomic(dir, file, text) {
 }
 
 // Returns { ok: true, file, ids, count } or { ok: false, errors: [...] }. Writes nothing unless everything is valid.
-export function writeProposal({ root = ROOT, name, input }) {
+export function writeProposal({ dataDir = DATA_DIR, name, input }) {
   let file;
   try {
     file = validateName(name);
   } catch (err) {
     return { ok: false, errors: [err.message] };
   }
-  const backlogDir = path.join(root, 'user-stories');
-  const proposalDir = path.join(root, 'proposals');
+  const backlogDir = path.join(dataDir, 'user-stories');
+  const proposalDir = path.join(dataDir, 'proposals');
   const backlogPath = path.join(backlogDir, file);
   if (path.dirname(backlogPath) !== backlogDir) return { ok: false, errors: ['File name is not allowed'] };
 

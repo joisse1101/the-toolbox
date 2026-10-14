@@ -10,14 +10,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-import { fileURLToPath, pathToFileURL } from 'node:url';
-import { loadBacklog } from '../../../src/user-story-generator/model.js';
+import { pathToFileURL } from 'node:url';
+import { loadBacklog } from '../../../core/model.js';
 import {
   parseReview, serializeReview, validateFindings, fillCurrent, mergeStatus,
-} from '../../../src/user-story-generator/review.js';
+} from '../../../core/review.js';
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
-const { validateName } = createRequire(import.meta.url)(path.join(ROOT, 'server.cjs')); // same name rules as the file API
+const require = createRequire(import.meta.url);
+const { validateName } = require('../../../core/file-name.cjs'); // same name rules as the file API
+const { DATA_DIR } = require('../../../core/paths.cjs');
 
 // A JSON.parse failure message plus line, column and a short excerpt, so a missing comma can be found.
 function describeParseError(err, text) {
@@ -65,15 +66,15 @@ function writeAtomic(dir, file, text) {
 }
 
 // Returns { ok: true, file, added, count } or { ok: false, errors: [...] }. Writes nothing unless everything is valid.
-export function writeReview({ root = ROOT, name, input, append = false }) {
+export function writeReview({ dataDir = DATA_DIR, name, input, append = false }) {
   let file;
   try {
     file = validateName(name);
   } catch (err) {
     return { ok: false, errors: [err.message] };
   }
-  const backlogDir = path.join(root, 'user-stories');
-  const reviewDir = path.join(root, 'reviews');
+  const backlogDir = path.join(dataDir, 'user-stories');
+  const reviewDir = path.join(dataDir, 'reviews');
   const backlogPath = path.join(backlogDir, file);
   if (path.dirname(backlogPath) !== backlogDir) return { ok: false, errors: ['File name is not allowed'] };
 

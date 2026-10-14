@@ -6,7 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { writeProposal } from '../.claude/skills/propose-stories/write-proposal.mjs';
-import { loadBacklog } from '../src/user-story-generator/model.js';
+import { loadBacklog } from '../core/model.js';
 
 const SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../.claude/skills/propose-stories/write-proposal.mjs');
 
@@ -31,7 +31,7 @@ const story = (over = {}) => ({
   criteria: ['AC1: Given a registered email, when I ask for a reset, then a link is sent'],
   ...over,
 });
-const run = (root, stories, name = 'data.csv') => writeProposal({ root, name, input: JSON.stringify(stories) });
+const run = (root, stories, name = 'data.csv') => writeProposal({ dataDir: root, name, input: JSON.stringify(stories) });
 const proposalPath = (root) => path.join(root, 'proposals', 'data.csv');
 const load = (root) => loadBacklog(fs.readFileSync(proposalPath(root), 'utf8'), { placeholderIds: true });
 
@@ -84,7 +84,7 @@ test('no file is created when validation fails', () => {
 
 test('bad JSON reports line and column', () => {
   const root = temp();
-  const r = writeProposal({ root, name: 'data.csv', input: '[\n  {"epic": "x",}\n]' });
+  const r = writeProposal({ dataDir: root, name: 'data.csv', input: '[\n  {"epic": "x",}\n]' });
   assert.equal(r.ok, false);
   assert.match(r.errors[0], /not valid JSON.*line 2, column \d+/);
 });
@@ -118,16 +118,11 @@ test('a dependency on an earlier proposal needs proposed:, and a failed run keep
 });
 
 test('CLI: prints the IDs on success; exits 1 with "Nothing was written" on invalid input; extra arguments exit 2', () => {
-  // The script finds src/ and server.cjs relative to itself, so run a copy of that layout in a temp root.
-  const repo = path.resolve(path.dirname(SCRIPT), '../../..');
+  // The real script, pointed at a temp data folder through TLT_DATA_DIR.
   const root = temp();
-  const script = path.join(root, '.claude', 'skills', 'propose-stories', 'write-proposal.mjs');
-  fs.mkdirSync(path.dirname(script), { recursive: true });
-  fs.copyFileSync(SCRIPT, script);
-  fs.cpSync(path.join(repo, 'src'), path.join(root, 'src'), { recursive: true });
-  fs.copyFileSync(path.join(repo, 'server.cjs'), path.join(root, 'server.cjs'));
-  fs.writeFileSync(path.join(root, 'package.json'), '{"type":"module"}');
-  const cli = (args, input) => spawnSync(process.execPath, [script, ...args], { input: JSON.stringify(input), encoding: 'utf8' });
+  const cli = (args, input) => spawnSync(process.execPath, [SCRIPT, ...args], {
+    input: JSON.stringify(input), encoding: 'utf8', env: { ...process.env, TLT_DATA_DIR: root },
+  });
 
   const ok = cli(['data.csv'], [story()]);
   assert.equal(ok.status, 0, ok.stderr);

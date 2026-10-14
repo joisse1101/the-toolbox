@@ -21,14 +21,14 @@ function temp() {
 }
 
 test('without a name the backlog names are listed', () => {
-  assert.deepEqual(listBacklogs({ root: temp() }), ['data.csv', 'other.csv']);
+  assert.deepEqual(listBacklogs({ dataDir: temp() }), ['data.csv', 'other.csv']);
 });
 
 test('guidelines, backlog and proposals are printed, each labelled as data', () => {
   const root = temp();
   fs.mkdirSync(path.join(root, 'proposals'));
   fs.writeFileSync(path.join(root, 'proposals', 'data.csv'), 'ID,Epic\r\nNEW-1,IAM\r\n');
-  const r = readStoryContext({ root, name: 'data.csv' });
+  const r = readStoryContext({ dataDir: root, guidelinesDir: path.join(root, 'guidelines'), name: 'data.csv' });
   assert.equal(r.ok, true);
   const out = formatContext(r);
   assert.match(out, /=== guidelines\/product-backlog.md ===\n# Guidelines/);
@@ -37,7 +37,8 @@ test('guidelines, backlog and proposals are printed, each labelled as data', () 
 });
 
 test('a missing proposals file prints a note, not an error', () => {
-  const r = readStoryContext({ root: temp(), name: 'data.csv' });
+  const root = temp();
+  const r = readStoryContext({ dataDir: root, guidelinesDir: path.join(root, 'guidelines'), name: 'data.csv' });
   assert.equal(r.ok, true);
   assert.equal(r.proposals, null);
   assert.match(formatContext(r), /=== proposals\/data.csv: no proposals yet ===/);
@@ -45,8 +46,8 @@ test('a missing proposals file prints a note, not an error', () => {
 
 test('bad names and unknown backlogs are refused', () => {
   const root = temp();
-  for (const name of ['../x.csv', '..\\x.csv', 'a/b.csv', 'x.txt', '']) assert.equal(readStoryContext({ root, name }).ok, false, name);
-  assert.match(readStoryContext({ root, name: 'nope.csv' }).errors[0], /was not found/);
+  for (const name of ['../x.csv', '..\\x.csv', 'a/b.csv', 'x.txt', '']) assert.equal(readStoryContext({ dataDir: root, guidelinesDir: path.join(root, 'guidelines'), name }).ok, false, name);
+  assert.match(readStoryContext({ dataDir: root, guidelinesDir: path.join(root, 'guidelines'), name: 'nope.csv' }).errors[0], /was not found/);
 });
 
 test('CLI: lists backlogs, prints context, exits non-zero on a bad name or extra arguments', () => {

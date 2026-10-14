@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildProposals } from '../src/user-story-generator/proposal-input.js';
-import { loadBacklog, serializeBacklog, criteriaCellText, storyCellText } from '../src/user-story-generator/model.js';
+import { buildProposals } from '../core/proposal-input.js';
+import { loadBacklog, serializeBacklog, criteriaCellText, storyCellText } from '../core/model.js';
 
 const HEAD = 'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,Acceptance Criteria,Notes,Team\r\n';
 const BACKLOG =

@@ -6,31 +6,32 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { pathToFileURL } from 'node:url';
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
-const { validateName } = createRequire(import.meta.url)(path.join(ROOT, 'server.cjs'));
+const require = createRequire(import.meta.url);
+const { validateName } = require('../../../core/file-name.cjs');
+const { DATA_DIR, GUIDELINES_DIR } = require('../../../core/paths.cjs');
 
-export function listBacklogs({ root = ROOT } = {}) {
-  return fs.readdirSync(path.join(root, 'user-stories')).filter((f) => /\.csv$/i.test(f)).sort();
+export function listBacklogs({ dataDir = DATA_DIR } = {}) {
+  return fs.readdirSync(path.join(dataDir, 'user-stories')).filter((f) => /\.csv$/i.test(f)).sort();
 }
 
 // Returns { ok: true, file, guidelines, csv } or { ok: false, errors: [...] }.
-export function readBacklog({ root = ROOT, name }) {
+export function readBacklog({ dataDir = DATA_DIR, guidelinesDir = GUIDELINES_DIR, name }) {
   let file;
   try {
     file = validateName(name);
   } catch (err) {
     return { ok: false, errors: [err.message] };
   }
-  const backlogDir = path.join(root, 'user-stories');
+  const backlogDir = path.join(dataDir, 'user-stories');
   const backlogPath = path.join(backlogDir, file);
   if (path.dirname(backlogPath) !== backlogDir) return { ok: false, errors: ['File name is not allowed'] };
   try {
     return {
       ok: true,
       file,
-      guidelines: fs.readFileSync(path.join(root, 'guidelines', 'product-backlog.md'), 'utf8'),
+      guidelines: fs.readFileSync(path.join(guidelinesDir, 'product-backlog.md'), 'utf8'),
       csv: fs.readFileSync(backlogPath, 'utf8'),
     };
   } catch {

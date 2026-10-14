@@ -2,12 +2,12 @@
 
 ## Purpose
 
-Keeps the standards for a user-story backlog (Epic, Feature, User Story, acceptance criteria, size and INVEST) in one file, `guidelines/product-backlog.md`, so that writing and reviewing stories apply the same rules.
+Keeps the standards for a user-story backlog (Epic, Feature, User Story, acceptance criteria, size and INVEST) in one file, `ai/guidelines/product-backlog.md`, so that writing and reviewing stories apply the same rules.
 
 ## Requirements
 
 ### Requirement: One source of backlog standards
-The repository SHALL hold the standards for a backlog in one file, `guidelines/product-backlog.md`. It SHALL define what a valid Epic, Feature, User Story and acceptance criterion is, and it SHALL be written so that it can be used both to write stories and to review them. No other file SHALL restate those definitions or rules; other files (such as the review skill) SHALL cite the guidelines.
+The repository SHALL hold the standards for a backlog in one file, `ai/guidelines/product-backlog.md`. It SHALL define what a valid Epic, Feature, User Story and acceptance criterion is, and it SHALL be written so that it can be used both to write stories and to review them. No other file SHALL restate those definitions or rules; other files (such as the review skill) SHALL cite the guidelines.
 
 #### Scenario: Writing and reviewing use the same rules
 - **WHEN** a story is written against the guidelines and then reviewed
@@ -15,7 +15,7 @@ The repository SHALL hold the standards for a backlog in one file, `guidelines/p
 
 #### Scenario: A rule changes
 - **WHEN** a standard such as the size limit changes
-- **THEN** it is changed in `guidelines/product-backlog.md` only
+- **THEN** it is changed in `ai/guidelines/product-backlog.md` only
 
 ### Requirement: Hierarchy definitions
 The guidelines SHALL define the hierarchy Epic > Feature > User Story > Acceptance criteria as follows, with an example for each level taken from this project's backlog.

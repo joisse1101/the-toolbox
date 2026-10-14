@@ -1,5 +1,4 @@
-user-stories/*
+data/*
 node_modules/
-dist/
-reviews/*
-proposals/*
+app/dist/
+

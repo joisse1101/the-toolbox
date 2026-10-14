@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseCsv } from '../src/shared/csv.js';
-import { loadBacklog, serializeBacklog, newStory, storyIssues, COLUMNS } from '../src/user-story-generator/model.js';
+import { parseCsv } from '../core/csv.js';
+import { loadBacklog, serializeBacklog, newStory, storyIssues, COLUMNS } from '../core/model.js';
 import {
   epicPrefix, renumber, moveStory, commitEpic, commitEpics, removeStory, dependentsOf, wouldCycle, dependencyChoices, backlogProblems,
-} from '../src/user-story-generator/ids.js';
+} from '../core/ids.js';
 
 let n = 0;
 // A committed story, as if loaded.

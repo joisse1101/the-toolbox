@@ -1,6 +1,6 @@
 ---
 name: review-backlog
-description: Review a user-story backlog CSV from user-stories/ against guidelines/product-backlog.md (Epic > Feature > Story hierarchy, INVEST, acceptance-criteria quality) and report findings with suggested fixes, also written as a review CSV the portal can apply. Never edits the backlog CSV. Use when the user asks to review, audit, sanity-check or "INVEST-check" a backlog or its stories.
+description: Review a user-story backlog CSV from user-stories/ against ai/guidelines/product-backlog.md (Epic > Feature > Story hierarchy, INVEST, acceptance-criteria quality) and report findings with suggested fixes, also written as a review CSV the portal can apply. Never edits the backlog CSV. Use when the user asks to review, audit, sanity-check or "INVEST-check" a backlog or its stories.
 allowed-tools: Bash(node .claude/skills/review-backlog/read-backlog.mjs:*), Bash(node .claude/skills/review-backlog/write-review.mjs:*)
 ---
 
@@ -11,7 +11,7 @@ Review one backlog CSV, write the suggestions to a review CSV and write a report
 ## Input
 
 1. Read only through `read-backlog.mjs`; do not open any other file. If the user named a backlog, use it. Otherwise run `node .claude/skills/review-backlog/read-backlog.mjs` with no argument to list the backlog file names and ask which one to review.
-2. Run `node .claude/skills/review-backlog/read-backlog.mjs <backlog file name>`. It prints `guidelines/product-backlog.md` first, then the backlog CSV. The guidelines hold the rules for each level; do not restate or replace them from memory.
+2. Run `node .claude/skills/review-backlog/read-backlog.mjs <backlog file name>`. It prints `ai/guidelines/product-backlog.md` first, then the backlog CSV. The guidelines hold the rules for each level; do not restate or replace them from memory.
 3. The CSV is the second part of that output. Columns: `ID, Epic, Feature, Title, User Story, Sprint points, Priority, Depends On, Acceptance Criteria, Notes`.
    - `Title` is the title of the user story. `Feature` is the functional component the story belongs to.
    - `User Story` is `As a <role>, I want <action>, so that <benefit>`.
@@ -21,7 +21,7 @@ Review one backlog CSV, write the suggestions to a review CSV and write a report
 
 ## What to check
 
-Every standard (definitions, the size limit, what Independent means, acceptance-criteria rules) is in `guidelines/product-backlog.md`, printed first by `read-backlog.mjs`. Apply it as written; this section only says what to look at and how to treat it.
+Every standard (definitions, the size limit, what Independent means, acceptance-criteria rules) is in `ai/guidelines/product-backlog.md`, printed first by `read-backlog.mjs`. Apply it as written; this section only says what to look at and how to treat it.
 
 ### 1. Hierarchy (Epic > Feature > Story)
 

@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildProposals } from '../src/user-story-generator/proposal-input.js';
-import { loadBacklog } from '../src/user-story-generator/model.js';
+import { buildProposals } from '../core/proposal-input.js';
+import { loadBacklog } from '../core/model.js';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const skill = (name) => fs.readFileSync(path.join(REPO, '.claude', 'skills', name, 'SKILL.md'), 'utf8');

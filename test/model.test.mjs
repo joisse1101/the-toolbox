@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseCsv } from '../src/shared/csv.js';
+import { parseCsv } from '../core/csv.js';
 import {
   loadBacklog, serializeBacklog, newStory, newBacklogText, shouldSplit, storyIssues, storyLabel, COLUMNS,
   groupByEpic, displayOrder, applyBulk,
-} from '../src/user-story-generator/model.js';
+} from '../core/model.js';
 
 const SAMPLE =
   '﻿Jira Key,Title,Sprint points,Epic,User Story,Feature,Acceptance Criteria,Priority,Notes\r\n' +
