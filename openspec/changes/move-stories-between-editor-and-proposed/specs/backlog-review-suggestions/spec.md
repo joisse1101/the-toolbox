@@ -14,3 +14,10 @@ When a backlog story is moved to Proposed, its open review suggestions (those th
 #### Scenario: Nothing to dismiss
 - **WHEN** the story has no open suggestion, only applied or dismissed ones
 - **THEN** the move happens without a prompt and those rows are unchanged
+
+### Requirement: Suggestions follow stories renumbered by a move
+When moving a story to Proposed renumbers the stories below it, the open suggestions of those stories SHALL be re-pointed to their new IDs, including the story IDs named in the Current and Suggested of Depends On suggestions, so no suggestion lands on a different story. A Depends On suggestion that names the moved story SHALL then name its new placeholder ID. Applied and dismissed suggestions SHALL stay as written.
+
+#### Scenario: Later story keeps its suggestions
+- **WHEN** `IAM-0002` is moved to Proposed and `IAM-0003` becomes `IAM-0002`
+- **THEN** the open suggestions that were on `IAM-0003` are on `IAM-0002` and are still applicable

@@ -16,6 +16,10 @@
 - [x] 3.2 `App.jsx`: handler that dismisses open suggestions (confirm only if any), applies `moveToProposed` to backlog and proposals, shows an ok/error notice
 - [x] 3.3 Wire the Editor tab's form only
 
+## 3b. Review suggestions follow renumbering
+
+- [x] 3b.1 `moveToProposed` returns the recoded IDs; `retargetRows` (review.js) and `useReview.retarget` re-point open rows; called from the move handler; test
+
 ## 4. Verify
 
 - [ ] 4.1 `npm test`, `npm run build`, and try both moves in the browser (locked-file retry path included)

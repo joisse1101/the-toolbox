@@ -490,6 +490,27 @@ export function openCounts(rows, stories) {
 // Applied and dismissed rows are not units. Dismiss them with `indexes`.
 export const openUnitsFor = (rows, code) => unitsOf(rows).filter((u) => code && unitStoryCode(u) === code);
 
+// Open rows follow their story when IDs are recomputed: `recoded` maps old code -> new code. Applied and dismissed rows
+// are history and stay as written. Depends On rows also name other stories, in Current and Suggested.
+// Same array when nothing changes.
+export function retargetRows(rows, recoded) {
+  const to = (code) => (recoded.has(code) ? recoded.get(code) : code);
+  const list = (text) => String(text).split(';').map((c) => to(c.trim())).join(';');
+  let changed = false;
+  const out = rows.map((r) => {
+    if (r.status !== 'open') return r;
+    const next = { ...r, storyId: to(r.storyId) };
+    if (r.field === 'Depends On') {
+      next.current = list(r.current);
+      next.suggested = list(r.suggested);
+    }
+    if (next.storyId === r.storyId && next.current === r.current && next.suggested === r.suggested) return r;
+    changed = true;
+    return next;
+  });
+  return changed ? out : rows;
+}
+
 // Units whose story is not in the backlog any more (renumbered, moved or deleted): shown as stale in one place.
 export function orphanUnits(rows, stories) {
   const codes = new Set(stories.map((s) => s.code).filter(Boolean));

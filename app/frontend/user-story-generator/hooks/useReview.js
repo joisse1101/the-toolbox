@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createFileStore } from '../../shared/files.js';
-import { parseReview, serializeReview } from '../../../../core/review.js';
+import { parseReview, serializeReview, retargetRows } from '../../../../core/review.js';
 
 const store = createFileStore('reviews');
 const SAVE_DEBOUNCE_MS = 400;
@@ -110,13 +110,26 @@ export function useReview(current) {
     m.timer = setTimeout(flush, SAVE_DEBOUNCE_MS);
   }, [m, setAll, flush]);
 
+  // Stories were renumbered (recoded: old code -> new code): open rows follow their story and the file is saved.
+  const retarget = useCallback((recoded) => {
+    if (!m.name) return;
+    const next = retargetRows(m.rows, recoded);
+    if (next === m.rows) return;
+    setAll(next);
+    m.dirty = true;
+    m.dirtyName = m.name;
+    clearTimeout(m.timer);
+    clearTimeout(m.retry);
+    m.timer = setTimeout(flush, SAVE_DEBOUNCE_MS);
+  }, [m, setAll, flush]);
+
   useEffect(() => () => {
     clearTimeout(m.timer);
     clearTimeout(m.retry);
   }, [m]);
 
   return useMemo(
-    () => ({ rows, exists, message, notice, notify: setNotice, decide, reload: load }),
-    [rows, exists, message, notice, decide, load],
+    () => ({ rows, exists, message, notice, notify: setNotice, decide, retarget, reload: load }),
+    [rows, exists, message, notice, decide, retarget, load],
   );
 }

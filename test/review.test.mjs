@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { loadBacklog } from '../core/model.js';
 import {
   parseReview, serializeReview, validateFindings, fillCurrent, mergeStatus, suggestionState, applySuggestions,
-  unitsOf, unitState, openCounts, openUnitsFor, reviewOverview, REVIEW_COLUMNS,
+  unitsOf, unitState, openCounts, openUnitsFor, retargetRows, reviewOverview, REVIEW_COLUMNS,
 } from '../core/review.js';
 
 const CSV =
@@ -338,4 +338,18 @@ test('openUnitsFor: a stale suggestion still counts, a split group is one unit',
   const edited = b.stories.map((s) => (s.code === 'IAM-0001' ? { ...s, title: 'Changed by hand' } : s));
   assert.equal(unitState(openUnitsFor(rows, 'IAM-0001')[0], edited).state, 'stale');
   assert.deepEqual(openUnitsFor(rows, 'IAM-0001').map((u) => u.indexes), [[0, 1]]);
+});
+
+test('retargetRows: open rows follow renumbered stories, history stays, Depends On targets follow too', () => {
+  const b = backlog();
+  const rows = rowsFor([
+    finding({ storyId: 'IAM-0002', field: 'Title', suggested: 'X' }),
+    finding({ storyId: 'IAM-0002', field: 'Depends On', action: 'add', suggested: 'IAM-0003' }),
+    finding({ storyId: 'IAM-0003', field: 'Title', suggested: 'Y' }),
+  ], b);
+  rows[2].status = 'dismissed';
+  const out = retargetRows(rows, new Map([['IAM-0002', 'IAM-0001'], ['IAM-0003', 'IAM-0002']]));
+  assert.deepEqual(out.map((r) => r.storyId), ['IAM-0001', 'IAM-0001', 'IAM-0003']);
+  assert.equal(out[1].suggested, 'IAM-0002');
+  assert.equal(retargetRows(rows, new Map()), rows);
 });

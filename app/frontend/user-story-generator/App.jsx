@@ -92,6 +92,8 @@ export default function App() {
     actions.replaceStories(result.backlog);
     proposals.actions.replaceStories(result.proposals);
     if (units.length) review.decide(units.flatMap((u) => u.indexes), 'dismissed');
+    // The stories below it were renumbered: their open suggestions follow them. Links to the moved story now name its placeholder.
+    review.retarget(new Map([...result.recoded, [story.code, result.moved.code]]));
     setProposedNotice({ kind: 'ok', text: `Moved ${story.code} to Proposed as ${result.moved.code}.` }); // shown in the Proposed tab
   };
 

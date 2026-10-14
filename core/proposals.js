@@ -144,7 +144,8 @@ function relink(stories, map) {
 // a new placeholder. Links to it are rewritten to the placeholder first, so renumbering the backlog cannot bind them
 // to whichever story takes its position; then the remaining backlog is renumbered and every link to a backlog story
 // (the moved story's own, and the proposals') follows the new codes. A story without an ID cannot be moved.
-// Returns { backlog, proposals, moved } or { error }.
+// Returns { backlog, proposals, moved, recoded } (recoded: old code -> new code of the backlog stories whose ID changed,
+// '' when one lost its ID) or { error }.
 export function moveToProposed(backlogStories, proposedStories, id, headers) {
   const story = backlogStories.find((s) => s.id === id);
   if (!story) return { error: 'The story is not in the backlog.' };
@@ -164,5 +165,5 @@ export function moveToProposed(backlogStories, proposedStories, id, headers) {
   while (cells.length < headers.length) cells.push('');
   const [moved] = relink([{ ...story, code: placeholder, cells, dependsOn: [...story.dependsOn], ambiguous: [...story.ambiguous] }], newCode);
   const proposals = [...relink(proposedStories, new Map([...toPlaceholder, ...newCode])), moved];
-  return { backlog, proposals, moved };
+  return { backlog, proposals, moved, recoded: newCode };
 }
