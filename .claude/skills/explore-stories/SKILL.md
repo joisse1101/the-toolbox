@@ -27,4 +27,4 @@ Help the user work out new stories for one backlog by talking them through. **Ne
 
 ## Hand over
 
-When the user is happy with the drafts, say so and offer to continue with `propose-stories`. Do not try to save them from here, and do not run any command other than the reader.
+When the user is happy with the drafts, say so and offer to continue with `propose-stories` (in the same session if it was started with `shape-stories.ps1`). Do not try to save them from here, and do not run any command other than the reader.
