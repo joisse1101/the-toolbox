@@ -92,10 +92,12 @@ export function writeReview({ dataDir = DATA_DIR, name, input, append = false })
   } catch (err) {
     return { ok: false, errors: [describeParseError(err, input)] };
   }
-  const errors = validateFindings(findings, backlog).map((e) => e.replace(/^Finding (\d+)/, 'Finding $1 in this batch'));
-
   const old = readRows(path.join(reviewDir, file));
   const earlier = readRows(path.join(reviewDir, `${file}.decided`));
+  // A field edit on a locked story needs an unlock row in the resulting file: the rows this batch is added to count.
+  const existingRows = append && old.ok ? old.rows : [];
+  const errors = validateFindings(findings, backlog, { existingRows }).map((e) => e.replace(/^Finding (\d+)/, 'Finding $1 in this batch'));
+
   if (append && !old.ok) errors.push(`reviews/${file} cannot be appended to: ${old.error}`);
   if (append && old.ok && Array.isArray(findings)) {
     const used = new Set(old.rows.map((r) => r.group).filter(Boolean));

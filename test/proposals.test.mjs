@@ -225,3 +225,11 @@ test('moveToProposed then acceptProposed: back at the end of its Epic, links fol
   assert.deepEqual(back.backlog.map((s) => s.title), ['a1', 'a3', 'a2']);
   assert.deepEqual(back.backlog.find((s) => s.title === 'a3').dependsOn, ['A-0003']);
 });
+
+test('moveToProposed refuses a locked story; acceptProposed produces unlocked stories', () => {
+  const b = backlogOf(st('Alpha'), st('Alpha'));
+  const locked = [{ ...b[0], locked: true }, b[1]];
+  assert.match(moveToProposed(locked, [], locked[0].id, COLUMNS).error, /Unlock/);
+  const p = prop('NEW-1', 'Alpha', { locked: true });
+  assert.equal(acceptProposed(b, [p], new Set([p.id]), COLUMNS).accepted[0].locked, false);
+});

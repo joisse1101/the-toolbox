@@ -95,7 +95,7 @@ test('add-only: existing rows, order, unknown columns and user edits are kept, n
   // The user edits and reorders rows in the portal: the file now holds NEW-2 (with a Team value), then NEW-1.
   const edited = fs.readFileSync(proposalPath(root), 'utf8').split('\r\n');
   const [head, one, two] = edited;
-  fs.writeFileSync(proposalPath(root), [head, two.replace('Two', 'Edited by the user').replace(/,$/, ',Red'), one, ''].join('\r\n'));
+  fs.writeFileSync(proposalPath(root), [head, two.replace('Two', 'Edited by the user').replace(/,,$/, ',Red,'), one, ''].join('\r\n'));
   const before = load(root);
   assert.equal(before.stories[0].title, 'Edited by the user');
   assert.equal(before.stories[0].cells[before.headers.indexOf('Team')], 'Red');

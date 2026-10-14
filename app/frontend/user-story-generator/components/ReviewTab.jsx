@@ -4,7 +4,7 @@ import { Suggestion } from './Suggestions.jsx';
 import { storyLabel } from '../../../../core/model.js';
 
 // Every suggestion of the review in one place: open ones grouped by Area, out-of-date ones (Dismiss only) last.
-export default function ReviewTab({ rows, stories, hidden, onOpen, onApply, onDismiss }) {
+export default function ReviewTab({ rows, stories, hidden, onOpen, onApply, onDismiss, onUnlock }) {
   const { sections, outOfDate, openCount } = useMemo(() => reviewOverview(rows, stories), [rows, stories]);
   const byCode = useMemo(() => new Map(stories.filter((s) => s.code).map((s) => [s.code, s])), [stories]);
 
@@ -19,7 +19,7 @@ export default function ReviewTab({ rows, stories, hidden, onOpen, onApply, onDi
     );
   };
   const entry = (unit) => (
-    <Suggestion key={unit.key} unit={unit} stories={stories} heading={heading(unit)} onApply={onApply} onDismiss={onDismiss} />
+    <Suggestion key={unit.key} unit={unit} stories={stories} heading={heading(unit)} onApply={onApply} onDismiss={onDismiss} onUnlock={onUnlock} />
   );
 
   return (

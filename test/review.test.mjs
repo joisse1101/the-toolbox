@@ -353,3 +353,105 @@ test('retargetRows: open rows follow renumbered stories, history stays, Depends 
   assert.equal(out[1].suggested, 'IAM-0002');
   assert.equal(retargetRows(rows, new Map()), rows);
 });
+
+// ---------- locked stories ----------
+
+// IAM-0002 (Logout) locked.
+const lockedBacklog = () => {
+  const b = backlog();
+  b.stories = b.stories.map((s) => (s.code === 'IAM-0002' ? { ...s, locked: true } : s));
+  return b;
+};
+const unlockFinding = (over = {}) => ({
+  storyId: 'IAM-0002', field: '', action: 'unlock', suggested: '', reason: 'Far too vague to build', area: 'INVEST', confidence: 'ready', group: '', ...over,
+});
+const editLogout = (over = {}) => finding({ storyId: 'IAM-0002', ...over });
+
+test('an unlock row round-trips through the review CSV and is valid for a locked story', () => {
+  assert.deepEqual(validateFindings([unlockFinding()], lockedBacklog()), []);
+  const rows = fillCurrent([unlockFinding()], lockedBacklog());
+  assert.equal(rows[0].current, '');
+  assert.equal(rows[0].status, 'open');
+  const back = parseReview(serializeReview(rows));
+  assert.deepEqual(back.rows, rows);
+  assert.equal(back.skipped, 0);
+});
+
+test('unlock rows: the story must be locked, Field/Suggested/Group must be empty', () => {
+  assert.ok(validateFindings([unlockFinding({ storyId: 'IAM-0001' })], lockedBacklog()).some((e) => e.includes('not locked')));
+  assert.ok(validateFindings([unlockFinding({ storyId: 'ZZ-0001' })], lockedBacklog()).some((e) => e.includes('ZZ-0001')));
+  for (const over of [{ field: 'Title' }, { suggested: 'x' }, { group: 'g' }]) {
+    assert.ok(validateFindings([unlockFinding(over)], lockedBacklog()).some((e) => e.includes('empty Field, Suggested and Group')), JSON.stringify(over));
+  }
+  assert.ok(validateFindings([unlockFinding({ reason: '' })], lockedBacklog()).some((e) => e.includes('Reason')));
+});
+
+test('a field edit on a locked story needs an unlock row in the batch or in the existing rows', () => {
+  const b = lockedBacklog();
+  const without = validateFindings([editLogout()], b);
+  assert.ok(without.some((e) => e.includes('IAM-0002') && e.includes('locked')));
+  assert.deepEqual(validateFindings([editLogout(), unlockFinding()], b), []);
+  const earlier = fillCurrent([unlockFinding()], b);
+  assert.deepEqual(validateFindings([editLogout()], b, { existingRows: earlier }), []);
+  // an unlock row for another story does not count
+  assert.ok(validateFindings([editLogout()], b, { existingRows: [{ ...earlier[0], storyId: 'IAM-0003' }] }).length > 0);
+  // unlocked stories need nothing
+  assert.deepEqual(validateFindings([finding()], b), []);
+});
+
+test('a split group that narrows a locked story needs an unlock row too', () => {
+  const group = [
+    editLogout({ confidence: 'confirm', group: 'split', suggested: 'Sign out' }),
+    { storyId: 'NEW-1', field: 'Title', action: 'add-story', suggested: 'Expire session', reason: 'r', area: 'INVEST', confidence: 'confirm', group: 'split' },
+  ];
+  assert.ok(validateFindings(group, lockedBacklog()).some((e) => e.includes('locked')));
+  assert.deepEqual(validateFindings([...group, unlockFinding()], lockedBacklog()), []);
+});
+
+test('suggestions on a locked story are in the locked state, unlock rows are open while locked', () => {
+  const b = lockedBacklog();
+  const [edit, unlock] = fillCurrent([editLogout({ suggested: 'Sign out' }), unlockFinding()], b);
+  assert.deepEqual(suggestionState(edit, b.stories), { state: 'locked' });
+  assert.deepEqual(suggestionState(unlock, b.stories), { state: 'open' });
+  const plain = backlog();
+  assert.deepEqual(suggestionState(edit, plain.stories), { state: 'open' });
+  assert.equal(suggestionState(unlock, plain.stories).state, 'stale');
+  assert.equal(suggestionState({ ...unlock, storyId: 'ZZ-0001' }, b.stories).state, 'stale');
+  // stale wins over locked: the field was edited since the review
+  const edited = b.stories.map((s) => (s.code === 'IAM-0002' ? { ...s, title: 'Other' } : s));
+  assert.equal(suggestionState(edit, edited).state, 'stale');
+});
+
+test('unitState: a group with a locked story is locked; applying it is refused', () => {
+  const b = lockedBacklog();
+  const rows = fillCurrent([
+    editLogout({ confidence: 'confirm', group: 'split', suggested: 'Sign out' }),
+    { storyId: 'NEW-1', field: 'Title', action: 'add-story', suggested: 'Expire session', reason: 'r', area: 'INVEST', confidence: 'confirm', group: 'split' },
+  ], b);
+  const [unit] = unitsOf(rows);
+  assert.equal(unitState(unit, b.stories).state, 'locked');
+  assert.ok(applySuggestions(b.stories, unit.rows, b.headers).error.includes('locked'));
+  const open = backlog();
+  assert.equal(unitState(unit, open.stories).state, 'open');
+  assert.ok(applySuggestions(open.stories, unit.rows, open.headers).stories);
+});
+
+test('applySuggestions refuses an unlock row; counts include locked-held and unlock rows', () => {
+  const b = lockedBacklog();
+  const rows = fillCurrent([editLogout({ suggested: 'Sign out' }), unlockFinding()], b);
+  assert.ok(applySuggestions(b.stories, [rows[1]], b.headers).error);
+  assert.equal(openCounts(rows, b.stories).get('IAM-0002'), 2);
+  const overview = reviewOverview(rows, b.stories);
+  assert.equal(overview.openCount, 2);
+  assert.equal(overview.outOfDate.length, 0);
+  // once unlocked by hand the unlock row is out of date and the edit is a normal suggestion
+  const free = reviewOverview(rows, backlog().stories);
+  assert.equal(free.outOfDate.length, 1);
+  assert.equal(free.openCount, 1);
+});
+
+test('re-run keeps the status of an identical unlock row', () => {
+  const [row] = fillCurrent([unlockFinding()], lockedBacklog());
+  const merged = mergeStatus([row], [{ ...row, status: 'dismissed' }]);
+  assert.equal(merged[0].status, 'dismissed');
+});

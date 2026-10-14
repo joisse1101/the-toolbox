@@ -55,6 +55,13 @@ export default function App() {
     else review.decide(unit.indexes, 'applied');
   };
   const dismissUnit = (unit) => review.decide(unit.indexes, 'dismissed');
+  // The Unlock button of an unlock row: lift the lock, change nothing else, and mark the row applied.
+  const unlockUnit = (unit) => {
+    const story = stories.find((s) => s.code === unitStoryCode(unit));
+    if (!story) return;
+    actions.lockStory(story.id, false);
+    review.decide(unit.indexes, 'applied');
+  };
   const openReviewCount = useMemo(() => reviewOverview(review.rows, stories).openCount, [review.rows, stories]);
   const dismissOrphans = () => review.decide(orphans.flatMap((u) => u.indexes), 'dismissed');
   // The Review tab only exists while the backlog has a review file; leave it when the file goes away.
@@ -220,7 +227,7 @@ export default function App() {
                 <StoryForm
                   story={selected} stories={stories} problems={problems} suggestions={selectedUnits} focusRequest={focusRequest}
                   onFocused={() => setFocusRequest(null)} onEdit={actions.editStory} onCommitEpic={actions.commitEpic} onOpen={actions.selectStory}
-                  onApplySuggestion={applyUnit} onDismissSuggestion={dismissUnit} onMoveToProposed={moveToProposed}
+                  onApplySuggestion={applyUnit} onDismissSuggestion={dismissUnit} onUnlockSuggestion={unlockUnit} onMoveToProposed={moveToProposed} onLock={actions.lockStory}
                 />
               )}
             </>
@@ -237,13 +244,13 @@ export default function App() {
 
         <StoriesTab
           stories={stories} problems={problems} checked={checked} lastChecked={lastChecked} hidden={!current || view !== 'stories'}
-          onOpen={openInEditor} onCheck={actions.toggleChecked} onCheckAll={actions.checkAll} onApplyBulk={actions.applyBulkPatch}
+          onOpen={openInEditor} onCheck={actions.toggleChecked} onCheckAll={actions.checkAll} onApplyBulk={actions.applyBulkPatch} onLockChecked={actions.lockChecked}
         />
 
         {review.exists && (
           <ReviewTab
             rows={review.rows} stories={stories} hidden={!current || view !== 'review'}
-            onOpen={openInEditor} onApply={applyUnit} onDismiss={dismissUnit}
+            onOpen={openInEditor} onApply={applyUnit} onDismiss={dismissUnit} onUnlock={unlockUnit}
           />
         )}
 

@@ -74,9 +74,10 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
                 key={s.id}
                 className={['in-feature', s.id === selectedId ? 'selected' : '', issueClass(errors, warnings), s.id === drag ? 'dragging' : '', marker].join(' ').trim()}
                 title={rowTooltip(s, errors, warnings)}
-                draggable
+                draggable={!s.locked}
                 onClick={() => onSelect(s.id)}
                 onDragStart={(e) => {
+                  if (s.locked) return e.preventDefault(); // a locked story stays where it is
                   e.dataTransfer.effectAllowed = 'move';
                   e.dataTransfer.setData('text/plain', String(s.id)); // Firefox needs data to start a drag
                   setDrag(s.id);
@@ -95,6 +96,7 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
                     onClick={(e) => e.stopPropagation()} onChange={() => onToggle(s.id)}
                   />
                 )}
+                {s.locked && <span className="lock-mark" title="Locked: reference only" aria-label="Locked">🔒</span>}
                 {s.code && <span className="code">{s.code}</span>}
                 <span className="title">{storyLabel(s)}</span>
                 {suggestionCounts.get(s.code) > 0 && (
@@ -110,7 +112,7 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
       </ul>
       <div className="row">
         <button type="button" id="addStoryBtn" className="primary" onClick={onAdd}>Add story</button>
-        <button type="button" id="deleteStoryBtn" className="danger" disabled={selectedId === null || !stories.some((s) => s.id === selectedId)} onClick={onDelete}>Delete selected</button>
+        <button type="button" id="deleteStoryBtn" className="danger" disabled={selectedId === null || !stories.some((s) => s.id === selectedId && !s.locked)} title={stories.some((s) => s.id === selectedId && s.locked) ? 'Unlock the story to delete it' : undefined} onClick={onDelete}>Delete selected</button>
       </div>
     </aside>
   );

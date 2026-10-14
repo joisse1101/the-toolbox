@@ -159,7 +159,7 @@ test('storyLabel', () => {
 });
 
 test('loaded story with empty criteria cell shows one blank criterion and saves an empty cell', () => {
-  const text = COLUMNS.join(',') + String.fromCharCode(13,10) + 'E-0001,E,C,F,,,,,,' + String.fromCharCode(13,10) + '';
+  const text = COLUMNS.join(',') + String.fromCharCode(13,10) + 'E-0001,E,C,F,,,,,,,' + String.fromCharCode(13,10) + '';
   const b = loadBacklog(text);
   assert.equal(b.changed, false);
   assert.deepEqual(b.stories[0].criteria, [{ given: '', when: '', then: '' }]);
@@ -193,7 +193,7 @@ test('groupByEpic splits each epic by feature and displayOrder follows epic then
 
 test('applyBulk sets only the chosen fields on the selected stories', () => {
   const stories = [1, 2, 3].map((id) => Object.assign(newStory(COLUMNS), { id, epic: 'E', feature: 'C', priority: 'Low' }));
-  assert.equal(applyBulk(stories, new Set([1, 3]), { priority: 'High', epic: ' ', feature: 'New' }), 2);
+  assert.deepEqual(applyBulk(stories, new Set([1, 3]), { priority: 'High', epic: ' ', feature: 'New' }), { changed: 2, skipped: 0 });
   assert.deepEqual(stories.map((s) => [s.epic, s.feature, s.priority]), [['E', 'New', 'High'], ['E', 'C', 'Low'], ['E', 'New', 'High']]);
   applyBulk(stories, new Set([1]), { priority: '', epic: 'Billing' });
   assert.deepEqual([stories[0].epic, stories[0].priority], ['Billing', '']);
@@ -221,4 +221,38 @@ test('placeholder IDs and their Depends On survive a load/serialize round trip',
   const kept = loadBacklog(PROPOSED, { placeholderIds: true });
   const again = loadBacklog(serializeBacklog(kept), { placeholderIds: true });
   assert.deepEqual(again.stories.map((s) => [s.code, s.dependsOn]), [['NEW-3', ['NEW-1', 'IAM-0002']], ['NEW-1', []]]);
+});
+
+test('Locked column: Yes loads as locked and round-trips', () => {
+  const text = COLUMNS.join(',') + '\r\nE-0001,E,F,One,,,,,,,Yes\r\nE-0002,E,F,Two,,,,,,,\r\n';
+  const b = loadBacklog(text);
+  assert.deepEqual(b.stories.map((s) => s.locked), [true, false]);
+  assert.equal(b.changed, false);
+  assert.equal(serializeBacklog(b), text);
+});
+
+test('an older file gains the Locked column on save', () => {
+  const b = loadBacklog('ID,Epic,Title\r\nE-0001,E,One\r\n');
+  assert.ok(b.headers.includes('Locked'));
+  assert.equal(b.stories[0].locked, false);
+  assert.match(serializeBacklog(b), /Locked\r\n/);
+});
+
+test('Locked: Yes without an ID, or any other value, loads unlocked', () => {
+  const b = loadBacklog('ID,Epic,Title,Locked\r\n,,One,Yes\r\nE-0001,E,Two,maybe\r\nE-0002,E,Three, YES \r\n');
+  assert.deepEqual(b.stories.map((s) => s.locked), [false, false, true]);
+});
+
+test('proposed stories are never locked', () => {
+  const b = loadBacklog('ID,Epic,Title,Locked\r\nNEW-1,E,One,Yes\r\n', { placeholderIds: true });
+  assert.equal(b.stories[0].locked, false);
+});
+
+test('applyBulk: an Epic change skips locked stories but Priority and Feature still apply', () => {
+  const stories = [1, 2, 3].map((id) => Object.assign(newStory(COLUMNS), { id, epic: 'E', feature: 'C', priority: 'Low', locked: id === 2 }));
+  assert.deepEqual(applyBulk(stories, new Set([1, 2, 3]), { epic: 'Billing' }), { changed: 2, skipped: 1 });
+  assert.deepEqual(stories.map((s) => s.epic), ['Billing', 'E', 'Billing']);
+  assert.deepEqual(applyBulk(stories, new Set([2]), { priority: 'High', epic: 'Billing', feature: 'F' }), { changed: 1, skipped: 1 });
+  assert.deepEqual([stories[1].epic, stories[1].priority, stories[1].feature], ['E', 'High', 'F']);
+  assert.deepEqual(applyBulk(stories, new Set([2]), { priority: 'Low' }), { changed: 1, skipped: 0 });
 });

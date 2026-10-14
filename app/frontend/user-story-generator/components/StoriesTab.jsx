@@ -7,10 +7,11 @@ const KEEP = 'keep'; // bulk Priority "No change" ('' is "None", which clears)
 const distinct = (stories, key) => [...new Set(stories.map((o) => o[key].trim()).filter(Boolean))];
 
 // Every story in one table, with ticks and a bulk edit bar. The table itself is read-only.
-export default function StoriesTab({ stories, problems, checked, lastChecked, hidden, onOpen, onCheck, onCheckAll, onApplyBulk }) {
+export default function StoriesTab({ stories, problems, checked, lastChecked, hidden, onOpen, onCheck, onCheckAll, onApplyBulk, onLockChecked }) {
   const [priority, setPriority] = useState(KEEP);
   const [epic, setEpic] = useState('');
   const [feature, setFeature] = useState('');
+  const [note, setNote] = useState('');
   const selectAll = useRef(null);
 
   const rows = displayOrder(stories);
@@ -42,13 +43,20 @@ export default function StoriesTab({ stories, problems, checked, lastChecked, hi
     const parts = [];
     if (patch.priority !== undefined) parts.push(patch.priority ? `Priority to "${patch.priority}"` : 'Priority to none');
     if (patch.epic) parts.push(`Epic to "${patch.epic}"`);
-    const renumbered = patch.epic ? stories.filter((s) => checked.has(s.id) && s.epic.trim() !== patch.epic).length : 0;
+    const lockedKept = patch.epic ? stories.filter((s) => checked.has(s.id) && s.locked).length : 0; // their Epic is read-only
+    const renumbered = patch.epic ? stories.filter((s) => checked.has(s.id) && !s.locked && s.epic.trim() !== patch.epic).length : 0;
     if (patch.feature) parts.push(`Feature to "${patch.feature}"`);
-    if (!confirm(`Set ${parts.join(', ')} on ${n} ${n === 1 ? 'story' : 'stories'}?${renumbered ? `\n\n${renumbered} ${renumbered === 1 ? 'story gets' : 'stories get'} new IDs, and links to them are updated.` : ''}\n\nThis cannot be undone.`)) return;
-    onApplyBulk(patch);
+    if (!confirm(`Set ${parts.join(', ')} on ${n} ${n === 1 ? 'story' : 'stories'}?${renumbered ? `\n\n${renumbered} ${renumbered === 1 ? 'story gets' : 'stories get'} new IDs, and links to them are updated.` : ''}${lockedKept ? `\n\n${lockedKept} locked ${lockedKept === 1 ? 'story keeps' : 'stories keep'} ${lockedKept === 1 ? 'its' : 'their'} Epic.` : ''}\n\nThis cannot be undone.`)) return;
+    const { skipped } = onApplyBulk(patch);
+    setNote(skipped ? `${skipped} locked ${skipped === 1 ? 'story' : 'stories'} kept ${skipped === 1 ? 'its' : 'their'} Epic.` : '');
     setPriority(KEEP);
     setEpic('');
     setFeature('');
+  };
+
+  const lock = (on) => {
+    const { skipped } = onLockChecked(on);
+    setNote(skipped ? `${skipped} skipped (no ID)` : '');
   };
 
   return (
@@ -72,6 +80,9 @@ export default function StoriesTab({ stories, problems, checked, lastChecked, hi
           <input type="text" id="bulkFeature" list="bulkFeatureList" autoComplete="off" placeholder="No change" value={feature} onChange={(e) => setFeature(e.target.value)} />
         </div>
         <button type="button" id="bulkApplyBtn" className="primary" disabled={isEmpty} onClick={apply}>Apply to selected</button>
+        <button type="button" id="lockSelectedBtn" onClick={() => lock(true)} title="Lock the selected stories: reference only, not reviewed, reordered, moved or deleted">Lock selected</button>
+        <button type="button" id="unlockSelectedBtn" onClick={() => lock(false)}>Unlock selected</button>
+        <span id="bulkNote" className="muted" role="status" aria-live="polite">{note}</span>
       </div>
       <div className="table-wrap">
         <table className="stories-table">
@@ -100,7 +111,7 @@ export default function StoriesTab({ stories, problems, checked, lastChecked, hi
                       onClick={(e) => tick(s.id, e.currentTarget.checked, e.shiftKey)}
                     />
                   </td>
-                  <td>{s.code}</td>
+                  <td>{s.locked && <span className="lock-mark" title="Locked: reference only" aria-label="Locked">🔒</span>}{s.code}</td>
                   <td>{s.epic}</td>
                   <td>{s.feature}</td>
                   <td><button type="button" className="link-btn" onClick={() => onOpen(s.id)}>{storyLabel(s)}</button></td>

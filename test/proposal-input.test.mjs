@@ -41,7 +41,7 @@ test('a valid story is built with a placeholder ID and the fields set', () => {
   assert.equal(s.priority, '');
   assert.equal(s.notes, 'From the audit');
   assert.equal(s.criteria.length, 2);
-  assert.equal(s.cells.length, 11);
+  assert.equal(s.cells.length, 12);
 });
 
 test('points may be a numeral string; each allowed value is accepted', () => {
@@ -151,8 +151,8 @@ test('built stories round-trip through the file with no raw-text fallback', () =
     assert.deepEqual(s.criteria, want.criteria);
     assert.equal(storyCellText(s), storyCellText(want));
     assert.equal(criteriaCellText(s), criteriaCellText(want));
-    assert.equal(s.cells.length, 11); // the Team column is padded
-    assert.equal(s.cells[10], '');
+    assert.equal(s.cells.length, 12); // the Team column is padded
+    assert.equal(s.cells[11], '');
   });
   assert.deepEqual(back.stories[1].dependsOn, ['IAM-0001', 'NEW-10']);
 });

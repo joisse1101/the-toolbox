@@ -5,7 +5,7 @@ import {
 import { dependencyChoices, dependentsOf } from '../../../../core/ids.js';
 import { issueClass } from './issues.js';
 import Info from './Info.jsx';
-import SuggestionList from './Suggestions.jsx';
+import SuggestionList, { Suggestion } from './Suggestions.jsx';
 import guideline from '../../../../ai/guidelines/sprint-points-guideline.md?raw';
 
 const $ = (id) => document.getElementById(id);
@@ -94,7 +94,7 @@ const CRITERIA_WARNING = 'The Acceptance Criteria cell does not follow "AC1: Giv
 // `focusRequest` = { id } or null: focus the element with that id (default: Epic) once rendered, then call onFocused.
 // `suggestions`: the open review units for this story ({ key, group, rows }); see review.js. Ungrouped ones sit next to
 // their field, split groups in their own section.
-export default function StoryForm({ story: s, stories, problems, suggestions = [], focusRequest, onFocused, onEdit, onCommitEpic, onOpen, onApplySuggestion, onDismissSuggestion, onMoveToProposed }) {
+export default function StoryForm({ story: s, stories, problems, suggestions = [], focusRequest, onFocused, onEdit, onCommitEpic, onOpen, onApplySuggestion, onDismissSuggestion, onUnlockSuggestion, onMoveToProposed, onLock }) {
   const [depInput, setDepInput] = useState('');
   useEffect(() => {
     if (!focusRequest) return;
@@ -145,10 +145,11 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
   const missing = (key) => (noValue(s[key]) ? 'missing' : undefined);
   const partMissing = (key) => (s.rawUserStory === null && noValue(s[key]) ? 'missing' : undefined);
   const optional = (key) => (noValue(s[key]) ? 'missing-optional' : undefined);
+  const unlockUnits = suggestions.filter((u) => u.rows[0].action === 'unlock');
   const forField = (...fields) => suggestions.filter((u) => !u.group && fields.includes(u.rows[0].field));
   const groups = suggestions.filter((u) => u.group);
   const list = (...fields) => (
-    <SuggestionList units={forField(...fields)} stories={stories} onApply={onApplySuggestion} onDismiss={onDismissSuggestion} />
+    <SuggestionList units={forField(...fields)} stories={stories} onApply={onApplySuggestion} onDismiss={onDismissSuggestion} onUnlock={onUnlockSuggestion} />
   );
 
   // Suggestions come from the open backlog: Feature is narrowed by Epic. Title has none.
@@ -159,20 +160,43 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
   return (
     <section
       id="storyForm"
-      className={`card story-form${cls === 'incomplete' ? ' incomplete' : ''}${cls === 'warn' ? ' warn' : ''}`}
+      className={`card story-form${cls === 'incomplete' ? ' incomplete' : ''}${cls === 'warn' ? ' warn' : ''}${s.locked ? ' locked' : ''}`}
       onKeyDown={(e) => onNavKeyDown(e, s)}
     >
       <div className="story-code" id="storyCode">
         {s.code ? <>ID: <strong>{s.code}</strong></> : 'No ID yet: one is assigned once an Epic is set.'}
+        {onLock && (
+          <label className="lock-toggle" title={s.code ? (s.locked ? 'Locked: reference only. It is not reviewed, reordered, moved or deleted, and its Epic and ID stay.' : 'Lock this story: reference only, not submitted for review') : 'Set an Epic first'}>
+            <input type="checkbox" id="lockToggle" checked={!!s.locked} disabled={!s.code} onChange={(e) => onLock(s.id, e.target.checked)} />
+            {' '}Locked
+          </label>
+        )}
         {onMoveToProposed && (
-          <button type="button" id="moveToProposedBtn" disabled={!s.code} title={s.code ? 'Remove this story from the backlog and make it a proposed story' : 'Set an Epic first'} onClick={() => onMoveToProposed(s)}>Move to Proposed</button>
+          <button
+            type="button" id="moveToProposedBtn" disabled={!s.code || s.locked}
+            title={!s.code ? 'Set an Epic first' : s.locked ? 'Unlock the story first' : 'Remove this story from the backlog and make it a proposed story'}
+            onClick={() => onMoveToProposed(s)}
+          >
+            Move to Proposed
+          </button>
         )}
       </div>
+
+      {unlockUnits.length > 0 && (
+        <div className="unlock-banner" id="unlockBanner" role="status">
+          {unlockUnits.map((u) => (
+            <Suggestion
+              key={u.key} unit={u} stories={stories} onApply={onApplySuggestion} onDismiss={onDismissSuggestion} onUnlock={onUnlockSuggestion}
+              heading={<p className="unlock-banner-title">The review suggests unlocking and reviewing this story.</p>}
+            />
+          ))}
+        </div>
+      )}
 
       <fieldset>
         <legend>Where it fits</legend>
         <div className="grid3">
-          <div><label htmlFor="epic">Epic</label><input type="text" id="epic" className={missing('epic')} list="epicList" autoComplete="off" value={s.epic} onChange={onEpicInput} onBlur={() => onCommitEpic(s.id)} />{list('Epic')}</div>
+          <div><label htmlFor="epic">Epic</label><input type="text" id="epic" className={missing('epic')} list="epicList" autoComplete="off" readOnly={!!s.locked} title={s.locked ? 'Unlock the story to change its Epic' : undefined} value={s.epic} onChange={onEpicInput} onBlur={() => onCommitEpic(s.id)} />{list('Epic')}</div>
           <div><label htmlFor="feature">Feature</label><input type="text" id="feature" className={missing('feature')} list="featureList" autoComplete="off" value={s.feature} onChange={setField('feature')} />{list('Feature')}</div>
           <div><label htmlFor="title">Title</label><input type="text" id="title" className={missing('title')} autoComplete="off" value={s.title} onChange={setField('title')} />{list('Title')}</div>
         </div>
@@ -342,7 +366,7 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
       {groups.length > 0 && (
         <fieldset>
           <legend>Suggested split</legend>
-          <SuggestionList units={groups} stories={stories} onApply={onApplySuggestion} onDismiss={onDismissSuggestion} />
+          <SuggestionList units={groups} stories={stories} onApply={onApplySuggestion} onDismiss={onDismissSuggestion} onUnlock={onUnlockSuggestion} />
         </fieldset>
       )}
 

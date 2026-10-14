@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { parseCsv } from '../core/csv.js';
 import { loadBacklog, serializeBacklog, newStory, storyIssues, COLUMNS } from '../core/model.js';
 import {
-  epicPrefix, renumber, moveStory, commitEpic, commitEpics, removeStory, dependentsOf, wouldCycle, dependencyChoices, backlogProblems,
+  epicPrefix, renumber, moveStory, commitEpic, commitEpics, removeStory, lockStories, unlockStories, dependentsOf, wouldCycle, dependencyChoices, backlogProblems,
 } from '../core/ids.js';
 
 let n = 0;
@@ -184,4 +184,95 @@ test('backlogProblems: a missing NEW-<n> entry says it is still proposed, other 
   const [a] = renumber([st('Billing', { dependsOn: ['NEW-5', 'ZZ-0009'] })]);
   const msgs = backlogProblems([a]).get(a.id);
   assert.deepEqual(msgs, ['Depends On lists NEW-5, a story that is still proposed', 'Depends On lists ZZ-0009, which does not exist']);
+});
+
+// A locked story with its code, as if loaded.
+const lk = (epic, code, extra = {}) => st(epic, { code, locked: true, ...extra });
+const IAM = 'Identity & Access Management';
+
+test('renumber: unlocked stories take the lowest free numbers around a locked one', () => {
+  const out = renumber([st(IAM), lk(IAM, 'IAM-0002'), st(IAM), st(IAM)]);
+  assert.deepEqual(codes(out), ['IAM-0001', 'IAM-0002', 'IAM-0003', 'IAM-0004']);
+  const gap = renumber([st(IAM), lk(IAM, 'IAM-0005'), st(IAM)]);
+  assert.deepEqual(codes(gap), ['IAM-0001', 'IAM-0005', 'IAM-0002']);
+  assert.equal(gap[1].locked, true);
+});
+
+test('renumber: deleting a story above a locked one leaves the locked ID alone', () => {
+  const a = st(IAM);
+  const stories = renumber([a, st(IAM), lk(IAM, 'IAM-0003')]);
+  const out = removeStory(stories, a.id);
+  assert.deepEqual(codes(out), ['IAM-0001', 'IAM-0003']);
+});
+
+test('renumber: a new story goes into the lowest free number', () => {
+  const out = renumber([lk(IAM, 'IAM-0001'), lk(IAM, 'IAM-0002'), st(IAM)]);
+  assert.deepEqual(codes(out), ['IAM-0001', 'IAM-0002', 'IAM-0003']);
+});
+
+test('renumber: an epic keeps the locked prefix when the epic order changes and initials are equal', () => {
+  // "Digital Dashboards" locked as DDI (it was second); "Data Delivery" now comes first and would take DD, not DDI.
+  const out = renumber([st('Data Delivery'), lk('Digital Dashboards', 'DD-0001'), st('Digital Dashboards')]);
+  assert.deepEqual(codes(out), ['DDA-0001', 'DD-0001', 'DD-0002']);
+  assert.equal(new Set(codes(out)).size, 3);
+});
+
+test('renumber: duplicate or malformed locked codes are demoted and renumbered', () => {
+  const out = renumber([lk(IAM, 'IAM-0001'), lk(IAM, 'IAM-0001'), lk(IAM, 'nonsense'), lk('', 'X-0001')]);
+  assert.deepEqual(codes(out), ['IAM-0001', 'IAM-0002', 'IAM-0003', '']);
+  assert.deepEqual(out.map((s) => s.locked), [true, false, false, false]);
+});
+
+test('renumber: a second epic claiming a prefix a locked epic already holds is demoted', () => {
+  const out = renumber([lk('Data Delivery', 'DD-0001'), lk('Digital Dashboards', 'DD-0002')]);
+  assert.equal(new Set(codes(out)).size, 2);
+  assert.deepEqual(out.map((s) => s.locked), [true, false]);
+  assert.equal(out[0].code, 'DD-0001');
+});
+
+test('renumber: links to a locked story survive, links to moved stories follow them', () => {
+  const locked = lk(IAM, 'IAM-0003');
+  const first = st(IAM, { code: 'IAM-0001' });
+  const dep = st(IAM, { code: 'IAM-0002', dependsOn: ['IAM-0003', 'IAM-0001'] });
+  const out = renumber([dep, first, locked]);
+  // dep is now first (IAM-0001), first is second (IAM-0002); the locked story stays IAM-0003.
+  assert.deepEqual(codes(out), ['IAM-0001', 'IAM-0002', 'IAM-0003']);
+  assert.deepEqual(out[0].dependsOn, ['IAM-0003', 'IAM-0002']);
+});
+
+test('renumber: returns the same array when locked codes are already right', () => {
+  const stories = [st(IAM, { code: 'IAM-0001' }), lk(IAM, 'IAM-0004')];
+  assert.equal(renumber(stories), stories);
+});
+
+test('guards: a locked story cannot be moved, deleted or have its Epic committed', () => {
+  const a = lk(IAM, 'IAM-0001');
+  const stories = renumber([a, st(IAM)]);
+  assert.equal(moveStory(stories, a.id, IAM, null), stories);
+  assert.equal(moveStory(stories, a.id, 'Billing', null), stories);
+  assert.equal(removeStory(stories, a.id), stories);
+  const edited = [{ ...stories[0], epic: 'Billing' }, stories[1]];
+  assert.equal(commitEpic(edited, a.id), edited);
+  assert.equal(commitEpics(edited, new Set([a.id])), edited);
+});
+
+test('guards: other stories can still be dragged past a locked one', () => {
+  const a = lk(IAM, 'IAM-0002');
+  const b = st(IAM);
+  const c = st(IAM);
+  const out = moveStory(renumber([b, a, c]), c.id, IAM, b.id);
+  assert.deepEqual(out.map((s) => s.id), [c.id, b.id, a.id]);
+  assert.equal(out.find((s) => s.id === a.id).code, 'IAM-0002');
+  assert.equal(new Set(codes(out)).size, 3);
+});
+
+test('lockStories / unlockStories: skip stories without an ID', () => {
+  const [x, y] = renumber([st(IAM), st('')]);
+  const locked = lockStories([x, y], new Set([x.id, y.id]));
+  assert.equal(locked.skipped, 1);
+  assert.deepEqual(locked.stories.map((s) => s.locked), [true, false]);
+  assert.equal(lockStories(locked.stories, new Set([x.id])).stories, locked.stories);
+  const open = unlockStories(locked.stories, new Set([x.id, y.id]));
+  assert.deepEqual(open.stories.map((s) => s.locked), [false, false]);
+  assert.equal(open.skipped, 0);
 });

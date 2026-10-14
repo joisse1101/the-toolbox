@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { createFileStore } from '../../shared/files.js';
 import { loadBacklog, newBacklogText, newStory, displayOrder, applyBulk } from '../../../../core/model.js';
-import { commitEpic, commitEpics, moveStory, removeStory, wouldCycle } from '../../../../core/ids.js';
+import { commitEpic, commitEpics, moveStory, removeStory, wouldCycle, lockStories, unlockStories } from '../../../../core/ids.js';
 import { applySuggestions } from '../../../../core/review.js';
 import { useAutosave } from './useAutosave.js';
 
@@ -58,6 +58,7 @@ export function reducer(state, action) {
         if (s.id !== action.id) return s;
         const draft = { ...s, criteria: s.criteria.map((c) => ({ ...c })) };
         action.change(draft);
+        if (s.locked) draft.epic = s.epic; // the Epic of a locked story is read-only
         return draft;
       });
       return withStories(state, stories);
@@ -77,6 +78,7 @@ export function reducer(state, action) {
       const i = stories.findIndex((s) => s.id === action.id);
       if (i < 0) return state;
       const rest = removeStory(stories, action.id);
+      if (rest === stories) return state; // a locked story is not deleted
       return withStories(state, rest, { selectedId: rest.length ? rest[Math.min(i, rest.length - 1)].id : null });
     }
     // Link/unlink from the Graph tab. A link to a missing story, to itself, a repeat or one that closes a cycle is ignored.
@@ -105,6 +107,11 @@ export function reducer(state, action) {
       const stories = action.stories;
       const keep = stories.some((s) => s.id === state.selectedId);
       return withStories(state, stories, { selectedId: keep ? state.selectedId : (stories[0]?.id ?? null) });
+    }
+    // Lock or unlock the ticked stories (or just action.ids). Stories without an ID are skipped when locking.
+    case 'lock': {
+      const { stories } = (action.on ? lockStories : unlockStories)(state.backlog.stories, action.ids);
+      return stories === state.backlog.stories ? state : withStories(state, stories);
     }
     case 'check': {
       const checked = new Set(state.checked);
@@ -244,7 +251,11 @@ export function useBacklog() {
 
       // Asks first. Resolves true when the story was deleted.
       deleteSelected() {
-        const { selectedId } = stateRef.current;
+        const { backlog, selectedId } = stateRef.current;
+        if (backlog?.stories.find((s) => s.id === selectedId)?.locked) {
+          setMessage('A locked story cannot be deleted. Unlock it first.');
+          return false;
+        }
         if (selectedId === null || !confirm('Delete the selected story?')) return false;
         dispatch({ type: 'delete', id: selectedId });
         return true;
@@ -270,7 +281,23 @@ export function useBacklog() {
 
       toggleChecked: (ids, on, anchor) => dispatch({ type: 'check', ids, on, anchor }),
       checkAll: (on, ids) => dispatch({ type: 'checkAll', on, ids }),
-      applyBulkPatch: (patch) => dispatch({ type: 'bulk', patch }),
+      // Resolves { skipped }: the locked ticked stories whose Epic was not changed.
+      applyBulkPatch(patch) {
+        const { backlog, checked } = stateRef.current;
+        const epicChange = typeof patch.epic === 'string' && patch.epic.trim() !== '';
+        const skipped = epicChange ? backlog.stories.filter((s) => checked.has(s.id) && s.locked).length : 0;
+        dispatch({ type: 'bulk', patch });
+        return { skipped };
+      },
+
+      // Lock or unlock the ticked stories. Resolves { skipped }: ticked stories without an ID that could not be locked.
+      lockChecked(on) {
+        const { backlog, checked } = stateRef.current;
+        const { skipped } = (on ? lockStories : unlockStories)(backlog.stories, checked);
+        dispatch({ type: 'lock', ids: checked, on });
+        return { skipped };
+      },
+      lockStory: (id, on) => dispatch({ type: 'lock', ids: new Set([id]), on }),
 
       // Resolves { ok: true } or { error } (the edit is not made on error).
       applySuggestions(rows) {

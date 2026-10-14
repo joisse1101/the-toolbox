@@ -209,3 +209,61 @@ test('proposals: replaceStories marks an edit', () => {
   assert.equal(next.edits, 1);
   assert.equal(next.selectedId, state.backlog.stories[1].id);
 });
+
+test('lock: locks a story with an ID, skips none for unlock, a no-op bumps nothing', () => {
+  let state = opened();
+  const a = byTitle(state, 'A');
+  const before = state.edits;
+  state = reducer(state, { type: 'lock', ids: new Set([a.id]), on: true });
+  assert.equal(byTitle(state, 'A').locked, true);
+  assert.equal(state.edits, before + 1);
+  assert.equal(reducer(state, { type: 'lock', ids: new Set([a.id]), on: true }), state);
+  state = reducer(state, { type: 'lock', ids: new Set([a.id]), on: false });
+  assert.equal(byTitle(state, 'A').locked, false);
+});
+
+test('a story without an ID cannot be locked', () => {
+  let state = opened('Epic,Title\r\n,Loose\r\nBilling,A\r\n');
+  const loose = byTitle(state, 'Loose');
+  const next = reducer(state, { type: 'lock', ids: new Set([loose.id]), on: true });
+  assert.equal(next, state);
+});
+
+test('locked story: edit cannot change the Epic, other fields still change; delete does nothing', () => {
+  let state = opened();
+  const a = byTitle(state, 'A');
+  state = reducer(state, { type: 'lock', ids: new Set([a.id]), on: true });
+  state = edit(state, a.id, (d) => { d.epic = 'Onboarding'; d.title = 'A2'; d.points = '3'; });
+  const locked = state.backlog.stories.find((s) => s.id === a.id);
+  assert.deepEqual([locked.epic, locked.title, locked.points], ['Billing', 'A2', '3']);
+  const after = reducer(state, { type: 'delete', id: a.id });
+  assert.equal(after, state);
+});
+
+test('locked story: move and commitEpic leave it alone, other stories shift around its fixed ID', () => {
+  let state = opened();
+  const [a, b] = state.backlog.stories;
+  state = reducer(state, { type: 'lock', ids: new Set([b.id]), on: true });
+  assert.equal(reducer(state, { type: 'move', id: b.id, epic: 'Onboarding', beforeId: null }), state);
+  state = reducer(state, { type: 'delete', id: a.id });
+  assert.deepEqual(state.backlog.stories.map((s) => s.code), ['B-0002', 'O-0001']);
+});
+
+test('bulk: an Epic change skips locked stories, Priority still applies to them', () => {
+  let state = opened();
+  const [a, b] = state.backlog.stories;
+  state = reducer(state, { type: 'lock', ids: new Set([a.id]), on: true });
+  state = reducer(state, { type: 'checkAll', on: true, ids: [a.id, b.id] });
+  state = reducer(state, { type: 'bulk', patch: { epic: 'Onboarding', priority: 'High' } });
+  const lockedA = state.backlog.stories.find((s) => s.id === a.id);
+  assert.deepEqual([lockedA.epic, lockedA.priority, lockedA.code], ['Billing', 'High', 'B-0001']);
+  assert.equal(state.backlog.stories.find((s) => s.id === b.id).epic, 'Onboarding');
+});
+
+test('applySuggestions on a locked story leaves the state alone', () => {
+  let state = opened();
+  const a = byTitle(state, 'A');
+  state = reducer(state, { type: 'lock', ids: new Set([a.id]), on: true });
+  const row = { storyId: a.code, field: 'Title', action: 'replace', current: 'A', suggested: 'New', reason: 'r', area: 'INVEST', confidence: 'ready', group: '', status: 'open' };
+  assert.equal(reducer(state, { type: 'applySuggestions', rows: [row] }), state);
+});

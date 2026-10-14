@@ -7,7 +7,7 @@ import { renumber } from './ids.js';
 import { composeStory, parseStory, composeCriteria, parseCriteria } from './story-text.js';
 
 export const COLUMNS = [
-  'ID', 'Epic', 'Feature', 'Title', 'User Story', 'Sprint points', 'Priority', 'Depends On', 'Acceptance Criteria', 'Notes',
+  'ID', 'Epic', 'Feature', 'Title', 'User Story', 'Sprint points', 'Priority', 'Depends On', 'Acceptance Criteria', 'Notes', 'Locked',
 ];
 export const POINTS = [1, 2, 3, 5, 8, 13, 21, 34, 55];
 export const SPLIT_ABOVE = 13;
@@ -41,6 +41,7 @@ export function newStory(headers) {
     epic: '', codedEpic: '', feature: '', title: '', // codedEpic: the epic the ID was last computed for
     asA: '', iWant: '', soThat: '',
     points: '', priority: '', notes: '',
+    locked: false, // reference only: keeps its ID, is not reordered, moved, deleted or reviewed (valid only with a code)
     criteria: [emptyCriterion()],
     rawUserStory: null, // original cell text when it did not follow the syntax
     rawCriteria: null,
@@ -60,6 +61,7 @@ function storyFromCells(cells, idx) {
   story.points = get('Sprint points');
   story.priority = get('Priority');
   story.notes = get('Notes');
+  story.locked = get('Locked').trim().toLowerCase() === 'yes' && !!story.code;
 
   const us = parseStory(get('User Story'));
   if (us.ok) {
@@ -99,8 +101,9 @@ export function loadBacklog(text, { placeholderIds = false } = {}) {
       return storyFromCells(cells, idx);
     });
   // IDs follow position, so recompute them (this also gives IDs to files that have none). `changed` = needs saving.
-  const stories = placeholderIds ? loaded : renumber(loaded);
-  return { headers, stories, hasBom: text.charCodeAt(0) === 0xfeff, changed: stories !== loaded };
+  // Proposed stories are never locked.
+  const stories = placeholderIds ? loaded.map((s) => (s.locked ? { ...s, locked: false } : s)) : renumber(loaded);
+  return { headers, stories, hasBom: text.charCodeAt(0) === 0xfeff, changed: placeholderIds ? false : stories !== loaded };
 }
 
 // The text written into the User Story / Acceptance Criteria cells (also feeds the previews).
@@ -127,6 +130,7 @@ export function serializeBacklog(backlog) {
     cells[idx['Depends On']] = s.dependsOn.join(';');
     cells[idx['Acceptance Criteria']] = criteriaCellText(s);
     cells[idx['Notes']] = s.notes;
+    cells[idx['Locked']] = s.locked && s.code ? 'Yes' : '';
     return cells;
   });
   return (backlog.hasBom ? BOM : '') + toCsv([backlog.headers, ...rows]);
@@ -198,19 +202,26 @@ export function displayOrder(stories) {
 }
 
 // Bulk edit. Only defined fields are set: priority undefined = no change ('' clears it); a blank epic or
-// feature means no change. Returns the number of stories changed.
+// feature means no change. The Epic of a locked story is read-only, so an Epic change skips it (its other fields
+// still change). Returns { changed, skipped }: the stories changed, and the locked ones whose Epic was not changed.
 export function applyBulk(stories, ids, { priority, epic, feature } = {}) {
   const patch = {};
   if (priority !== undefined) patch.priority = priority;
   if (!blank(epic)) patch.epic = epic.trim();
   if (!blank(feature)) patch.feature = feature.trim();
-  let count = 0;
+  const { epic: newEpic, ...lockedPatch } = patch;
+  let changed = 0;
+  let skipped = 0;
   for (const s of stories) {
     if (!ids.has(s.id)) continue;
-    Object.assign(s, patch);
-    count++;
+    const skipEpic = s.locked && newEpic !== undefined;
+    if (skipEpic) skipped++;
+    const apply = skipEpic ? lockedPatch : patch;
+    if (skipEpic && !Object.keys(apply).length) continue;
+    Object.assign(s, apply);
+    changed++;
   }
-  return count;
+  return { changed, skipped };
 }
 
 // Story list label: the title, or 'New story' while it is blank.

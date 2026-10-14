@@ -216,3 +216,50 @@ test('CLI: --append prints the batch size and the total; unknown arguments exit 
   assert.equal(bad.status, 2);
   assert.match(bad.stderr, /\[--append\]/);
 });
+
+// IAM-0002 locked: a Locked column on the backlog.
+function tempLocked() {
+  const root = temp();
+  const csv = CSV.replace(/\r\n/, ',Locked\r\n').replace(/,,,\r\n$/, ',,,,Yes\r\n');
+  fs.writeFileSync(path.join(root, 'user-stories', 'data.csv'), csv);
+  return root;
+}
+const unlock = (over = {}) => ({ storyId: 'IAM-0002', field: '', action: 'unlock', suggested: '', reason: 'Too big', area: 'INVEST', confidence: 'ready', group: '', ...over });
+const lockedEdit = (over = {}) => finding({ storyId: 'IAM-0002', field: 'Sprint points', suggested: '8', confidence: 'confirm', ...over });
+
+test('an unlock row for a locked story is accepted and written with empty Field and Current', () => {
+  const root = tempLocked();
+  const r = run(root, [unlock()]);
+  assert.deepEqual([r.ok, r.count], [true, 1], JSON.stringify(r.errors));
+  const [row] = parseReview(fs.readFileSync(reviewPath(root), 'utf8')).rows;
+  assert.deepEqual([row.storyId, row.action, row.field, row.suggested, row.current, row.status], ['IAM-0002', 'unlock', '', '', '', 'open']);
+});
+
+test('an unlock row for an unlocked story is rejected and nothing is written', () => {
+  const root = tempLocked();
+  const r = run(root, [unlock({ storyId: 'IAM-0001' })]);
+  assert.equal(r.ok, false);
+  assert.ok(r.errors.some((e) => e.includes('not locked')));
+  assert.equal(fs.existsSync(path.join(root, 'reviews')), false);
+});
+
+test('a field edit on a locked story needs an unlock row: in the batch, or from an earlier batch', () => {
+  const root = tempLocked();
+  const without = run(root, [lockedEdit()]);
+  assert.equal(without.ok, false);
+  assert.ok(without.errors.some((e) => e.includes('IAM-0002') && e.includes('locked')));
+  assert.equal(fs.existsSync(path.join(root, 'reviews')), false);
+
+  assert.equal(run(root, [lockedEdit(), unlock()]).ok, true);
+
+  const root2 = tempLocked();
+  assert.equal(run(root2, [unlock()]).ok, true);
+  const later = writeReview({ dataDir: root2, name: 'data.csv', input: JSON.stringify([lockedEdit()]), append: true });
+  assert.deepEqual([later.ok, later.count], [true, 2], JSON.stringify(later.errors));
+});
+
+test('a replacing write ignores the unlock row of the review it replaces', () => {
+  const root = tempLocked();
+  assert.equal(run(root, [unlock()]).ok, true);
+  assert.equal(run(root, [lockedEdit()]).ok, false);
+});

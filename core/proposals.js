@@ -92,7 +92,7 @@ export function acceptProposed(backlogStories, proposedStories, ids, headers) {
     const epic = liveEpic(s);
     const cells = s.cells.slice(0, headers.length);
     while (cells.length < headers.length) cells.push('');
-    return { ...s, epic, codedEpic: epic, cells, dependsOn: [...s.dependsOn], ambiguous: [...s.ambiguous] };
+    return { ...s, locked: false, epic, codedEpic: epic, cells, dependsOn: [...s.dependsOn], ambiguous: [...s.ambiguous] };
   });
 
   const placed = backlogStories.slice();
@@ -150,6 +150,7 @@ export function moveToProposed(backlogStories, proposedStories, id, headers) {
   const story = backlogStories.find((s) => s.id === id);
   if (!story) return { error: 'The story is not in the backlog.' };
   if (!story.code) return { error: 'Give the story an Epic before moving it to Proposed.' };
+  if (story.locked) return { error: 'Unlock the story before moving it to Proposed.' };
 
   const placeholder = nextPlaceholder(proposedStories, backlogStories);
   const toPlaceholder = new Map([[story.code, placeholder]]);
