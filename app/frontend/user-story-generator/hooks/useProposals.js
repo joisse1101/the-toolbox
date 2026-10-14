@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { createFileStore } from '../../shared/files.js';
-import { COLUMNS, loadBacklog, newStory } from '../../../../core/model.js';
+import { COLUMNS, loadBacklog, newStory, proposalHeaders } from '../../../../core/model.js';
 import { nextPlaceholder, removeProposed, moveProposed } from '../../../../core/proposals.js';
 import { useAutosave } from './useAutosave.js';
 
@@ -26,7 +26,7 @@ const initial = {
   edits: 0, // bumped by every change; the auto-save runs when it changes
 };
 
-const emptyFile = (headers) => ({ headers: headers ? [...headers] : [...COLUMNS], stories: [], hasBom: true });
+const emptyFile = (headers) => ({ headers: proposalHeaders(headers ?? COLUMNS), stories: [], hasBom: true });
 
 function withStories(state, stories, extra = {}) {
   return { ...state, backlog: { ...state.backlog, stories }, edits: state.edits + 1, ...extra };

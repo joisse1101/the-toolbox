@@ -63,6 +63,7 @@ export default function ProposedTab({
               <StoryForm
                 story={selected} stories={all} problems={problems} focusRequest={focusRequest}
                 onFocused={() => setFocusRequest(null)} onEdit={onEdit} onCommitEpic={onCommitEpic} onOpen={open}
+                onBench={(id, on) => onEdit(id, (d) => { d.benched = on; })}
               />
             )}
           </div>

@@ -97,6 +97,7 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
                   />
                 )}
                 {s.locked && <span className="lock-mark" title="Locked: reference only" aria-label="Locked">🔒</span>}
+                {s.benched && <span className="lock-mark" title="Benched: ignored by the explore and propose skills" aria-label="Benched">🪑</span>}
                 {s.code && <span className="code">{s.code}</span>}
                 <span className="title">{storyLabel(s)}</span>
                 {suggestionCounts.get(s.code) > 0 && (

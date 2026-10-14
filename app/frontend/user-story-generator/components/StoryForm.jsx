@@ -94,7 +94,7 @@ const CRITERIA_WARNING = 'The Acceptance Criteria cell does not follow "AC1: Giv
 // `focusRequest` = { id } or null: focus the element with that id (default: Epic) once rendered, then call onFocused.
 // `suggestions`: the open review units for this story ({ key, group, rows }); see review.js. Ungrouped ones sit next to
 // their field, split groups in their own section.
-export default function StoryForm({ story: s, stories, problems, suggestions = [], focusRequest, onFocused, onEdit, onCommitEpic, onOpen, onApplySuggestion, onDismissSuggestion, onUnlockSuggestion, onMoveToProposed, onLock }) {
+export default function StoryForm({ story: s, stories, problems, suggestions = [], focusRequest, onFocused, onEdit, onCommitEpic, onOpen, onApplySuggestion, onDismissSuggestion, onUnlockSuggestion, onMoveToProposed, onLock, onBench }) {
   const [depInput, setDepInput] = useState('');
   useEffect(() => {
     if (!focusRequest) return;
@@ -169,6 +169,12 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
           <label className="lock-toggle" title={s.code ? (s.locked ? 'Locked: reference only. It is not reviewed, reordered, moved or deleted, and its Epic and ID stay.' : 'Lock this story: reference only, not submitted for review') : 'Set an Epic first'}>
             <input type="checkbox" id="lockToggle" checked={!!s.locked} disabled={!s.code} onChange={(e) => onLock(s.id, e.target.checked)} />
             {' '}Locked
+          </label>
+        )}
+        {onBench && (
+          <label className="lock-toggle" title="Bench this story: the explore and propose skills ignore it. Nothing else changes.">
+            <input type="checkbox" id="benchToggle" checked={!!s.benched} onChange={(e) => onBench(s.id, e.target.checked)} />
+            {' '}Benched
           </label>
         )}
         {onMoveToProposed && (
