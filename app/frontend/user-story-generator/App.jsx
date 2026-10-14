@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { backlogProblems } from '../../../core/ids.js';
-import { unitsOf, unitStoryCode, openCounts, orphanUnits, reviewOverview } from '../../../core/review.js';
+import { unitsOf, unitStoryCode, openCounts, orphanUnits, reviewOverview, openUnitsFor } from '../../../core/review.js';
 import { useBacklog } from './hooks/useBacklog.js';
 import { useReview } from './hooks/useReview.js';
 import { useProposals } from './hooks/useProposals.js';
-import { acceptProposed } from '../../../core/proposals.js';
+import { acceptProposed, moveToProposed as moveStoryToProposed } from '../../../core/proposals.js';
 import FileBar from './components/FileBar.jsx';
 import Info from './components/Info.jsx';
 import StoryList from './components/StoryList.jsx';
@@ -79,8 +79,21 @@ export default function App() {
     const names = result.accepted.map((s) => s.code).join(', ');
     setProposedNotice({ kind: 'ok', text: `Accepted ${result.accepted.length === 1 ? '1 story' : `${result.accepted.length} stories`} into the backlog: ${names}.` });
   };
-  const acceptSelected = () => proposals.selected && accept(new Set([proposals.selected.id]));
+  const acceptSelected = (ids) => ids.size && accept(new Set(ids));
   const acceptAll = () => accept(new Set(proposals.stories.map((s) => s.id)));
+
+  // Editor -> Proposed for the open story. Its open review suggestions are marked dismissed (after a confirm, only
+  // when there are any). Order: backlog, proposals, review, like accept, so a crash leaves a duplicate, not a lost story.
+  const moveToProposed = (story) => {
+    const result = moveStoryToProposed(stories, proposals.stories, story.id, backlog.headers);
+    if (result.error) return review.notify(result.error);
+    const units = openUnitsFor(review.rows, story.code);
+    if (units.length && !window.confirm(`${story.code} has ${units.length} open review suggestion${units.length > 1 ? 's' : ''}. Moving it to Proposed marks ${units.length > 1 ? 'them' : 'it'} as dismissed. Continue?`)) return;
+    actions.replaceStories(result.backlog);
+    proposals.actions.replaceStories(result.proposals);
+    if (units.length) review.decide(units.flatMap((u) => u.indexes), 'dismissed');
+    setProposedNotice({ kind: 'ok', text: `Moved ${story.code} to Proposed as ${result.moved.code}.` }); // shown in the Proposed tab
+  };
 
   // Ask the Story form to focus a field once it has rendered (default: Epic).
   const [focusRequest, setFocusRequest] = useState(null);
@@ -205,7 +218,7 @@ export default function App() {
                 <StoryForm
                   story={selected} stories={stories} problems={problems} suggestions={selectedUnits} focusRequest={focusRequest}
                   onFocused={() => setFocusRequest(null)} onEdit={actions.editStory} onCommitEpic={actions.commitEpic} onOpen={actions.selectStory}
-                  onApplySuggestion={applyUnit} onDismissSuggestion={dismissUnit}
+                  onApplySuggestion={applyUnit} onDismissSuggestion={dismissUnit} onMoveToProposed={moveToProposed}
                 />
               )}
             </>

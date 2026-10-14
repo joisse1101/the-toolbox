@@ -486,6 +486,10 @@ export function openCounts(rows, stories) {
   return counts;
 }
 
+// The open units (applicable or stale) shown on a story code: what moving the story away leaves without a target.
+// Applied and dismissed rows are not units. Dismiss them with `indexes`.
+export const openUnitsFor = (rows, code) => unitsOf(rows).filter((u) => code && unitStoryCode(u) === code);
+
 // Units whose story is not in the backlog any more (renumbered, moved or deleted): shown as stale in one place.
 export function orphanUnits(rows, stories) {
   const codes = new Set(stories.map((s) => s.code).filter(Boolean));

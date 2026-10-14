@@ -126,3 +126,43 @@ export function acceptProposed(backlogStories, proposedStories, ids, headers) {
 
   return { backlog, proposals, accepted: copies.map((c) => backlog.find((s) => s.id === c.id)) };
 }
+
+// Rewrite `Depends On` entries through `map` (old code -> new code); entries not in the map stay. Same array when nothing changes.
+function relink(stories, map) {
+  return stories.map((s) => {
+    if (!s.dependsOn.some((e) => map.has(e))) return s;
+    const deps = [];
+    for (const e of s.dependsOn) {
+      const target = map.has(e) ? map.get(e) : e;
+      if (target && !deps.includes(target)) deps.push(target);
+    }
+    return { ...s, dependsOn: deps, ambiguous: s.ambiguous.filter((e) => deps.includes(e)) };
+  });
+}
+
+// The reverse of acceptProposed: take the backlog story `id` out of the backlog and append it to the proposals under
+// a new placeholder. Links to it are rewritten to the placeholder first, so renumbering the backlog cannot bind them
+// to whichever story takes its position; then the remaining backlog is renumbered and every link to a backlog story
+// (the moved story's own, and the proposals') follows the new codes. A story without an ID cannot be moved.
+// Returns { backlog, proposals, moved } or { error }.
+export function moveToProposed(backlogStories, proposedStories, id, headers) {
+  const story = backlogStories.find((s) => s.id === id);
+  if (!story) return { error: 'The story is not in the backlog.' };
+  if (!story.code) return { error: 'Give the story an Epic before moving it to Proposed.' };
+
+  const placeholder = nextPlaceholder(proposedStories, backlogStories);
+  const toPlaceholder = new Map([[story.code, placeholder]]);
+  const rest = relink(backlogStories.filter((s) => s.id !== id), toPlaceholder);
+  const backlog = renumber(rest);
+
+  const newCode = new Map(); // old backlog code -> code after the renumber ('' when the story lost its ID)
+  rest.forEach((s, i) => {
+    if (s.code && backlog[i].code !== s.code) newCode.set(s.code, backlog[i].code);
+  });
+
+  const cells = story.cells.slice(0, headers.length);
+  while (cells.length < headers.length) cells.push('');
+  const [moved] = relink([{ ...story, code: placeholder, cells, dependsOn: [...story.dependsOn], ambiguous: [...story.ambiguous] }], newCode);
+  const proposals = [...relink(proposedStories, new Map([...toPlaceholder, ...newCode])), moved];
+  return { backlog, proposals, moved };
+}

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { loadBacklog } from '../core/model.js';
 import {
   parseReview, serializeReview, validateFindings, fillCurrent, mergeStatus, suggestionState, applySuggestions,
-  unitsOf, unitState, openCounts, reviewOverview, REVIEW_COLUMNS,
+  unitsOf, unitState, openCounts, openUnitsFor, reviewOverview, REVIEW_COLUMNS,
 } from '../core/review.js';
 
 const CSV =
@@ -319,4 +319,23 @@ test('overview shows a split group once, under the story it narrows', () => {
   const o = reviewOverview(rows, b.stories);
   assert.equal(o.openCount, 1);
   assert.equal(o.sections[1].units[0].rows.length, 2);
+});
+
+test('openUnitsFor: open and stale units of the story, not applied or dismissed ones', () => {
+  const b = backlog();
+  const rows = rowsFor([finding(), finding({ suggested: 'Second' }), finding({ storyId: 'IAM-0002', field: 'Title', suggested: 'X' })], b);
+  rows[1].status = 'dismissed';
+  assert.deepEqual(openUnitsFor(rows, 'IAM-0001').map((u) => u.indexes), [[0]]);
+  assert.equal(openUnitsFor(rows, 'IAM-0002').length, 1);
+  rows[0].status = 'applied';
+  assert.equal(openUnitsFor(rows, 'IAM-0001').length, 0);
+  assert.equal(openUnitsFor(rows, ''). length, 0);
+});
+
+test('openUnitsFor: a stale suggestion still counts, a split group is one unit', () => {
+  const b = backlog();
+  const rows = rowsFor([finding({ group: 'g1' }), finding({ group: 'g1', suggested: 'B' })], b);
+  const edited = b.stories.map((s) => (s.code === 'IAM-0001' ? { ...s, title: 'Changed by hand' } : s));
+  assert.equal(unitState(openUnitsFor(rows, 'IAM-0001')[0], edited).state, 'stale');
+  assert.deepEqual(openUnitsFor(rows, 'IAM-0001').map((u) => u.indexes), [[0, 1]]);
 });

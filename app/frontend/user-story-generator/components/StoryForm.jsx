@@ -94,7 +94,7 @@ const CRITERIA_WARNING = 'The Acceptance Criteria cell does not follow "AC1: Giv
 // `focusRequest` = { id } or null: focus the element with that id (default: Epic) once rendered, then call onFocused.
 // `suggestions`: the open review units for this story ({ key, group, rows }); see review.js. Ungrouped ones sit next to
 // their field, split groups in their own section.
-export default function StoryForm({ story: s, stories, problems, suggestions = [], focusRequest, onFocused, onEdit, onCommitEpic, onOpen, onApplySuggestion, onDismissSuggestion }) {
+export default function StoryForm({ story: s, stories, problems, suggestions = [], focusRequest, onFocused, onEdit, onCommitEpic, onOpen, onApplySuggestion, onDismissSuggestion, onMoveToProposed }) {
   const [depInput, setDepInput] = useState('');
   useEffect(() => {
     if (!focusRequest) return;
@@ -164,6 +164,9 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
     >
       <div className="story-code" id="storyCode">
         {s.code ? <>ID: <strong>{s.code}</strong></> : 'No ID yet: one is assigned once an Epic is set.'}
+        {onMoveToProposed && (
+          <button type="button" id="moveToProposedBtn" disabled={!s.code} title={s.code ? 'Remove this story from the backlog and make it a proposed story' : 'Set an Epic first'} onClick={() => onMoveToProposed(s)}>Move to Proposed</button>
+        )}
       </div>
 
       <fieldset>

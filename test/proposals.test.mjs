@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { newStory, loadBacklog, serializeBacklog, COLUMNS } from '../core/model.js';
 import { renumber } from '../core/ids.js';
 import {
-  isPlaceholder, nextPlaceholder, removeProposed, reorderProposed, moveProposed, acceptProposed,
+  isPlaceholder, nextPlaceholder, removeProposed, reorderProposed, moveProposed, acceptProposed, moveToProposed,
 } from '../core/proposals.js';
 
 let n = 1000;
@@ -185,4 +185,43 @@ test('moveProposed: joins an epic before a story or at the end of it, ID kept', 
   const same = [a, b, c];
   assert.equal(moveProposed(same, a.id, 'A', a.id), same);
   assert.equal(moveProposed(same, c.id, 'A', null), same); // already last of its epic
+});
+
+test('moveToProposed: story leaves the backlog, joins proposals under a new placeholder, rest renumbered', () => {
+  const b = backlogOf(st('Alpha', { title: 'a1' }), st('Alpha', { title: 'a2' }), st('Alpha', { title: 'a3' }));
+  const target = b[1];
+  const out = moveToProposed(b, [prop('NEW-2', 'Beta')], target.id, COLUMNS);
+  assert.deepEqual(out.backlog.map((s) => s.title), ['a1', 'a3']);
+  assert.deepEqual(codes(out.backlog), ['A-0001', 'A-0002']);
+  assert.deepEqual(codes(out.proposals), ['NEW-2', 'NEW-3']);
+  assert.equal(out.moved.title, 'a2');
+});
+
+test('moveToProposed: links to the story follow it, own dependencies are kept and follow renumbering', () => {
+  const b0 = backlogOf(st('Alpha', { title: 'a1' }), st('Alpha', { title: 'a2' }), st('Alpha', { title: 'a3' }));
+  const b = renumber([b0[0], b0[1], { ...b0[2], dependsOn: ['A-0002'] }, st('Alpha', { title: 'a4', dependsOn: ['A-0003'] })]);
+  const withOwn = b.map((s) => (s.title === 'a2' ? { ...s, dependsOn: ['A-0001'] } : s));
+  const out = moveToProposed(withOwn, [prop('NEW-1', 'Beta', { dependsOn: ['A-0003', 'A-0002'] })], withOwn[1].id, COLUMNS);
+  const by = (t) => out.backlog.find((s) => s.title === t);
+  assert.deepEqual(by('a3').dependsOn, ['NEW-2']);
+  assert.equal(by('a3').code, 'A-0002');
+  assert.deepEqual(by('a4').dependsOn, ['A-0002']);
+  assert.deepEqual(out.moved.dependsOn, ['A-0001']);
+  assert.deepEqual(out.proposals[0].dependsOn, ['A-0002', 'NEW-2']);
+});
+
+test('moveToProposed: placeholder skips numbers the backlog still names; a story without an ID is refused', () => {
+  const b = backlogOf(st('Alpha', { dependsOn: ['NEW-7'] }), st('Alpha'));
+  assert.equal(moveToProposed(b, [], b[1].id, COLUMNS).moved.code, 'NEW-8');
+  const noEpic = [st('')];
+  assert.ok(moveToProposed(noEpic, [], noEpic[0].id, COLUMNS).error);
+});
+
+test('moveToProposed then acceptProposed: back at the end of its Epic, links follow back', () => {
+  const b = backlogOf(st('Alpha', { title: 'a1' }), st('Alpha', { title: 'a2' }), st('Alpha', { title: 'a3' }));
+  b[2] = { ...b[2], dependsOn: ['A-0002'] };
+  const out = moveToProposed(b, [], b[1].id, COLUMNS);
+  const back = acceptProposed(out.backlog, out.proposals, new Set([out.moved.id]), COLUMNS);
+  assert.deepEqual(back.backlog.map((s) => s.title), ['a1', 'a3', 'a2']);
+  assert.deepEqual(back.backlog.find((s) => s.title === 'a3').dependsOn, ['A-0003']);
 });

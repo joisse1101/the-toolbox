@@ -200,3 +200,6 @@ legend { font-weight: 600; padding: 0 6px; }
 .review-view h2 { margin-top: 0; }
 .review-section h3 { margin: 16px 0 0; font-size: 14px; }
 .suggestion-story { margin-bottom: 4px; font-weight: 600; }
+.story-code { display: flex; align-items: center; gap: 12px; }
+.story-code button { margin-left: auto; }
+.story-list .row-check { margin: 0 8px 0 0; flex: none; }
