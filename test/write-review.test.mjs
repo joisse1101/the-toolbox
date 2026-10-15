@@ -263,3 +263,17 @@ test('a replacing write ignores the unlock row of the review it replaces', () =>
   assert.equal(run(root, [unlock()]).ok, true);
   assert.equal(run(root, [lockedEdit()]).ok, false);
 });
+
+test('clarification rows are accepted, also with --append, and existing rows are kept', () => {
+  const root = temp();
+  const ask = (over = {}) => finding({ field: 'Clarifications', action: 'append', suggested: 'Which format?', area: 'Clarification', confidence: 'confirm', ...over });
+  assert.equal(run(root, [finding()]).ok, true);
+  const r = writeReview({ dataDir: root, name: 'data.csv', input: JSON.stringify([ask()]), append: true });
+  assert.equal(r.ok, true, JSON.stringify(r.errors));
+  const rows = parseReview(fs.readFileSync(reviewPath(root), 'utf8')).rows;
+  assert.deepEqual(rows.map((x) => x.field), ['Title', 'Clarifications']);
+  assert.equal(rows[1].area, 'Clarification');
+  const bad = writeReview({ dataDir: root, name: 'data.csv', input: JSON.stringify([ask({ suggested: 'Q1: no' })]), append: true });
+  assert.equal(bad.ok, false);
+  assert.equal(parseReview(fs.readFileSync(reviewPath(root), 'utf8')).rows.length, 2);
+});

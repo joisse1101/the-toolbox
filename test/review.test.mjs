@@ -303,7 +303,7 @@ test('overview groups open suggestions by Area in backlog order and lists out-of
   const staleRow = rows.find((r) => r.storyId === 'IAM-0003');
   const edited = b.stories.map((s) => (s.code === 'IAM-0003' ? { ...s, title: 'By hand' } : s));
   const o = reviewOverview(rows, edited);
-  assert.deepEqual(o.sections.map((s) => [s.area, s.units.length]), [['Hierarchy', 1], ['INVEST', 2], ['Acceptance criteria', 0]]);
+  assert.deepEqual(o.sections.map((s) => [s.area, s.units.length]), [['Hierarchy', 1], ['INVEST', 2], ['Acceptance criteria', 0], ['Clarification', 0]]);
   assert.deepEqual(o.sections[1].units.map((u) => u.rows[0].storyId), ['IAM-0001', 'IAM-0002']);
   assert.equal(o.outOfDate.length, 2, 'the hand-edited title and the missing story');
   assert.equal(o.openCount, 3);
@@ -454,4 +454,48 @@ test('re-run keeps the status of an identical unlock row', () => {
   const [row] = fillCurrent([unlockFinding()], lockedBacklog());
   const merged = mergeStatus([row], [{ ...row, status: 'dismissed' }]);
   assert.equal(merged[0].status, 'dismissed');
+});
+
+const ask = (over = {}) => finding({ field: 'Clarifications', action: 'append', suggested: 'Which export format?', area: 'Clarification', confidence: 'confirm', ...over });
+
+test('clarification suggestions: valid rows pass, labels, groups and other actions are rejected', () => {
+  assert.deepEqual(validateFindings([ask(), ask({ area: 'Hierarchy', storyId: 'IAM-0002' })], backlog()), []);
+  assert.match(validateFindings([ask({ suggested: 'Q1: Which?' })], backlog())[0], /without a "Q<n>:" label/);
+  assert.match(validateFindings([ask({ group: 'g' })], backlog())[0], /takes no Group/);
+  assert.match(validateFindings([ask({ action: 'replace' })], backlog())[0], /does not fit Field Clarifications/);
+});
+
+test('clarification suggestion: Apply adds an open question; asking twice is out of date', () => {
+  const b = backlog();
+  const [row] = fillCurrent([ask()], b);
+  assert.equal(row.current, '');
+  assert.equal(suggestionState(row, b.stories).state, 'open');
+  const out = applySuggestions(b.stories, [row], b.headers);
+  const story = out.stories.find((s) => s.code === 'IAM-0001');
+  assert.deepEqual(story.clarifications, [{ q: 'Which export format?', a: '' }]);
+  assert.equal(b.stories[0].clarifications.length, 0, 'input is not mutated');
+  const again = suggestionState(row, out.stories);
+  assert.equal(again.state, 'stale');
+  assert.match(again.why, /already asked/);
+  const dup = { ...row, suggested: '  which EXPORT format?  ' };
+  assert.equal(suggestionState(dup, out.stories).state, 'stale');
+});
+
+test('clarification suggestion on a locked story waits for an unlock; free text cells are stale', () => {
+  const b = backlog();
+  const locked = b.stories.map((s) => (s.code === 'IAM-0001' ? { ...s, locked: true } : s));
+  const [row] = fillCurrent([ask()], b);
+  assert.equal(suggestionState(row, locked).state, 'locked');
+  assert.match(applySuggestions(locked, [row], b.headers).error, /locked/);
+  const raw = b.stories.map((s) => (s.code === 'IAM-0001' ? { ...s, rawClarifications: 'Ask Sam' } : s));
+  assert.equal(suggestionState(row, raw).state, 'stale');
+});
+
+test('clarification rows round trip through the review CSV and show in the Clarification section', () => {
+  const b = backlog();
+  const rows = fillCurrent([ask({ reason: 'Matters, "a lot"' })], b);
+  const back = parseReview(serializeReview(rows));
+  assert.deepEqual(back.rows, rows);
+  const o = reviewOverview(back.rows, b.stories);
+  assert.deepEqual(o.sections.find((s) => s.area === 'Clarification').units.length, 1);
 });

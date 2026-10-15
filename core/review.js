@@ -11,10 +11,10 @@ export const REVIEW_COLUMNS = [
   'Story ID', 'Field', 'Action', 'Current', 'Suggested', 'Reason', 'Area', 'Confidence', 'Group', 'Status',
 ];
 export const FIELDS = [
-  'Epic', 'Feature', 'Title', 'User Story', 'Sprint points', 'Depends On', 'User Acceptance Criteria', 'Notes',
+  'Epic', 'Feature', 'Title', 'User Story', 'Sprint points', 'Depends On', 'User Acceptance Criteria', 'Notes', 'Clarifications',
 ];
 export const ACTIONS = ['replace', 'add', 'remove', 'append', 'add-story', 'unlock'];
-export const AREAS = ['Hierarchy', 'INVEST', 'Acceptance criteria'];
+export const AREAS = ['Hierarchy', 'INVEST', 'Acceptance criteria', 'Clarification'];
 export const CONFIDENCES = ['ready', 'confirm'];
 export const STATUSES = ['open', 'applied', 'dismissed'];
 
@@ -26,6 +26,7 @@ const ALLOWED_ACTIONS = {
   'User Story': ['replace'],
   'Sprint points': ['replace'],
   Notes: ['replace', 'append'],
+  Clarifications: ['append'], // the question to ask; Apply adds it with an empty answer
   'Depends On': ['add', 'remove'],
   'User Acceptance Criteria': ['add', 'replace', 'remove'],
 };
@@ -205,6 +206,10 @@ export function validateFindings(findings, backlog, { existingRows = [] } = {}) 
           else if (Number(m[1]) < 1 || Number(m[1]) > story.criteria.length || hasBlankOnly(story.criteria)) bad(`${r.storyId} has no criterion AC${m[1]}.`);
         }
         if (r.action === 'add' && story && story.rawCriteria !== null) bad(`${r.storyId}'s User Acceptance Criteria cell is free text, so a criterion cannot be added.`);
+      } else if (r.field === 'Clarifications') {
+        if (r.group) bad('a Clarifications row takes no Group.');
+        if (/^\s*[QA]\d+\s*:/im.test(r.suggested)) bad('Suggested is the question text alone, without a "Q<n>:" label.');
+        if (story && story.rawClarifications !== null) bad(`${r.storyId}'s Clarifications cell is free text, so a question cannot be added.`);
       } else if (r.field === 'Depends On') {
         const target = r.suggested;
         const inGroup = r.group && newIds.get(r.group)?.has(target);
@@ -237,7 +242,7 @@ export function fillCurrent(findings, backlog) {
       reason: str(f.reason), area: str(f.area), confidence: str(f.confidence), group: str(f.group), status: 'open',
     };
     const story = byCode.get(row.storyId);
-    if (!story || row.action === 'unlock' || row.action === 'add' || row.action === 'add-story') return row;
+    if (!story || row.action === 'unlock' || row.action === 'add' || row.action === 'add-story' || row.field === 'Clarifications') return row;
     if (row.field === 'User Acceptance Criteria') {
       const n = Number(AC_NUMBER.exec(row.suggested)?.[1]);
       const c = story.criteria[n - 1];
@@ -308,6 +313,10 @@ function editState(row, stories) {
     if (!live || norm(criterionText(live, n)) !== norm(row.current)) return stale(`AC${n} was edited since the review`);
     return { state: 'open' };
   }
+  if (row.field === 'Clarifications') {
+    if (story.rawClarifications !== null) return stale('the Clarifications are free text');
+    return story.clarifications.some((p) => norm(p.q) === norm(row.suggested)) ? stale('this question was already asked') : { state: 'open' };
+  }
   if (row.action === 'append') {
     return norm(story.notes).includes(norm(row.suggested)) ? stale('Notes already contain this text') : { state: 'open' };
   }
@@ -356,6 +365,7 @@ function editExisting(story, row) {
     case 'Sprint points': return { ...story, points: v };
     case 'Notes':
       return { ...story, notes: row.action === 'append' && story.notes.trim() ? `${story.notes.replace(/\s+$/, '')}\n${v}` : v };
+    case 'Clarifications': return { ...story, clarifications: [...story.clarifications, { q: v, a: '' }] };
     case 'User Story': {
       const us = parseStory(v);
       return { ...story, asA: us.asA, iWant: us.iWant, soThat: us.soThat, rawUserStory: null };
@@ -393,6 +403,7 @@ function buildNewStory(headers, rows, original) {
       case 'Title': s.title = v; break;
       case 'Sprint points': s.points = v; break;
       case 'Notes': s.notes = s.notes ? `${s.notes}\n${v}` : v; break;
+      case 'Clarifications': s.clarifications = [...s.clarifications, { q: v, a: '' }]; break;
       case 'User Story': {
         const us = parseStory(v);
         s.asA = us.asA;

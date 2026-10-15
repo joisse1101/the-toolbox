@@ -13,7 +13,7 @@
 
 ## 3. Review support for clarification suggestions
 
-- [ ] 3.1 Extend `core/review.js` (field `Clarifications` with action `append`, area `Clarification`, apply, stale check, lock handling) and verify with tests for apply, duplicate, locked story and CSV round trip; verify `write-review.mjs` accepts and validates such rows (including with `--append`) and keeps existing rows
+- [x] 3.1 Extend `core/review.js` (field `Clarifications` with action `append`, area `Clarification`, apply, stale check, lock handling) and verify with tests for apply, duplicate, locked story and CSV round trip; verify `write-review.mjs` accepts and validates such rows (including with `--append`) and keeps existing rows
 
 ## 4. Clarify skill scripts
 
