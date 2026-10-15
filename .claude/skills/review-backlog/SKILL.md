@@ -12,7 +12,7 @@ Review one backlog CSV, write the suggestions to a review CSV and write a report
 
 1. Read only through `read-backlog.mjs`; do not open any other file. If the user named a backlog, use it. Otherwise run `node .claude/skills/review-backlog/read-backlog.mjs` with no argument to list the backlog file names and ask which one to review.
 2. Run `node .claude/skills/review-backlog/read-backlog.mjs <backlog file name>`. It prints `ai/guidelines/product-backlog.md` first, then a scope line, then the backlog CSV. The guidelines hold the rules for each level; do not restate or replace them from memory.
-3. The scope line reads `N of M stories submitted for review, K locked (reference only)`. It is left out when the CSV cannot be read; then treat every story as submitted. The CSV is the last part of the output. Columns: `ID, Epic, Feature, Title, User Story, Sprint points, Priority, Depends On, User Acceptance Criteria, Notes, Locked`.
+3. The scope line reads `N of M stories submitted for review, K locked (reference only)`. It is left out when the CSV cannot be read; then treat every story as submitted. The CSV is the last part of the output. Columns: `ID, Epic, Feature, Title, User Story, Sprint points, Priority, Depends On, User Acceptance Criteria, Notes, Locked, Clarifications`.
    - `Title` is the title of the user story. `Feature` is the functional component the story belongs to.
    - `User Story` is `As a <role>, I want <action>, so that <benefit>`.
    - `User Acceptance Criteria` is one `AC<n>: Given ..., when ..., then ...` per line inside the cell.
@@ -64,7 +64,7 @@ For a vague criterion, suggest a measurable wording but say the user must confir
 | A value only the user can decide (page size, threshold, missing points or priority) | `replace` with your proposed default | confirm |
 | Story or Feature under the wrong Epic or Feature | `replace` on `Epic` or `Feature` | ready |
 | Dependency problem | `add` or `remove` on `Depends On`, `Suggested` = one story ID | ready |
-| Open question (single-story Feature, unclear scope) | `append` the question to `Notes` | confirm |
+| Open question (single-story Feature, unclear scope) | `append` the question to `Clarifications` (area may be `Clarification`); `Notes` is only for facts and decisions | confirm |
 | A strong objection to a **locked** story | one `unlock` row for it: `field` and `suggested` empty, `reason` = the objection in one sentence. Optional field-edit rows as evidence (they cannot be applied until the user unlocks the story) | ready |
 | Story too large or covering several needs | a split group: `replace` rows narrowing the original, plus `add-story` rows for each new story (`storyId` `NEW-1`, `NEW-2`, ..., one row per field, at least a `Title`; `Depends On` rows may name a story ID or another `NEW-n` of the group); every row has the same non-empty `group` and `confirm` | confirm |
 
@@ -87,14 +87,14 @@ Build a JSON array, one object per row, with exactly these keys (no `current` an
 ]
 ```
 
-- `field`: Epic, Feature, Title, User Story, Sprint points, Depends On, User Acceptance Criteria, Notes (Priority is not accepted). Empty on an `unlock` row.
+- `field`: Epic, Feature, Title, User Story, Sprint points, Depends On, User Acceptance Criteria, Notes, Clarifications (Priority is not accepted). Empty on an `unlock` row.
 - `action`: replace, add, remove, append, add-story, unlock.
-- `area`: Hierarchy, INVEST, Acceptance criteria.
+- `area`: Hierarchy, INVEST, Acceptance criteria, Clarification.
 - `confidence`: ready, confirm. `reason` is one sentence.
 - An `unlock` row names a locked story and has an empty `field`, `suggested` and `group`.
 - `Sprint points` must be 1, 2, 3, 5, 8, 13, 21, 34 or 55.
 - Ignore Priority: do not review it, report it as missing, or suggest a value for it.
-- A suggested rewording must not grow the story. Keep it to what the story already implies: do not add a capability, a user group, a permission or a rule (for example "only sees what they are entitled to" implies role-based access). If a better benefit would need new scope, use a modest benefit and raise the larger idea as a separate question in Notes.
+- A suggested rewording must not grow the story. Keep it to what the story already implies: do not add a capability, a user group, a permission or a rule (for example "only sees what they are entitled to" implies role-based access). If a better benefit would need new scope, use a modest benefit and raise the larger idea as a separate question in Clarifications.
 - Use story IDs exactly as they appear in the CSV.
 
 Write the findings in **batches of about 8-10 rows**, not as one large command (a long heredoc can fail). The first batch replaces the review; every later batch adds `--append`. Each command takes the findings on standard input and the backlog file name, with `--append` as the only other argument:
@@ -108,6 +108,7 @@ node .claude/skills/review-backlog/write-review.mjs data-portal.csv --append <<'
 JSON
 ```
 
+- A run without `--append` replaces the whole review, clarification suggestions included.
 - Forget `--append` on a later batch and that batch replaces everything written so far. The success line gives the number of rows in the file, so check it grows.
 - An `unlock` row may be in an earlier batch than the field-edit rows it supports (the writer checks the whole file), but write it no later than them.
 - Keep every row of a split group (the `replace` rows and the `add-story` rows with the same `group`) inside one batch. A batch that reuses a group name already in the file is rejected.

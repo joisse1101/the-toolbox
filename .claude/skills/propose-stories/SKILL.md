@@ -22,11 +22,12 @@ Draft new stories with the user and, once they confirm, write them to `proposals
 - Do not set a Priority. The writer refuses it.
 - `userStory` is the whole sentence: `As a <role>, I want <action>, so that <benefit>`. Each criterion is one line: `AC<n>: Given …, when …, then …`. Single-line fields have no line breaks.
 - `points` is 1, 2, 3, 5, 8 or 13, sized with the sprint-points guideline the reader printed.
+- Follow the guidelines' section on Clarifications: each unknown the user could not settle becomes a question in `clarifications`, never a guess; record an answer only when the user stated it. A benched story is not shown to you; the user unbenches it in the portal first.
 - To change a story that is already proposed, send a **patch** (see "Write the stories") instead of adding a second story with the fix.
 
 ## Confirm before writing
 
-1. Show the complete drafts in the reply: Epic, Feature, Title, User Story, Sprint points, Depends On, User Acceptance Criteria and Notes for every new story. For every patch, show the story it changes (ID and Title) and each field that changes with its old value (from the proposals you just read) and its new value.
+1. Show the complete drafts in the reply: Epic, Feature, Title, User Story, Sprint points, Depends On, User Acceptance Criteria, Notes and Clarifications for every new story. For every patch, show the story it changes (ID and Title) and each field that changes with its old value (from the proposals you just read) and its new value.
 2. Ask a direct yes/no question, for example "Write these to the proposals?", and **stop**. Do not run the writer in the same turn.
 3. Write only after the user answers yes in a separate message. An answer to a design question, or approval of the idea, is not a yes.
 4. If the user changes anything after the question (even a Title), show the changed drafts and ask again.
@@ -79,7 +80,7 @@ node .claude/skills/propose-stories/write-proposal.mjs data-portal.csv <<'JSON'
 JSON
 ```
 
-- Keys of a new story, exactly: `epic, feature, title, userStory, points, dependsOn, criteria` and optionally `notes`. Any other key (including `priority`, `id`, `code`) is rejected. `dependsOn` and `criteria` are lists; `dependsOn` may be `[]`.
+- Keys of a new story, exactly: `epic, feature, title, userStory, points, dependsOn, criteria` and optionally `notes` and `clarifications` (a list of question texts, each stored as an open pair). Any other key (including `priority`, `id`, `code`) is rejected. `dependsOn` and `criteria` are lists; `dependsOn` may be `[]`.
 - `dependsOn` takes three forms:
   - a story ID of the backlog, such as `IAM-0001` (it must exist);
   - `NEW-<k>`: the k-th story of this same input, counting from 1 (above, story 2 depends on story 1). It is stored as the real ID assigned to that story;
@@ -102,7 +103,7 @@ node .claude/skills/propose-stories/write-proposal.mjs data-portal.csv <<'JSON'
 JSON
 ```
 
-- A patch may carry `epic, feature, title, userStory, points, dependsOn, criteria, notes` (`"notes": ""` clears the note). It is validated as the whole merged story, so a patch cannot leave a story invalid.
+- A patch may carry `epic, feature, title, userStory, points, dependsOn, criteria, notes` (`"notes": ""` clears the note) and `clarifications`: `{ "add": ["question", ...], "answer": [{ "n": 2, "text": "the answer" }] }`. `add` appends questions after the stored pairs; `answer` fills pair `n` only when its answer is empty (the reader shows the numbers). Pairs are never deleted and existing answers are never changed; a story whose Clarifications cell is free text is refused. It is validated as the whole merged story, so a patch cannot leave a story invalid.
 - Not allowed: `priority`, `code`, `benched`, an empty patch, two patches for one ID, an ID that is not in the proposals file, a benched story, and a story whose stored User Story or User Acceptance Criteria is free text that does not follow the format (send `userStory` or `criteria` to replace it).
 - In `dependsOn`, `NEW-<k>` still counts only the new stories of the input; use `proposed:NEW-<n>` for any proposed story.
 - Prefer a patch to a second story whenever the user wants to change a proposed story. A patch is safe to run again; new stories are not.

@@ -84,3 +84,14 @@ test('benched proposed stories and the Benched column are left out of the propos
   assert.equal(r.proposals, 'ID,Epic\r\nNEW-2,IAM\r\n');
   assert.match(formatContext(r), /=== proposals\/data.csv \(2 benched, left out: ignore them\) \(data/);
 });
+
+test('Clarifications are printed for unbenched proposals; benched stories stay omitted', () => {
+  const root = temp();
+  fs.mkdirSync(path.join(root, 'proposals'));
+  fs.writeFileSync(path.join(root, 'proposals', 'data.csv'),
+    'ID,Epic,Clarifications,Benched\r\nNEW-1,IAM,"Q1: Open?\nA1:",\r\nNEW-2,IAM,"Q1: Parked?\nA1:",Yes\r\n');
+  const out = formatContext(readStoryContext({ dataDir: root, guidelinesDir: path.join(root, 'guidelines'), name: 'data.csv' }));
+  assert.doesNotMatch(out, /NEW-2|Parked/);
+  assert.match(out, /Clarifications/);
+  assert.match(out, /NEW-1,IAM,"Q1: Open\?\nA1:"/);
+});

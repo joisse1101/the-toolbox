@@ -100,3 +100,17 @@ Every story is checked against these six principles.
 - AC1: Given a registered email address, when I request a reset link, then an email with a single-use link is sent to that address
 - AC2: Given an email address that is not registered, when I request a reset link, then the same confirmation message is shown and no email is sent
 - AC3: Given a reset link older than 30 minutes, when I open it, then I am told it has expired and offered a new link
+
+---
+
+## 6. Clarifications
+
+**What it is:** the `Clarifications` column holds the questions about a story that still need an answer, as pairs `Q1: <question>` then `A1: <answer>`. A question with an empty answer is open. Open questions block nothing.
+
+**Rules when writing a story:**
+
+- Make the story as complete as the facts allow: every field filled in, the failure path covered.
+- A detail the user cannot settle yet (technical detail, ownership, a dependency, scope, an edge case) becomes a question in Clarifications. Do not guess it, and do not bury it in Notes.
+- Never invent an answer. Record an answer only when the user states it.
+- Ask the user for such unknowns while the story is being discussed, not only when it is written down.
+- Notes hold facts and decisions; Clarifications hold what is still unknown.
