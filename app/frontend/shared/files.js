@@ -37,6 +37,25 @@ async function call(method, url, { json, text } = {}) {
   return data;
 }
 
+// Backups of one backlog: /api/backup/<name>. The server copies the backlog, its review and its proposals.
+const backupUrl = (name) => `/api/backup/${encodeURIComponent(name)}`;
+
+// Resolves to { folder, files } of the new backup.
+export function backup(name) {
+  return call('POST', backupUrl(name));
+}
+
+// Resolves to [{ folder, files }], newest first.
+export async function listBackups(name) {
+  return (await call('GET', backupUrl(name))).backups;
+}
+
+// `a` and `b` are backup folder names or 'current'. Resolves to git's colored diff ('' when nothing differs).
+export async function compareBackups(name, a, b) {
+  const query = `a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`;
+  return (await call('GET', `${backupUrl(name)}/diff?${query}`)).diff;
+}
+
 export function createFileStore(store) {
   const base = `/api/${encodeURIComponent(store)}`;
   const file = (name) => `${base}/files/${encodeURIComponent(name)}`;

@@ -47,6 +47,13 @@ export function useReview(current) {
     return m.inFlight;
   }, [m]);
 
+  // Waits until the decisions made so far are on disk. Resolves false if the file could not be written.
+  const settle = useCallback(async () => {
+    await flush();
+    await flush(); // a decision made while the first write was running
+    return !m.dirty && !m.inFlight;
+  }, [m, flush]);
+
   const load = useCallback(async () => {
     const name = m.name;
     if (!name || m.dirty || m.inFlight) return;
@@ -129,7 +136,7 @@ export function useReview(current) {
   }, [m]);
 
   return useMemo(
-    () => ({ rows, exists, message, notice, notify: setNotice, decide, retarget, reload: load }),
-    [rows, exists, message, notice, decide, retarget, load],
+    () => ({ rows, exists, message, notice, notify: setNotice, decide, retarget, settle, reload: load }),
+    [rows, exists, message, notice, decide, retarget, settle, load],
   );
 }

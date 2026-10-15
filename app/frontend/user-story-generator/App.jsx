@@ -4,6 +4,7 @@ import { unitsOf, unitStoryCode, openCounts, orphanUnits, reviewOverview, openUn
 import { useBacklog } from './hooks/useBacklog.js';
 import { useReview } from './hooks/useReview.js';
 import { useProposals } from './hooks/useProposals.js';
+import { backup } from '../shared/files.js';
 import { acceptProposed, moveToProposed as moveStoryToProposed } from '../../../core/proposals.js';
 import FileBar from './components/FileBar.jsx';
 import Info from './components/Info.jsx';
@@ -104,6 +105,31 @@ export default function App() {
     setProposedNotice({ kind: 'ok', text: `Moved ${story.code} to Proposed as ${result.moved.code}.` }); // shown in the Proposed tab
   };
 
+  // Backup: wait until backlog, proposals and review are on disk, so the copy matches the screen.
+  const settleAll = async () => {
+    const saved = await Promise.all([actions.settle(), proposals.actions.settle(), review.settle()]);
+    return saved.every(Boolean);
+  };
+  const [backupNote, setBackupNote] = useState(null);
+  const [backingUp, setBackingUp] = useState(false);
+  useEffect(() => setBackupNote(null), [current]);
+  const backUp = async () => {
+    const name = current;
+    setBackupNote(null);
+    setBackingUp(true);
+    try {
+      if (!(await settleAll())) {
+        return setBackupNote({ kind: 'error', text: 'No backup made: the latest changes could not be saved yet.' });
+      }
+      const { folder } = await backup(name); // folder is YYYY-MM-DD_HHMMSS[-n]
+      setBackupNote({ kind: 'ok', text: `Backed up ${name} at ${folder.slice(11, 13)}:${folder.slice(13, 15)}` });
+    } catch (err) {
+      setBackupNote({ kind: 'error', text: `No backup made: ${err.message}` });
+    } finally {
+      setBackingUp(false);
+    }
+  };
+
   // Ask the Story form to focus a field once it has rendered (default: Epic).
   const [focusRequest, setFocusRequest] = useState(null);
   const [focusNameToken, setFocusNameToken] = useState(0);
@@ -184,8 +210,8 @@ export default function App() {
         </header>
 
         <FileBar
-          files={files} current={current} message={message} focusNameToken={focusNameToken}
-          onSelect={actions.selectFile} onRename={actions.renameFile} onNew={newBacklog} onOpenFolder={actions.openFolder}
+          files={files} current={current} message={message} backupNote={backupNote} backingUp={backingUp} focusNameToken={focusNameToken}
+          onSelect={actions.selectFile} onRename={actions.renameFile} onNew={newBacklog} onBackup={backUp} onOpenFolder={actions.openFolder}
         />
 
         {(review.message || review.notice || orphans.length > 0) && (

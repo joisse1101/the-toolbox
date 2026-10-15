@@ -181,6 +181,9 @@ export function useBacklog() {
     const edit = (id, change) => dispatch({ type: 'edit', id, change });
 
     return {
+      // Resolves true once everything typed so far is on disk, false if saving is failing.
+      settle: () => autosave.settle(),
+
       // Re-read the list and the open file (on tab focus). Local unsaved edits always win.
       async refreshFromDisk() {
         try {

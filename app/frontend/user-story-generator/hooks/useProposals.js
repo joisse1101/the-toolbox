@@ -129,6 +129,9 @@ export function useProposals(current, headers) {
     }
 
     return {
+      // Resolves true once everything typed so far is on disk, false if saving is failing.
+      settle: () => autosave.settle(),
+
       // Switch to the proposals of another backlog (or none). Edits still waiting for a save are saved first.
       async open(name) {
         try {

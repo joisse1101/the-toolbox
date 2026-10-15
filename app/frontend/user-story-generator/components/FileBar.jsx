@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
-// Backlog dropdown, rename, New and Open folder, plus the message banner.
-export default function FileBar({ files, current, message, focusNameToken, onSelect, onRename, onNew, onOpenFolder }) {
+// Backlog dropdown, rename, New, Backup and Open folder, plus the message banners.
+export default function FileBar({ files, current, message, backupNote, backingUp, focusNameToken, onSelect, onRename, onNew, onBackup, onOpenFolder }) {
   const [draft, setDraft] = useState(current ?? '');
   const nameRef = useRef(null);
   const cancelled = useRef(false);
@@ -51,9 +51,11 @@ export default function FileBar({ files, current, message, focusNameToken, onSel
           />
         </div>
         <button type="button" id="newBtn" onClick={onNew}>New</button>
+        <button type="button" id="backupBtn" disabled={!current || backingUp} onClick={onBackup}>Backup</button>
         <button type="button" id="openBtn" onClick={onOpenFolder}>Open folder</button>
       </div>
       <p id="message" className="warning" hidden={!message}>{message || ''}</p>
+      {backupNote && <p id="backupNote" className={backupNote.kind === 'error' ? 'warning' : 'muted'} role="status">{backupNote.text}</p>}
     </section>
   );
 }
