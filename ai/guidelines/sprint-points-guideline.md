@@ -14,8 +14,3 @@ Decision Checklist:
   • Effort: Days/hours of hands-on work
   • Scope: Touchpoints (UI, API, DB, 3rd party)
   • Risk & Uncertainty: New tech, vague specs, unknown dependencies
-
-Team Reference Anchors:
-  1 pt = <e.g., Update button styling / label text>
-  3 pt = <e.g., Add new CSV export endpoint>
-  8 pt = <e.g., Integrate Stripe payment gateway>

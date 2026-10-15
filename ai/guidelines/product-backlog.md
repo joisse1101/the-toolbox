@@ -54,7 +54,7 @@ An Epic contains several Features, a Feature several User Stories, and a Story i
 - The Title names one story (a single action), not a Feature or an Epic.
 - Belongs to exactly one Feature.
 - Follows INVEST (section 4).
-- **Size:** at most **13 sprint points**, on the scale 1, 2, 3, 5, 8, 13. A story above 13 is split. The tool also accepts 21, 34 and 55, but these are "too big, split" markers, not valid sizes. Stories are sized in points only, not in days. See [`src/user-story-generator/sprint-points-guideline.md`](../src/user-story-generator/sprint-points-guideline.md) for what each number means.
+- **Size:** at most **13 sprint points**, on the scale 1, 2, 3, 5, 8, 13. A story above 13 is split. The tool also accepts 21, 34 and 55, but these are "too big, split" markers, not valid sizes. Stories are sized in points only, not in days. See [`sprint-points-guideline.md`](sprint-points-guideline.md) for what each number means.
 - Does not prescribe the technical solution.
 
 **Example:**
@@ -88,6 +88,7 @@ Every story is checked against these six principles.
 **Rules:**
 
 - Unambiguous and objective: each criterion passes or fails. No measure-less words such as "fast", "user friendly" or "properly"; give a number or an observable result.
+- Subjective qualities ("relevant", "readable", "intuitive") need a measurable bar: a fixed sample, a threshold and who judges it (for example "at least 8 of 10 results in the agreed sample are marked relevant by the product owner"). The reviewer's judgement alone is not a bar. If the bar cannot be fixed yet, put "to be agreed: <what>" in Notes.
 - Says *what* the system does, not *how* it is built. No table names, classes or libraries.
 - Can fail. A criterion that always holds tests nothing.
 - Together the criteria cover the story's Title and "I want", including the failure path (invalid input, not found, not allowed).
