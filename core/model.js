@@ -10,7 +10,7 @@ export const COLUMNS = [
   'ID', 'Epic', 'Feature', 'Title', 'User Story', 'Sprint points', 'Priority', 'Depends On', 'User Acceptance Criteria', 'Notes', 'Locked', 'Clarifications',
 ];
 // Only a proposals file has this column (see proposalHeaders): `Yes` or empty. A benched proposed story is parked: the
-// explore and propose skills do not see it. It changes nothing else (accepting works as for any other story).
+// explore and propose skills do not see it, and it cannot be accepted until it is un-benched.
 export const BENCHED_COLUMN = 'Benched';
 export const POINTS = [1, 2, 3, 5, 8, 13, 21, 34, 55];
 export const SPLIT_ABOVE = 13;

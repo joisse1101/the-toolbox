@@ -233,3 +233,25 @@ test('moveToProposed refuses a locked story; acceptProposed produces unlocked st
   const p = prop('NEW-1', 'Alpha', { locked: true });
   assert.equal(acceptProposed(b, [p], new Set([p.id]), COLUMNS).accepted[0].locked, false);
 });
+
+test('acceptProposed refuses a benched story and moves nothing, for a selection and for all', () => {
+  const b = backlogOf(st('Alpha'));
+  const ok = prop('NEW-1', 'Alpha');
+  const parked = prop('NEW-2', 'Alpha', { benched: true });
+  for (const which of [[parked], [ok, parked]]) {
+    const r = acceptProposed(b, [ok, parked], new Set(which.map((s) => s.id)), COLUMNS);
+    assert.match(r.error, /NEW-2 "T NEW-2" is benched/);
+    assert.equal(r.backlog, undefined);
+  }
+});
+
+test('acceptProposed: open questions do not block and the cell travels both ways', () => {
+  const clar = [{ q: 'Which format?', a: '' }];
+  const p = prop('NEW-1', 'Alpha', { clarifications: clar });
+  const acc = acceptProposed(backlogOf(st('Alpha')), [p], new Set([p.id]), COLUMNS);
+  assert.equal(acc.error, undefined);
+  assert.deepEqual(acc.accepted[0].clarifications, clar);
+  assert.equal(acc.accepted[0].benched, false);
+  const back = moveToProposed(acc.backlog, [], acc.accepted[0].id, COLUMNS);
+  assert.deepEqual(back.moved.clarifications, clar);
+});

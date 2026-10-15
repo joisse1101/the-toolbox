@@ -77,6 +77,7 @@ const cycleIds =(stories) => {
 
 // Move the proposed stories whose internal `id` is in `ids` into the backlog. Each goes after the last story of its
 // Epic whatever its Feature (a new Epic starts at the end); several keep their order from the proposals file.
+// A benched story is never accepted: the user un-benches it first. Open Clarifications do not block.
 // Returns { backlog, proposals, accepted } (accepted: the moved stories with their new IDs), or { error } and nothing moves.
 export function acceptProposed(backlogStories, proposedStories, ids, headers) {
   const chosen = proposedStories.filter((s) => ids.has(s.id));
@@ -87,12 +88,18 @@ export function acceptProposed(backlogStories, proposedStories, ids, headers) {
     return { error: `Give ${names} an Epic before accepting ${noEpic.length > 1 ? 'them' : 'it'}.` };
   }
 
+  const benched = chosen.filter((s) => s.benched);
+  if (benched.length) {
+    const names = benched.map((s) => `${s.code}${s.title.trim() ? ` "${s.title.trim()}"` : ''}`).join(', ');
+    return { error: `${names} ${benched.length > 1 ? 'are' : 'is'} benched. Un-bench ${benched.length > 1 ? 'them' : 'it'} before accepting.` };
+  }
+
   // Backlog-shaped copies. `code` stays the placeholder so renumber can find the links that name it.
   const copies = chosen.map((s) => {
     const epic = liveEpic(s);
     const cells = s.cells.slice(0, headers.length);
     while (cells.length < headers.length) cells.push('');
-    return { ...s, locked: false, benched: false, epic, codedEpic: epic, cells, dependsOn: [...s.dependsOn], ambiguous: [...s.ambiguous] };
+    return { ...s, locked: false, epic, codedEpic: epic, cells, dependsOn: [...s.dependsOn], ambiguous: [...s.ambiguous] };
   });
 
   const placed = backlogStories.slice();
