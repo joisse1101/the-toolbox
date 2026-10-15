@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "vite --config app/frontend/vite.config.mjs",
     "build": "vite build --config app/frontend/vite.config.mjs",
-    "start": "node app/start.mjs",
+    "start": "node app/start.mjs --build",
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
