@@ -7,7 +7,7 @@ import { buildProposals } from '../core/proposal-input.js';
 import { loadBacklog } from '../core/model.js';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const skill = (name) => fs.readFileSync(path.join(REPO, '.claude', 'skills', name, 'SKILL.md'), 'utf8');
+const skill = (name) => fs.readFileSync(path.join(REPO, '.claude', 'skills', name, 'SKILL.md'), 'utf8').replace(/\r\n/g, '\n');
 
 const HEAD = 'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,Acceptance Criteria,Notes\r\n';
 const BACKLOG =
@@ -39,4 +39,37 @@ test('explore-stories names no writer and neither skill copies the guidelines\' 
     assert.match(text, /guidelines\/product-backlog\.md/);
     assert.doesNotMatch(text, /INVEST (stands|means)|Independent, Negotiable/i);
   }
+});
+
+const FULL = (code) => `${code},Identity & Access Management,Auth,Earlier idea,"As a user, I want x, so that y",3,,,"AC1: Given a, when b, then c",\r\n`;
+
+test('the patch example in propose-stories/SKILL.md passes the writer\'s validation', () => {
+  const all = [...skill('propose-stories').matchAll(/<<'JSON'\n([\s\S]*?)\nJSON\n```/g)];
+  assert.equal(all.length, 2, 'one example of new stories and one of a patch');
+  const input = JSON.parse(all[1][1]);
+  assert.ok(input.every((item) => /^NEW-\d+$/.test(item.id)));
+  const r = buildProposals({
+    input,
+    backlog: loadBacklog(BACKLOG),
+    proposals: loadBacklog(HEAD + input.map((i) => FULL(i.id)).join(''), { placeholderIds: true }),
+  });
+  assert.deepEqual(r.errors, undefined);
+  assert.deepEqual(r.patchedIds, input.map((i) => i.id));
+});
+
+test('propose-stories says to re-read first, to show old and new values, to prefer a patch and to size by the guideline', () => {
+  const text = skill('propose-stories');
+  assert.match(text, /at the start of every use, \*\*even if `explore-stories` already ran it/);
+  assert.match(text, /old value/);
+  assert.match(text, /Prefer a patch to a second story/);
+  assert.match(text, /sprint-points-guideline\.md/);
+  assert.doesNotMatch(text, /The writer only adds/);
+  assert.match(text, /added and patched/);
+});
+
+test('explore-stories sizes by the printed guideline and says proposals change only through propose-stories', () => {
+  const text = skill('explore-stories');
+  assert.match(text, /sprint-points-guideline\.md/);
+  assert.match(text, /change only through `propose-stories`/);
+  assert.match(text, /do not suggest adding a second story/);
 });
