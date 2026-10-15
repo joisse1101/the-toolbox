@@ -76,6 +76,13 @@ export function reducer(state, action) {
       const rest = removeProposed(stories, action.id);
       return withStories(state, rest, { selectedId: rest.length ? rest[Math.min(i, rest.length - 1)].id : null });
     }
+    case 'deleteMany': {
+      const stories = state.backlog.stories;
+      const rest = stories.filter((s) => !action.ids.has(s.id));
+      if (rest.length === stories.length) return state;
+      const keep = rest.some((s) => s.id === state.selectedId);
+      return withStories(state, rest, { selectedId: keep ? state.selectedId : (rest[0]?.id ?? null) });
+    }
     case 'move': {
       const stories = moveProposed(state.backlog.stories, action.id, action.epic, action.beforeId);
       return stories === state.backlog.stories ? state : withStories(state, stories, { selectedId: action.id });
@@ -178,11 +185,10 @@ export function useProposals(current, headers) {
       moveStory: (id, epic, beforeId) => dispatch({ type: 'move', id, epic, beforeId }),
       replaceStories: (stories) => dispatch({ type: 'replaceStories', stories }),
 
-      // Asks first. Resolves true when the story was deleted.
-      deleteSelected() {
-        const { selectedId } = stateRef.current;
-        if (selectedId === null || !confirm('Delete the selected proposed story?')) return false;
-        dispatch({ type: 'delete', id: selectedId });
+      // Asks first. `ids` is the set of ticked stories. Returns true when they were deleted.
+      deleteMany(ids) {
+        if (!ids.size || !confirm(`Delete ${ids.size} proposed ${ids.size === 1 ? 'story' : 'stories'}?`)) return false;
+        dispatch({ type: 'deleteMany', ids });
         return true;
       },
     };

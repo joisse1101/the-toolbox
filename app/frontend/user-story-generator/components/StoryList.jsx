@@ -111,10 +111,10 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
         ])}
         {!stories.length && <li className="muted" style={{ cursor: 'default' }}>No stories yet.</li>}
       </ul>
-      <div className="row">
+      {onAdd && <div className="row">
         <button type="button" id="addStoryBtn" className="primary" onClick={onAdd}>Add story</button>
         <button type="button" id="deleteStoryBtn" className="danger" disabled={selectedId === null || !stories.some((s) => s.id === selectedId && !s.locked)} title={stories.some((s) => s.id === selectedId && s.locked) ? 'Unlock the story to delete it' : undefined} onClick={onDelete}>Delete selected</button>
-      </div>
+      </div>}
     </aside>
   );
 }
