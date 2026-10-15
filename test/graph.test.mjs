@@ -32,9 +32,64 @@ test('layout: several roots share layer 0 in file order', () => {
 });
 
 test('layout: rows follow the dependencies to reduce crossings', () => {
-  const a = story('A-1'), b = story('A-2'), c = story('A-3', ['A-2']), d = story('A-4', ['A-1']);
-  const g = layoutGraph([a, b, c, d]);
+  const a = story('A-1'), b = story('A-2'), c = story('A-3', ['A-2']), d = story('A-4', ['A-1']), e = story('A-5', ['A-3', 'A-4']);
+  const g = layoutGraph([a, b, c, d, e]);
   assert.ok(rowOf(g, d) < rowOf(g, c)); // d hangs off a (row 0), c off b (row 1)
+  assert.ok(rowOf(g, a) < rowOf(g, b));
+});
+
+test('clusters: unrelated chains are separate, largest first', () => {
+  const p = story('P-1'), q = story('P-2', ['P-1']);
+  const a = story('A-1'), b = story('A-2', ['A-1']), c = story('A-3', ['A-2']);
+  const g = layoutGraph([p, q, a, b, c]);
+  assert.deepEqual(g.clusters, [{ index: 0, size: 3, rows: 1 }, { index: 1, size: 2, rows: 1 }]);
+  const clusterOf = (s) => g.nodes.find((x) => x.id === s.id).cluster;
+  assert.deepEqual([a, b, c].map(clusterOf), [0, 0, 0]);
+  assert.deepEqual([p, q].map(clusterOf), [1, 1]);
+});
+
+test('clusters: ties keep the order of the first story; sizes order 5, 3, 2', () => {
+  const chain = (prefix, n) => Array.from({ length: n }, (_, i) => story(`${prefix}-${i + 1}`, i ? [`${prefix}-${i}`] : []));
+  const two = chain('B', 2), five = chain('C', 5), three = chain('D', 3), alsoTwo = chain('E', 2);
+  const g = layoutGraph([...two, ...alsoTwo, ...three, ...five]);
+  assert.deepEqual(g.clusters.map((c) => c.size), [5, 3, 2, 2]);
+  assert.equal(g.nodes.find((x) => x.id === two[0].id).cluster, 2);
+  assert.equal(g.nodes.find((x) => x.id === alsoTwo[0].id).cluster, 3);
+});
+
+test('clusters: a link joins two clusters and removing it splits them', () => {
+  const a = story('A-1'), b = story('A-2', ['A-1']), p = story('P-1'), q = story('P-2', ['P-1']);
+  assert.equal(layoutGraph([a, b, p, q]).clusters.length, 2);
+  const joined = { ...p, dependsOn: ['A-2'] };
+  assert.equal(layoutGraph([a, b, joined, q]).clusters.length, 1);
+});
+
+test('routing: an edge skipping a layer gets a lane that no node uses', () => {
+  const a = story('A-1'), b = story('A-2', ['A-1']), c = story('A-3', ['A-2', 'A-1']);
+  const g = layoutGraph([a, b, c]);
+  const long = g.edges.find((e) => e.from === c.id && e.to === a.id);
+  const short = g.edges.find((e) => e.from === c.id && e.to === b.id);
+  assert.deepEqual(short.via, []);
+  assert.equal(long.via.length, 1);
+  assert.equal(long.via[0].layer, 1);
+  assert.notEqual(long.via[0].row, rowOf(g, b));
+  assert.equal(g.clusters[0].rows, 2);
+});
+
+test('routing: lanes of different edges in a layer do not share a row', () => {
+  const a = story('A-1'), b = story('A-2', ['A-1']), c = story('A-3', ['A-2']), d = story('A-4', ['A-3', 'A-1']), e = story('A-5', ['A-3', 'A-1']);
+  const g = layoutGraph([a, b, c, d, e]);
+  const lanes = g.edges.flatMap((x) => x.via.map((v) => `${v.layer}:${v.row}`));
+  const nodesAt = g.nodes.map((x) => `${x.layer}:${x.row}`);
+  assert.equal(new Set(lanes).size, lanes.length);
+  assert.ok(lanes.every((lane) => !nodesAt.includes(lane)));
+});
+
+test('routing: a back edge in a cycle gets no lane', () => {
+  const a = story('A-1', ['A-3']), b = story('A-2', ['A-1']), c = story('A-3', ['A-2']);
+  const g = layoutGraph([a, b, c]);
+  assert.equal(g.clusters.length, 1);
+  assert.ok(g.edges.every((e) => e.via.length === 0 || !e.back));
 });
 
 test('layout: unlinked and ID-less stories are listed apart', () => {
