@@ -33,3 +33,5 @@ Help the user work out new stories for one backlog by talking them through. **Ne
 ## Hand over
 
 When the user is happy with the drafts, say so and offer to continue with `propose-stories` (in the same session if it was started with `shape-stories.ps1`). Do not try to save them from here, and do not run any command other than the reader.
+
+If the user types `propose-stories` or `/propose-stories` (with or without the slash), or asks to save, write, propose or put the stories in the CSV, that is the hand over: **call the Skill tool with `propose-stories` right away**. Do not draft, restate or "propose" the stories in the conversation instead; the CSV is written only by that skill's writer.

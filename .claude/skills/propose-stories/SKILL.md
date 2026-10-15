@@ -84,8 +84,9 @@ JSON
   - a story ID of the backlog, such as `IAM-0001` (it must exist);
   - `NEW-<k>`: the k-th story of this same input, counting from 1 (above, story 2 depends on story 1). It is stored as the real ID assigned to that story;
   - `proposed:NEW-<n>`: a story already in the proposals file (it must exist there).
+- Real IDs may not start at `NEW-1` (benched and earlier proposals keep their numbers). Label drafts "story 1, 2, …", use `NEW-<k>` only inside the written input, and map the IDs the writer reports back to the drafts afterwards.
 - The writer gives each story the next free `NEW-<n>` ID, in input order, and creates the file with the backlog's columns when it does not exist.
-- Write in **batches of about 8-10 stories**, one command per batch. Each batch is validated on its own and nothing is written unless all of it is valid. Run each batch **once**: new stories are added again if you repeat it. To link a story to one in an earlier batch, use `proposed:NEW-<n>` with the ID the earlier run reported.
+- Write in **batches of 3-4 stories**, one command per batch. A long heredoc can fail in this shell with `unexpected EOF` before the writer runs (nothing is written); when a failure looks like a shell error, send a smaller batch instead of retrying with tweaks. The Bash guard allows only the exact reader and writer forms: no pipes, `sed` or other filters. Each batch is validated on its own and nothing is written unless all of it is valid. Run each batch **once**: new stories are added again if you repeat it. To link a story to one in an earlier batch, use `proposed:NEW-<n>` with the ID the earlier run reported.
 - A rejected run wrote nothing. The problems name the story by its position in the input. Fix the drafts, show the changed drafts and ask again before running again.
 - Do not write the proposals file any other way, and do not pass any other argument.
 
