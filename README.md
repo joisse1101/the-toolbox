@@ -9,7 +9,7 @@ Small local tools for a team lead. Each tool is a React page (built with Vite) t
 | `app/frontend/` | The React pages and the Vite config. Builds into `app/dist/`. |
 | `app/backend/` | `server.cjs`: serves `app/dist/` and the CSV file API. |
 | `core/` | Pure logic with no UI or server: CSV parsing, the story model, IDs, reviews, proposals. Used by the frontend and by the skill scripts. |
-| `data/` | Your private data (git-ignored): `user-stories/`, `reviews/`, `proposals/`. Set `TLT_DATA_DIR` to keep it somewhere else, for example outside the repo. |
+| `data/` | Your private data (git-ignored): `user-stories/`, `reviews/`, `proposals/`, `backups/`. Set `TLT_DATA_DIR` to keep it somewhere else, for example outside the repo. |
 | `ai/` | What the AI works from: `guidelines/` (backlog standards, point sizing) and `launchers/` (the `.ps1` session starters). |
 | `.claude/skills/` | The skills and their guarded scripts (must stay here for Claude Code to find them). |
 | `openspec/` | Specs and change history (must stay at the root for the OpenSpec CLI). |
@@ -34,6 +34,8 @@ You can still run the pieces yourself: `npm run build`, `node app/backend/server
 | User story generator | `/user-story-generator/` | `data/user-stories/*.csv` |
 
 The `/review-backlog` skill writes its suggestions to `data/reviews/<backlog>.csv` (second store, `reviews`), only through `.claude/skills/review-backlog/write-review.mjs`. The story form shows them next to the field they concern, with Apply and Dismiss.
+
+The **Backup** button in the file bar copies the open backlog, its review and its proposals (not the `.csv.decided` sidecar) to `data/backups/<backlog>/<date>_<time>/`, after saving any pending edits; a second press in the same second gets a `-2` suffix and nothing is overwritten. The **Backups** tab lists them and compares two of them, or one with the current files, as a colored diff: each CSV is flattened to one `Column: value` line per field and `git diff --no-index` does the rest, so **git must be on the PATH to compare** (backing up needs nothing). `backups` is not a store, so the file API cannot reach it. There is no restore or delete: copy a file back by hand.
 
 Proposed stories live in `data/proposals/<backlog>.csv` (third store, `proposals`): same columns as the backlog, with placeholder IDs `NEW-<n>`. The **Proposed** tab edits them; **Accept story** / **Accept all** move them to the end of their Epic in the backlog.
 
