@@ -73,3 +73,12 @@ test('explore-stories sizes by the printed guideline and says proposals change o
   assert.match(text, /change only through `propose-stories`/);
   assert.match(text, /do not suggest adding a second story/);
 });
+
+test('explore-stories asks only for what is missing and opens a proposed story on its current text', () => {
+  const text = skill('explore-stories');
+  assert.match(text, /Ask only for what is missing, backlog first/);
+  assert.match(text, /AskUserQuestion/);
+  assert.match(text, /Ask neither question/);
+  assert.match(text, /start by showing it as it is now.*"What should change\?"/);
+  assert.doesNotMatch(text, /decided first/);
+});
