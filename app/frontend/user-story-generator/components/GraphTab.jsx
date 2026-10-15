@@ -8,25 +8,55 @@ const NODE_W = 176;
 const NODE_H = 46;
 const GAP_X = 96;
 const GAP_Y = 22;
+const BAND_PAD = 14;
+const LABEL_H = 26;
+const BAND_GAP = 28;
 const MAX_TITLE = 22;
 const KEY_PAN = 48;
 const ZOOM_STEP = 1.25;
 
-const pos = (node) => ({ x: node.layer * (NODE_W + GAP_X), y: node.row * (NODE_H + GAP_Y) });
+const slot = (layer, row, top) => ({ x: BAND_PAD + layer * (NODE_W + GAP_X), y: top + LABEL_H + BAND_PAD + row * (NODE_H + GAP_Y) });
 const edgeKey = (e) => `${e.from}>${e.to}`;
 const title = storyLabel;
 const clip = (text) => (text.length > MAX_TITLE ? `${text.slice(0, MAX_TITLE - 1)}…` : text);
 
-// From the dependent's left edge to the dependency's right edge, so arrows run right to left.
-function edgePath(from, to) {
-  const a = pos(from);
-  const b = pos(to);
-  const sx = a.x;
-  const sy = a.y + NODE_H / 2;
-  const ex = b.x + NODE_W;
-  const ey = b.y + NODE_H / 2;
-  const c = Math.max(40, Math.abs(sx - ex) / 2);
-  return `M ${sx} ${sy} C ${sx - c} ${sy}, ${ex + c} ${ey}, ${ex} ${ey}`;
+// Each cluster is a band: a label strip, then its rows. Returns the band tops, widths and heights, and the bounds of all.
+function bandGeometry(layout) {
+  const bands = [];
+  let top = 0;
+  for (const cluster of layout.clusters) {
+    const maxLayer = Math.max(0, ...layout.nodes.filter((n) => n.cluster === cluster.index).map((n) => n.layer));
+    const width = 2 * BAND_PAD + maxLayer * (NODE_W + GAP_X) + NODE_W;
+    const height = LABEL_H + 2 * BAND_PAD + cluster.rows * (NODE_H + GAP_Y) - GAP_Y;
+    bands.push({ top, width, height });
+    top += height + BAND_GAP;
+  }
+  return { bands, bounds: { width: Math.max(0, ...bands.map((b) => b.width)), height: Math.max(0, top - BAND_GAP) } };
+}
+
+// From the dependent's left edge to the dependency's right edge, so arrows run right to left. A long arrow runs
+// straight through its lane in each column it skips and curves only in the gaps between columns, so it never meets a node.
+function edgePath(from, to, via, top, back) {
+  const sx = slot(from.layer, 0, top).x;
+  const sy = slot(0, from.row, top).y + NODE_H / 2;
+  const ex = slot(to.layer, 0, top).x + NODE_W;
+  const ey = slot(0, to.row, top).y + NODE_H / 2;
+  if (back || !via.length) {
+    const c = Math.max(40, Math.abs(sx - ex) / 2);
+    return `M ${sx} ${sy} C ${sx - c} ${sy}, ${ex + c} ${ey}, ${ex} ${ey}`;
+  }
+  const curve = (x1, y1, x2, y2) => `C ${x1 - GAP_X / 2} ${y1}, ${x2 + GAP_X / 2} ${y2}, ${x2} ${y2}`;
+  let d = `M ${sx} ${sy}`;
+  let x = sx;
+  let y = sy;
+  for (const lane of via) {
+    const left = slot(lane.layer, 0, top).x;
+    const ly = slot(0, lane.row, top).y + NODE_H / 2;
+    d += ` ${curve(x, y, left + NODE_W, ly)} L ${left} ${ly}`;
+    x = left;
+    y = ly;
+  }
+  return `${d} ${curve(x, y, ex, ey)}`;
 }
 
 // The dependencies as a layered graph that can be zoomed, panned and edited: drag from a node's handle onto the
@@ -55,11 +85,8 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
   const fittedFor = useRef(null);
 
   const hasNodes = layout.nodes.length > 0;
-  const bounds = useMemo(() => {
-    const maxLayer = Math.max(0, ...layout.nodes.map((n) => n.layer));
-    const maxRow = Math.max(0, ...layout.nodes.map((n) => n.row));
-    return { width: maxLayer * (NODE_W + GAP_X) + NODE_W, height: maxRow * (NODE_H + GAP_Y) + NODE_H };
-  }, [layout]);
+  const { bands, bounds } = useMemo(() => bandGeometry(layout), [layout]);
+  const pos = (node) => slot(node.layer, node.row, bands[node.cluster].top);
 
   const panelSize = () => {
     const r = panel.current?.getBoundingClientRect();
@@ -269,10 +296,16 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
               ))}
             </defs>
             <g transform={`translate(${view.x} ${view.y}) scale(${view.k})`}>
+              {layout.clusters.map((c) => (
+                <g key={c.index} className="graph-band" data-cluster={c.index}>
+                  <rect className="graph-band-box" x="0" y={bands[c.index].top} width={bands[c.index].width} height={bands[c.index].height} rx="10" />
+                  <text className="graph-band-label" x={BAND_PAD} y={bands[c.index].top + 18}>{`Cluster ${c.index + 1} · ${c.size} stories`}</text>
+                </g>
+              ))}
               {layout.edges.map((e) => {
                 const from = nodeById.get(e.from);
                 const to = nodeById.get(e.to);
-                const d = edgePath(from, to);
+                const d = edgePath(from, to, e.via, bands[from.cluster].top, e.back);
                 const on = selectedEdge === edgeKey(e);
                 const marker = e.back ? 'back' : on ? 'hi' : '';
                 const cls = ['graph-edge', e.back ? 'back' : '', on ? 'selected' : '', litEdge(e) ? '' : 'dim'].filter(Boolean).join(' ');

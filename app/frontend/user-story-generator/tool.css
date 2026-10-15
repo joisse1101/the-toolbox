@@ -153,6 +153,8 @@ legend { font-weight: 600; padding: 0 6px; }
 .graph-svg.choosing .graph-node { cursor: crosshair; }
 .graph-empty { margin: 8px 0; }
 
+.graph-band-box { fill: var(--border); fill-opacity: 0.25; stroke: var(--border); stroke-width: 1; }
+.graph-band-label { font-size: 12px; font-weight: 600; fill: var(--muted); pointer-events: none; }
 .graph-edge { cursor: pointer; outline: none; }
 .graph-edge-line { fill: none; stroke: var(--muted); stroke-width: 1.5; }
 .graph-edge-hit { fill: none; stroke: transparent; stroke-width: 14; pointer-events: stroke; }
