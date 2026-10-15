@@ -83,7 +83,7 @@ test('line breaks in single-line fields are refused', () => {
 
 test('unknown keys are refused, and Priority says why', () => {
   assert.match(errorsOf([story({ priority: 'High' })]).join(), /unknown key "priority".*Priority is not set/);
-  assert.match(errorsOf([story({ id: 'IAM-0009' })]).join(), /unknown key "id"/);
+  assert.match(errorsOf([story({ id: 'IAM-0009' })]).join(), /id must be a proposed story ID/);
   assert.match(errorsOf([story({ code: 'x' })]).join(), /unknown key "code"/);
 });
 
@@ -155,4 +155,142 @@ test('built stories round-trip through the file with no raw-text fallback', () =
     assert.equal(s.cells[11], '');
   });
   assert.deepEqual(back.stories[1].dependsOn, ['IAM-0001', 'NEW-10']);
+});
+
+// --- patches: an item with an "id" changes the named fields of a proposed story in place ---
+
+const ROW = (code, over = {}) =>
+  [
+    code,
+    over.epic ?? 'Identity & Access Management',
+    over.feature ?? 'Auth',
+    over.title ?? 'Reset password',
+    over.userStory ?? '"As a user, I want to reset my password, so that I can regain access"',
+    over.points ?? '3',
+    '',
+    over.dependsOn ?? '',
+    over.criteria ?? '"AC1: Given a registered email, when I ask for a reset, then a link is sent"',
+    over.notes ?? 'old note',
+    'Blue',
+    over.benched ?? '',
+  ].join(',') + '\r\n';
+const PHEAD = HEAD.replace(/\r\n$/, ',Benched\r\n');
+const withRows = (...rows) => loadBacklog(PHEAD + rows.join(''), { placeholderIds: true });
+const patch = (over = {}) => ({ id: 'NEW-10', ...over });
+const patchOf = (input, rows = [ROW('NEW-10')]) => {
+  const r = buildProposals({ input, backlog: backlog(), proposals: withRows(...rows) });
+  assert.equal(r.ok, true, JSON.stringify(r.errors));
+  return r;
+};
+const patchErrors = (input, rows = [ROW('NEW-10')]) => {
+  const r = buildProposals({ input, backlog: backlog(), proposals: withRows(...rows) });
+  assert.equal(r.ok, false, JSON.stringify(input));
+  return r.errors;
+};
+
+test('a patch changes only the fields it names, in place', () => {
+  const r = patchOf([patch({ points: 5 })], [ROW('NEW-9'), ROW('NEW-10'), ROW('NEW-11')]);
+  assert.deepEqual(r.patchedIds, ['NEW-10']);
+  assert.deepEqual(r.stories, []);
+  assert.deepEqual(r.proposed.map((s) => s.code), ['NEW-9', 'NEW-10', 'NEW-11']);
+  const before = withRows(ROW('NEW-10')).stories[0];
+  const after = r.proposed[1];
+  assert.equal(after.points, '5');
+  assert.deepEqual({ ...after, points: '3', id: before.id }, before);
+});
+
+test('a patch replaces a list as a whole and can clear Notes', () => {
+  const s = patchOf([patch({ criteria: ['AC1: Given x, when y, then z'], notes: '' })]).proposed[0];
+  assert.deepEqual(s.criteria, [{ given: 'x', when: 'y', then: 'z' }]);
+  assert.equal(s.notes, '');
+  assert.equal(s.title, 'Reset password');
+});
+
+test('repeating the stored values changes nothing (the rebuild round-trips)', () => {
+  const r = patchOf([
+    patch({
+      epic: 'Identity & Access Management',
+      title: 'Reset password',
+      userStory: 'As a user, I want to reset my password, so that I can regain access',
+      criteria: ['AC1: Given a registered email, when I ask for a reset, then a link is sent'],
+      notes: 'old note',
+    }),
+  ]);
+  const stored = withRows(ROW('NEW-10'));
+  assert.equal(serializeBacklog({ ...stored, stories: r.proposed }), serializeBacklog(stored));
+});
+
+test('patch rejections', () => {
+  const rows = [ROW('NEW-10'), ROW('NEW-11', { benched: 'Yes' })];
+  const cases = [
+    [patch({ priority: 'High' }), /Patch 1 \(NEW-10\) .*unknown key "priority".*Priority is not set/],
+    [patch({ code: 'x' }), /unknown key "code"/],
+    [patch({ benched: 'Yes' }), /unknown key "benched"/],
+    [patch({ nope: 1 }), /unknown key "nope"/],
+    [{ id: 'NEW-10' }, /changes no field/],
+    [patch({ id: 'IAM-0001', title: 'x' }), /id must be a proposed story ID/],
+    [patch({ id: 12, title: 'x' }), /id must be a proposed story ID/],
+    [patch({ id: 'NEW-99', title: 'x' }), /proposals file has no NEW-99/],
+    [patch({ id: 'NEW-11', title: 'x' }), /NEW-11, which is benched/],
+    [patch({ points: 21 }), /21.* split/],
+    [patch({ title: '' }), /has no Title/],
+    [patch({ userStory: 'nonsense' }), /User Story does not follow/],
+  ];
+  for (const [item, pattern] of cases) assert.match(patchErrors([item], rows).join('\n'), pattern, JSON.stringify(item));
+});
+
+test('one patch per proposed story', () => {
+  assert.match(patchErrors([patch({ title: 'a' }), patch({ title: 'b' })]).join(), /Patch 2 \(NEW-10\) patches NEW-10 again/);
+});
+
+test('a patch against a missing proposals file is rejected', () => {
+  const r = buildProposals({ input: [patch({ title: 'x' })], backlog: backlog(), proposals: null });
+  assert.equal(r.ok, false);
+  assert.match(r.errors[0], /proposals file has no NEW-10/);
+});
+
+test('a stored cell that cannot be rebuilt must be replaced by the patch, and the error names it', () => {
+  const rows = [ROW('NEW-10', { userStory: 'free text', criteria: 'free text too' })];
+  const errors = patchErrors([patch({ title: 'x' })], rows).join('\n');
+  assert.match(errors, /User Story cell is free text/);
+  assert.match(errors, /Acceptance Criteria cell is free text/);
+  const fixed = patchOf([patch({ userStory: 'As a user, I want a, so that b', criteria: ['AC1: Given a, when b, then c'] })], rows);
+  assert.equal(fixed.proposed[0].rawUserStory, null);
+  assert.equal(fixed.proposed[0].rawCriteria, null);
+});
+
+test('a patch is validated as the merged story', () => {
+  const rows = [ROW('NEW-10', { points: '' })];
+  assert.match(patchErrors([patch({ title: 'x' })], rows).join(), /Sprint points/);
+  assert.equal(patchOf([patch({ points: 2 })], rows).proposed[0].points, '2');
+});
+
+test('a patch can set Depends On with the three forms, and omitting it keeps the stored list', () => {
+  const rows = [ROW('NEW-9'), ROW('NEW-10', { dependsOn: 'NEW-9' })];
+  assert.deepEqual(patchOf([patch({ title: 'x' })], rows).proposed[1].dependsOn, ['NEW-9']);
+  assert.deepEqual(patchOf([patch({ dependsOn: ['IAM-0001', 'proposed:NEW-9'] })], rows).proposed[1].dependsOn, ['IAM-0001', 'NEW-9']);
+  assert.deepEqual(patchOf([patch({ dependsOn: [] })], rows).proposed[1].dependsOn, []);
+});
+
+test('a patch and a new story can depend on each other, but not in a cycle', () => {
+  const ok = patchOf([patch({ dependsOn: ['NEW-1'] }), story({ title: 'Fresh' })]);
+  assert.equal(ok.stories[0].code, 'NEW-11');
+  assert.deepEqual(ok.proposed[0].dependsOn, ['NEW-11']);
+  const cycle = patchErrors([patch({ dependsOn: ['NEW-1'] }), story({ title: 'Fresh', dependsOn: ['proposed:NEW-10'] })]).join('\n');
+  assert.match(cycle, /Patch 1 \(NEW-10\) .*cycle/);
+  assert.match(cycle, /Story 2 .*cycle/);
+});
+
+test('NEW-<k> counts new stories only, and a patch cannot depend on itself', () => {
+  assert.match(patchErrors([patch({ dependsOn: ['NEW-1'] })]).join(), /Patch 1 .*NEW-1.*only 0 stories/);
+  assert.match(patchErrors([patch({ dependsOn: ['proposed:NEW-10'] })]).join(), /Patch 1 .*the story itself/);
+  const r = patchOf([story({ title: 'First' }), patch({ title: 'x' }), story({ title: 'Second', dependsOn: ['NEW-1'] })]);
+  assert.deepEqual(r.ids, ['NEW-11', 'NEW-12']);
+  assert.deepEqual(r.stories[1].dependsOn, ['NEW-11']);
+  assert.match(patchErrors([story({ title: 'First', dependsOn: ['NEW-1'] }), patch({ title: 'x' })]).join(), /Story 1 .*the story itself/);
+});
+
+test('a cycle through a patch is refused', () => {
+  const rows = [ROW('NEW-10'), ROW('NEW-11', { dependsOn: 'NEW-10' })];
+  assert.match(patchErrors([patch({ dependsOn: ['proposed:NEW-11'] })], rows).join('\n'), /Patch 1 \(NEW-10\) .*cycle/);
 });
