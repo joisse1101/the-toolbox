@@ -9,7 +9,7 @@
 - [ ] 2.1 Add the Clarifications section to `StoryForm.jsx` (add, delete, edit question and answer) for the Editor and Proposed tabs; verify by hand that edits auto-save and reload
 - [ ] 2.2 Show the "N open" badge in `StoryList.jsx` and disable Accept (selected and all) with a reason for benched stories in `ProposedTab.jsx`; verify by hand with a benched, an open and a cleared story
 - [ ] 2.3 Show the `Clarification` Area in the Review tab and Apply for clarification suggestions in the story form, and verify by hand that Apply adds an open question and a duplicate shows as out of date
-- [ ] 2.4 Run `npm run build` and `npm test` and verify both pass
+- [x] 2.4 Run `npm run build` and `npm test` and verify both pass
 
 ## 3. Review support for clarification suggestions
 

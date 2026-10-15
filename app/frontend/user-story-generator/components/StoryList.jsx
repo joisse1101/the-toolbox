@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { groupByEpic, storyIssues, storyLabel } from '../../../../core/model.js';
+import { openCount } from '../../../../core/story-text.js';
 import { issueClass, rowTooltip } from './issues.js';
 
 // Drag a story to reorder it inside its epic, or onto another epic's group to move it there. Dropping on the
@@ -102,6 +103,9 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
                 <span className="title">{storyLabel(s)}</span>
                 {suggestionCounts.get(s.code) > 0 && (
                   <span className="suggestion-badge" title={`${suggestionCounts.get(s.code)} review suggestion(s)`} aria-label={`${suggestionCounts.get(s.code)} review suggestions`}>{suggestionCounts.get(s.code)}</span>
+                )}
+                {openCount(s.clarifications) > 0 && (
+                  <span className="open-badge" title={`${openCount(s.clarifications)} open question(s) in Clarifications`}>{`${openCount(s.clarifications)} open`}</span>
                 )}
                 <span className="badge">{s.points || '–'}</span>
               </li>

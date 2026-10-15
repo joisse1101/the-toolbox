@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   POINTS, SPLIT_ABOVE, PRIORITIES, emptyCriterion, storyCellText, criteriaCellText, storyIssues, storyLabel,
 } from '../../../../core/model.js';
+import { openCount, emptyClarification } from '../../../../core/story-text.js';
 import { dependencyChoices, dependentsOf } from '../../../../core/ids.js';
 import { issueClass } from './issues.js';
 import Info from './Info.jsx';
@@ -89,6 +90,7 @@ function CellWarning({ id, raw, message }) {
 }
 
 const STORY_WARNING = 'The User Story cell does not follow "As a …, I want …, so that …", so it is kept as it is';
+const CLARIFICATIONS_WARNING = 'The Clarifications cell does not follow "Q1: …" / "A1: …", so it is kept as it is';
 const CRITERIA_WARNING = 'The User Acceptance Criteria cell does not follow "AC1: Given …, when …, then …", so it is kept as it is';
 
 // `focusRequest` = { id } or null: focus the element with that id (default: Epic) once rendered, then call onFocused.
@@ -120,6 +122,9 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
     d.criteria.splice(to, 0, d.criteria.splice(from, 1)[0]);
     d.rawCriteria = null;
   });
+  // Editing the questions replaces the original cell text, as for the other cells.
+  const editClarifications = (change) => edit((d) => { change(d.clarifications); d.rawClarifications = null; });
+
   const addCriterion = () => edit((d) => { d.criteria.push(emptyCriterion()); d.rawCriteria = null; });
 
   const { errors, warnings } = storyIssues(s, problems.get(s.id));
@@ -368,6 +373,36 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
         <label htmlFor="notes" className="sr-only">Notes</label>
         <textarea id="notes" rows={3} value={s.notes} onChange={setField('notes')} />
         {list('Notes')}
+      </fieldset>
+
+      <fieldset>
+        <legend>{`Clarifications${openCount(s.clarifications) ? ` (${openCount(s.clarifications)} open)` : ''}`}</legend>
+        <div id="clarifications">
+          {s.clarifications.map((p, i) => (
+            <div className="clarification" key={i}>
+              <div className="fields">
+                <div>
+                  <label htmlFor={`clarification-${i}-q`}>{`Question ${i + 1}`}</label>
+                  <input
+                    type="text" id={`clarification-${i}-q`} autoComplete="off" value={p.q}
+                    onChange={(e) => { const value = e.target.value; editClarifications((c) => { c[i].q = value; }); }}
+                  />
+                </div>
+                <div>
+                  <label htmlFor={`clarification-${i}-a`}>{`Answer ${i + 1}`}</label>
+                  <textarea
+                    id={`clarification-${i}-a`} rows={2} value={p.a} placeholder="Open until answered"
+                    onChange={(e) => { const value = e.target.value; editClarifications((c) => { c[i].a = value; }); }}
+                  />
+                </div>
+              </div>
+              <button type="button" className="danger criterion-remove" aria-label={`Remove question ${i + 1}`} title="Remove question" onClick={() => editClarifications((c) => { c.splice(i, 1); })}>✕</button>
+            </div>
+          ))}
+        </div>
+        <button type="button" id="addClarificationBtn" onClick={() => editClarifications((c) => { c.push(emptyClarification()); })}>Add question</button>
+        {list('Clarifications')}
+        <CellWarning id="clarificationsWarning" raw={s.rawClarifications} message={CLARIFICATIONS_WARNING} />
       </fieldset>
 
       {groups.length > 0 && (

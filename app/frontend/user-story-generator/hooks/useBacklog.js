@@ -56,7 +56,7 @@ export function reducer(state, action) {
     case 'edit': {
       const stories = state.backlog.stories.map((s) => {
         if (s.id !== action.id) return s;
-        const draft = { ...s, criteria: s.criteria.map((c) => ({ ...c })) };
+        const draft = { ...s, criteria: s.criteria.map((c) => ({ ...c })), clarifications: s.clarifications.map((p) => ({ ...p })) };
         action.change(draft);
         if (s.locked) draft.epic = s.epic; // the Epic of a locked story is read-only
         return draft;

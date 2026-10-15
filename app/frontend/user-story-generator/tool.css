@@ -224,3 +224,11 @@ legend { font-weight: 600; padding: 0 6px; }
 .diff-added { color: var(--ok); }
 .diff-removed { color: var(--bad); }
 .diff-moved-from, .diff-moved-to { color: var(--accent); font-style: italic; }
+
+/* Clarifications: a question/answer pair per row, and the "N open" badge in the story list. */
+.clarification { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: start; margin-bottom: 10px; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius); }
+.clarification .fields { display: grid; gap: 6px; }
+.story-list .open-badge {
+  flex: none; font-size: 11px; padding: 0 6px; border-radius: 999px;
+  border: 1px solid var(--warn-border); background: var(--warn-bg); color: var(--warn-text);
+}

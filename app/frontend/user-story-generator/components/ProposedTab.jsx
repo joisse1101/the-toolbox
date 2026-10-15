@@ -33,6 +33,11 @@ export default function ProposedTab({
     return new Map([...backlogProblems(all)].filter(([id]) => ids.has(id)));
   }, [all, proposed]);
 
+  // A benched story is parked and cannot be accepted: Accept is disabled with the reason until it is un-benched.
+  const benchedTicked = proposed.filter((s) => ticked.has(s.id) && s.benched).length;
+  const benchedAny = proposed.filter((s) => s.benched).length;
+  const benchedReason = (n) => `${n} benched stor${n > 1 ? 'ies' : 'y'}: un-bench ${n > 1 ? 'them' : 'it'} first.`;
+
   const add = () => {
     onAdd();
     setFocusRequest({ id: 'epic' });
@@ -45,10 +50,11 @@ export default function ProposedTab({
       {!hidden && (
         <>
           <div className="card row proposed-actions">
-            <button type="button" id="acceptStoryBtn" className="primary" disabled={!ticked.size} onClick={() => onAccept(ticked)}>{`Accept selected (${ticked.size})`}</button>
-            <button type="button" id="acceptAllBtn" disabled={!proposed.length} onClick={onAcceptAll}>Accept all</button>
+            <button type="button" id="acceptStoryBtn" className="primary" disabled={!ticked.size || benchedTicked > 0} title={benchedTicked ? `Cannot accept: ${benchedReason(benchedTicked)}` : undefined} onClick={() => onAccept(ticked)}>{`Accept selected (${ticked.size})`}</button>
+            <button type="button" id="acceptAllBtn" disabled={!proposed.length || benchedAny > 0} title={benchedAny ? `Cannot accept all: ${benchedReason(benchedAny)}` : undefined} onClick={onAcceptAll}>Accept all</button>
             <button type="button" id="deleteStoryBtn" className="danger" disabled={!ticked.size} onClick={() => onDelete(ticked)}>{`Delete selected (${ticked.size})`}</button>
             <span className="muted">Tick stories to accept or delete some of them. Accepted stories go to the end of their Epic in the backlog.</span>
+            {(benchedTicked > 0 || benchedAny > 0) && <span id="benchedReason" className="muted">{benchedTicked ? `Accept selected is off: ${benchedReason(benchedTicked)}` : `Accept all is off: ${benchedReason(benchedAny)}`}</span>}
           </div>
           {notice && <p id="proposedNotice" role="status" className={notice.kind === 'error' ? 'error' : 'card muted'}>{notice.text}</p>}
           {!proposed.length && (

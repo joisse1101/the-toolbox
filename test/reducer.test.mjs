@@ -267,3 +267,14 @@ test('applySuggestions on a locked story leaves the state alone', () => {
   const row = { storyId: a.code, field: 'Title', action: 'replace', current: 'A', suggested: 'New', reason: 'r', area: 'INVEST', confidence: 'ready', group: '', status: 'open' };
   assert.equal(reducer(state, { type: 'applySuggestions', rows: [row] }), state);
 });
+
+test('editing clarifications copies them: the previous state keeps its pairs', () => {
+  const before = opened();
+  const a = byTitle(before, 'A');
+  const added = edit(before, a.id, (d) => { d.clarifications.push({ q: 'Which format?', a: '' }); d.rawClarifications = null; });
+  assert.deepEqual(byTitle(added, 'A').clarifications, [{ q: 'Which format?', a: '' }]);
+  assert.deepEqual(a.clarifications, []);
+  const answered = edit(added, a.id, (d) => { d.clarifications[0].a = 'CSV'; });
+  assert.equal(byTitle(added, 'A').clarifications[0].a, '');
+  assert.equal(byTitle(answered, 'A').clarifications[0].a, 'CSV');
+});

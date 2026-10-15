@@ -1,6 +1,7 @@
 import { unitState } from '../../../../core/review.js';
 
-const VERB = { replace: 'Suggested', add: 'Add', remove: 'Remove', append: 'Add to Notes', 'add-story': 'New story', unlock: 'Unlock' };
+// An append adds to the field the row names (Notes text, or a Clarifications question).
+const VERB = { replace: 'Suggested', add: 'Add', remove: 'Remove', append: 'Add', 'add-story': 'New story', unlock: 'Unlock' };
 
 // What a row proposes, as text. Removing a criterion shows the criterion itself, not just its label.
 const valueOf = (row) => (row.action === 'remove' && row.field === 'User Acceptance Criteria' ? row.current : row.suggested);
@@ -40,7 +41,7 @@ export function Suggestion({ unit, stories, onApply, onDismiss, onUnlock, headin
     <div className={`suggestion${state === 'stale' ? ' stale' : ''}`} role="group" aria-label={isGroup ? `Split suggestion ${unit.group}` : `Suggestion for ${first.field}`}>
       {heading}
       <div className="suggestion-head">
-        <span className="suggestion-kind">{isGroup ? 'Suggested split' : `${VERB[first.action]}: ${first.field}`}</span>
+        <span className="suggestion-kind">{isGroup ? 'Suggested split' : first.action === 'append' ? `Add to ${first.field}` : `${VERB[first.action]}: ${first.field}`}</span>
         <span className="suggestion-area">{first.area}</span>
         {confirm && <span className="suggestion-confirm" title="A proposed default: check it before applying">check this default</span>}
       </div>
