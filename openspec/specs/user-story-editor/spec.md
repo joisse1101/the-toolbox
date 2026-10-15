@@ -137,7 +137,7 @@ A backlog file SHALL hold many stories, one per CSV row. The tool SHALL let the 
 - **THEN** the tooltip shows the user story text and a line saying Epic is missing
 
 ### Requirement: CSV format
-Each story SHALL be stored as one row with exactly these columns: `ID, Epic, Feature, Title, User Story, Sprint points, Priority, Depends On, User Acceptance Criteria, Notes, Locked`.
+Each story SHALL be stored as one row with exactly these columns: `ID, Epic, Feature, Title, User Story, Sprint points, Priority, Depends On, User Acceptance Criteria, Notes, Locked, Clarifications`.
 
 - `ID` SHALL hold the story ID, or be empty when the story has none.
 - `Title` SHALL hold the title of the user story.
@@ -145,8 +145,9 @@ Each story SHALL be stored as one row with exactly these columns: `ID, Epic, Fea
 - `Depends On` SHALL hold the IDs of the stories this story depends on, separated by semicolons, or be empty.
 - `User Acceptance Criteria` SHALL hold one line per criterion, lines separated by a line break within the cell, each in the form `AC<n>: Given <given>, when <when>, then <then>`, where `<n>` is the criterion's position starting at 1.
 - `Locked` SHALL hold `Yes` for a locked story and be empty otherwise. Any other value SHALL be read as unlocked.
+- `Clarifications` SHALL hold the story's question and answer pairs in the form defined by the `story-clarifications` capability, or be empty.
 
-Values containing commas, quotes or line breaks SHALL be correctly quoted so the file round-trips and opens correctly in Excel. A file that lacks the `ID`, `Depends On`, `Title` or `Locked` column SHALL be accepted and the columns added to it when it is saved. The tool SHALL NOT translate older column names: a `Capability` column SHALL be treated as an unknown column and kept unchanged.
+Values containing commas, quotes or line breaks SHALL be correctly quoted so the file round-trips and opens correctly in Excel. A file that lacks the `ID`, `Depends On`, `Title`, `Locked` or `Clarifications` column SHALL be accepted and the columns added to it when it is saved. The tool SHALL NOT translate older column names: a `Capability` column SHALL be treated as an unknown column and kept unchanged.
 
 #### Scenario: Story sentence saved
 - **WHEN** the user enters As a "team lead", I want "to export a backlog", so that "I can share it"
@@ -169,8 +170,8 @@ Values containing commas, quotes or line breaks SHALL be correctly quoted so the
 - **THEN** its row has `IAM-0003` in `ID` and `IAM-0001;DD-0002` in `Depends On`
 
 #### Scenario: Columns added on save
-- **WHEN** a file without `ID`, `Depends On`, `Title` and `Locked` columns is opened and saved
-- **THEN** the saved file has all four columns and every other column keeps its values
+- **WHEN** a file without `ID`, `Depends On`, `Title`, `Locked` and `Clarifications` columns is opened and saved
+- **THEN** the saved file has all five columns and every other column keeps its values
 
 #### Scenario: Title and feature saved
 - **WHEN** a story has Feature "Authentication" and Title "Local Login"
@@ -183,6 +184,10 @@ Values containing commas, quotes or line breaks SHALL be correctly quoted so the
 #### Scenario: Lock saved and reloaded
 - **WHEN** a locked story is saved and the file is reloaded
 - **THEN** the story is still locked
+
+#### Scenario: Clarifications saved
+- **WHEN** a story with a question and its answer is saved and the file is reloaded
+- **THEN** the `Clarifications` cell holds `Q1: ...` and `A1: ...` lines and the story shows the same pair
 
 ### Requirement: Parsing story and criteria text
 When loading a file, the tool SHALL split the `User Story` cell into As a / I want / So that using the literal keywords `As a`, `I want` and `so that` (case-insensitive, first occurrence of each, in that order), and SHALL split the `User Acceptance Criteria` cell into criteria by line, each into Given / When / Then using the keywords `Given`, `when` and `then` (case-insensitive, first occurrence of each, in that order). The comma immediately before a keyword SHALL be treated as a separator and removed from the preceding field, and a missing comma SHALL be tolerated. The leading `AC<n>:` label SHALL be ignored and criteria renumbered from their position.
