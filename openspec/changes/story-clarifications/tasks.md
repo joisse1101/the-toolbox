@@ -1,7 +1,7 @@
 ## 1. Core: Clarifications format and model
 
-- [ ] 1.1 Add parse/compose/open-count functions for `Q<n>:` / `A<n>:` text (multi-line answers, raw fallback) and verify with unit tests for round trip, empty answers, free text and renumbering
-- [ ] 1.2 Add `Clarifications` to `COLUMNS` and the story model (`clarifications`, `rawClarifications`), load and serialize it, and verify an older CSV gains the column on save and the cell round-trips unchanged
+- [x] 1.1 Add parse/compose/open-count functions for `Q<n>:` / `A<n>:` text (multi-line answers, raw fallback) and verify with unit tests for round trip, empty answers, free text and renumbering
+- [x] 1.2 Add `Clarifications` to `COLUMNS` and the story model (`clarifications`, `rawClarifications`), load and serialize it, and verify an older CSV gains the column on save and the cell round-trips unchanged
 - [ ] 1.3 Make accept in `core/proposals.js` refuse benched stories (single and Accept all, all-or-nothing) and stop clearing `benched`; verify with tests, including that open questions do not block and the cell is carried to the backlog and back on move-to-proposed
 
 ## 2. Portal

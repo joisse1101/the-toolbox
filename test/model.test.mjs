@@ -159,7 +159,7 @@ test('storyLabel', () => {
 });
 
 test('loaded story with empty criteria cell shows one blank criterion and saves an empty cell', () => {
-  const text = COLUMNS.join(',') + String.fromCharCode(13,10) + 'E-0001,E,C,F,,,,,,,' + String.fromCharCode(13,10) + '';
+  const text = COLUMNS.join(',') + String.fromCharCode(13,10) + 'E-0001,E,C,F,,,,,,,,' + String.fromCharCode(13,10) + '';
   const b = loadBacklog(text);
   assert.equal(b.changed, false);
   assert.deepEqual(b.stories[0].criteria, [{ given: '', when: '', then: '' }]);
@@ -224,7 +224,7 @@ test('placeholder IDs and their Depends On survive a load/serialize round trip',
 });
 
 test('Locked column: Yes loads as locked and round-trips', () => {
-  const text = COLUMNS.join(',') + '\r\nE-0001,E,F,One,,,,,,,Yes\r\nE-0002,E,F,Two,,,,,,,\r\n';
+  const text = COLUMNS.join(',') + '\r\nE-0001,E,F,One,,,,,,,Yes,\r\nE-0002,E,F,Two,,,,,,,,\r\n';
   const b = loadBacklog(text);
   assert.deepEqual(b.stories.map((s) => s.locked), [true, false]);
   assert.equal(b.changed, false);
@@ -235,7 +235,7 @@ test('an older file gains the Locked column on save', () => {
   const b = loadBacklog('ID,Epic,Title\r\nE-0001,E,One\r\n');
   assert.ok(b.headers.includes('Locked'));
   assert.equal(b.stories[0].locked, false);
-  assert.match(serializeBacklog(b), /Locked\r\n/);
+  assert.match(serializeBacklog(b), /Locked,Clarifications\r\n/);
 });
 
 test('Locked: Yes without an ID, or any other value, loads unlocked', () => {
@@ -266,4 +266,28 @@ test('Benched: only a proposals file has the column, and it round-trips', async 
   assert.ok(loadBacklog('ID,Epic\r\n', { placeholderIds: true }).headers.includes('Benched'));
   assert.deepEqual(proposalHeaders(['ID', 'Benched']), ['ID', 'Benched']);
   assert.equal(proposalHeaders(['ID']).at(-1), 'Benched');
+});
+
+test('Clarifications column: pairs load, an open pair is counted, and the cell round-trips', () => {
+  const cell = 'Q1: Which format?\nA1: CSV\nQ2: Who owns it?\nA2:';
+  const text = COLUMNS.join(',') + '\r\n' + `E-0001,E,F,One,,,,,,,,"${cell}"\r\n`;
+  const b = loadBacklog(text);
+  assert.deepEqual(b.stories[0].clarifications, [{ q: 'Which format?', a: 'CSV' }, { q: 'Who owns it?', a: '' }]);
+  assert.equal(b.stories[0].rawClarifications, null);
+  assert.equal(b.changed, false);
+  assert.equal(serializeBacklog(b), text);
+});
+
+test('Clarifications column: free text is kept raw and saved unchanged', () => {
+  const text = COLUMNS.join(',') + '\r\nE-0001,E,F,One,,,,,,,,Ask Sam first\r\n';
+  const b = loadBacklog(text);
+  assert.equal(b.stories[0].rawClarifications, 'Ask Sam first');
+  assert.equal(serializeBacklog(b), text);
+});
+
+test('an older file gains the Clarifications column on save with every cell empty', () => {
+  const b = loadBacklog('ID,Epic,Title,Notes\r\nE-0001,E,One,keep\r\n');
+  assert.ok(b.headers.includes('Clarifications'));
+  assert.deepEqual(b.stories[0].clarifications, []);
+  assert.match(serializeBacklog(b), /Clarifications\r\nE-0001,E,One,keep,,,,,,,,\r\n$/);
 });

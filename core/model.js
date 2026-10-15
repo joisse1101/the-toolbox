@@ -4,10 +4,10 @@
 
 import { parseCsv, toCsv } from './csv.js';
 import { renumber } from './ids.js';
-import { composeStory, parseStory, composeCriteria, parseCriteria } from './story-text.js';
+import { composeStory, parseStory, composeCriteria, parseCriteria, composeClarifications, parseClarifications } from './story-text.js';
 
 export const COLUMNS = [
-  'ID', 'Epic', 'Feature', 'Title', 'User Story', 'Sprint points', 'Priority', 'Depends On', 'User Acceptance Criteria', 'Notes', 'Locked',
+  'ID', 'Epic', 'Feature', 'Title', 'User Story', 'Sprint points', 'Priority', 'Depends On', 'User Acceptance Criteria', 'Notes', 'Locked', 'Clarifications',
 ];
 // Only a proposals file has this column (see proposalHeaders): `Yes` or empty. A benched proposed story is parked: the
 // explore and propose skills do not see it. It changes nothing else (accepting works as for any other story).
@@ -49,6 +49,8 @@ export function newStory(headers) {
     criteria: [emptyCriterion()],
     rawUserStory: null, // original cell text when it did not follow the syntax
     rawCriteria: null,
+    clarifications: [], // { q, a } pairs; an empty answer = an open question
+    rawClarifications: null, // original cell text when it did not follow the Q<n>:/A<n>: form
   };
 }
 
@@ -83,6 +85,10 @@ function storyFromCells(cells, idx) {
     story.criteria = [];
     story.rawCriteria = get('User Acceptance Criteria');
   }
+
+  const cl = parseClarifications(get('Clarifications'));
+  if (cl.ok) story.clarifications = cl.pairs;
+  else story.rawClarifications = get('Clarifications');
   return story;
 }
 
@@ -123,6 +129,10 @@ export function criteriaCellText(story) {
   return story.rawCriteria ?? composeCriteria(story.criteria);
 }
 
+export function clarificationsCellText(story) {
+  return story.rawClarifications ?? composeClarifications(story.clarifications);
+}
+
 export function serializeBacklog(backlog) {
   const idx = columnIndex(backlog.headers);
   const rows = backlog.stories.map((s) => {
@@ -139,6 +149,7 @@ export function serializeBacklog(backlog) {
     cells[idx['User Acceptance Criteria']] = criteriaCellText(s);
     cells[idx['Notes']] = s.notes;
     cells[idx['Locked']] = s.locked && s.code ? 'Yes' : '';
+    cells[idx['Clarifications']] = clarificationsCellText(s);
     if (BENCHED_COLUMN in idx) cells[idx[BENCHED_COLUMN]] = s.benched ? 'Yes' : '';
     return cells;
   });

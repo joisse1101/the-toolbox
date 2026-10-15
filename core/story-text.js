@@ -62,3 +62,52 @@ export function parseCriteria(text) {
   }
   return { ok: true, criteria };
 }
+
+// Clarifications cell: `Q<n>: question` then `A<n>: answer` per pair, n = position from 1. A question or answer may span
+// lines (an answer runs until the next Q<n>:). An empty answer means the question is open.
+const Q_LINE = /^\s*Q\d+\s*:[ \t]?(.*)$/i;
+const A_LINE = /^\s*A\d+\s*:[ \t]?(.*)$/i;
+
+export const emptyClarification = () => ({ q: '', a: '' });
+
+// Pairs with neither question nor answer are skipped; the rest are numbered by position.
+export function composeClarifications(pairs) {
+  return pairs
+    .filter((p) => !isBlank(p.q, p.a))
+    .map((p, i) => `Q${i + 1}: ${p.q.trim()}\nA${i + 1}:${p.a.trim() ? ` ${p.a.trim()}` : ''}`)
+    .join('\n');
+}
+
+// { ok: true, pairs } or { ok: false } when the text does not follow the form (it is then kept raw).
+export function parseClarifications(text) {
+  const pairs = [];
+  let cur = null;
+  let inAnswer = false;
+  for (const line of String(text ?? '').split(/\r?\n/)) {
+    const q = !inAnswer || Q_LINE.test(line) ? Q_LINE.exec(line) : null;
+    if (q) {
+      cur = { q: q[1], a: '' };
+      pairs.push(cur);
+      inAnswer = false;
+      continue;
+    }
+    if (!cur) {
+      if (line.trim()) return { ok: false };
+      continue;
+    }
+    const a = inAnswer ? null : A_LINE.exec(line);
+    if (a) {
+      cur.a = a[1];
+      inAnswer = true;
+    } else if (inAnswer) cur.a += `\n${line}`;
+    else cur.q += `\n${line}`;
+  }
+  for (const p of pairs) {
+    p.q = p.q.trim();
+    p.a = p.a.trim();
+  }
+  return { ok: true, pairs };
+}
+
+// Open questions: a question with an empty answer. Derived, never stored.
+export const openCount = (pairs) => pairs.filter((p) => p.q.trim() && !p.a.trim()).length;

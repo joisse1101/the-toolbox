@@ -95,7 +95,7 @@ test('add-only: existing rows, order, unknown columns and user edits are kept, n
   // The user edits and reorders rows in the portal: the file now holds NEW-2 (with a Team value), then NEW-1.
   const edited = fs.readFileSync(proposalPath(root), 'utf8').split('\r\n');
   const [head, one, two] = edited;
-  fs.writeFileSync(proposalPath(root), [head, two.replace('Two', 'Edited by the user').replace(/,,,$/, ',Red,,'), one, ''].join('\r\n'));
+  fs.writeFileSync(proposalPath(root), [head, two.replace('Two', 'Edited by the user').replace(/,,,,$/, ',Red,,,'), one, ''].join('\r\n'));
   const before = load(root);
   assert.equal(before.stories[0].title, 'Edited by the user');
   assert.equal(before.stories[0].cells[before.headers.indexOf('Team')], 'Red');
@@ -139,7 +139,7 @@ test('a patch changes that row in place; every other row is byte-identical and n
   run(root, [story(), story({ title: 'Two' }), story({ title: 'Three' })]);
   // The user adds a value in an unknown column and benches the last row in the portal.
   const [head, one, two, three] = fs.readFileSync(proposalPath(root), 'utf8').split('\r\n');
-  fs.writeFileSync(proposalPath(root), [head, one, two.replace(/,,,$/, ',Red,,'), three.replace(/,$/, ',Yes'), ''].join('\r\n'));
+  fs.writeFileSync(proposalPath(root), [head, one, two.replace(/,,,,$/, ',Red,,,'), three.replace(/,$/, ',Yes'), ''].join('\r\n'));
   const before = fs.readFileSync(proposalPath(root), 'utf8').split('\r\n');
 
   const r = run(root, [{ id: 'NEW-2', points: 8, notes: 'sized again' }]);

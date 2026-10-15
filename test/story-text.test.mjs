@@ -45,3 +45,34 @@ test('criteria: missing keyword fails, empty ok, blank criteria skipped', () => 
   assert.deepEqual(parseCriteria(''), { ok: true, criteria: [] });
   assert.equal(composeCriteria([{ given: '', when: '', then: '' }]), '');
 });
+
+import { composeClarifications, parseClarifications, openCount } from '../core/story-text.js';
+
+test('clarifications round trip with an open pair', () => {
+  const text = 'Q1: Which export format?\nA1: CSV only\nQ2: Who owns the schema?\nA2:';
+  const parsed = parseClarifications(text);
+  assert.deepEqual(parsed, { ok: true, pairs: [{ q: 'Which export format?', a: 'CSV only' }, { q: 'Who owns the schema?', a: '' }] });
+  assert.equal(composeClarifications(parsed.pairs), text);
+  assert.equal(openCount(parsed.pairs), 1);
+});
+
+test('clarifications: multi-line answers run until the next question', () => {
+  const text = 'Q1: Why?\nA1: first line\nsecond line\n\nthird\nQ2: Next?\nA2: yes';
+  const { pairs } = parseClarifications(text);
+  assert.equal(pairs[0].a, 'first line\nsecond line\n\nthird');
+  assert.equal(pairs[1].q, 'Next?');
+  assert.equal(composeClarifications(pairs), text);
+});
+
+test('clarifications: empty, missing answer line and renumbering', () => {
+  assert.deepEqual(parseClarifications(''), { ok: true, pairs: [] });
+  assert.equal(composeClarifications([]), '');
+  assert.deepEqual(parseClarifications('Q1: Alone?').pairs, [{ q: 'Alone?', a: '' }]);
+  const text = composeClarifications([{ q: 'one', a: '' }, { q: '', a: '' }, { q: 'two', a: 'b' }]);
+  assert.equal(text, 'Q1: one\nA1:\nQ2: two\nA2: b');
+});
+
+test('clarifications: free text is not parsed', () => {
+  assert.equal(parseClarifications('Ask Sam about the schema').ok, false);
+  assert.equal(parseClarifications('A1: orphan answer').ok, false);
+});
