@@ -215,3 +215,10 @@ legend { font-weight: 600; padding: 0 6px; }
 .story-code { display: flex; align-items: center; gap: 12px; }
 .story-code button { margin-left: auto; }
 .story-list .row-check { margin: 0 8px 0 0; flex: none; }
+
+.diff { margin: 12px 0 0; padding: 8px; overflow-x: auto; font: 12px/1.45 ui-monospace, Consolas, monospace; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); white-space: pre; }
+.diff-meta { font-weight: 600; }
+.diff-hunk { color: var(--muted); }
+.diff-added { color: var(--ok); }
+.diff-removed { color: var(--bad); }
+.diff-moved-from, .diff-moved-to { color: var(--accent); font-style: italic; }

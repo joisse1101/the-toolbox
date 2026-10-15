@@ -13,7 +13,7 @@ const initial = {
   current: null, // selected file name
   backlog: null, // { headers, stories, hasBom }
   selectedId: null,
-  view: 'editor', // 'editor' | 'stories' | 'graph' | 'review'
+  view: 'editor', // 'editor' | 'stories' | 'graph' | 'proposed' | 'backups' | 'review'
   checked: new Set(), // story ids ticked in the Stories tab (separate from selectedId)
   lastChecked: null, // id of the last ticked row, for shift-click ranges
   edits: 0, // bumped by every change to the backlog; the auto-save runs when it changes

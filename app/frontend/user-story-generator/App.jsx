@@ -14,6 +14,7 @@ import StoriesTab from './components/StoriesTab.jsx';
 import GraphTab from './components/GraphTab.jsx';
 import ReviewTab from './components/ReviewTab.jsx';
 import ProposedTab from './components/ProposedTab.jsx';
+import BackupsTab from './components/BackupsTab.jsx';
 
 const STATUS_TEXT = { saved: 'Saved', saving: 'Saving…', failed: 'Save failed', idle: 'No file' };
 
@@ -112,6 +113,7 @@ export default function App() {
   };
   const [backupNote, setBackupNote] = useState(null);
   const [backingUp, setBackingUp] = useState(false);
+  const [backupCount, setBackupCount] = useState(0); // lets the Backups tab reload its list
   useEffect(() => setBackupNote(null), [current]);
   const backUp = async () => {
     const name = current;
@@ -122,6 +124,7 @@ export default function App() {
         return setBackupNote({ kind: 'error', text: 'No backup made: the latest changes could not be saved yet.' });
       }
       const { folder } = await backup(name); // folder is YYYY-MM-DD_HHMMSS[-n]
+      setBackupCount((n) => n + 1);
       setBackupNote({ kind: 'ok', text: `Backed up ${name} at ${folder.slice(11, 13)}:${folder.slice(13, 15)}` });
     } catch (err) {
       setBackupNote({ kind: 'error', text: `No backup made: ${err.message}` });
@@ -238,6 +241,7 @@ export default function App() {
           <button type="button" role="tab" id="tabProposed" className="tab" aria-controls="proposedView" aria-selected={view === 'proposed'} onClick={() => actions.setView('proposed')}>
             {`Proposed (${proposals.stories.length})`}
           </button>
+          <button type="button" role="tab" id="tabBackups" className="tab" aria-controls="backupsView" aria-selected={view === 'backups'} onClick={() => actions.setView('backups')}>Backups</button>
           {review.exists && (
             <button type="button" role="tab" id="tabReview" className="tab" aria-controls="reviewView" aria-selected={view === 'review'} onClick={() => actions.setView('review')}>
               {openReviewCount ? `Review (${openReviewCount})` : 'Review'}
@@ -279,6 +283,8 @@ export default function App() {
             onOpen={openInEditor} onApply={applyUnit} onDismiss={dismissUnit} onUnlock={unlockUnit}
           />
         )}
+
+        <BackupsTab name={current} hidden={!current || view !== 'backups'} refreshToken={backupCount} settleAll={settleAll} />
 
         <GraphTab
           stories={stories} problems={problems} current={current} hidden={!current || view !== 'graph'}
