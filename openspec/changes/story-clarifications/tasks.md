@@ -17,7 +17,7 @@
 
 ## 4. Clarify skill scripts
 
-- [ ] 4.1 Write `clarify-stories/read-clarify-context.mjs` (guidelines, backlog, proposals including benched, labelled as data) and verify with a test that a benched story is printed here and still omitted by `read-story-context.mjs`, which prints `Clarifications` for unbenched stories
+- [x] 4.1 Write `clarify-stories/read-clarify-context.mjs` (guidelines, backlog, proposals including benched, labelled as data) and verify with a test that a benched story is printed here and still omitted by `read-story-context.mjs`, which prints `Clarifications` for unbenched stories
 - [ ] 4.2 Write `clarify-stories/write-clarifications.mjs` (patches on `proposals/` only, patch fields plus add and answer clarifications, benched allowed and flag unchanged, all-or-nothing, unknown/duplicate/priority rejections, never overwrites an answer, never writes `user-stories/`) and verify with tests for each scenario in the spec
 - [ ] 4.3 Verify `write-proposal.mjs` rejects a `clarifications` key in a new story and in a patch (add a test)
 - [ ] 4.4 Write `clarify-stories/guard-bash.mjs` and `locked-settings.json` (including `claudeMdExcludes`) allowing only the clarify reader, `write-clarifications.mjs` and `write-review.mjs <backlog> --append`, and verify with tests that the explore, propose and review guards deny the clarify reader and writer, and the clarify guard denies `write-review.mjs` without `--append` and everything else
