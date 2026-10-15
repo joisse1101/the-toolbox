@@ -139,9 +139,10 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
     setField('epic')(e);
     if (e.nativeEvent.inputType === 'insertReplacementText') onCommitEpic(s.id);
   };
-  const cls = issueClass(errors, warnings);
+  // A benched story is parked, so it shows no red or yellow highlights.
+  const cls = s.benched ? '' : issueClass(errors, warnings);
   // A missing field gets a red (required) or yellow (optional) border instead of a banner.
-  const noValue = (v) => !String(v ?? '').trim();
+  const noValue = (v) => !s.benched && !String(v ?? '').trim();
   const missing = (key) => (noValue(s[key]) ? 'missing' : undefined);
   const partMissing = (key) => (s.rawUserStory === null && noValue(s[key]) ? 'missing' : undefined);
   const optional = (key) => (noValue(s[key]) ? 'missing-optional' : undefined);

@@ -72,7 +72,7 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
             return (
               <li
                 key={s.id}
-                className={['in-feature', s.id === selectedId ? 'selected' : '', issueClass(errors, warnings), s.id === drag ? 'dragging' : '', marker].join(' ').trim()}
+                className={['in-feature', s.id === selectedId ? 'selected' : '', (s.benched ? '' : issueClass(errors, warnings)), s.id === drag ? 'dragging' : '', marker].join(' ').trim()}
                 title={rowTooltip(s, errors, warnings)}
                 draggable={!s.locked}
                 onClick={() => onSelect(s.id)}
