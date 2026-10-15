@@ -1,4 +1,5 @@
 {
+  "claudeMdExcludes": ["**/CLAUDE.md", "**/.claude/rules/**"],
   "hooks": {
     "PreToolUse": [
       {
