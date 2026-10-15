@@ -26,6 +26,15 @@ test('the writer in its documented form is allowed only in read-write mode', () 
   }
 });
 
+test('a heredoc holding a patch is the same documented form, and patches opened no other form', () => {
+  const patch = `<<'JSON'\n[{"id": "NEW-8", "points": 5}, {"epic": "E"}]\nJSON`;
+  assert.equal(check(`${W} data-portal.csv ${patch}`, write), null);
+  assert.match(check(`${W} data-portal.csv ${patch}`), /may only read/);
+  for (const c of [`${W} data-portal.csv --patch NEW-8`, `${W} data-portal.csv '[{"id":"NEW-8"}]'`, `echo '[{"id":"NEW-8"}]' | ${W} data-portal.csv`]) {
+    assert.notEqual(check(c, write), null, c);
+  }
+});
+
 test('denied commands, each with the allowed forms in the message', () => {
   const denied = [
     ['cat', 'cat user-stories/data.csv'],

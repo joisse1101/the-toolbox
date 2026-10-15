@@ -1,9 +1,11 @@
 // The only way the propose-stories skill writes anything. Usage:
 //   node .claude/skills/propose-stories/write-proposal.mjs <backlog file name>   (stories as JSON on stdin)
-// Reads user-stories/<name>, validates the stories against it and ADDS them to proposals/<name> with NEW-<n> IDs.
-// There is no output path argument: the target is fixed, and user-stories/ is only ever read. The run only adds
-// rows (the user edits the proposals file in the portal, so nothing is replaced or removed); running the same
-// batch twice adds it twice.
+// Reads user-stories/<name>, validates the input against it and writes proposals/<name>. The input is a JSON list whose
+// items are either new stories (no "id"), which are ADDED with NEW-<n> IDs, or patches (an "id" such as NEW-8 plus
+// only the fields to change), which change that proposed story in place. One invalid item means nothing is written.
+// There is no output path argument: the target is fixed, and user-stories/ is only ever read. Rows the input does not
+// name are kept as they are (the user edits the proposals file in the portal) and nothing is removed; running the
+// same batch of new stories twice adds them twice.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -41,7 +43,7 @@ function writeAtomic(dir, file, text) {
   return null;
 }
 
-// Returns { ok: true, file, ids, count } or { ok: false, errors: [...] }. Writes nothing unless everything is valid.
+// Returns { ok: true, file, ids, patchedIds, count } (ids: the stories added, patchedIds: the stories patched) or { ok: false, errors: [...] }. Writes nothing unless everything is valid.
 export function writeProposal({ dataDir = DATA_DIR, name, input }) {
   let file;
   try {
@@ -80,11 +82,11 @@ export function writeProposal({ dataDir = DATA_DIR, name, input }) {
 
   // A new file gets the backlog's columns and a BOM (Excel opens it as UTF-8), as the portal does.
   const target = proposals ?? { headers: proposalHeaders(backlog.headers), stories: [], hasBom: true };
-  const all = { ...target, stories: [...target.stories, ...built.stories] };
+  const all = { ...target, stories: [...built.proposed, ...built.stories] };
   fs.mkdirSync(proposalDir, { recursive: true });
   const failed = writeAtomic(proposalDir, file, serializeBacklog(all));
   if (failed) return { ok: false, errors: [failed] };
-  return { ok: true, file, ids: built.ids, count: all.stories.length };
+  return { ok: true, file, ids: built.ids, patchedIds: built.patchedIds, count: all.stories.length };
 }
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
@@ -99,5 +101,9 @@ if (isMain) {
     for (const e of result.errors) console.error(`- ${e}`);
     process.exit(1);
   }
-  console.log(`Added ${result.ids.length} proposed stor${result.ids.length === 1 ? 'y' : 'ies'} to proposals/${result.file} (${result.ids.join(', ')}); ${result.count} in the file now.`);
+  const plural = (n) => `${n} proposed stor${n === 1 ? 'y' : 'ies'}`;
+  const done = [];
+  if (result.ids.length) done.push(`Added ${plural(result.ids.length)} to proposals/${result.file} (${result.ids.join(', ')})`);
+  if (result.patchedIds.length) done.push(`${done.length ? 'patched' : 'Patched'} ${plural(result.patchedIds.length)}${done.length ? '' : ` in proposals/${result.file}`} (${result.patchedIds.join(', ')})`);
+  console.log(`${done.join('; ')}; ${result.count} in the file now.`);
 }

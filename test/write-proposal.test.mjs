@@ -133,3 +133,68 @@ test('CLI: prints the IDs on success; exits 1 with "Nothing was written" on inva
   assert.equal(cli(['data.csv', 'out.csv'], []).status, 2);
   assert.equal(load(root).stories.length, 1);
 });
+
+test('a patch changes that row in place; every other row is byte-identical and nothing is added', () => {
+  const root = temp();
+  run(root, [story(), story({ title: 'Two' }), story({ title: 'Three' })]);
+  // The user adds a value in an unknown column and benches the last row in the portal.
+  const [head, one, two, three] = fs.readFileSync(proposalPath(root), 'utf8').split('\r\n');
+  fs.writeFileSync(proposalPath(root), [head, one, two.replace(/,,,$/, ',Red,,'), three.replace(/,$/, ',Yes'), ''].join('\r\n'));
+  const before = fs.readFileSync(proposalPath(root), 'utf8').split('\r\n');
+
+  const r = run(root, [{ id: 'NEW-2', points: 8, notes: 'sized again' }]);
+  assert.deepEqual([r.ok, r.ids, r.patchedIds, r.count], [true, [], ['NEW-2'], 3]);
+  const after = fs.readFileSync(proposalPath(root), 'utf8').split('\r\n');
+  assert.equal(after[0], before[0]);
+  assert.equal(after[1], before[1]);
+  assert.equal(after[3], before[3]);
+  assert.notEqual(after[2], before[2]);
+  const p = load(root);
+  assert.deepEqual(p.stories.map((s) => s.code), ['NEW-1', 'NEW-2', 'NEW-3']);
+  assert.equal(p.stories[1].points, '8');
+  assert.equal(p.stories[1].notes, 'sized again');
+  assert.equal(p.stories[1].title, 'Two');
+  assert.equal(p.stories[1].cells[p.headers.indexOf('Team')], 'Red', 'unknown column kept');
+});
+
+test('a mixed run adds and patches together; one invalid item writes neither', () => {
+  const root = temp();
+  run(root, [story()]);
+  const before = fs.readFileSync(proposalPath(root));
+  const ok = run(root, [{ id: 'NEW-1', points: 5 }, story({ title: 'Two', dependsOn: ['proposed:NEW-1'] })]);
+  assert.deepEqual([ok.ok, ok.ids, ok.patchedIds, ok.count], [true, ['NEW-2'], ['NEW-1'], 2]);
+  const p = load(root);
+  assert.equal(p.stories[0].points, '5');
+  assert.deepEqual(p.stories[1].dependsOn, ['NEW-1']);
+
+  const mid = fs.readFileSync(proposalPath(root));
+  assert.notDeepEqual(mid, before);
+  const bad = run(root, [{ id: 'NEW-1', points: 2 }, story({ points: 21 })]);
+  assert.equal(bad.ok, false);
+  assert.deepEqual(fs.readFileSync(proposalPath(root)), mid, 'the valid patch was not written either');
+});
+
+test('a rejected patch writes nothing, and a patch against a missing file creates nothing', () => {
+  const root = temp();
+  assert.equal(run(root, [{ id: 'NEW-1', points: 2 }]).ok, false);
+  assert.equal(fs.existsSync(path.join(root, 'proposals')), false);
+  run(root, [story()]);
+  const before = fs.readFileSync(proposalPath(root));
+  for (const item of [{ id: 'NEW-9', points: 2 }, { id: 'NEW-1' }, { id: 'NEW-1', priority: 'High' }]) {
+    assert.equal(run(root, [item]).ok, false, JSON.stringify(item));
+  }
+  assert.deepEqual(fs.readFileSync(proposalPath(root)), before);
+});
+
+test('CLI: reports patched IDs, with and without added ones', () => {
+  const root = temp();
+  const cli = (input) => spawnSync(process.execPath, [SCRIPT, 'data.csv'], {
+    input: JSON.stringify(input), encoding: 'utf8', env: { ...process.env, TLT_DATA_DIR: root },
+  });
+  cli([story()]);
+  const patched = cli([{ id: 'NEW-1', points: 5 }]);
+  assert.equal(patched.status, 0, patched.stderr);
+  assert.match(patched.stdout, /^Patched 1 proposed story in proposals\/data\.csv \(NEW-1\); 1 in the file now\./);
+  const both = cli([{ id: 'NEW-1', points: 2 }, story({ title: 'Two' })]);
+  assert.match(both.stdout, /^Added 1 proposed story to proposals\/data\.csv \(NEW-2\); patched 1 proposed story \(NEW-1\); 2 in the file now\./);
+});
