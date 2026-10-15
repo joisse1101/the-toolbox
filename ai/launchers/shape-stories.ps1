@@ -5,7 +5,7 @@
 # Whatever is missing, this script asks for (a numbered list of the backlogs, then the story), so Claude does not have to.
 # It refuses an unknown backlog, an empty story, and a NEW-<n> that is not in data/proposals/<backlog>.csv before Claude starts.
 # Starts in /explore-stories (discussion only) with both already filled in; when you are happy with the drafts, run
-# /propose-stories in the same session.
+# /propose-stories in the same session (it asks yes/no first), or /story:propose to write the drafts straight away.
 # Tools are limited to Bash (guarded: only the two scripts, see propose-stories/locked-settings.json), Skill and AskUserQuestion.
 # The reader is pre-approved. The writer is not: Claude Code asks you before every write, on top of the skill's yes/no question.
 param(
