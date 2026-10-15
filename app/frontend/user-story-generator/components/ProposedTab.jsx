@@ -10,7 +10,7 @@ import StoryForm from './StoryForm.jsx';
 // `notice`: { kind: 'error' | 'ok', text } or null, the result of the last accept.
 export default function ProposedTab({
   hidden, proposed, backlogStories, selected, selectedId, notice,
-  onSelect, onDelete, onEdit, onCommitEpic, onMove, onOpenBacklogStory, onAccept, onAcceptAll,
+  onSelect, onAdd, onDelete, onEdit, onCommitEpic, onMove, onOpenBacklogStory, onAccept, onAcceptAll,
 }) {
   // Ticked stories for Accept selected. Ids that are gone (accepted, deleted) drop out.
   const [ticked, setTicked] = useState(() => new Set());
@@ -25,6 +25,7 @@ export default function ProposedTab({
     if (!next.delete(id)) next.add(id);
     return next;
   });
+  const [focusRequest, setFocusRequest] = useState(null);
   const all = useMemo(() => [...backlogStories, ...proposed], [backlogStories, proposed]);
   // Warnings are computed over both lists so a link to a backlog story is not "missing"; only proposed stories are shown.
   const problems = useMemo(() => {
@@ -32,6 +33,10 @@ export default function ProposedTab({
     return new Map([...backlogProblems(all)].filter(([id]) => ids.has(id)));
   }, [all, proposed]);
 
+  const add = () => {
+    onAdd();
+    setFocusRequest({ id: 'epic' });
+  };
   // A Depends On link may name a backlog story: open it in the Editor tab.
   const open = (id) => (proposed.some((s) => s.id === id) ? onSelect(id) : onOpenBacklogStory(id));
 
@@ -47,18 +52,18 @@ export default function ProposedTab({
           </div>
           {notice && <p id="proposedNotice" role="status" className={notice.kind === 'error' ? 'error' : 'card muted'}>{notice.text}</p>}
           {!proposed.length && (
-            <p className="card muted">No proposed stories. Draft some with the explore and propose skills.</p>
+            <p className="card muted">No proposed stories. Use Add story to draft one, or the explore and propose skills.</p>
           )}
           <div className="editor">
             <StoryList
               heading="Proposed stories" stories={proposed} problems={problems} selectedId={selectedId}
               checked={ticked} onToggle={toggle}
-              onSelect={onSelect} onMove={onMove}
+              onSelect={onSelect} onAdd={add} onMove={onMove}
             />
             {selected && (
               <StoryForm
-                story={selected} stories={all} problems={problems}
-                onEdit={onEdit} onCommitEpic={onCommitEpic} onOpen={open}
+                story={selected} stories={all} problems={problems} focusRequest={focusRequest}
+                onFocused={() => setFocusRequest(null)} onEdit={onEdit} onCommitEpic={onCommitEpic} onOpen={open}
                 onBench={(id, on) => onEdit(id, (d) => { d.benched = on; })}
               />
             )}

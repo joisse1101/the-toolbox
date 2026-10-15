@@ -267,7 +267,7 @@ export default function App() {
         <ProposedTab
           hidden={!current || view !== 'proposed'} proposed={proposals.stories} backlogStories={stories}
           selected={proposals.selected} selectedId={proposals.state.selectedId} notice={proposedNotice}
-          onSelect={proposals.actions.selectStory} onDelete={proposals.actions.deleteMany}
+          onSelect={proposals.actions.selectStory} onAdd={() => proposals.actions.addStory(stories)} onDelete={proposals.actions.deleteMany}
           onEdit={proposals.actions.editStory} onCommitEpic={proposals.actions.commitEpic} onMove={proposals.actions.moveStory}
           onOpenBacklogStory={openInEditor} onAccept={acceptSelected} onAcceptAll={acceptAll}
         />
