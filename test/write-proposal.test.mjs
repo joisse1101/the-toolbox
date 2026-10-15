@@ -6,7 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { writeProposal } from '../.claude/skills/propose-stories/write-proposal.mjs';
-import { loadBacklog, proposalHeaders } from '../core/model.js';
+import { loadBacklog, serializeBacklog, proposalHeaders } from '../core/model.js';
 
 const SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../.claude/skills/propose-stories/write-proposal.mjs');
 
@@ -197,4 +197,68 @@ test('CLI: reports patched IDs, with and without added ones', () => {
   assert.match(patched.stdout, /^Patched 1 proposed story in proposals\/data\.csv \(NEW-1\); 1 in the file now\./);
   const both = cli([{ id: 'NEW-1', points: 2 }, story({ title: 'Two' })]);
   assert.match(both.stdout, /^Added 1 proposed story to proposals\/data\.csv \(NEW-2\); patched 1 proposed story \(NEW-1\); 2 in the file now\./);
+});
+
+// clarifications
+
+test('a new story with questions is stored with open pairs', () => {
+  const root = temp();
+  const r = run(root, [story({ clarifications: ['Who owns approvals?', ' Is SSO needed? '] })]);
+  assert.equal(r.ok, true);
+  assert.deepEqual(load(root).stories[0].clarifications, [{ q: 'Who owns approvals?', a: '' }, { q: 'Is SSO needed?', a: '' }]);
+});
+
+test('a patch adds questions after the stored pairs and answers an empty pair, leaving the others unchanged', () => {
+  const root = temp();
+  run(root, [story({ clarifications: ['One?', 'Two?'] })]);
+  const r = run(root, [{ id: 'NEW-1', clarifications: { add: ['Three?'], answer: [{ n: 2, text: 'Yes' }] } }]);
+  assert.equal(r.ok, true);
+  assert.deepEqual(load(root).stories[0].clarifications, [{ q: 'One?', a: '' }, { q: 'Two?', a: 'Yes' }, { q: 'Three?', a: '' }]);
+});
+
+test('an answer to a pair that has one, or that does not exist, writes nothing and names the pair', () => {
+  const root = temp();
+  run(root, [story({ clarifications: ['One?'] })]);
+  run(root, [{ id: 'NEW-1', clarifications: { answer: [{ n: 1, text: 'First' }] } }]);
+  const before = fs.readFileSync(proposalPath(root), 'utf8');
+  for (const [n, re] of [[1, /pair 1, which already has an answer/], [2, /pair 2, but the story has 1 pair/]]) {
+    const r = run(root, [{ id: 'NEW-1', title: 'Changed', clarifications: { answer: [{ n, text: 'Other' }] } }]);
+    assert.equal(r.ok, false);
+    assert.match(r.errors.join('\n'), re);
+    assert.equal(fs.readFileSync(proposalPath(root), 'utf8'), before);
+  }
+});
+
+test('clarifications of the wrong shape are refused, a patch to a benched story too', () => {
+  const root = temp();
+  assert.equal(run(root, [story({ clarifications: 'Who?' })]).ok, false);
+  assert.equal(run(root, [story({ clarifications: [''] })]).ok, false);
+  run(root, [story()]);
+  for (const bad of [['Who?'], {}, { remove: [1] }, { add: 'Who?' }, { answer: [{ n: 1 }] }]) {
+    assert.equal(run(root, [{ id: 'NEW-1', clarifications: bad }]).ok, false);
+  }
+  const p = load(root);
+  p.stories[0].benched = true;
+  fs.writeFileSync(proposalPath(root), serializeBacklog(p));
+  const r = run(root, [{ id: 'NEW-1', clarifications: { add: ['Who?'] } }]);
+  assert.match(r.errors.join('\n'), /benched/);
+});
+
+test('a valid clarifications patch and an invalid item together write nothing', () => {
+  const root = temp();
+  run(root, [story()]);
+  const before = fs.readFileSync(proposalPath(root), 'utf8');
+  const r = run(root, [{ id: 'NEW-1', clarifications: { add: ['Who?'] } }, story({ points: 21 })]);
+  assert.equal(r.ok, false);
+  assert.equal(fs.readFileSync(proposalPath(root), 'utf8'), before);
+});
+
+test('clarifications on a story whose cell is free text are refused', () => {
+  const root = temp();
+  run(root, [story()]);
+  const p = load(root);
+  p.stories[0].rawClarifications = 'ask Sam';
+  fs.writeFileSync(proposalPath(root), serializeBacklog(p));
+  const r = run(root, [{ id: 'NEW-1', clarifications: { add: ['Who?'] } }]);
+  assert.match(r.errors.join('\n'), /free text/);
 });

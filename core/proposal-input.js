@@ -8,8 +8,8 @@ import { nextPlaceholder } from './proposals.js';
 import { backlogProblems } from './ids.js';
 import { parseStory, parseCriteria, composeStory, composeCriteria } from './story-text.js';
 
-const KEYS = ['epic', 'feature', 'title', 'userStory', 'points', 'dependsOn', 'criteria', 'notes'];
-const REQUIRED = KEYS.filter((k) => k !== 'notes');
+const KEYS = ['epic', 'feature', 'title', 'userStory', 'points', 'dependsOn', 'criteria', 'notes', 'clarifications'];
+const REQUIRED = KEYS.filter((k) => k !== 'notes' && k !== 'clarifications');
 const POINTS = [1, 2, 3, 5, 8, 13];
 const SPLIT_ABOVE = 13;
 const LINE_BREAK = /[\r\n]/;
@@ -87,6 +87,59 @@ function checkFields(raw, skip = []) {
   return { errors, fields };
 }
 
+const isQuestionList = (v) => Array.isArray(v) && v.every((q) => typeof q === 'string' && !isBlank(q) && !LINE_BREAK.test(q));
+const numbered = (stored) => stored.clarifications.filter((p) => !isBlank(p.q) || !isBlank(p.a)); // pair n = position n, as stored
+
+// The `clarifications` key. A new story (stored = null) sends a list of questions; a patch sends { add, answer }: `add`
+// questions appended after the stored pairs, `answer` a list of { n, text } for stored pairs whose answer is empty.
+// Never deletes a pair or changes an answer. Returns { errors, add, answer } (add: trimmed questions, answer: Map n -> text).
+function checkClarifications(value, stored) {
+  const errors = [];
+  const add = [];
+  const answer = new Map();
+  const QUESTIONS = 'a list of questions, each one line of text';
+  if (!stored) {
+    if (!isQuestionList(value)) errors.push(`clarifications must be ${QUESTIONS}`);
+    else add.push(...value.map((q) => q.trim()));
+    return { errors, add, answer };
+  }
+  if (stored.rawClarifications !== null) {
+    errors.push('cannot change clarifications: the stored cell is free text that does not follow "Q<n>: …" / "A<n>: …"; edit it in the portal');
+    return { errors, add, answer };
+  }
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    errors.push('clarifications must be { "add": [questions], "answer": [{ "n": 1, "text": "…" }] }');
+    return { errors, add, answer };
+  }
+  for (const key of Object.keys(value)) {
+    if (key !== 'add' && key !== 'answer') errors.push(`clarifications has the unknown key "${key}" (allowed: add, answer)`);
+  }
+  if ('add' in value) {
+    if (!isQuestionList(value.add)) errors.push(`clarifications.add must be ${QUESTIONS}`);
+    else add.push(...value.add.map((q) => q.trim()));
+  }
+  if ('answer' in value) {
+    const pairs = numbered(stored);
+    if (!Array.isArray(value.answer)) errors.push('clarifications.answer must be a list of { "n": 1, "text": "…" }');
+    else {
+      for (const item of value.answer) {
+        const n = item && typeof item === 'object' ? item.n : undefined;
+        if (!Number.isInteger(n) || typeof item.text !== 'string' || isBlank(item.text) || LINE_BREAK.test(item.text)) {
+          errors.push('each clarifications.answer item must be { "n": pair number, "text": one line of text }');
+        } else if (n < 1 || n > pairs.length) {
+          errors.push(`clarifications.answer names pair ${n}, but the story has ${pairs.length} pair${pairs.length === 1 ? '' : 's'}`);
+        } else if (!isBlank(pairs[n - 1].a)) {
+          errors.push(`clarifications.answer names pair ${n}, which already has an answer; existing answers are not changed`);
+        } else if (answer.has(n)) {
+          errors.push(`clarifications.answer answers pair ${n} more than once`);
+        } else answer.set(n, item.text.trim());
+      }
+    }
+  }
+  if (!errors.length && !add.length && !answer.size) errors.push('clarifications changes nothing');
+  return { errors, add, answer };
+}
+
 // A stored story in the shape the input uses, so a patch can be laid over it and the result checked like a new story.
 // A User Story or User Acceptance Criteria cell that did not parse has no input form: it is left out and reported by the caller.
 function storedAsInput(stored) {
@@ -102,8 +155,12 @@ function storedAsInput(stored) {
 }
 
 // The stored story with only the fields the patch names replaced.
-function applyPatch(stored, patch, fields) {
+function applyPatch(stored, patch, fields, clar) {
   const next = { ...stored };
+  if (clar) {
+    const pairs = numbered(stored).map((p, i) => (clar.answer.has(i + 1) ? { ...p, a: clar.answer.get(i + 1) } : p));
+    next.clarifications = [...pairs, ...clar.add.map((q) => ({ q, a: '' }))];
+  }
   if ('epic' in patch) Object.assign(next, { epic: fields.epic, codedEpic: fields.epic });
   if ('userStory' in patch) Object.assign(next, { asA: fields.asA, iWant: fields.iWant, soThat: fields.soThat, rawUserStory: null });
   if ('criteria' in patch) Object.assign(next, { criteria: fields.criteria, rawCriteria: null });
@@ -140,7 +197,9 @@ export function buildProposals({ input, backlog, proposals = null }) {
     if (!isPatch(raw)) {
       const { errors: own, fields } = checkFields(raw);
       own.forEach((e) => fail(i, e));
-      return { raw, fields };
+      const clar = 'clarifications' in raw ? checkClarifications(raw.clarifications, null) : null;
+      clar?.errors.forEach((e) => fail(i, e));
+      return { raw, fields, clar };
     }
 
     const { id, ...rest } = raw;
@@ -178,7 +237,9 @@ export function buildProposals({ input, backlog, proposals = null }) {
     }
     const { errors: own, fields } = checkFields({ ...base, dependsOn: [], ...rest }, skip);
     own.forEach((e) => fail(i, e));
-    return { raw: rest, fields, stored };
+    const clar = 'clarifications' in rest ? checkClarifications(rest.clarifications, stored) : null;
+    clar?.errors.forEach((e) => fail(i, e));
+    return { raw: rest, fields, stored, clar };
   });
 
   const newCount = input.filter((raw) => !isPatch(raw)).length;
@@ -242,7 +303,7 @@ export function buildProposals({ input, backlog, proposals = null }) {
   const patched = new Map();
   checked.forEach((c, i) => {
     if (c.stored) {
-      const next = applyPatch(c.stored, c.raw, c.fields);
+      const next = applyPatch(c.stored, c.raw, c.fields, c.clar);
       if (resolved[i]) next.dependsOn = resolved[i];
       patched.set(c.stored.code, next);
       return;
@@ -261,6 +322,7 @@ export function buildProposals({ input, backlog, proposals = null }) {
         points: fields.points,
         notes: fields.notes ?? '',
         criteria: fields.criteria,
+        clarifications: (c.clar?.add ?? []).map((q) => ({ q, a: '' })),
         dependsOn: resolved[i],
       }),
     );
