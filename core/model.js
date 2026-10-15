@@ -1,13 +1,13 @@
 // CSV <-> story model for the user story tool. Pure functions, no DOM.
 // Recognised columns are matched by header name; every other column is carried through in
-// `story.cells` untouched. Unparseable User Story / Acceptance Criteria cells keep their raw text.
+// `story.cells` untouched. Unparseable User Story / User Acceptance Criteria cells keep their raw text.
 
 import { parseCsv, toCsv } from './csv.js';
 import { renumber } from './ids.js';
 import { composeStory, parseStory, composeCriteria, parseCriteria } from './story-text.js';
 
 export const COLUMNS = [
-  'ID', 'Epic', 'Feature', 'Title', 'User Story', 'Sprint points', 'Priority', 'Depends On', 'Acceptance Criteria', 'Notes', 'Locked',
+  'ID', 'Epic', 'Feature', 'Title', 'User Story', 'Sprint points', 'Priority', 'Depends On', 'User Acceptance Criteria', 'Notes', 'Locked',
 ];
 // Only a proposals file has this column (see proposalHeaders): `Yes` or empty. A benched proposed story is parked: the
 // explore and propose skills do not see it. It changes nothing else (accepting works as for any other story).
@@ -77,11 +77,11 @@ function storyFromCells(cells, idx) {
     story.rawUserStory = get('User Story');
   }
 
-  const ac = parseCriteria(get('Acceptance Criteria'));
+  const ac = parseCriteria(get('User Acceptance Criteria'));
   if (ac.ok) story.criteria = ac.criteria.length ? ac.criteria : [emptyCriterion()]; // always show one; blank composes to an empty cell
   else {
     story.criteria = [];
-    story.rawCriteria = get('Acceptance Criteria');
+    story.rawCriteria = get('User Acceptance Criteria');
   }
   return story;
 }
@@ -114,7 +114,7 @@ export function loadBacklog(text, { placeholderIds = false } = {}) {
   return { headers, stories, hasBom: text.charCodeAt(0) === 0xfeff, changed: placeholderIds ? false : stories !== loaded };
 }
 
-// The text written into the User Story / Acceptance Criteria cells (also feeds the previews).
+// The text written into the User Story / User Acceptance Criteria cells (also feeds the previews).
 export function storyCellText(story) {
   return story.rawUserStory ?? composeStory(story);
 }
@@ -136,7 +136,7 @@ export function serializeBacklog(backlog) {
     cells[idx['Sprint points']] = s.points;
     cells[idx['Priority']] = s.priority;
     cells[idx['Depends On']] = s.dependsOn.join(';');
-    cells[idx['Acceptance Criteria']] = criteriaCellText(s);
+    cells[idx['User Acceptance Criteria']] = criteriaCellText(s);
     cells[idx['Notes']] = s.notes;
     cells[idx['Locked']] = s.locked && s.code ? 'Yes' : '';
     if (BENCHED_COLUMN in idx) cells[idx[BENCHED_COLUMN]] = s.benched ? 'Yes' : '';

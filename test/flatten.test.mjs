@@ -8,8 +8,8 @@ test('one Header: value line per non-empty cell, one block per row', () => {
 });
 
 test('a multi-line quoted cell stays together under its label, indented', () => {
-  const out = flattenCsv('ID,Acceptance Criteria\r\nA-1,"Given x\r\nWhen y\r\nThen z"\r\n');
-  assert.equal(out, '----\nID: A-1\nAcceptance Criteria: Given x\n  When y\n  Then z\n');
+  const out = flattenCsv('ID,User Acceptance Criteria\r\nA-1,"Given x\r\nWhen y\r\nThen z"\r\n');
+  assert.equal(out, '----\nID: A-1\nUser Acceptance Criteria: Given x\n  When y\n  Then z\n');
 });
 
 test('an empty cell is omitted, so adding a value is one added line', () => {

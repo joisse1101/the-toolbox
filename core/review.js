@@ -11,7 +11,7 @@ export const REVIEW_COLUMNS = [
   'Story ID', 'Field', 'Action', 'Current', 'Suggested', 'Reason', 'Area', 'Confidence', 'Group', 'Status',
 ];
 export const FIELDS = [
-  'Epic', 'Feature', 'Title', 'User Story', 'Sprint points', 'Depends On', 'Acceptance Criteria', 'Notes',
+  'Epic', 'Feature', 'Title', 'User Story', 'Sprint points', 'Depends On', 'User Acceptance Criteria', 'Notes',
 ];
 export const ACTIONS = ['replace', 'add', 'remove', 'append', 'add-story', 'unlock'];
 export const AREAS = ['Hierarchy', 'INVEST', 'Acceptance criteria'];
@@ -27,7 +27,7 @@ const ALLOWED_ACTIONS = {
   'Sprint points': ['replace'],
   Notes: ['replace', 'append'],
   'Depends On': ['add', 'remove'],
-  'Acceptance Criteria': ['add', 'replace', 'remove'],
+  'User Acceptance Criteria': ['add', 'replace', 'remove'],
 };
 
 const NEW_ID = /^NEW-\d+$/;
@@ -190,21 +190,21 @@ export function validateFindings(findings, backlog, { existingRows = [] } = {}) 
         if (!us.ok || blank(us.asA) || blank(us.iWant) || blank(us.soThat)) bad('User Story must read "As a ..., I want ..., so that ...".');
       } else if (r.field === 'Sprint points') {
         if (!POINTS.map(String).includes(r.suggested)) bad(`Sprint points must be one of ${POINTS.join(', ')}.`);
-      } else if (r.field === 'Acceptance Criteria' && r.action === 'remove') {
+      } else if (r.field === 'User Acceptance Criteria' && r.action === 'remove') {
         const m = AC_ONLY.exec(r.suggested);
-        if (!m) bad('a remove on Acceptance Criteria takes just the label of the criterion, e.g. "AC4".');
+        if (!m) bad('a remove on User Acceptance Criteria takes just the label of the criterion, e.g. "AC4".');
         else if (story && (story.rawCriteria !== null || hasBlankOnly(story.criteria) || Number(m[1]) < 1 || Number(m[1]) > story.criteria.length)) {
           bad(`${r.storyId} has no criterion AC${m[1]} that can be removed.`);
         }
-      } else if (r.field === 'Acceptance Criteria') {
-        if (!parseOneCriterion(r.suggested)) bad('Acceptance Criteria must be one line: "AC<n>: Given ..., when ..., then ...".');
+      } else if (r.field === 'User Acceptance Criteria') {
+        if (!parseOneCriterion(r.suggested)) bad('User Acceptance Criteria must be one line: "AC<n>: Given ..., when ..., then ...".');
         if (r.action === 'replace' && story) {
           const m = AC_LABEL.exec(r.suggested);
-          if (!m) bad('a replace on Acceptance Criteria must start with the label of the criterion to replace, e.g. "AC3:".');
-          else if (story.rawCriteria !== null) bad(`${r.storyId}'s Acceptance Criteria cell is free text, so a single criterion cannot be replaced.`);
+          if (!m) bad('a replace on User Acceptance Criteria must start with the label of the criterion to replace, e.g. "AC3:".');
+          else if (story.rawCriteria !== null) bad(`${r.storyId}'s User Acceptance Criteria cell is free text, so a single criterion cannot be replaced.`);
           else if (Number(m[1]) < 1 || Number(m[1]) > story.criteria.length || hasBlankOnly(story.criteria)) bad(`${r.storyId} has no criterion AC${m[1]}.`);
         }
-        if (r.action === 'add' && story && story.rawCriteria !== null) bad(`${r.storyId}'s Acceptance Criteria cell is free text, so a criterion cannot be added.`);
+        if (r.action === 'add' && story && story.rawCriteria !== null) bad(`${r.storyId}'s User Acceptance Criteria cell is free text, so a criterion cannot be added.`);
       } else if (r.field === 'Depends On') {
         const target = r.suggested;
         const inGroup = r.group && newIds.get(r.group)?.has(target);
@@ -238,7 +238,7 @@ export function fillCurrent(findings, backlog) {
     };
     const story = byCode.get(row.storyId);
     if (!story || row.action === 'unlock' || row.action === 'add' || row.action === 'add-story') return row;
-    if (row.field === 'Acceptance Criteria') {
+    if (row.field === 'User Acceptance Criteria') {
       const n = Number(AC_NUMBER.exec(row.suggested)?.[1]);
       const c = story.criteria[n - 1];
       row.current = c ? criterionText(c, n) : '';
@@ -290,7 +290,7 @@ function editState(row, stories) {
     if (row.action === 'remove' && !has) return stale(`no longer depends on ${row.suggested}`);
     return { state: 'open' };
   }
-  if (row.field === 'Acceptance Criteria') {
+  if (row.field === 'User Acceptance Criteria') {
     if (story.rawCriteria !== null) return stale('the criteria are free text');
     if (row.action === 'remove') {
       const n = Number(AC_NUMBER.exec(row.suggested)?.[1]);
@@ -360,7 +360,7 @@ function editExisting(story, row) {
       const us = parseStory(v);
       return { ...story, asA: us.asA, iWant: us.iWant, soThat: us.soThat, rawUserStory: null };
     }
-    case 'Acceptance Criteria': {
+    case 'User Acceptance Criteria': {
       if (row.action === 'remove') {
         const n = Number(AC_NUMBER.exec(v)[1]);
         const left = story.criteria.filter((_, i) => i !== n - 1);
@@ -400,7 +400,7 @@ function buildNewStory(headers, rows, original) {
         s.soThat = us.soThat;
         break;
       }
-      case 'Acceptance Criteria': {
+      case 'User Acceptance Criteria': {
         const c = parseOneCriterion(v);
         if (c) criteria.push({ ...c });
         break;

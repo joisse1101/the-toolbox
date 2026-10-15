@@ -87,7 +87,7 @@ The tool SHALL show an info control next to the Sprint points field that reveals
 - **THEN** the info control shows a short message that the guideline is unavailable and the rest of the form still works
 
 ### Requirement: Multiple acceptance criteria
-Each story SHALL support one or more acceptance criteria, each made of "Given", "When" and "Then" text fields. The user SHALL be able to add criteria and remove criteria, but SHALL NOT be able to remove the last remaining one: its remove control SHALL be disabled. A new story SHALL start with one empty criterion. A story loaded with an empty Acceptance Criteria cell SHALL show one empty criterion, without that alone causing the file to be saved. A story whose cell was kept as raw text because it did not parse SHALL be left as it is until the user edits its criteria. Pressing Enter in the Then field of a criterion SHALL add a new empty criterion after the last one and move focus to the When field of the new criterion.
+Each story SHALL support one or more acceptance criteria, each made of "Given", "When" and "Then" text fields. The user SHALL be able to add criteria and remove criteria, but SHALL NOT be able to remove the last remaining one: its remove control SHALL be disabled. A new story SHALL start with one empty criterion. A story loaded with an empty User Acceptance Criteria cell SHALL show one empty criterion, without that alone causing the file to be saved. A story whose cell was kept as raw text because it did not parse SHALL be left as it is until the user edits its criteria. Pressing Enter in the Then field of a criterion SHALL add a new empty criterion after the last one and move focus to the When field of the new criterion.
 
 #### Scenario: Add criterion
 - **WHEN** the user clicks "Add criterion"
@@ -106,7 +106,7 @@ Each story SHALL support one or more acceptance criteria, each made of "Given", 
 - **THEN** it shows one empty criterion group
 
 #### Scenario: Loaded story without criteria
-- **WHEN** a loaded story has an empty Acceptance Criteria cell
+- **WHEN** a loaded story has an empty User Acceptance Criteria cell
 - **THEN** one empty criterion group is shown and the file is not rewritten until the user changes something
 
 #### Scenario: Enter in Then adds a criterion
@@ -137,13 +137,13 @@ A backlog file SHALL hold many stories, one per CSV row. The tool SHALL let the 
 - **THEN** the tooltip shows the user story text and a line saying Epic is missing
 
 ### Requirement: CSV format
-Each story SHALL be stored as one row with exactly these columns: `ID, Epic, Feature, Title, User Story, Sprint points, Priority, Depends On, Acceptance Criteria, Notes, Locked`.
+Each story SHALL be stored as one row with exactly these columns: `ID, Epic, Feature, Title, User Story, Sprint points, Priority, Depends On, User Acceptance Criteria, Notes, Locked`.
 
 - `ID` SHALL hold the story ID, or be empty when the story has none.
 - `Title` SHALL hold the title of the user story.
 - `User Story` SHALL hold one sentence in the form `As a <as a>, I want <i want>, so that <so that>`.
 - `Depends On` SHALL hold the IDs of the stories this story depends on, separated by semicolons, or be empty.
-- `Acceptance Criteria` SHALL hold one line per criterion, lines separated by a line break within the cell, each in the form `AC<n>: Given <given>, when <when>, then <then>`, where `<n>` is the criterion's position starting at 1.
+- `User Acceptance Criteria` SHALL hold one line per criterion, lines separated by a line break within the cell, each in the form `AC<n>: Given <given>, when <when>, then <then>`, where `<n>` is the criterion's position starting at 1.
 - `Locked` SHALL hold `Yes` for a locked story and be empty otherwise. Any other value SHALL be read as unlocked.
 
 Values containing commas, quotes or line breaks SHALL be correctly quoted so the file round-trips and opens correctly in Excel. A file that lacks the `ID`, `Depends On`, `Title` or `Locked` column SHALL be accepted and the columns added to it when it is saved. The tool SHALL NOT translate older column names: a `Capability` column SHALL be treated as an unknown column and kept unchanged.
@@ -154,7 +154,7 @@ Values containing commas, quotes or line breaks SHALL be correctly quoted so the
 
 #### Scenario: Multiple criteria in one cell
 - **WHEN** a story has two criteria
-- **THEN** the `Acceptance Criteria` cell contains two lines beginning `AC1: Given ` and `AC2: Given `, separated by a line break
+- **THEN** the `User Acceptance Criteria` cell contains two lines beginning `AC1: Given ` and `AC2: Given `, separated by a line break
 
 #### Scenario: Round trip
 - **WHEN** a story containing commas, quotes and a line break in its text is saved and the file is reloaded
@@ -162,7 +162,7 @@ Values containing commas, quotes or line breaks SHALL be correctly quoted so the
 
 #### Scenario: Story with no criteria
 - **WHEN** a story has no criteria text
-- **THEN** its `Acceptance Criteria` cell is empty
+- **THEN** its `User Acceptance Criteria` cell is empty
 
 #### Scenario: ID and dependencies saved
 - **WHEN** story `IAM-0003` depends on `IAM-0001` and `DD-0002`
@@ -185,7 +185,7 @@ Values containing commas, quotes or line breaks SHALL be correctly quoted so the
 - **THEN** the story is still locked
 
 ### Requirement: Parsing story and criteria text
-When loading a file, the tool SHALL split the `User Story` cell into As a / I want / So that using the literal keywords `As a`, `I want` and `so that` (case-insensitive, first occurrence of each, in that order), and SHALL split the `Acceptance Criteria` cell into criteria by line, each into Given / When / Then using the keywords `Given`, `when` and `then` (case-insensitive, first occurrence of each, in that order). The comma immediately before a keyword SHALL be treated as a separator and removed from the preceding field, and a missing comma SHALL be tolerated. The leading `AC<n>:` label SHALL be ignored and criteria renumbered from their position.
+When loading a file, the tool SHALL split the `User Story` cell into As a / I want / So that using the literal keywords `As a`, `I want` and `so that` (case-insensitive, first occurrence of each, in that order), and SHALL split the `User Acceptance Criteria` cell into criteria by line, each into Given / When / Then using the keywords `Given`, `when` and `then` (case-insensitive, first occurrence of each, in that order). The comma immediately before a keyword SHALL be treated as a separator and removed from the preceding field, and a missing comma SHALL be tolerated. The leading `AC<n>:` label SHALL be ignored and criteria renumbered from their position.
 
 #### Scenario: Comma-separated syntax
 - **WHEN** a cell reads `As a team lead, I want to export, so that I can share`
@@ -196,7 +196,7 @@ When loading a file, the tool SHALL split the `User Story` cell into As a / I wa
 - **THEN** it loads the same fields, and the next save rewrites it with commas
 
 #### Scenario: Cell edited in Excel
-- **WHEN** the `Acceptance Criteria` cell is edited in Excel and still follows the syntax
+- **WHEN** the `User Acceptance Criteria` cell is edited in Excel and still follows the syntax
 - **THEN** the tool loads each line into its own Given/When/Then group
 
 #### Scenario: Text that does not match the syntax
@@ -331,7 +331,7 @@ The Epic and Feature fields SHALL suggest values already used by stories in the 
 - **THEN** no suggestions are offered
 
 ### Requirement: Story completeness indicators
-The tool SHALL classify each story. A story is **incomplete** (red) when any of Epic, Feature, Title, As a, I want or So that is blank, or when it has no acceptance criterion, or when any of its criteria has a blank Given, When or Then. A story whose User Story or Acceptance Criteria cell could not be parsed and is kept as raw text counts that cell as present. A story gets a **warning** (yellow) when Sprint points is missing, Priority is missing, or Sprint points is above 13. The indicator SHALL show on the story's row in the story list and on its form, SHALL list the reasons, and SHALL be advisory only and SHALL NOT block saving. When a story is both incomplete and has warnings, the row SHALL use the red style; the form SHALL show the red message first and the yellow message after it.
+The tool SHALL classify each story. A story is **incomplete** (red) when any of Epic, Feature, Title, As a, I want or So that is blank, or when it has no acceptance criterion, or when any of its criteria has a blank Given, When or Then. A story whose User Story or User Acceptance Criteria cell could not be parsed and is kept as raw text counts that cell as present. A story gets a **warning** (yellow) when Sprint points is missing, Priority is missing, or Sprint points is above 13. The indicator SHALL show on the story's row in the story list and on its form, SHALL list the reasons, and SHALL be advisory only and SHALL NOT block saving. When a story is both incomplete and has warnings, the row SHALL use the red style; the form SHALL show the red message first and the yellow message after it.
 
 #### Scenario: Missing capability
 - **WHEN** a story has a blank Feature
@@ -862,7 +862,7 @@ The story form SHALL show a **Move to Proposed** button in the same row as the s
 ### Requirement: Lock a story
 Each story SHALL have a lock, stored in the `Locked` column of the backlog CSV as `Yes` (locked) or empty (unlocked). A locked story is reference only: it is not submitted for review and its position is fixed. The story form SHALL offer a lock toggle. A story without an ID (blank Epic) SHALL NOT be lockable and the toggle SHALL be disabled for it with a hint that it needs an Epic. A locked story SHALL be marked as locked in the story list and the Stories tab.
 
-A locked story SHALL NOT be draggable (see "Reorder stories by drag and drop"), SHALL NOT be moved to Proposed (see the `story-proposals` capability) and SHALL NOT be deleted: Alt+D and the delete button SHALL do nothing for it and the user SHALL be told to unlock it first. Only its **Epic** field SHALL be read-only; Feature, Title, User Story, Sprint points, Priority, Depends On, Acceptance Criteria and Notes SHALL stay editable, as SHALL the dependencies of other stories on it. Ctrl+Up/Down SHALL select a locked story like any other. Applying a review suggestion to a locked story is covered by the `backlog-review-suggestions` capability.
+A locked story SHALL NOT be draggable (see "Reorder stories by drag and drop"), SHALL NOT be moved to Proposed (see the `story-proposals` capability) and SHALL NOT be deleted: Alt+D and the delete button SHALL do nothing for it and the user SHALL be told to unlock it first. Only its **Epic** field SHALL be read-only; Feature, Title, User Story, Sprint points, Priority, Depends On, User Acceptance Criteria and Notes SHALL stay editable, as SHALL the dependencies of other stories on it. Ctrl+Up/Down SHALL select a locked story like any other. Applying a review suggestion to a locked story is covered by the `backlog-review-suggestions` capability.
 
 #### Scenario: Lock a story
 - **WHEN** the user turns on the lock for `IAM-0002`

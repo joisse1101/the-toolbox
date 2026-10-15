@@ -9,7 +9,7 @@ import { loadBacklog } from '../core/model.js';
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const skill = (name) => fs.readFileSync(path.join(REPO, '.claude', 'skills', name, 'SKILL.md'), 'utf8').replace(/\r\n/g, '\n');
 
-const HEAD = 'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,Acceptance Criteria,Notes\r\n';
+const HEAD = 'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes\r\n';
 const BACKLOG =
   HEAD +
   'IAM-0001,Identity & Access Management,Auth,Login,"As a user, I want to log in, so that I can access the portal",5,High,,"AC1: Given a, when b, then c",\r\n';

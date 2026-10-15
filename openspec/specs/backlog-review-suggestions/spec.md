@@ -10,7 +10,7 @@ Turns the findings of a backlog review into data the portal can use: a review CS
 A review of a backlog SHALL be stored as a CSV file in the `reviews` folder with the same file name as the backlog it reviews (for example `reviews/data-portal.csv` for `user-stories/data-portal.csv`). One row SHALL describe one field edit, or one suggestion to unlock a story, and SHALL have the columns `Story ID`, `Field`, `Action`, `Current`, `Suggested`, `Reason`, `Area`, `Confidence`, `Group` and `Status`.
 
 - `Story ID` is the ID of the story the edit applies to, or `NEW-<n>` for a story to be created (see "Split suggestions").
-- `Field` is one of `Epic`, `Feature`, `Title`, `User Story`, `Sprint points`, `Depends On`, `Acceptance Criteria`, `Notes`, and is empty on an `unlock` row. Priority is not a Field: reviews do not cover it.
+- `Field` is one of `Epic`, `Feature`, `Title`, `User Story`, `Sprint points`, `Depends On`, `User Acceptance Criteria`, `Notes`, and is empty on an `unlock` row. Priority is not a Field: reviews do not cover it.
 - `Action` is one of `replace`, `add`, `remove`, `append`, `add-story`, `unlock`.
 - `Area` is one of `Hierarchy`, `INVEST`, `Acceptance criteria`.
 - `Confidence` is `ready` (apply as-is) or `confirm` (a proposed default the user must check).
@@ -33,8 +33,8 @@ A review of a backlog SHALL be stored as a CSV file in the `reviews` folder with
 Every finding of a review about a story that is not locked SHALL produce at least one review row with a non-empty `Suggested` value; a finding SHALL NOT be left as advice only. A finding about a locked story SHALL be written as an `unlock` row (see "Unlock suggestion"), and MAY be accompanied by field-edit rows for that story as the evidence for it. The edit for each kind of finding SHALL be:
 
 - Wording, typo or weak "so that": `replace` on the field.
-- Missing or vague acceptance criterion: `add` or `replace` on `Acceptance Criteria`.
-- Duplicate or unwanted acceptance criterion: `remove` on `Acceptance Criteria`, with `Suggested` = the label of the criterion (for example `AC4`).
+- Missing or vague acceptance criterion: `add` or `replace` on `User Acceptance Criteria`.
+- Duplicate or unwanted acceptance criterion: `remove` on `User Acceptance Criteria`, with `Suggested` = the label of the criterion (for example `AC4`).
 - A value only the user can decide (for example a page size, a relevance threshold, missing Sprint points; never Priority): `replace` with a proposed default, `Confidence` = `confirm`.
 - A story or feature in the wrong place: `replace` on `Epic` or `Feature`.
 - A dependency problem: `add` or `remove` on `Depends On`.
@@ -87,7 +87,7 @@ The review skill SHALL write review files only by running the Node script `.clau
 - **THEN** it is refused and the message lists the allowed command forms
 
 ### Requirement: Script validates findings
-The script SHALL reject the whole input, write nothing, and report every problem found when any finding: names a Story ID that is not in the backlog (other than `NEW-<n>` on an `add-story` row); uses a Field, Action, Area or Confidence outside the allowed values; has an empty `Suggested` (except an `unlock` row, which SHALL have an empty `Field` and `Suggested`); uses an Action that does not fit the Field (for example `add` on `Title`, `remove` on a Field other than `Depends On` and `Acceptance Criteria`, or `add` on a Field other than `Depends On` and `Acceptance Criteria`); has an `add-story` row without a Group or a `NEW-<n>` ID, or a new story without a Title; belongs to a Group whose rows do not all have `Confidence` = `confirm`; or suggests a `Depends On` entry that is not a story ID in the backlog or a `NEW-<n>` in the same Group. It SHALL also reject an `unlock` row for a story that is not locked, and a batch that leaves a field-edit row for a locked story without an `unlock` row for the same story in the resulting review file (an `unlock` row written by an earlier batch counts). Each problem about a finding SHALL name the finding by its position in the input. When the input is not valid JSON, the script SHALL report the parser's message and the position of the failure. The script SHALL ignore any `Current` or `Status` the caller supplies.
+The script SHALL reject the whole input, write nothing, and report every problem found when any finding: names a Story ID that is not in the backlog (other than `NEW-<n>` on an `add-story` row); uses a Field, Action, Area or Confidence outside the allowed values; has an empty `Suggested` (except an `unlock` row, which SHALL have an empty `Field` and `Suggested`); uses an Action that does not fit the Field (for example `add` on `Title`, `remove` on a Field other than `Depends On` and `User Acceptance Criteria`, or `add` on a Field other than `Depends On` and `User Acceptance Criteria`); has an `add-story` row without a Group or a `NEW-<n>` ID, or a new story without a Title; belongs to a Group whose rows do not all have `Confidence` = `confirm`; or suggests a `Depends On` entry that is not a story ID in the backlog or a `NEW-<n>` in the same Group. It SHALL also reject an `unlock` row for a story that is not locked, and a batch that leaves a field-edit row for a locked story without an `unlock` row for the same story in the resulting review file (an `unlock` row written by an earlier batch counts). Each problem about a finding SHALL name the finding by its position in the input. When the input is not valid JSON, the script SHALL report the parser's message and the position of the failure. The script SHALL ignore any `Current` or `Status` the caller supplies.
 
 #### Scenario: Unknown story
 - **WHEN** a finding names `ZZ-0009`, which is not in the backlog
@@ -122,7 +122,7 @@ The script SHALL reject the whole input, write nothing, and report every problem
 - **THEN** the batch is rejected
 
 ### Requirement: Script fills Current from the backlog
-For each row the script SHALL set `Current` from the backlog as it was read: the story's current value for the Field on `replace`, `append`, and `Depends On` `add` or `remove`; the text of the criterion being replaced on an `Acceptance Criteria` `replace` (matched by the `AC<n>` label at the start of `Suggested`, which the script SHALL reject if no such criterion exists; a `remove` on `Acceptance Criteria` takes the label alone as `Suggested`, and `Current` is the text of that criterion); and empty for `add`, `add-story`, and rows for `NEW-<n>` stories. It SHALL use the same parsing as the portal so `Current` is exactly what the portal will compare against. Every written row SHALL have `Status` = `open`, except rows that keep a status from an earlier review (see "Safe, repeatable writes").
+For each row the script SHALL set `Current` from the backlog as it was read: the story's current value for the Field on `replace`, `append`, and `Depends On` `add` or `remove`; the text of the criterion being replaced on an `User Acceptance Criteria` `replace` (matched by the `AC<n>` label at the start of `Suggested`, which the script SHALL reject if no such criterion exists; a `remove` on `User Acceptance Criteria` takes the label alone as `Suggested`, and `Current` is the text of that criterion); and empty for `add`, `add-story`, and rows for `NEW-<n>` stories. It SHALL use the same parsing as the portal so `Current` is exactly what the portal will compare against. Every written row SHALL have `Status` = `open`, except rows that keep a status from an earlier review (see "Safe, repeatable writes").
 
 #### Scenario: Current comes from the file
 - **WHEN** a finding replaces the User Story of IAM-0001 and the caller supplies a different `Current`
@@ -169,14 +169,14 @@ When the open backlog has a review file of the same name, the tool SHALL load it
 - **THEN** the form shows no suggestions and no error
 
 ### Requirement: Applying a suggestion
-Apply SHALL perform the edit through the same change path as a manual edit, so IDs, dependency links and autosave behave as for a manual edit: `replace` sets the field (for Acceptance Criteria it replaces the matched criterion), `add` adds an acceptance criterion or a `Depends On` link, `remove` removes a `Depends On` link or the matched acceptance criterion (later criteria are renumbered), `append` adds the text to the end of Notes on a new line. After Apply the row's `Status` SHALL be `applied` in the review file. A `Depends On` change that would create a cycle or a link to a missing story SHALL NOT be applied and the user SHALL be told why.
+Apply SHALL perform the edit through the same change path as a manual edit, so IDs, dependency links and autosave behave as for a manual edit: `replace` sets the field (for User Acceptance Criteria it replaces the matched criterion), `add` adds an acceptance criterion or a `Depends On` link, `remove` removes a `Depends On` link or the matched acceptance criterion (later criteria are renumbered), `append` adds the text to the end of Notes on a new line. After Apply the row's `Status` SHALL be `applied` in the review file. A `Depends On` change that would create a cycle or a link to a missing story SHALL NOT be applied and the user SHALL be told why.
 
 #### Scenario: Apply a replacement
 - **WHEN** the user clicks Apply on a `replace` row for a story's Title
 - **THEN** the Title becomes the suggested value, the backlog autosaves, and the row is `applied` in the review file
 
 #### Scenario: Apply an added criterion
-- **WHEN** the user clicks Apply on an `add` row for Acceptance Criteria
+- **WHEN** the user clicks Apply on an `add` row for User Acceptance Criteria
 - **THEN** a new criterion with the suggested Given, When and Then is added to the story and the criteria numbering stays sequential
 
 #### Scenario: Dependency would create a cycle

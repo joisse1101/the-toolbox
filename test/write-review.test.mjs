@@ -11,7 +11,7 @@ import { parseReview, serializeReview } from '../core/review.js';
 const SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../.claude/skills/review-backlog/write-review.mjs');
 
 const CSV =
-  'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,Acceptance Criteria,Notes\r\n' +
+  'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes\r\n' +
   'IAM-0001,Identity & Access Management,Auth,Login,"As a user, I want to log in, so that I can access the portal",5,High,,"AC1: Given a, when b, then c",\r\n' +
   'IAM-0002,Identity & Access Management,SSO,SSO Login,"As a user, I want SSO, so that no credentials",55,,,,\r\n';
 
@@ -77,7 +77,7 @@ test('a split group and multi-line values are written and read back intact', () 
   const multi = 'AC2: Given a "quoted", value, when it has commas, then it survives';
   const reason = 'Line one\nline two, "quoted"';
   const r = run(root, [
-    finding({ field: 'Acceptance Criteria', action: 'add', suggested: multi, reason }),
+    finding({ field: 'User Acceptance Criteria', action: 'add', suggested: multi, reason }),
     finding({ storyId: 'IAM-0002', field: 'Title', suggested: 'SSO sign-in', confidence: 'confirm', group: 'split-2' }),
     finding({ storyId: 'NEW-1', field: 'Title', action: 'add-story', suggested: 'SSO sign-out', confidence: 'confirm', group: 'split-2' }),
   ]);

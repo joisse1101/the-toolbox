@@ -88,7 +88,7 @@ function checkFields(raw, skip = []) {
 }
 
 // A stored story in the shape the input uses, so a patch can be laid over it and the result checked like a new story.
-// A User Story or Acceptance Criteria cell that did not parse has no input form: it is left out and reported by the caller.
+// A User Story or User Acceptance Criteria cell that did not parse has no input form: it is left out and reported by the caller.
 function storedAsInput(stored) {
   return {
     epic: stored.epic,
@@ -170,7 +170,7 @@ export function buildProposals({ input, backlog, proposals = null }) {
 
     const base = storedAsInput(stored);
     const skip = ['dependsOn'];
-    for (const [key, cell] of [['userStory', 'User Story'], ['criteria', 'Acceptance Criteria']]) {
+    for (const [key, cell] of [['userStory', 'User Story'], ['criteria', 'User Acceptance Criteria']]) {
       if (!(key in base) && !(key in rest)) {
         fail(i, `leaves ${cell} as stored, but ${code}'s ${cell} cell is free text that does not follow the format; send ${key} to replace it`);
         skip.push(key);

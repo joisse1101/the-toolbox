@@ -89,7 +89,7 @@ function CellWarning({ id, raw, message }) {
 }
 
 const STORY_WARNING = 'The User Story cell does not follow "As a …, I want …, so that …", so it is kept as it is';
-const CRITERIA_WARNING = 'The Acceptance Criteria cell does not follow "AC1: Given …, when …, then …", so it is kept as it is';
+const CRITERIA_WARNING = 'The User Acceptance Criteria cell does not follow "AC1: Given …, when …, then …", so it is kept as it is';
 
 // `focusRequest` = { id } or null: focus the element with that id (default: Epic) once rendered, then call onFocused.
 // `suggestions`: the open review units for this story ({ key, group, rows }); see review.js. Ungrouped ones sit next to
@@ -256,7 +256,7 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
       </fieldset>
 
       <fieldset>
-        <legend>Acceptance criteria</legend>
+        <legend>User acceptance criteria</legend>
         <div id="criteria">
           {s.criteria.map((c, i) => {
             const last = s.criteria.length === 1;
@@ -324,7 +324,7 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
           })}
         </div>
         <button type="button" id="addCriterionBtn" onClick={addCriterion}>Add criterion</button>
-        {list('Acceptance Criteria')}
+        {list('User Acceptance Criteria')}
         <CellWarning id="criteriaWarning" raw={s.rawCriteria} message={CRITERIA_WARNING} />
         <div className="preview-label">Saved as</div>
         <pre id="criteriaPreview" className="preview">{criteriaCellText(s)}</pre>

@@ -7,7 +7,7 @@ import {
 } from '../core/model.js';
 
 const SAMPLE =
-  '﻿Jira Key,Title,Sprint points,Epic,User Story,Feature,Acceptance Criteria,Priority,Notes\r\n' +
+  '﻿Jira Key,Title,Sprint points,Epic,User Story,Feature,User Acceptance Criteria,Priority,Notes\r\n' +
   'ABC-1,Export,4,Reporting,As a lead I want export so that share,Files,"AC1: Given a, when I b, then c\nAC2: Given d, when I e, then f",Urgent,"line1\nline2"\r\n' +
   'ABC-2,Import,100,Reporting,Free text story,Files,,,\r\n';
 

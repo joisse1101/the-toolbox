@@ -142,7 +142,7 @@ The system SHALL compare two states of a backlog on request, where each state is
 
 #### Scenario: A multi-line cell
 - **WHEN** an acceptance-criteria cell of a story gained a criterion on a new line
-- **THEN** the diff shows only the added criterion line, under that story's `Acceptance Criteria:` label
+- **THEN** the diff shows only the added criterion line, under that story's `User Acceptance Criteria:` label
 
 #### Scenario: A story was moved
 - **WHEN** a story changed position between the two states and its content is the same

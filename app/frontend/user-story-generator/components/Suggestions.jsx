@@ -3,7 +3,7 @@ import { unitState } from '../../../../core/review.js';
 const VERB = { replace: 'Suggested', add: 'Add', remove: 'Remove', append: 'Add to Notes', 'add-story': 'New story', unlock: 'Unlock' };
 
 // What a row proposes, as text. Removing a criterion shows the criterion itself, not just its label.
-const valueOf = (row) => (row.action === 'remove' && row.field === 'Acceptance Criteria' ? row.current : row.suggested);
+const valueOf = (row) => (row.action === 'remove' && row.field === 'User Acceptance Criteria' ? row.current : row.suggested);
 
 function rowLine(row) {
   if (row.action === 'add-story' || row.action === 'replace' || row.action === 'append') return `${row.storyId} ${row.field}: ${row.suggested}`;

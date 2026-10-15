@@ -7,7 +7,7 @@ import {
 } from '../core/review.js';
 
 const CSV =
-  'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,Acceptance Criteria,Notes\r\n' +
+  'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes\r\n' +
   'IAM-0001,Identity & Access Management,Auth,Login,"As a user, I want to log in, so that I can access the portal",5,High,,"AC1: Given a, when b, then c\nAC2: Given d, when e, then f",\r\n' +
   'IAM-0002,Identity & Access Management,Auth,Logout,"As a user, I want to log out, so that I end my session",3,High,IAM-0001,"AC1: Given g, when h, then i",note one\r\n' +
   'IAM-0003,Identity & Access Management,SSO,SSO Login,"As a user, I want SSO, so that no credentials",55,,,,\r\n';
@@ -21,7 +21,7 @@ const finding = (over = {}) => ({
 
 test('review CSV round-trips values with commas, quotes and line breaks', () => {
   const rows = [{
-    storyId: 'IAM-0001', field: 'Acceptance Criteria', action: 'add', current: '',
+    storyId: 'IAM-0001', field: 'User Acceptance Criteria', action: 'add', current: '',
     suggested: 'AC3: Given "x", when y,\nz, then w', reason: 'Missing, "failure" path', area: 'Acceptance criteria',
     confidence: 'ready', group: '', status: 'open',
   }];
@@ -72,13 +72,13 @@ test('value checks: user story syntax, points scale, priority, criterion shape',
   assert.ok(validateFindings([finding({ field: 'User Story', suggested: 'free text' })], b).length);
   assert.ok(validateFindings([finding({ field: 'Sprint points', suggested: '7' })], b).length);
   assert.ok(validateFindings([finding({ field: 'Priority', suggested: 'Urgent' })], b).length);
-  assert.ok(validateFindings([finding({ field: 'Acceptance Criteria', action: 'add', suggested: 'not a criterion' })], b).length);
+  assert.ok(validateFindings([finding({ field: 'User Acceptance Criteria', action: 'add', suggested: 'not a criterion' })], b).length);
   assert.deepEqual(validateFindings([finding({ field: 'Sprint points', suggested: '8' })], b), []);
 });
 
 test('criterion replace needs an existing AC label', () => {
   const b = backlog();
-  const ok = finding({ field: 'Acceptance Criteria', action: 'replace', suggested: 'AC2: Given x, when y, then z' });
+  const ok = finding({ field: 'User Acceptance Criteria', action: 'replace', suggested: 'AC2: Given x, when y, then z' });
   assert.deepEqual(validateFindings([ok], b), []);
   assert.ok(validateFindings([{ ...ok, suggested: 'AC9: Given x, when y, then z' }], b).some((e) => e.includes('no criterion AC9')));
   assert.ok(validateFindings([{ ...ok, suggested: 'Given x, when y, then z' }], b).some((e) => e.includes('label')));
@@ -114,8 +114,8 @@ test('fillCurrent reads Current from the backlog and ignores what the caller sen
   const b = backlog();
   const rows = fillCurrent([
     { ...finding({ field: 'User Story', suggested: 'As a user, I want x, so that y' }), current: 'LIES', status: 'applied' },
-    finding({ field: 'Acceptance Criteria', action: 'replace', suggested: 'AC2: Given x, when y, then z' }),
-    finding({ field: 'Acceptance Criteria', action: 'add', suggested: 'AC3: Given x, when y, then z' }),
+    finding({ field: 'User Acceptance Criteria', action: 'replace', suggested: 'AC2: Given x, when y, then z' }),
+    finding({ field: 'User Acceptance Criteria', action: 'add', suggested: 'AC3: Given x, when y, then z' }),
     finding({ storyId: 'IAM-0002', field: 'Depends On', action: 'remove', suggested: 'IAM-0001' }),
   ], b);
   assert.equal(rows[0].current, 'As a user, I want to log in, so that I can access the portal');
@@ -150,8 +150,8 @@ test('applying replace, append and criterion add/replace', () => {
   const rows = rowsFor([
     finding({ field: 'Title', suggested: 'New title' }),
     finding({ storyId: 'IAM-0002', field: 'Notes', action: 'append', suggested: 'Question: split or merge?', confidence: 'confirm' }),
-    finding({ field: 'Acceptance Criteria', action: 'replace', suggested: 'AC1: Given A, when B, then C' }),
-    finding({ field: 'Acceptance Criteria', action: 'add', suggested: 'AC3: Given x, when y, then z' }),
+    finding({ field: 'User Acceptance Criteria', action: 'replace', suggested: 'AC1: Given A, when B, then C' }),
+    finding({ field: 'User Acceptance Criteria', action: 'add', suggested: 'AC3: Given x, when y, then z' }),
   ], b);
   const r = applySuggestions(b.stories, rows, b.headers);
   assert.equal(r.error, undefined);
@@ -171,7 +171,7 @@ test('applying a User Story replace parses it into the three fields', () => {
 
 test('adding a criterion to a story with only the blank placeholder replaces the placeholder', () => {
   const b = backlog();
-  const rows = rowsFor([finding({ storyId: 'IAM-0003', field: 'Acceptance Criteria', action: 'add', suggested: 'AC1: Given x, when y, then z' })], b);
+  const rows = rowsFor([finding({ storyId: 'IAM-0003', field: 'User Acceptance Criteria', action: 'add', suggested: 'AC1: Given x, when y, then z' })], b);
   const s = applySuggestions(b.stories, rows, b.headers).stories.find((x) => x.code === 'IAM-0003');
   assert.equal(s.criteria.length, 1);
   assert.equal(s.criteria[0].then, 'z');
@@ -208,7 +208,7 @@ test('a split group narrows the original and creates new stories', () => {
     finding({ storyId: 'IAM-0003', field: 'Sprint points', suggested: '13', confidence: 'confirm', group: 'split-3' }),
     finding({ storyId: 'NEW-1', field: 'Title', action: 'add-story', suggested: 'SSO sign-out', confidence: 'confirm', group: 'split-3' }),
     finding({ storyId: 'NEW-1', field: 'Sprint points', action: 'add-story', suggested: '5', confidence: 'confirm', group: 'split-3' }),
-    finding({ storyId: 'NEW-1', field: 'Acceptance Criteria', action: 'add-story', suggested: 'AC1: Given a, when b, then c', confidence: 'confirm', group: 'split-3' }),
+    finding({ storyId: 'NEW-1', field: 'User Acceptance Criteria', action: 'add-story', suggested: 'AC1: Given a, when b, then c', confidence: 'confirm', group: 'split-3' }),
     finding({ storyId: 'NEW-1', field: 'Depends On', action: 'add-story', suggested: 'IAM-0003', confidence: 'confirm', group: 'split-3' }),
   ], b);
   const r = applySuggestions(b.stories, rows, b.headers);
@@ -248,14 +248,14 @@ test('open counts skip stale and decided rows and do not count new-story rows', 
 
 // ---- criterion remove, Priority not reviewed, Review tab overview ----
 
-const removeAc = (n, over = {}) => finding({ field: 'Acceptance Criteria', action: 'remove', suggested: `AC${n}`, ...over });
+const removeAc = (n, over = {}) => finding({ field: 'User Acceptance Criteria', action: 'remove', suggested: `AC${n}`, ...over });
 
 test('Priority is not a reviewable field', () => {
   const errors = validateFindings([finding({ field: 'Priority', suggested: 'High' })], backlog());
   assert.ok(errors.some((e) => e.includes('Field "Priority"')));
 });
 
-test('remove on Acceptance Criteria takes the label alone and needs an existing criterion', () => {
+test('remove on User Acceptance Criteria takes the label alone and needs an existing criterion', () => {
   const b = backlog();
   assert.deepEqual(validateFindings([removeAc(2)], b), []);
   assert.ok(validateFindings([removeAc(9)], b).some((e) => e.includes('no criterion AC9')));
@@ -284,8 +284,8 @@ test('applying remove drops the criterion; several removes use the labels the re
 
   const mixed = applySuggestions(b.stories, fillCurrent([
     removeAc(1),
-    finding({ field: 'Acceptance Criteria', action: 'replace', suggested: 'AC2: Given x, when y, then z' }),
-    finding({ field: 'Acceptance Criteria', action: 'add', suggested: 'AC3: Given n, when o, then p' }),
+    finding({ field: 'User Acceptance Criteria', action: 'replace', suggested: 'AC2: Given x, when y, then z' }),
+    finding({ field: 'User Acceptance Criteria', action: 'add', suggested: 'AC3: Given n, when o, then p' }),
   ], b), b.headers);
   assert.deepEqual(mixed.stories.find((s) => s.code === 'IAM-0001').criteria.map((c) => c.given), ['x', 'n']);
 });

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { buildProposals } from '../core/proposal-input.js';
 import { loadBacklog, serializeBacklog, criteriaCellText, storyCellText, proposalHeaders } from '../core/model.js';
 
-const HEAD = 'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,Acceptance Criteria,Notes,Team\r\n';
+const HEAD = 'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes,Team\r\n';
 const BACKLOG =
   HEAD +
   'IAM-0001,Identity & Access Management,Auth,Login,"As a user, I want to log in, so that I can access the portal",5,High,,"AC1: Given a, when b, then c",,Blue\r\n' +
@@ -253,7 +253,7 @@ test('a stored cell that cannot be rebuilt must be replaced by the patch, and th
   const rows = [ROW('NEW-10', { userStory: 'free text', criteria: 'free text too' })];
   const errors = patchErrors([patch({ title: 'x' })], rows).join('\n');
   assert.match(errors, /User Story cell is free text/);
-  assert.match(errors, /Acceptance Criteria cell is free text/);
+  assert.match(errors, /User Acceptance Criteria cell is free text/);
   const fixed = patchOf([patch({ userStory: 'As a user, I want a, so that b', criteria: ['AC1: Given a, when b, then c'] })], rows);
   assert.equal(fixed.proposed[0].rawUserStory, null);
   assert.equal(fixed.proposed[0].rawCriteria, null);

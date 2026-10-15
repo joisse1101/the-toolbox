@@ -1,6 +1,6 @@
 // Compose and parse the two text-syntax CSV cells:
 //   User Story:          As a <a>, I want <w>, so that <s>
-//   Acceptance Criteria: AC<n>: Given <g>, when <w>, then <t>   (one per line)
+//   User Acceptance Criteria: AC<n>: Given <g>, when <w>, then <t>   (one per line)
 // Parsing is a case-insensitive keyword split, first occurrence of each keyword, in order.
 
 const isBlank = (...vals) => vals.every((v) => !String(v ?? '').trim());
