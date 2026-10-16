@@ -1,6 +1,6 @@
 ## 1. Guard
 
-- [ ] 1.1 In `.claude/skills/explore-stories/guard-bash.mjs`, allow `node .claude/skills/review-backlog/write-review.mjs <file> --append <<'JSON'` (same heredoc/closing-line rules as the proposal writer) only with `allowWrite`; deny the form without `--append`, and deny it in read-only mode; list the new form in the denial message. Verify with new cases in `test/guard-story-bash.test.mjs` (allowed in read-write, denied read-only, denied without `--append`, denied with extra arguments or text after `JSON`) and `npm test` passing.
+- [x] 1.1 In `.claude/skills/explore-stories/guard-bash.mjs`, allow `node .claude/skills/review-backlog/write-review.mjs <file> --append <<'JSON'` (same heredoc/closing-line rules as the proposal writer) only with `allowWrite`; deny the form without `--append`, and deny it in read-only mode; list the new form in the denial message. Verify with new cases in `test/guard-story-bash.test.mjs` (allowed in read-write, denied read-only, denied without `--append`, denied with extra arguments or text after `JSON`) and `npm test` passing.
 
 ## 2. Skills and command
 

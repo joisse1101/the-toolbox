@@ -9,6 +9,7 @@ import { check } from '../.claude/skills/explore-stories/guard-bash.mjs';
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const R = 'node .claude/skills/explore-stories/read-story-context.mjs';
 const W = 'node .claude/skills/propose-stories/write-proposal.mjs';
+const RW = 'node .claude/skills/review-backlog/write-review.mjs';
 const write = { allowWrite: true };
 const body = "<<'JSON'\n[]\nJSON";
 
@@ -32,6 +33,26 @@ test('a heredoc holding a patch is the same documented form, and patches opened 
   assert.match(check(`${W} data-portal.csv ${patch}`), /may only read/);
   for (const c of [`${W} data-portal.csv --patch NEW-8`, `${W} data-portal.csv '[{"id":"NEW-8"}]'`, `echo '[{"id":"NEW-8"}]' | ${W} data-portal.csv`]) {
     assert.notEqual(check(c, write), null, c);
+  }
+});
+
+test('the review writer is allowed only with --append, and only in read-write mode', () => {
+  for (const c of [`${RW} data-portal.csv --append ${body}`, `${RW} data-portal.csv --append <<'JSON'\r\n[]\r\nJSON\r\n`]) {
+    assert.equal(check(c, write), null, c);
+    assert.match(check(c), /may only read.*Allowed commands: node \.claude\/skills\/explore-stories\/read-story-context\.mjs \[file\]$/, c);
+  }
+  for (const [label, c] of [
+    ['no --append (would replace the review)', `${RW} data-portal.csv ${body}`],
+    ['--append before the file name', `${RW} --append data-portal.csv ${body}`],
+    ['extra argument', `${RW} data-portal.csv --append out.csv ${body}`],
+    ['no file', `${RW} --append ${body}`],
+    ['no heredoc', `${RW} data-portal.csv --append`],
+    ['heredoc without body', `${RW} data-portal.csv --append <<'JSON'`],
+    ['text after JSON', `${RW} data-portal.csv --append <<'JSON'\n[]\nJSON\ncat secrets`],
+    ['redirect', `${RW} data-portal.csv --append > out.csv ${body}`],
+    ['the review reader', 'node .claude/skills/review-backlog/read-backlog.mjs'],
+  ]) {
+    assert.match(check(c, write) ?? '', /Allowed commands: .*write-review\.mjs <file> --append/, label);
   }
 });
 
