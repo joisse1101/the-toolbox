@@ -1,11 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PRIORITIES, displayOrder, storyIssues, storyLabel } from '../../../../core/model.js';
 import { matchesQuery } from '../../../../core/story-search.js';
+import { filterOptions, filterStories, sortStories } from '../../../../core/story-table.js';
 import { issueClass, rowTooltip } from './issues.js';
 
 const KEEP = 'keep'; // bulk Priority "No change" ('' is "None", which clears)
 
 const distinct = (stories, key) => [...new Set(stories.map((o) => o[key].trim()).filter(Boolean))];
+
+const COLUMNS = [
+  { key: 'code', label: 'ID' }, { key: 'epic', label: 'Epic' }, { key: 'feature', label: 'Feature' },
+  { key: 'title', label: 'Title' }, { key: 'points', label: 'Points', className: 'num' },
+  { key: 'priority', label: 'Priority' }, // filtered, not sorted
+  { key: 'dependsOn', label: 'Depends On' },
+];
+const NO_FILTER = { priority: '', epic: '', feature: '' };
 
 // Every story in one table, with ticks and a bulk edit bar. The table itself is read-only.
 export default function StoriesTab({ stories, headers, problems, checked, lastChecked, hidden, onOpen, onCheck, onCheckAll, onApplyBulk, onLockChecked }) {
@@ -14,14 +23,25 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
   const [feature, setFeature] = useState('');
   const [note, setNote] = useState('');
   const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState(NO_FILTER);
+  const [sort, setSort] = useState(null); // { key, dir } or null = backlog order
   const selectAll = useRef(null);
 
   const allRows = useMemo(() => displayOrder(stories), [stories]);
   const searching = query.trim() !== '';
-  const rows = useMemo(() => (searching ? allRows.filter((s) => matchesQuery(s, query, headers)) : allRows), [allRows, searching, query, headers]);
+  const filtering = Object.values(filter).some(Boolean);
+  const narrowed = searching || filtering;
+  const rows = useMemo(() => {
+    const filtered = filterStories(allRows, filter);
+    const found = searching ? filtered.filter((s) => matchesQuery(s, query, headers)) : filtered;
+    return sort ? sortStories(found, sort.key, sort.dir) : found;
+  }, [allRows, filter, searching, query, headers, sort]);
+  const options = useMemo(() => ({
+    priority: filterOptions(stories, 'priority'), epic: filterOptions(stories, 'epic'), feature: filterOptions(stories, 'feature'),
+  }), [stories]);
   const n = checked.size;
   const shownChecked = rows.filter((r) => checked.has(r.id)).length;
-  const hiddenChecked = n - shownChecked; // ticked stories the search hides; select-all and shift-range leave them alone
+  const hiddenChecked = n - shownChecked; // ticked stories the search or filters hide; select-all and shift-range leave them alone
 
   useEffect(() => {
     selectAll.current.indeterminate = shownChecked > 0 && shownChecked < rows.length;
@@ -33,6 +53,10 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
     feature: feature.trim(),
   };
   const isEmpty = patch.priority === undefined && !patch.epic && !patch.feature;
+
+  // Click a header: ascending, then descending, then back to backlog order.
+  const toggleSort = (key) => setSort((cur) => (cur?.key !== key ? { key, dir: 'asc' } : cur.dir === 'asc' ? { key, dir: 'desc' } : null));
+  const setFilterKey = (key, value) => setFilter((cur) => ({ ...cur, [key]: value }));
 
   const tick = (id, on, shift) => {
     const ids = rows.map((r) => r.id);
@@ -67,11 +91,10 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
 
   return (
     <section id="storiesView" className="card stories-view" role="tabpanel" aria-labelledby="tabStories" hidden={hidden}>
-      <div id="bulkBar" className="bulk-bar" hidden={n === 0}>
-        <strong id="selectedCount" role="status" aria-live="polite">{`${n} selected${hiddenChecked ? ` (${hiddenChecked} hidden by the search)` : ''}`}</strong>
+      <div id="bulkBar" className="bulk-bar">
         <div>
           <label htmlFor="bulkPriority">Priority</label>
-          <select id="bulkPriority" value={priority} onChange={(e) => setPriority(e.target.value)}>
+          <select id="bulkPriority" disabled={n === 0} value={priority} onChange={(e) => setPriority(e.target.value)}>
             <option value={KEEP}>No change</option>
             <option value="">None</option>
             {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
@@ -79,23 +102,34 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
         </div>
         <div>
           <label htmlFor="bulkEpic">Epic</label>
-          <input type="text" id="bulkEpic" list="bulkEpicList" autoComplete="off" placeholder="No change" value={epic} onChange={(e) => setEpic(e.target.value)} />
+          <input type="text" id="bulkEpic" disabled={n === 0} list="bulkEpicList" autoComplete="off" placeholder="No change" value={epic} onChange={(e) => setEpic(e.target.value)} />
         </div>
         <div>
           <label htmlFor="bulkFeature">Feature</label>
-          <input type="text" id="bulkFeature" list="bulkFeatureList" autoComplete="off" placeholder="No change" value={feature} onChange={(e) => setFeature(e.target.value)} />
+          <input type="text" id="bulkFeature" disabled={n === 0} list="bulkFeatureList" autoComplete="off" placeholder="No change" value={feature} onChange={(e) => setFeature(e.target.value)} />
         </div>
-        <button type="button" id="bulkApplyBtn" className="primary" disabled={isEmpty} onClick={apply}>Apply to selected</button>
-        <button type="button" id="lockSelectedBtn" onClick={() => lock(true)} title="Lock the selected stories: reference only, not reviewed, reordered, moved or deleted">Lock selected</button>
-        <button type="button" id="unlockSelectedBtn" onClick={() => lock(false)}>Unlock selected</button>
+        <button type="button" id="bulkApplyBtn" className="primary" disabled={n === 0 || isEmpty} onClick={apply}>Apply to selected</button>
+        <button type="button" id="lockSelectedBtn" disabled={n === 0} onClick={() => lock(true)} title="Lock the selected stories: reference only, not reviewed, reordered, moved or deleted">Lock selected</button>
+        <button type="button" id="unlockSelectedBtn" disabled={n === 0} onClick={() => lock(false)}>Unlock selected</button>
+        <button type="button" id="deselectAllBtn" disabled={n === 0} onClick={() => onCheckAll(false, [...checked])}>Deselect all</button>
         <span id="bulkNote" className="muted" role="status" aria-live="polite">{note}</span>
       </div>
       <div className="row stories-search">
         <div className="grow">
           <input id="storiesSearch" type="text" autoComplete="off" value={query} placeholder="Search any word in any field of a story" onChange={(e) => setQuery(e.target.value)} />
         </div>
-        {searching && <span id="storiesCount" className="muted" role="status" aria-live="polite">{`${rows.length} of ${allRows.length} stories`}</span>}
+        {[['priority', 'Priority'], ['epic', 'Epic'], ['feature', 'Feature']].map(([key, label]) => (
+          <div key={key}>
+            <label htmlFor={`filter-${key}`}>{label}</label>
+            <select id={`filter-${key}`} value={filter[key]} onChange={(e) => setFilterKey(key, e.target.value)}>
+              <option value="">All</option>
+              {options[key].map((v) => <option key={v} value={v}>{v}</option>)}
+            </select>
+          </div>
+        ))}
+        <button type="button" id="clearFiltersBtn" aria-label="Clear filters" title="Clear filters" disabled={!filtering} onClick={() => setFilter(NO_FILTER)}>X</button>
       </div>
+      <p id="storiesCount" className="muted" role="status" aria-live="polite">{`${rows.length} of ${allRows.length} stories, ${n} selected${hiddenChecked ? ` (${hiddenChecked} hidden by the search or filters)` : ''}`}</p>
       <div className="table-wrap">
         <table className="stories-table">
           <thead>
@@ -107,7 +141,15 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
                   onChange={(e) => onCheckAll(e.target.checked, rows.map((r) => r.id))}
                 />
               </th>
-              <th>ID</th><th>Epic</th><th>Feature</th><th>Title</th><th className="num">Points</th><th>Priority</th><th>Depends On</th>
+              {COLUMNS.map(({ key, label, className }) => (
+                <th key={key} className={className} aria-sort={sort?.key === key ? (sort.dir === 'asc' ? 'ascending' : 'descending') : undefined}>
+                  {key === 'priority' ? label : (
+                    <button type="button" className="link-btn" onClick={() => toggleSort(key)} title={`Sort by ${label}`}>
+                      {`${label}${sort?.key === key ? (sort.dir === 'asc' ? ' ▲   ' : '    ▼') : ' ▲▼'}`}
+                    </button>
+                  )}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody id="storiesBody">
@@ -136,7 +178,7 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
           </tbody>
         </table>
       </div>
-      <p id="storiesEmpty" className="muted" hidden={rows.length > 0}>{searching && allRows.length ? `No story matches “${query.trim()}”.` : 'No stories yet.'}</p>
+      <p id="storiesEmpty" className="muted" hidden={rows.length > 0}>{narrowed && allRows.length ? 'No story matches the search and filters.' : 'No stories yet.'}</p>
       <datalist id="bulkEpicList">{distinct(stories, 'epic').map((v) => <option key={v} value={v} />)}</datalist>
       <datalist id="bulkFeatureList">{distinct(stories, 'feature').map((v) => <option key={v} value={v} />)}</datalist>
     </section>
