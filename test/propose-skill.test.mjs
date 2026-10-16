@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { buildProposals } from '../core/proposal-input.js';
 import { loadBacklog } from '../core/model.js';
 import { validateFindings } from '../core/review.js';
+import { applyTermItems, parseLexicon } from '../core/lexicon.js';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const skill = (name) => fs.readFileSync(path.join(REPO, '.claude', 'skills', name, 'SKILL.md'), 'utf8').replace(/\r\n/g, '\n');
@@ -46,7 +47,7 @@ const FULL = (code) => `${code},Identity & Access Management,Auth,Earlier idea,"
 
 test('the patch example in propose-stories/SKILL.md passes the writer\'s validation', () => {
   const all = [...skill('propose-stories').matchAll(/<<'JSON'\n([\s\S]*?)\nJSON\n```/g)];
-  assert.equal(all.length, 3, 'one example of new stories, one of a patch and one of a backlog edit');
+  assert.equal(all.length, 4, 'one example of new stories, one of a patch, one of a backlog edit and one of lexicon terms');
   const input = JSON.parse(all[1][1]);
   assert.ok(input.every((item) => /^NEW-\d+$/.test(item.id)));
   const r = buildProposals({
@@ -67,7 +68,31 @@ test('the backlog edit example in propose-stories/SKILL.md passes the review wri
   assert.match(text, /write-review\.mjs data-portal\.csv --append <<'JSON'/);
   assert.doesNotMatch(text, /write-review\.mjs [^\n]*?\.csv <<'JSON'/);
   assert.match(text, /Always `--append`/);
-  assert.match(text, /never run the first command again/);
+  assert.match(text, /never run an earlier command again/);
+});
+
+test('the lexicon example in propose-stories/SKILL.md passes the lexicon writer\'s validation, and the lexicon is written first', () => {
+  const text = skill('propose-stories');
+  const all = [...text.matchAll(/<<'JSON'\n([\s\S]*?)\nJSON\n```/g)];
+  const items = JSON.parse(all[3][1]);
+  const lexicon = parseLexicon('Term,Definition,Avoid\r\nUser,A person with a login.,customer\r\n');
+  const r = applyTermItems(lexicon, items);
+  assert.deepEqual(r.errors, undefined);
+  assert.deepEqual([r.added, r.patched], [['Dataset', 'Dataset attribute'], ['User']]);
+  assert.match(text, /write-lexicon\.mjs data-portal\.csv <<'JSON'/);
+  assert.match(text, /run the lexicon writer first/);
+  assert.match(text.split('---')[1], /allowed-tools:.*write-lexicon\.mjs/);
+});
+
+test('both skills use the lexicon terms and flag gaps, and explore cannot write them', () => {
+  for (const name of ['explore-stories', 'propose-stories']) {
+    const text = skill(name);
+    assert.match(text, /lexicon/i, name);
+    assert.match(text, /`Avoid` column/, name);
+    assert.match(text, /full name/, name);
+  }
+  assert.doesNotMatch(skill('explore-stories'), /write-lexicon/);
+  assert.match(skill('explore-stories'), /Lexicon terms change only through `propose-stories`/);
 });
 
 test('propose-stories says to re-read first, to show old and new values, to prefer a patch and to size by the guideline', () => {
