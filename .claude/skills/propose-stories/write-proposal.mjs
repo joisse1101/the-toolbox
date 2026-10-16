@@ -19,26 +19,26 @@ const { validateName } = require('../../../core/file-name.cjs'); // same name ru
 const { DATA_DIR } = require('../../../core/paths.cjs');
 
 // A JSON.parse failure message plus line, column and a short excerpt, so a missing comma can be found.
-function describeParseError(err, text) {
+export function describeParseError(err, text, what = 'stories') {
   const message = err.message.replace(/\s*\(line \d+ column \d+\)/, ''); // the position is reported below
   const at = /position (\d+)/.exec(message);
-  if (!at) return `The stories on stdin are not valid JSON: ${message}`;
+  if (!at) return `The ${what} on stdin are not valid JSON: ${message}`;
   const pos = Math.min(Number(at[1]), text.length);
   const lines = text.slice(0, pos).split('\n');
   const excerpt = text.slice(Math.max(0, pos - 30), pos + 30).replace(/\s+/g, ' ');
-  return `The stories on stdin are not valid JSON: ${message} (line ${lines.length}, column ${lines[lines.length - 1].length + 1}, near "${excerpt}")`;
+  return `The ${what} on stdin are not valid JSON: ${message} (line ${lines.length}, column ${lines[lines.length - 1].length + 1}, near "${excerpt}")`;
 }
 
 // Write beside the target, then rename over it, so a failure never leaves a partly written file. A .tmp file is
 // not listed by the file API. Returns an error message, or null.
-function writeAtomic(dir, file, text) {
+export function writeAtomic(dir, file, text) {
   const tmp = path.join(dir, `${file}.${process.pid}.tmp`);
   try {
     fs.writeFileSync(tmp, text, 'utf8');
     fs.renameSync(tmp, path.join(dir, file));
   } catch (err) {
     fs.rmSync(tmp, { force: true });
-    return `Could not write proposals/${file}: ${err.message} (is it open in Excel?)`;
+    return `Could not write ${path.basename(dir)}/${file}: ${err.message} (is it open in Excel?)`;
   }
   return null;
 }
