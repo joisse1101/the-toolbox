@@ -1,13 +1,17 @@
 # Starts an interactive Claude session that explores new stories and then proposes them, in one conversation.
 # Usage: .\ai\launchers\shape-stories.ps1 [backlog] [story]
 #   backlog  a backlog in data/user-stories/, with or without .csv (data-portal or data-portal.csv)
-#   story    ONE argument: a proposed story of that backlog (NEW-57) or free text ("a new keyboard"; quote it when it has spaces)
+#   story    ONE argument: a proposed story of that backlog (NEW-57), a story already in the backlog (IAM-0004) or free text
+#            ("a new keyboard"; quote it when it has spaces)
 # Whatever is missing, this script asks for (a numbered list of the backlogs, then the story), so Claude does not have to.
-# It refuses an unknown backlog, an empty story, and a NEW-<n> that is not in data/proposals/<backlog>.csv before Claude starts.
+# It refuses an unknown backlog, an empty story, a NEW-<n> that is not in data/proposals/<backlog>.csv and a backlog ID
+# (letters, a dash, digits) that is not in data/user-stories/<backlog>.csv before Claude starts.
 # Starts in /explore-stories (discussion only) with both already filled in; when you are happy with the drafts, run
-# /propose-stories in the same session (it asks yes/no first), or /story:propose to write the drafts straight away.
-# Tools are limited to Bash (guarded: only the two scripts, see propose-stories/locked-settings.json), Skill and AskUserQuestion.
-# The reader is pre-approved. The writer is not: Claude Code asks you before every write, on top of the skill's yes/no question.
+# /propose-stories in the same session (it asks yes/no first), or /story:propose to write the drafts straight away. Both write
+# new stories to the proposals and changes to backlog stories as suggestions in the story editor.
+# Tools are limited to Bash (guarded: the reader, the proposal writer and the review writer with --append, see
+# propose-stories/locked-settings.json), Skill and AskUserQuestion.
+# The reader is pre-approved. The writers are not: Claude Code asks you before every write, on top of the skill's yes/no question.
 param(
   [string]$Backlog = '',
   [string]$Story = ''
@@ -40,7 +44,7 @@ if (-not $Backlog.EndsWith('.csv', [StringComparison]::OrdinalIgnoreCase)) { $Ba
 $file = $backlogs | Where-Object { $_ -ieq $Backlog } | Select-Object -First 1
 if (-not $file) { Stop-Launcher "No backlog '$Backlog' in data/user-stories/. Found: $($backlogs -join ', ')" }
 
-if (-not $Story.Trim()) { $Story = Read-Host 'What story? (a proposed ID like NEW-57, or describe it)' }
+if (-not $Story.Trim()) { $Story = Read-Host 'What story? (a proposed ID like NEW-57, a backlog ID like IAM-0004, or describe it)' }
 $Story = $Story.Trim()
 if (-not $Story) { Stop-Launcher 'No story given.' }
 
@@ -50,6 +54,10 @@ if ($Story -match '^NEW-\d+$') {
   $known = @()
   if (Test-Path -LiteralPath $proposals) { $known = @(Import-Csv -LiteralPath $proposals -Encoding UTF8 | Where-Object { $_.ID -eq $Story }) }
   if (-not $known.Count) { Stop-Launcher "$Story is not in data/proposals/$file." }
+} elseif ($Story -match '^[A-Za-z]+-\d+$') {
+  $Story = $Story.ToUpper()
+  $known = @(Import-Csv -LiteralPath (Join-Path (Join-Path $dataDir 'user-stories') $file) -Encoding UTF8 | Where-Object { $_.ID -eq $Story })
+  if (-not $known.Count) { Stop-Launcher "$Story is not in data/user-stories/$file." }
 }
 
 # Windows PowerShell 5.1 does not escape quotes inside an argument for a native command.

@@ -10,7 +10,7 @@
 
 ## 3. Launcher
 
-- [ ] 3.1 In `ai/launchers/shape-stories.ps1`, accept a backlog story ID as the story: validate against `user-stories/<backlog>` (the `ID` column), refuse an unknown one before starting Claude, update the header comment (also the `/story:propose` line). Verify by running the script with a known ID, an unknown ID, a `NEW-<n>` and free text.
+- [x] 3.1 In `ai/launchers/shape-stories.ps1`, accept a backlog story ID as the story: validate against `user-stories/<backlog>` (the `ID` column), refuse an unknown one before starting Claude, update the header comment (also the `/story:propose` line). Verify by running the script with a known ID, an unknown ID, a `NEW-<n>` and free text.
 
 ## 4. Docs
 
