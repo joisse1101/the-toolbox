@@ -6,6 +6,8 @@
 .home { text-decoration: none; margin-right: 4px; }
 .file-bar { margin-bottom: 12px; }
 .file-bar .warning { margin: 8px 0 0; }
+.file-bar button.icon-only { display: inline-flex; align-items: center; justify-content: center; padding-inline: 8px; }
+.file-bar button.icon-only svg { height: 1lh; width: 1lh; } /* one text line tall, so the button matches its text neighbours */
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
 .editor { display: grid; grid-template-columns: 260px 1fr; gap: 12px; align-items: start; }

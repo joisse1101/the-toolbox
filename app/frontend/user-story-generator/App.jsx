@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { backlogProblems } from '../../../core/ids.js';
 import { unitsOf, unitStoryCode, openCounts, orphanUnits, reviewOverview, openUnitsFor } from '../../../core/review.js';
 import { useBacklog } from './hooks/useBacklog.js';
@@ -138,18 +138,24 @@ export default function App() {
   const [focusNameToken, setFocusNameToken] = useState(0);
   const requestFocus = (id) => setFocusRequest({ id });
 
+  // Re-read backlog, review and proposals from the CSVs. Unsaved local edits win (see refreshFromDisk).
+  const refreshAll = useCallback(() => {
+    actions.refreshFromDisk();
+    reload();
+    refreshProposals();
+  }, [actions, reload, refreshProposals]);
+
   useEffect(() => {
     actions.init();
+  }, [actions]);
+
+  useEffect(() => {
     const onVisible = () => {
-      if (document.visibilityState === 'visible') {
-        actions.refreshFromDisk();
-        reload();
-        refreshProposals();
-      }
+      if (document.visibilityState === 'visible') refreshAll();
     };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
-  }, [actions, reload, refreshProposals]);
+  }, [refreshAll]);
 
   const addStory = () => {
     actions.addStory();
@@ -214,7 +220,7 @@ export default function App() {
 
         <FileBar
           files={files} current={current} message={message} backupNote={backupNote} backingUp={backingUp} focusNameToken={focusNameToken}
-          onSelect={actions.selectFile} onRename={actions.renameFile} onNew={newBacklog} onBackup={backUp} onOpenFolder={actions.openFolder}
+          onSelect={actions.selectFile} onRename={actions.renameFile} onNew={newBacklog} onBackup={backUp} onOpenFolder={actions.openFolder} onRefresh={refreshAll}
         />
 
         {(review.message || review.notice || orphans.length > 0) && (

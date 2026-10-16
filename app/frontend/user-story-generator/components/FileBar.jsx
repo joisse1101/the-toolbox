@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
-// Backlog dropdown, rename, New, Backup and Open folder, plus the message banners.
-export default function FileBar({ files, current, message, backupNote, backingUp, focusNameToken, onSelect, onRename, onNew, onBackup, onOpenFolder }) {
+// Backlog dropdown, rename, New, Backup, Open folder and Refresh, plus the message banners.
+export default function FileBar({ files, current, message, backupNote, backingUp, focusNameToken, onSelect, onRename, onNew, onBackup, onOpenFolder, onRefresh }) {
   const [draft, setDraft] = useState(current ?? '');
   const nameRef = useRef(null);
   const cancelled = useRef(false);
@@ -53,6 +53,11 @@ export default function FileBar({ files, current, message, backupNote, backingUp
         <button type="button" id="newBtn" onClick={onNew}>New</button>
         <button type="button" id="backupBtn" disabled={!current || backingUp} onClick={onBackup}>Backup</button>
         <button type="button" id="openBtn" onClick={onOpenFolder}>Open folder</button>
+        <button type="button" id="refreshBtn" className="icon-only" title="Refresh from the CSV files" aria-label="Refresh from the CSV files" onClick={onRefresh}>
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M21 12a9 9 0 1 1-2.64-6.36" /><path d="M21 3v6h-6" />
+          </svg>
+        </button>
       </div>
       <p id="message" className="warning" hidden={!message}>{message || ''}</p>
       {backupNote && <p id="backupNote" className={backupNote.kind === 'error' ? 'warning' : 'muted'} role="status">{backupNote.text}</p>}
