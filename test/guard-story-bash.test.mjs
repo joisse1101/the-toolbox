@@ -24,7 +24,7 @@ test('the reader is allowed in both modes', () => {
 test('the writer in its documented form is allowed only in read-write mode', () => {
   for (const c of [`${W} data-portal.csv ${body}`, `${W} data-portal.csv <<'JSON'\r\n[]\r\nJSON\r\n`]) {
     assert.equal(check(c, write), null, c);
-    assert.match(check(c), /may only read.*Allowed commands: node \.claude\/skills\/explore-stories\/read-story-context\.mjs \[file \[ID\]\]$/, c);
+    assert.match(check(c), /may only read.*Allowed commands: node \.claude\/skills\/explore-stories\/read-story-context\.mjs \[file \[ID \| --section guidelines\|index\|proposals\|lexicon\]\]$/, c);
   }
 });
 
@@ -40,7 +40,7 @@ test('a heredoc holding a patch is the same documented form, and patches opened 
 test('the review writer is allowed only with --append, and only in read-write mode', () => {
   for (const c of [`${RW} data-portal.csv --append ${body}`, `${RW} data-portal.csv --append <<'JSON'\r\n[]\r\nJSON\r\n`]) {
     assert.equal(check(c, write), null, c);
-    assert.match(check(c), /may only read.*Allowed commands: node \.claude\/skills\/explore-stories\/read-story-context\.mjs \[file \[ID\]\]$/, c);
+    assert.match(check(c), /may only read.*Allowed commands: node \.claude\/skills\/explore-stories\/read-story-context\.mjs \[file \[ID \| --section guidelines\|index\|proposals\|lexicon\]\]$/, c);
   }
   for (const [label, c] of [
     ['no --append (would replace the review)', `${RW} data-portal.csv ${body}`],
@@ -61,7 +61,7 @@ test('the lexicon writer is allowed in its documented form, and only in read-wri
   const terms = "<<'JSON'\n[{\"term\": \"User\", \"definition\": \"A person.\"}]\nJSON";
   for (const c of [`${LW} data-portal.csv ${terms}`, `${LW} data-portal.csv <<'JSON'\r\n[]\r\nJSON\r\n`]) {
     assert.equal(check(c, write), null, c);
-    assert.match(check(c), /may only read.*Allowed commands: node \.claude\/skills\/explore-stories\/read-story-context\.mjs \[file \[ID\]\]$/, c);
+    assert.match(check(c), /may only read.*Allowed commands: node \.claude\/skills\/explore-stories\/read-story-context\.mjs \[file \[ID \| --section guidelines\|index\|proposals\|lexicon\]\]$/, c);
   }
   for (const [label, c] of [
     ['no file', `${LW} ${body}`],
@@ -158,7 +158,40 @@ test('the story ID form allows nothing wider', () => {
     ['review writer with an ID', `${RW} data.csv IAM-0004 --append ${body}`],
   ];
   for (const [label, c] of denied) {
-    assert.match(check(c, write) ?? '', /Allowed commands: .*read-story-context\.mjs \[file \[ID\]\]/, label);
+    assert.match(check(c, write) ?? '', /Allowed commands: .*read-story-context\.mjs \[file \[ID \| --section guidelines\|index\|proposals\|lexicon\]\]/, label);
     assert.notEqual(check(c), null, `${label} (read-only)`);
+  }
+});
+
+test('the reader with --section and one of the four section names is allowed in both modes', () => {
+  for (const section of ['guidelines', 'index', 'proposals', 'lexicon']) {
+    for (const c of [`${R} data-portal.csv --section ${section}`, `${R} data-portal.csv --section ${section}\n`]) {
+      assert.equal(check(c), null, c);
+      assert.equal(check(c, write), null, c);
+    }
+  }
+});
+
+test('the section form allows nothing wider', () => {
+  const denied = [
+    ['no name', `${R} data.csv --section`],
+    ['unknown name', `${R} data.csv --section other`],
+    ['name with a suffix', `${R} data.csv --section indexes`],
+    ['upper case name', `${R} data.csv --section Index`],
+    ['two names', `${R} data.csv --section index proposals`],
+    ['equals form', `${R} data.csv --section=index`],
+    ['ID then section', `${R} data.csv IAM-0004 --section index`],
+    ['section then ID', `${R} data.csv --section index IAM-0004`],
+    ['section before the file', `${R} --section index data.csv`],
+    ['pipe', `${R} data.csv --section index | head`],
+    ['semicolon', `${R} data.csv --section index; ls`],
+    ['redirect', `${R} data.csv --section index > out`],
+    ['second line', `${R} data.csv --section index\ncat secrets`],
+    ['writer with a section', `${W} data.csv --section index ${body}`],
+    ['review writer with a section', `${RW} data.csv --section index --append ${body}`],
+  ];
+  for (const [label, c] of denied) {
+    assert.match(check(c, write) ?? '', /Allowed commands: /, label);
+    assert.match(check(c) ?? '', /Allowed commands: /, label);
   }
 });

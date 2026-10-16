@@ -1,5 +1,5 @@
 // PreToolUse hook for the locked explore-stories and propose-stories sessions (see their locked-settings.json).
-// Denies every Bash command that is not exactly one run of read-story-context.mjs (a file name and a story ID at most) or, with --read-write, one run of
+// Denies every Bash command that is not exactly one run of read-story-context.mjs (a file name and a story ID, or `--section <name>`, at most) or, with --read-write, one run of
 // write-proposal.mjs, one run of write-lexicon.mjs or one run of write-review.mjs with --append, because dontAsk still auto-allows read-only commands
 // like cat, ls and grep. Hook input is JSON on stdin; a deny is reported as JSON on stdout. Mode: --read-only
 // (explore) or --read-write (propose). The review writer is allowed only with --append: without it the run would
@@ -9,9 +9,11 @@ import fs from 'node:fs';
 
 const NAME = "[^\\s;&|<>`$()\\\\'\"*?{}!#~]+";
 const ID = '[A-Za-z0-9][A-Za-z0-9-]*';
-const SCRIPT =new RegExp(`^node \\.claude/skills/(?:explore-stories/(read-story-context)|propose-stories/(write-proposal)|propose-stories/(write-lexicon)|review-backlog/(write-review))\\.mjs(?: (${NAME})(?: (${ID}))?)?`);
+const SECTION = 'guidelines|index|proposals|lexicon';
+// Groups: 1-4 the script, 5 the file name, 6 the section word (reader only), 7 the story ID.
+const SCRIPT = new RegExp(`^node \\.claude/skills/(?:explore-stories/(read-story-context)|propose-stories/(write-proposal)|propose-stories/(write-lexicon)|review-backlog/(write-review))\\.mjs(?: (${NAME})(?: (?:--section (${SECTION})(?![^\\s])|(${ID})))?)?`);
 
-const READER = 'node .claude/skills/explore-stories/read-story-context.mjs [file [ID]]';
+const READER = 'node .claude/skills/explore-stories/read-story-context.mjs [file [ID | --section guidelines|index|proposals|lexicon]]';
 const WRITER = "node .claude/skills/propose-stories/write-proposal.mjs <file> <<'JSON' ... JSON";
 const LEXICON_WRITER = "node .claude/skills/propose-stories/write-lexicon.mjs <file> <<'JSON' ... JSON";
 const REVIEW_WRITER = "node .claude/skills/review-backlog/write-review.mjs <file> --append <<'JSON' ... JSON";
@@ -29,14 +31,14 @@ export function check(command, { allowWrite = false } = {}) {
   if (writer) {
     if (!allowWrite) return deny(`This session may only read: ${writer} is not allowed here.`, allowWrite);
     if (!file || file.startsWith('-')) return deny(`${writer} needs the backlog file name as its first argument.`, allowWrite);
-    if (m[6]) return deny(`${writer} takes only the file name${m[4] ? ', --append' : ''} and then the heredoc.`, allowWrite);
+    if (m[6] || m[7]) return deny(`${writer} takes only the file name${m[4] ? ', --append' : ''} and then the heredoc.`, allowWrite);
     const heredoc = m[4] ? " --append <<'JSON'" : " <<'JSON'";
     if (tail !== heredoc) return deny(m[4] ? 'write-review.mjs takes only the file name, --append, then the heredoc.' : `${writer} takes only the file name, then the heredoc.`, allowWrite);
     // The heredoc ends at the first line that is exactly JSON; nothing may follow it.
     if (!rest.length || rest.indexOf('JSON') !== rest.length - 1) return deny('Nothing may follow the closing JSON line.', allowWrite);
     return null;
   }
-  if (file?.startsWith('-') || tail !== '' || rest.length) return deny('read-story-context.mjs takes at most one file name and one story ID, and no other shell syntax.', allowWrite);
+  if (file?.startsWith('-') || tail !== '' || rest.length) return deny('read-story-context.mjs takes at most one file name and one story ID or --section with one of guidelines, index, proposals, lexicon, and no other shell syntax.', allowWrite);
   return null;
 }
 
