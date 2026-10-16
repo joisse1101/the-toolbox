@@ -68,7 +68,7 @@ A split SHALL be written as a group of rows sharing one non-empty `Group` value 
 - **THEN** the review CSV has `replace` rows for IAM-0005 and `add-story` rows for `NEW-1` and `NEW-2`, all with the same Group
 
 ### Requirement: Single write path for reviews
-The review skill SHALL write review files only by running the Node script `.claude/skills/review-backlog/write-review.mjs`, and the skill's tool permissions SHALL allow only that command to write. The skill SHALL NOT modify the backlog CSV or any file other than the review CSV. The script SHALL take the backlog file name as its argument, optionally followed by the flag `--append`, and the findings as JSON on standard input. It SHALL always write to `reviews/<backlog file name>` and SHALL NOT accept an output path or any other argument. When a command is refused, the refusal message SHALL list the command forms that are allowed.
+Review files SHALL be written only by running the Node script `.claude/skills/review-backlog/write-review.mjs`. The `review-backlog` skill and the `propose-stories` skill (for edits to backlog stories) MAY run it, and each skill's tool permissions SHALL allow only that command to write review files. Neither skill SHALL modify the backlog CSV or any file other than the review CSV (`propose-stories` additionally writes `proposals/<backlog file name>` through its own writer). The script SHALL take the backlog file name as its argument, optionally followed by the flag `--append`, and the findings as JSON on standard input. It SHALL always write to `reviews/<backlog file name>` and SHALL NOT accept an output path or any other argument. When a command is refused, the refusal message SHALL list the command forms that are allowed.
 
 #### Scenario: Backlog untouched
 - **WHEN** a review is written for `data-portal.csv`
@@ -85,6 +85,10 @@ The review skill SHALL write review files only by running the Node script `.clau
 #### Scenario: Other arguments refused
 - **WHEN** the script or the skill's permission check is given an output path or any argument other than the file name and `--append`
 - **THEN** it is refused and the message lists the allowed command forms
+
+#### Scenario: Edits written from a propose session
+- **WHEN** `propose-stories` writes edits to backlog stories with `write-review.mjs data-portal.csv --append`
+- **THEN** the rows are added after the existing rows of `reviews/data-portal.csv`, the rows already there are unchanged, and the portal shows the new rows as open suggestions
 
 ### Requirement: Script validates findings
 The script SHALL reject the whole input, write nothing, and report every problem found when any finding: names a Story ID that is not in the backlog (other than `NEW-<n>` on an `add-story` row); uses a Field, Action, Area or Confidence outside the allowed values; has an empty `Suggested` (except an `unlock` row, which SHALL have an empty `Field` and `Suggested`); uses an Action that does not fit the Field (for example `add` on `Title`, `remove` on a Field other than `Depends On` and `User Acceptance Criteria`, or `add` on a Field other than `Depends On` and `User Acceptance Criteria`); has an `add-story` row without a Group or a `NEW-<n>` ID, or a new story without a Title; belongs to a Group whose rows do not all have `Confidence` = `confirm`; or suggests a `Depends On` entry that is not a story ID in the backlog or a `NEW-<n>` in the same Group. It SHALL also reject an `unlock` row for a story that is not locked, and a batch that leaves a field-edit row for a locked story without an `unlock` row for the same story in the resulting review file (an `unlock` row written by an earlier batch counts). Each problem about a finding SHALL name the finding by its position in the input. When the input is not valid JSON, the script SHALL report the parser's message and the position of the failure. The script SHALL ignore any `Current` or `Status` the caller supplies.
