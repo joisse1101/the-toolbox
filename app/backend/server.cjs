@@ -22,7 +22,11 @@ const STORES = {
   'user-stories': path.join(DATA_DIR, 'user-stories'),
   reviews: path.join(DATA_DIR, 'reviews'), // review suggestions, written by the review-backlog skill's script
   proposals: path.join(DATA_DIR, 'proposals'), // proposed stories awaiting acceptance, one file per backlog
+  lexicons: path.join(DATA_DIR, 'lexicons'), // defined terms, one markdown file per backlog
 };
+// The file type of a store; every store not listed holds .csv.
+const STORE_EXT = { lexicons: '.md' };
+const extOf = (store) => STORE_EXT[store] ?? '.csv';
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -90,13 +94,13 @@ function mapFsError(err, name) {
   return new HttpError(500, err.message || 'Server error');
 }
 
-function numbered(name, n) {
-  return n === 1 ? name : name.replace(/\.csv$/i, `-${n}.csv`);
+function numbered(name, n, ext) {
+  return n === 1 ? name : `${name.slice(0, -ext.length)}-${n}${name.slice(-ext.length)}`;
 }
 
 // ---------- file operations ----------
 
-async function listFiles(folder) {
+async function listFiles(folder, ext) {
   let entries;
   try {
     entries = await fs.promises.readdir(folder, { withFileTypes: true });
@@ -105,16 +109,16 @@ async function listFiles(folder) {
     throw err;
   }
   return entries
-    .filter((e) => e.isFile() && /\.csv$/i.test(e.name))
+    .filter((e) => e.isFile() && e.name.toLowerCase().endsWith(ext))
     .map((e) => e.name)
     .sort((a, b) => a.localeCompare(b));
 }
 
-async function createFile(folder, requested, content) {
-  const wanted = validateName(requested);
+async function createFile(folder, requested, content, ext) {
+  const wanted = validateName(requested, ext);
   await fs.promises.mkdir(folder, { recursive: true });
   for (let n = 1; n < 1000; n++) {
-    const name = numbered(wanted, n);
+    const name = numbered(wanted, n, ext);
     try {
       const fh = await fs.promises.open(resolveInStore(folder, name), 'wx');
       try {
@@ -130,9 +134,9 @@ async function createFile(folder, requested, content) {
   throw new HttpError(409, 'Could not find a free file name', 'exists');
 }
 
-async function renameFile(folder, from, toRaw) {
-  const src = resolveInStore(folder, validateName(from));
-  const toName = validateName(toRaw);
+async function renameFile(folder, from, toRaw, ext) {
+  const src = resolveInStore(folder, validateName(from, ext));
+  const toName = validateName(toRaw, ext);
   const dst = resolveInStore(folder, toName);
   if (path.basename(src) === toName) return toName;
   try {
@@ -375,6 +379,7 @@ async function handleApi(req, res, segments) {
   if (storeId === 'backup') return handleBackup(req, res, segments);
   const folder = Object.prototype.hasOwnProperty.call(STORES, storeId) ? STORES[storeId] : null;
   if (!folder) throw new HttpError(404, 'Unknown store', 'not-found');
+  const ext = extOf(storeId);
 
   if (req.method !== 'GET' && req.headers['x-requested-with'] !== 'team-lead-tools') {
     throw new HttpError(403, 'Missing X-Requested-With header', 'forbidden');
@@ -390,10 +395,10 @@ async function handleApi(req, res, segments) {
   if (resource !== 'files') throw new HttpError(404, 'Not found', 'not-found');
 
   if (fileRaw === undefined) {
-    if (req.method === 'GET') return send(res, 200, { files: await listFiles(folder) });
+    if (req.method === 'GET') return send(res, 200, { files: await listFiles(folder, ext) });
     if (req.method === 'POST') {
       const body = await readJson(req);
-      const name = await createFile(folder, body.name, typeof body.content === 'string' ? body.content : '');
+      const name = await createFile(folder, body.name, typeof body.content === 'string' ? body.content : '', ext);
       return send(res, 201, { name });
     }
     throw new HttpError(405, 'Method not allowed');
@@ -405,7 +410,7 @@ async function handleApi(req, res, segments) {
   } catch {
     throw new HttpError(400, 'Bad file name', 'invalid-name');
   }
-  const name = validateName(decoded);
+  const name = validateName(decoded, ext);
   const full = resolveInStore(folder, name);
 
   try {
@@ -421,7 +426,7 @@ async function handleApi(req, res, segments) {
     }
     if (req.method === 'PATCH') {
       const body = await readJson(req);
-      const newName = await renameFile(folder, name, body.name);
+      const newName = await renameFile(folder, name, body.name, ext);
       return send(res, 200, { name: newName });
     }
   } catch (err) {
