@@ -356,6 +356,15 @@ export function unitState(unit, stories) {
   return locked ? { state: 'locked' } : { state: 'open' };
 }
 
+// The criterion number (AC<n>) a unit's single replace or remove row names, or null for anything else
+// (an add, another field, a split group). The story form shows such a unit under that criterion.
+export function criterionNumberOf(unit) {
+  const row = unit.rows[0];
+  if (unit.group || row.field !== 'User Acceptance Criteria' || (row.action !== 'replace' && row.action !== 'remove')) return null;
+  const n = Number(AC_NUMBER.exec(row.suggested)?.[1]);
+  return n >= 1 ? n : null;
+}
+
 function editExisting(story, row) {
   const v = row.suggested.trim();
   switch (row.field) {

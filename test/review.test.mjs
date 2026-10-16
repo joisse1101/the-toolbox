@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { loadBacklog } from '../core/model.js';
 import {
   parseReview, serializeReview, validateFindings, fillCurrent, mergeStatus, suggestionState, applySuggestions,
-  unitsOf, unitState, openCounts, openUnitsFor, retargetRows, reviewOverview, REVIEW_COLUMNS,
+  unitsOf, unitState, criterionNumberOf, openCounts, openUnitsFor, retargetRows, reviewOverview, REVIEW_COLUMNS,
 } from '../core/review.js';
 
 const CSV =
@@ -498,4 +498,13 @@ test('clarification rows round trip through the review CSV and show in the Clari
   assert.deepEqual(back.rows, rows);
   const o = reviewOverview(back.rows, b.stories);
   assert.deepEqual(o.sections.find((s) => s.area === 'Clarification').units.length, 1);
+});
+
+test('criterionNumberOf names the criterion of a replace or remove row only', () => {
+  const unit = (over, group = '') => ({ group, rows: [finding({ field: 'User Acceptance Criteria', suggested: 'AC2: Given a, when b, then c', ...over })] });
+  assert.equal(criterionNumberOf(unit({})), 2);
+  assert.equal(criterionNumberOf(unit({ action: 'remove', suggested: 'AC3' })), 3);
+  assert.equal(criterionNumberOf(unit({ action: 'add', suggested: 'AC4: Given a, when b, then c' })), null);
+  assert.equal(criterionNumberOf(unit({ field: 'Title', suggested: 'AC2: x' })), null);
+  assert.equal(criterionNumberOf(unit({}, 'split-1')), null);
 });
