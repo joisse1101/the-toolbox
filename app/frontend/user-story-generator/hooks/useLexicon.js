@@ -1,28 +1,25 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { createFileStore } from '../../shared/files.js';
-import { composeLexicon, deleteTerm, emptyLexicon, findTerm, lexiconFileName, parseLexicon, saveTerm } from '../../../../core/lexicon.js';
+import { composeLexicon, deleteTerm, emptyLexicon, findTerm, parseLexicon, saveTerm } from '../../../../core/lexicon.js';
 import { useAutosave } from './useAutosave.js';
 
 const lexiconStore = createFileStore('lexicons');
 
-// The autosave and the loader work with the backlog's file name; the lexicon file is derived from it. Saving a file
-// that is not there yet creates it (the file API's write never does).
+// Saving a lexicon file that is not there yet creates it (the file API's write never does).
 const store = {
   ...lexiconStore,
-  read: (name) => lexiconStore.read(lexiconFileName(name)),
   async write(name, text) {
-    const file = lexiconFileName(name);
     try {
-      await lexiconStore.write(file, text);
+      await lexiconStore.write(name, text);
     } catch (err) {
       if (err.code !== 'not-found') throw err;
-      await lexiconStore.create(file, text);
+      await lexiconStore.create(name, text);
     }
   },
 };
 
 const initial = {
-  current: null, // the backlog file name; the lexicon file is derived from it
+  current: null, // the backlog file name; the lexicon file has the same name
   backlog: null, // the parsed lexicon, under the name useAutosave expects
   selected: null, // name of the selected term
   error: null, // [message] when the last change was refused by a rule; the lexicon is then unchanged
@@ -66,7 +63,7 @@ export function reducer(state, action) {
   }
 }
 
-// The lexicon of the open backlog (`current`, a file name): loads lexicons/<name without .csv>.md, edits it and keeps it on
+// The lexicon of the open backlog (`current`, a file name): loads lexicons/<current>, edits it and keeps it on
 // disk. A missing file is an empty lexicon; the first save creates it.
 export function useLexicon(current) {
   const [state, dispatch] = useReducer(reducer, initial);

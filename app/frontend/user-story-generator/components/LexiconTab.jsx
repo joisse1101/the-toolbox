@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { childrenOf } from '../../../../core/lexicon.js';
 
 const blankDraft = { name: '', partOf: '', definition: '', avoid: '', notes: '' };
-const toDraft = (t) => ({ name: t.name, partOf: t.partOf, definition: t.definition, avoid: t.avoid.join(', '), notes: t.notes });
-const toTerm = (d) => ({ name: d.name, partOf: d.partOf, definition: d.definition, avoid: d.avoid.split(','), notes: d.notes });
+const toDraft = (t) => ({ name: t.name, partOf: t.partOf, definition: t.definition, avoid: t.avoid.join('; '), notes: t.notes });
+const toTerm = (d) => ({ name: d.name, partOf: d.partOf, definition: d.definition, avoid: d.avoid.split(/[;,]/), notes: d.notes });
 const same = (a, b) => Object.keys(blankDraft).every((k) => a[k] === b[k]);
 const key = (s) => s.trim().toLowerCase();
 
@@ -34,7 +34,6 @@ export default function LexiconTab({ hidden, lexicon, selected, error, message, 
   const q = query.trim().toLowerCase();
   const rows = useMemo(() => inTreeOrder(lexicon.terms), [lexicon.terms]);
   const shown = q ? rows.filter((r) => matches(r.term, q)) : rows;
-  const rawText = [lexicon.preamble, ...lexicon.terms.flatMap((t) => t.extra)].some((text) => text.trim());
 
   const start = () => {
     onClearError();
@@ -67,14 +66,6 @@ export default function LexiconTab({ hidden, lexicon, selected, error, message, 
             </ul>
             {!lexicon.terms.length && <p className="muted">No terms yet. Add one, or use propose-stories to draft some.</p>}
             {lexicon.terms.length > 0 && !shown.length && <p className="muted">No term matches “{query}”.</p>}
-            {rawText && (
-              <details>
-                <summary className="muted">Text kept as written</summary>
-                <p className="muted">These lines are not terms or fields. They are kept in the file but cannot be edited here.</p>
-                {lexicon.preamble.trim() && <pre className="preview">{lexicon.preamble}</pre>}
-                {lexicon.terms.filter((t) => t.extra.length).map((t) => <pre key={t.name} className="preview">{`${t.name}\n${t.extra.join('\n')}`}</pre>)}
-              </details>
-            )}
           </div>
           <div>
             {message && <p className="warning" role="status">{message}</p>}
@@ -150,19 +141,13 @@ function TermForm({ term, lexicon, error, onSave, onRemove, onCancel }) {
         <textarea id="termDefinition" rows={3} value={draft.definition} onChange={set('definition')} onBlur={() => commit()} />
       </div>
       <div>
-        <label htmlFor="termAvoid">Avoid (words stories must not use for this term, separated by commas)</label>
+        <label htmlFor="termAvoid">Avoid (words stories must not use for this term, separated by semicolons)</label>
         <input id="termAvoid" type="text" value={draft.avoid} onChange={set('avoid')} onBlur={() => commit()} />
       </div>
       <div>
         <label htmlFor="termNotes">Notes</label>
         <textarea id="termNotes" rows={2} value={draft.notes} onChange={set('notes')} onBlur={() => commit()} />
       </div>
-      {term?.extra.length > 0 && (
-        <div>
-          <div className="preview-label">Kept as written</div>
-          <pre className="preview">{term.extra.join('\n')}</pre>
-        </div>
-      )}
       {kids.length > 0 && <p className="muted">Part of this term: {kids.map((k) => k.name).join(', ')}.</p>}
       <div className="row">
         {term ? (

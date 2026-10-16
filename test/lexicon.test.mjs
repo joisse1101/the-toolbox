@@ -1,33 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  parseLexicon, composeLexicon, lexiconFileName, lexiconProblems, saveTerm, renameTerm, deleteTerm, applyTermItems, emptyLexicon,
+  parseLexicon, composeLexicon, lexiconProblems, saveTerm, renameTerm, deleteTerm, applyTermItems, emptyLexicon,
 } from '../core/lexicon.js';
 
-const CANONICAL = `## Dataset
-Definition: A named, uploaded table of rows the user can query.
-Avoid: file, sheet, table
-
-## Dataset attribute
-Part of: Dataset
-Definition: A named, typed column of a dataset.
-Avoid: field, column
-
-## User
-Definition: A person with a login.
-Avoid: customer, member
-Notes: Admins are a separate term.
-`;
+const CANONICAL = [
+  'Term,Part of,Definition,Avoid,Notes',
+  'Dataset,,"A named, uploaded table of rows the user can query.",file;sheet;table,',
+  'Dataset attribute,Dataset,"A named, typed column of a dataset.",field;column,',
+  'User,,A person with a login.,customer;member,Admins are a separate term.',
+  '',
+].join('\r\n');
+const BOM = '﻿';
 
 const names = (lex) => lex.terms.map((t) => t.name);
 const sample = () => parseLexicon(CANONICAL);
 
-test('file name: backlog name without .csv plus .md', () => {
-  assert.equal(lexiconFileName('IAM.csv'), 'IAM.md');
-  assert.equal(lexiconFileName('Data Portal.CSV'), 'Data Portal.md');
-});
-
-test('parse reads the fields of each entry', () => {
+test('parse reads the columns of each row', () => {
   const lex = sample();
   assert.deepEqual(names(lex), ['Dataset', 'Dataset attribute', 'User']);
   const attr = lex.terms[1];
@@ -37,41 +26,48 @@ test('parse reads the fields of each entry', () => {
   assert.equal(lex.terms[2].notes, 'Admins are a separate term.');
 });
 
-test('a canonical file round-trips byte for byte', () => {
+test('a canonical file round-trips byte for byte, with or without a BOM', () => {
   assert.equal(composeLexicon(parseLexicon(CANONICAL)), CANONICAL);
+  assert.equal(composeLexicon(parseLexicon(BOM + CANONICAL)), BOM + CANONICAL);
 });
 
-test('a missing or empty file is an empty lexicon', () => {
+test('a missing or empty file is an empty lexicon with the default columns', () => {
   assert.deepEqual(parseLexicon(''), emptyLexicon());
   assert.deepEqual(parseLexicon(undefined), emptyLexicon());
-  assert.equal(composeLexicon(emptyLexicon()), '');
+  assert.equal(composeLexicon(emptyLexicon()), `${BOM}Term,Part of,Definition,Avoid,Notes\r\n`);
+  assert.deepEqual(parseLexicon('Term,Part of,Definition,Avoid,Notes\r\n').terms, []);
 });
 
-test('preamble and unknown label lines are kept', () => {
-  const text = '# My lexicon\n\nSee the guideline.\n\n## User\nDefinition: A person.\nExample: Ana\nsome stray line\n';
-  const lex = parseLexicon(text);
-  assert.equal(lex.preamble, '# My lexicon\n\nSee the guideline.');
-  assert.deepEqual(lex.terms[0].extra, ['Example: Ana', 'some stray line']);
-  assert.equal(composeLexicon(lex), text);
+test('headers are matched ignoring case, in any order', () => {
+  const lex = parseLexicon('definition,TERM,avoid,part of,notes\r\nA person.,User,customer;member,,\r\n');
+  assert.deepEqual(lex.terms[0].avoid, ['customer', 'member']);
+  assert.equal(lex.terms[0].name, 'User');
+  assert.equal(lex.terms[0].definition, 'A person.');
 });
 
-test('a definition and notes may span lines, with CRLF and a BOM', () => {
-  const text = '﻿## Dataset\r\nDefinition: First line.\r\nSecond line.\r\n\r\nThird after a blank.\r\nNotes: One\r\nTwo\r\n';
+test('an unknown column and its cells survive an edit; missing known columns are added', () => {
+  const lex = parseLexicon('Term,Owner,Definition\r\nUser,Ana,A person.\r\nRole,Bo,A set of permissions.\r\n');
+  assert.deepEqual(lex.headers, ['Term', 'Owner', 'Definition', 'Part of', 'Avoid', 'Notes']);
+  const r = saveTerm(lex, { ...lex.terms[0], definition: 'A person with a login.' }, { replaces: 'User' });
+  assert.equal(
+    composeLexicon(r.lexicon),
+    'Term,Owner,Definition,Part of,Avoid,Notes\r\nUser,Ana,A person with a login.,,,\r\nRole,Bo,A set of permissions.,,,\r\n',
+  );
+});
+
+test('a definition and notes may span lines', () => {
+  const text = `${BOM}Term,Definition,Notes\r\nDataset,"First line.\nSecond line.\n\nThird after a blank.","One\nTwo"\r\n`;
   const lex = parseLexicon(text);
+  assert.equal(lex.hasBom, true);
   assert.equal(lex.terms[0].definition, 'First line.\nSecond line.\n\nThird after a blank.');
   assert.equal(lex.terms[0].notes, 'One\nTwo');
-  assert.equal(composeLexicon(lex), '## Dataset\nDefinition: First line.\nSecond line.\n\nThird after a blank.\nNotes: One\nTwo\n');
+  assert.ok(composeLexicon(lex).includes('"First line.\nSecond line.\n\nThird after a blank."'));
 });
 
-test('a field given twice keeps the second as raw text; labels are case-insensitive', () => {
-  const lex = parseLexicon('## A\ndefinition: one\nDEFINITION: two\n');
-  assert.equal(lex.terms[0].definition, 'one');
-  assert.deepEqual(lex.terms[0].extra, ['DEFINITION: two']);
-});
-
-test('compose normalises field order', () => {
-  const lex = parseLexicon('## A\nAvoid: x\nDefinition: d\nPart of: B\n\n## B\nDefinition: b\n');
-  assert.equal(composeLexicon(lex), '## A\nPart of: B\nDefinition: d\nAvoid: x\n\n## B\nDefinition: b\n');
+test('blank rows are skipped and short rows are padded', () => {
+  const lex = parseLexicon('Term,Definition,Notes\r\n\r\nUser,A person.\r\n,,\r\n');
+  assert.deepEqual(names(lex), ['User']);
+  assert.equal(lex.terms[0].notes, '');
 });
 
 // ---- rules
@@ -126,18 +122,21 @@ test('rename updates the Part of of children and nothing else', () => {
   const r = renameTerm(before, 'Dataset', 'Data set');
   assert.equal(r.ok, true);
   assert.equal(r.lexicon.terms[1].partOf, 'Data set');
-  assert.equal(composeLexicon(r.lexicon), CANONICAL.replace('## Dataset\n', '## Data set\n').replace('Part of: Dataset', 'Part of: Data set'));
+  assert.equal(
+    composeLexicon(r.lexicon),
+    CANONICAL.replace('\r\nDataset,', '\r\nData set,').replace('\r\nDataset attribute,Dataset,', '\r\nDataset attribute,Data set,'),
+  );
   assert.equal(before.terms[0].name, 'Dataset', 'the input is not changed');
 });
 
-test('editing a term keeps its position and unknown lines', () => {
-  const lex = parseLexicon('## A\nDefinition: a\nExample: kept\n\n## B\nDefinition: b\n');
+test('editing a term keeps its position and its other cells', () => {
+  const lex = parseLexicon('Term,Owner,Definition\r\nA,x,a\r\nB,y,b\r\n');
   const r = saveTerm(lex, { ...lex.terms[0], definition: 'changed' }, { replaces: 'A' });
-  assert.equal(composeLexicon(r.lexicon), '## A\nDefinition: changed\nExample: kept\n\n## B\nDefinition: b\n');
+  assert.deepEqual(r.lexicon.terms.map((t) => [t.name, t.cells[1], t.definition]), [['A', 'x', 'changed'], ['B', 'y', 'b']]);
 });
 
 test('an old problem in a hand-written file does not block an unrelated save', () => {
-  const lex = parseLexicon('## A\nPart of: Missing\nDefinition: a\n');
+  const lex = parseLexicon('Term,Part of,Definition\r\nA,Missing,a\r\n');
   assert.equal(lexiconProblems(lex).length, 1);
   const r = saveTerm(lex, { name: 'B', definition: 'b' });
   assert.equal(r.ok, true);
@@ -165,6 +164,14 @@ test('applyTermItems patches only the keys given', () => {
   assert.equal(user.notes, 'Admins are a separate term.');
 });
 
+test('applyTermItems keeps unknown columns', () => {
+  const lex = parseLexicon('Term,Owner,Definition\r\nUser,Ana,A person.\r\n');
+  const r = applyTermItems(lex, [{ term: 'User', definition: 'A person with a login.' }, { term: 'Role', definition: 'Permissions.' }]);
+  assert.equal(r.ok, true);
+  assert.equal(r.lexicon.terms[0].cells[1], 'Ana');
+  assert.equal(composeLexicon(r.lexicon).split('\r\n')[1], 'User,Ana,A person with a login.,,,');
+});
+
 test('applyTermItems clears with empty values', () => {
   const r = applyTermItems(sample(), [{ term: 'Dataset attribute', partOf: '', avoid: [] }]);
   assert.equal(r.ok, true);
@@ -184,9 +191,8 @@ test('applyTermItems reports every problem, each naming its item, and changes no
   assert.equal(r.errors.length, 3);
   assert.match(r.errors[0], /^item 1: new term "Role" needs a definition/);
   assert.match(r.errors[1], /^item 3: unknown key "synonym"/);
+  assert.match(r.errors[2], /^item 2: "Permission" is part of "Nope"/);
   assert.equal(composeLexicon(lex), before);
-  const second = applyTermItems(lex, [{ term: 'Permission', definition: 'd', partOf: 'Nope' }]);
-  assert.match(second.errors[0], /^item 1: "Permission" is part of "Nope"/);
 });
 
 test('applyTermItems applies the term rules to the whole result', () => {

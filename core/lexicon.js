@@ -1,95 +1,65 @@
-// The lexicon of one backlog: terms with definitions, in a markdown file (lexicons/<backlog>.md).
-//   ## Dataset attribute
-//   Part of: Dataset
-//   Definition: A named, typed column of a dataset.
-//   Avoid: field, column
-//   Notes: Free text.
-// A lexicon is { preamble, terms: [{ name, definition, avoid: [], notes, partOf, extra: [] }] }. Text that does not fit
-// (before the first heading, or a `Label:` line with an unknown label) is kept in `preamble` / `extra` and written back.
+// The lexicon of one backlog: terms with definitions, in a CSV file (lexicons/<backlog file name>), one term per row.
+//   Term, Part of, Definition, Avoid, Notes
+// Columns are matched by header name, ignoring case. `Avoid` is a `;`-separated list (like Depends On). Any other column
+// round-trips untouched in `cells`, and a known column missing from the file is added when it is saved.
+// A lexicon is { headers, hasBom, terms: [{ name, partOf, definition, avoid: [], notes, cells: [] }] }.
 // Names compare ignoring case and surrounding spaces. Pure: no file access.
 
-const FIELDS = { definition: 'Definition', avoid: 'Avoid', notes: 'Notes', 'part of': 'Part of' };
-const HEADING = /^##(?!#)[ \t]*(.*?)[ \t]*$/;
-const LABEL_LINE = /^([A-Za-z][A-Za-z ]{0,19}):[ \t]?(.*)$/;
+import { parseCsv, toCsv } from './csv.js';
+
+export const COLUMNS = ['Term', 'Part of', 'Definition', 'Avoid', 'Notes'];
 const TERM_KEYS = ['term', 'definition', 'avoid', 'notes', 'partOf'];
+const BOM = '﻿';
 
 const key = (s) => String(s ?? '').trim().toLowerCase();
-const splitList = (text) => text.split(',').map((w) => w.trim()).filter(Boolean);
-const trimEnd = (lines) => {
-  const out = [...lines];
-  while (out.length && !out[out.length - 1].trim()) out.pop();
-  return out;
-};
+const splitList = (text) => text.split(';').map((w) => w.trim()).filter(Boolean);
 
-export const emptyLexicon = () => ({ preamble: '', terms: [] });
+export const emptyLexicon = () => ({ headers: [...COLUMNS], hasBom: true, terms: [] });
 
-// The lexicon file for a backlog: IAM.csv -> IAM.md.
-export function lexiconFileName(backlogName) {
-  return `${String(backlogName).replace(/\.csv$/i, '')}.md`;
+// Where each known column is (the first one of that name); a name no header has is missing.
+function columnIndex(headers) {
+  const idx = {};
+  COLUMNS.forEach((col) => {
+    idx[col] = headers.findIndex((h) => key(h) === key(col));
+  });
+  return idx;
 }
 
 export function parseLexicon(text) {
-  const lines = String(text ?? '').replace(/^﻿/, '').split(/\r?\n/);
-  const preamble = [];
-  const terms = [];
-  let term = null;
-  let field = null; // the field a continuation line belongs to
-  for (const line of lines) {
-    const heading = HEADING.exec(line);
-    if (heading) {
-      term = { name: heading[1], definition: '', avoid: [], notes: '', partOf: '', extra: [], seen: new Set() };
-      terms.push(term);
-      field = null;
-      continue;
-    }
-    if (!term) {
-      preamble.push(line);
-      continue;
-    }
-    const label = LABEL_LINE.exec(line);
-    const known = label && FIELDS[key(label[1])] ? key(label[1]) : null;
-    if (known && !term.seen.has(known)) {
-      term.seen.add(known);
-      field = known;
-      const value = label[2];
-      if (known === 'definition') term.definition = value;
-      else if (known === 'avoid') term.avoid = splitList(value);
-      else if (known === 'notes') term.notes = value;
-      else term.partOf = value.trim();
-      continue;
-    }
-    if (label) {
-      term.extra.push(line); // an unknown label, or a field given twice
-      field = null;
-    } else if (field === 'definition' || field === 'notes') {
-      term[field] += `\n${line}`;
-    } else if (line.trim() || term.extra.length) {
-      term.extra.push(line);
-      field = null;
-    }
-  }
-  for (const t of terms) {
-    t.definition = t.definition.replace(/\s+$/, '');
-    t.notes = t.notes.replace(/\s+$/, '');
-    t.extra = trimEnd(t.extra);
-    delete t.seen;
-  }
-  return { preamble: trimEnd(preamble).join('\n').replace(/^\n+/, ''), terms };
+  const raw = String(text ?? '');
+  const rows = parseCsv(raw).filter((r) => r.some((c) => c.trim()));
+  if (!rows.length) return { ...emptyLexicon(), hasBom: raw.charCodeAt(0) === 0xfeff || !raw };
+  const headers = rows[0].slice();
+  let idx = columnIndex(headers);
+  for (const col of COLUMNS) if (idx[col] < 0) headers.push(col);
+  idx = columnIndex(headers);
+  const terms = rows.slice(1).map((row) => {
+    const cells = row.slice();
+    while (cells.length < headers.length) cells.push('');
+    return {
+      name: cells[idx.Term].trim(),
+      partOf: cells[idx['Part of']].trim(),
+      definition: cells[idx.Definition],
+      avoid: splitList(cells[idx.Avoid]),
+      notes: cells[idx.Notes],
+      cells,
+    };
+  });
+  return { headers, hasBom: raw.charCodeAt(0) === 0xfeff, terms };
 }
 
 export function composeLexicon(lexicon) {
-  const blocks = [];
-  if (lexicon.preamble.trim()) blocks.push(lexicon.preamble);
-  for (const t of lexicon.terms) {
-    const lines = [`## ${t.name}`];
-    if (t.partOf) lines.push(`Part of: ${t.partOf}`);
-    if (t.definition) lines.push(`Definition: ${t.definition}`);
-    if (t.avoid.length) lines.push(`Avoid: ${t.avoid.join(', ')}`);
-    if (t.notes) lines.push(`Notes: ${t.notes}`);
-    lines.push(...t.extra);
-    blocks.push(lines.join('\n'));
-  }
-  return blocks.length ? `${blocks.join('\n\n')}\n` : '';
+  const idx = columnIndex(lexicon.headers);
+  const rows = lexicon.terms.map((t) => {
+    const cells = lexicon.headers.map((_, i) => t.cells[i] ?? '');
+    cells[idx.Term] = t.name;
+    cells[idx['Part of']] = t.partOf;
+    cells[idx.Definition] = t.definition;
+    cells[idx.Avoid] = t.avoid.join(';');
+    cells[idx.Notes] = t.notes;
+    return cells;
+  });
+  return (lexicon.hasBom ? BOM : '') + toCsv([lexicon.headers, ...rows]);
 }
 
 export const findTerm = (lexicon, name) => lexicon.terms.find((t) => key(t.name) === key(name)) ?? null;
@@ -140,7 +110,7 @@ const clean = (term) => ({
   avoid: [...new Set((term.avoid ?? []).map((w) => String(w).trim()).filter(Boolean))],
   notes: String(term.notes ?? '').trim(),
   partOf: String(term.partOf ?? '').trim(),
-  extra: term.extra ?? [],
+  cells: term.cells ?? [],
 });
 
 // Adds a term, or with { replaces: <current name> } replaces that one in place (a changed name also updates the Part of
@@ -153,11 +123,11 @@ export function saveTerm(lexicon, term, { replaces = null } = {}) {
   if (lexicon.terms.some((t, i) => i !== index && key(t.name) === key(next.name))) {
     return { ok: false, errors: [`"${next.name}" already exists`] };
   }
-  const terms = lexicon.terms.map((t) => ({ ...t, avoid: [...t.avoid], extra: [...t.extra] }));
+  const terms = lexicon.terms.map((t) => ({ ...t, avoid: [...t.avoid], cells: [...t.cells] }));
   if (index < 0) terms.push(next);
   else {
     const old = terms[index];
-    next.extra = old.extra;
+    next.cells = old.cells;
     terms[index] = next;
     if (key(old.name) !== key(next.name) || old.name !== next.name) {
       for (const t of terms) if (key(t.partOf) === key(old.name)) t.partOf = next.name;
@@ -196,7 +166,7 @@ export function applyTermItems(lexicon, items) {
   const added = [];
   const patched = [];
   const touched = new Map(); // term key -> position of the last item that set it
-  let terms = lexicon.terms.map((t) => ({ ...t, avoid: [...t.avoid], extra: [...t.extra] }));
+  let terms = lexicon.terms.map((t) => ({ ...t, avoid: [...t.avoid], cells: [...t.cells] }));
   items.forEach((item, i) => {
     const at = `item ${i + 1}`;
     const problem = (message) => errors.push(`${at}: ${message}`);

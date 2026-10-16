@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { reducer } from '../app/frontend/user-story-generator/hooks/useLexicon.js';
-import { parseLexicon, composeLexicon } from '../core/lexicon.js';
+import { parseLexicon } from '../core/lexicon.js';
 
-const FILE = '## Dataset\nDefinition: A table.\n\n## Dataset attribute\nPart of: Dataset\nDefinition: A column.\n\n## User\nDefinition: A person.\n';
+const FILE = ['Term,Part of,Definition', 'Dataset,,A table.', 'Dataset attribute,Dataset,A column.', 'User,,A person.', ''].join('\r\n');
 
 const opened = (text = FILE) => reducer(
   { current: null, backlog: null, selected: null, error: null, edits: 0 },
@@ -21,7 +21,7 @@ test('loaded selects the first term and is not an edit', () => {
 test('reload keeps the selection when the term is still there', () => {
   const state = reducer(opened(), { type: 'select', name: 'User' });
   assert.equal(reducer(state, { type: 'loaded', name: 'IAM.csv', lexicon: parseLexicon(FILE), keepSelection: true }).selected, 'User');
-  assert.equal(reducer(state, { type: 'loaded', name: 'IAM.csv', lexicon: parseLexicon('## A\nDefinition: a\n'), keepSelection: true }).selected, 'A');
+  assert.equal(reducer(state, { type: 'loaded', name: 'IAM.csv', lexicon: parseLexicon('Term,Definition\r\nA,a\r\n'), keepSelection: true }).selected, 'A');
 });
 
 test('save adds a term, selects it and counts as an edit', () => {
@@ -60,7 +60,7 @@ test('delete is refused while a term is part of it; deleting a leaf selects its 
   assert.equal(removed.edits, 1);
   const last = reducer(reducer(removed, { type: 'delete', name: 'User' }), { type: 'delete', name: 'Dataset' });
   assert.equal(last.selected, null);
-  assert.equal(composeLexicon(last.backlog), '');
+  assert.deepEqual(last.backlog.terms, []);
 });
 
 test('cleared forgets the lexicon', () => {
