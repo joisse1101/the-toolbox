@@ -14,12 +14,12 @@
 @media (max-width: 800px) { .editor { grid-template-columns: 1fr; } }
 
 /* The list stays in view while the story form scrolls; the list itself scrolls inside the panel. */
-.story-list-panel { position: sticky; top: 12px; display: flex; flex-direction: column; max-height: calc(100vh - 24px); }
+.story-list-panel { position: sticky; top: 12px; display: flex; flex-direction: column; --above-list: 230px; max-height: calc(100vh - var(--above-list) - 12px); }
 .story-list-panel .story-list { flex: 1 1 auto; min-height: 0; max-height: none; }
 @media (max-width: 800px) { .story-list-panel { position: static; max-height: none; } .story-list-panel .story-list { max-height: 60vh; } }
 
 .story-list {
-  list-style: none; margin: 0 0 10px; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 3px;
+  list-style: none; margin: 0 0 10px; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-auto-rows: max-content; gap: 3px;
   max-height: 60vh; overflow-y: auto; overflow-x: hidden; font-size: 12px;
 }
 .story-list li {
