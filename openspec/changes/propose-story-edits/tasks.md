@@ -18,4 +18,4 @@
 
 ## 5. End to end
 
-- [ ] 5.1 Run a shape session on a scratch backlog (`TLT_DATA_DIR`): one new story plus an edit to a backlog story and one to a locked story; check `proposals/` and `reviews/` content, that existing review rows are unchanged, that the portal shows the suggestions, and that `user-stories/` is byte-for-byte unchanged. Run `npm test`.
+- [x] 5.1 Run a shape session on a scratch backlog (`TLT_DATA_DIR`): one new story plus an edit to a backlog story and one to a locked story; check `proposals/` and `reviews/` content, that existing review rows are unchanged, that the portal shows the suggestions, and that `user-stories/` is byte-for-byte unchanged. Run `npm test`.
