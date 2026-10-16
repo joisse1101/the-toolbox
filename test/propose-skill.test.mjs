@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildProposals } from '../core/proposal-input.js';
 import { loadBacklog } from '../core/model.js';
+import { validateFindings } from '../core/review.js';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const skill = (name) => fs.readFileSync(path.join(REPO, '.claude', 'skills', name, 'SKILL.md'), 'utf8').replace(/\r\n/g, '\n');
@@ -45,7 +46,7 @@ const FULL = (code) => `${code},Identity & Access Management,Auth,Earlier idea,"
 
 test('the patch example in propose-stories/SKILL.md passes the writer\'s validation', () => {
   const all = [...skill('propose-stories').matchAll(/<<'JSON'\n([\s\S]*?)\nJSON\n```/g)];
-  assert.equal(all.length, 2, 'one example of new stories and one of a patch');
+  assert.equal(all.length, 3, 'one example of new stories, one of a patch and one of a backlog edit');
   const input = JSON.parse(all[1][1]);
   assert.ok(input.every((item) => /^NEW-\d+$/.test(item.id)));
   const r = buildProposals({
@@ -55,6 +56,18 @@ test('the patch example in propose-stories/SKILL.md passes the writer\'s validat
   });
   assert.deepEqual(r.errors, undefined);
   assert.deepEqual(r.patchedIds, input.map((i) => i.id));
+});
+
+test('the backlog edit example in propose-stories/SKILL.md passes the review writer\'s validation, and the skill uses --append only', () => {
+  const text = skill('propose-stories');
+  const all = [...text.matchAll(/<<'JSON'\n([\s\S]*?)\nJSON\n```/g)];
+  const findings = JSON.parse(all[2][1]);
+  assert.deepEqual(validateFindings(findings, loadBacklog(BACKLOG)), []);
+  assert.ok(findings.every((f) => f.action !== 'add-story' && !f.group), 'edits never create stories or groups');
+  assert.match(text, /write-review\.mjs data-portal\.csv --append <<'JSON'/);
+  assert.doesNotMatch(text, /write-review\.mjs [^\n]*?\.csv <<'JSON'/);
+  assert.match(text, /Always `--append`/);
+  assert.match(text, /never run the first command again/);
 });
 
 test('propose-stories says to re-read first, to show old and new values, to prefer a patch and to size by the guideline', () => {

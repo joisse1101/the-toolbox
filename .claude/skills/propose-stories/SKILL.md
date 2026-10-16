@@ -1,12 +1,12 @@
 ---
 name: propose-stories
-description: Turn agreed user stories into proposed stories in proposals/<backlog file name>, where the portal's Proposed tab shows them for review and acceptance. Shows the full drafts, asks a yes/no question, and writes only after the user confirms. Validates every story against the guidelines' format and the backlog, and never touches the backlog CSV. Use when the user wants to write, save or propose new stories, or to continue from explore-stories.
-allowed-tools: Bash(node .claude/skills/explore-stories/read-story-context.mjs:*), Bash(node .claude/skills/propose-stories/write-proposal.mjs:*)
+description: Turn agreed user stories into proposed stories in proposals/<backlog file name>, where the portal's Proposed tab shows them for review and acceptance, and agreed changes to stories already in the backlog into suggestions in reviews/<backlog file name>, which the story editor shows next to the field. Shows the full drafts and edits, asks one yes/no question, and writes only after the user confirms. Validates everything against the guidelines' format and the backlog, and never touches the backlog CSV. Use when the user wants to write, save or propose new stories or edits to existing stories, or to continue from explore-stories.
+allowed-tools: Bash(node .claude/skills/explore-stories/read-story-context.mjs:*), Bash(node .claude/skills/propose-stories/write-proposal.mjs:*), Bash(node .claude/skills/review-backlog/write-review.mjs:*)
 ---
 
 # Propose new stories
 
-Draft new stories with the user and, once they confirm, write them to `proposals/<backlog file name>`; the same way, change a proposed story that is already there. **Never edit the backlog CSV or any other file.** The only thing you may write is that proposals file, and only by running `write-proposal.mjs` (see "Write the stories"). The writer adds new stories and patches the fields you name on an existing proposed story; it never removes one, and it leaves every other row as the user edited it in the portal. The user reviews and accepts proposed stories into the backlog from the portal's Proposed tab.
+Draft new stories with the user and, once they confirm, write them to `proposals/<backlog file name>`; the same way, change a proposed story that is already there, and suggest edits to stories that are already in the backlog. **Never edit the backlog CSV or any other file.** You may write only two files: the proposals file, by running `write-proposal.mjs` (see "Write the stories"), and `reviews/<backlog file name>`, by running `write-review.mjs --append` (see "Edit a backlog story"). The proposal writer adds new stories and patches the fields you name on an existing proposed story; it never removes one, and it leaves every other row as the user edited it in the portal. The user reviews and accepts proposed stories into the backlog from the portal's Proposed tab, and applies or dismisses edit suggestions from the story form.
 
 ## Input
 
@@ -24,11 +24,12 @@ Draft new stories with the user and, once they confirm, write them to `proposals
 - `points` is 1, 2, 3, 5, 8 or 13, sized with the sprint-points guideline the reader printed.
 - Follow the guidelines' section on Clarifications: each unknown the user could not settle becomes a question in `clarifications`, never a guess; record an answer only when the user stated it. A benched story is not shown to you; the user unbenches it in the portal first.
 - To change a story that is already proposed, send a **patch** (see "Write the stories") instead of adding a second story with the fix.
+- To change a story that is already in the backlog (an ID like `IAM-0004`), write an **edit** (see "Edit a backlog story"), never a new story with the fix.
 
 ## Confirm before writing
 
-1. Show the complete drafts in the reply: Epic, Feature, Title, User Story, Sprint points, Depends On, User Acceptance Criteria, Notes and Clarifications for every new story. For every patch, show the story it changes (ID and Title) and each field that changes with its old value (from the proposals you just read) and its new value.
-2. Ask a direct yes/no question, for example "Write these to the proposals?", and **stop**. Do not run the writer in the same turn.
+1. Show everything in one reply. For every new story, the complete draft: Epic, Feature, Title, User Story, Sprint points, Depends On, User Acceptance Criteria, Notes and Clarifications. For every patch, the story it changes (ID and Title) and each field that changes with its old value (from the proposals you just read) and its new value. For every edit to a backlog story, the story (ID and Title) and each field edit with its old value (from the backlog you just read), its new value and the reason; say that an edit is a suggestion the user applies in the editor, and for a locked story that it cannot be applied until the story is unlocked.
+2. Ask one direct yes/no question that covers everything shown, for example "Write these to the proposals and the editor suggestions?", and **stop**. Do not run a writer in the same turn.
 3. Write only after the user answers yes in a separate message. An answer to a design question, or approval of the idea, is not a yes.
 4. If the user changes anything after the question (even a Title), show the changed drafts and ask again.
 
@@ -108,6 +109,40 @@ JSON
 - In `dependsOn`, `NEW-<k>` still counts only the new stories of the input; use `proposed:NEW-<n>` for any proposed story.
 - Prefer a patch to a second story whenever the user wants to change a proposed story. A patch is safe to run again; new stories are not.
 
+## Edit a backlog story
+
+A change to a story that is already in the backlog is written as a **review row**: a suggestion the story editor shows next to the field, with Apply and Dismiss. You never edit `user-stories/` (the app autosaves it). The rows go to `write-review.mjs`, which validates them against the backlog and fills `Current` itself; the row keys, actions, fields and the `Sprint points` scale are those of `.claude/skills/review-backlog/SKILL.md` ("Write the review file"), which you follow and do not restate.
+
+```bash
+node .claude/skills/review-backlog/write-review.mjs data-portal.csv --append <<'JSON'
+[
+  {
+    "storyId": "IAM-0001",
+    "field": "User Acceptance Criteria",
+    "action": "replace",
+    "suggested": "AC1: Given a user has been logged out due to timeout, when the login page is displayed, then the session timeout message is shown",
+    "reason": "Agreed in the session: the message must show on the login page.",
+    "area": "Acceptance criteria",
+    "confidence": "ready",
+    "group": ""
+  }
+]
+JSON
+```
+
+- **Always `--append`.** A run without it replaces the whole review, including the suggestions the audit wrote; the guard refuses that form. Write about 8-10 rows per command and run each batch **once**.
+- Use `ready` for an edit the user stated and `confirm` for a value you proposed. `reason` is one sentence, usually what was agreed. `area` is the closest of Hierarchy, INVEST, Acceptance criteria and Clarification; do not invent another. An open question for a backlog story is an `append` row on `Clarifications`.
+- **Never `add-story` rows and never a `group`.** A new story always goes to the proposals; to split a backlog story, narrow it with a `replace` row and propose the new stories through the writer above.
+- Do not review the backlog: write only the edits the user agreed. Do not set a Priority; the writer refuses it. Suggest no more than the story already implies, as `review-backlog` does.
+- **Locked story** (`Locked` is `Yes` in the CSV): its edits cannot be applied until the user unlocks it. Write one `unlock` row for it (empty `field` and `suggested`, `reason` = why the change is needed) in the same batch as its edit rows, and say so in the draft. Do not write edits for a locked story the user did not ask to change.
+- A story ID that is not in the backlog is refused. For a story in the proposals, send a patch instead.
+
+### Order of the writes
+
+When one confirmed outcome has both new stories or patches and backlog edits, run the proposal writer first, then the review writer. Each command is validated and written on its own, so the second can be rejected after the first succeeded. Then report what was written, fix only the rejected part, show the changed edit and ask again; **never run the first command again**, because new stories would be added twice.
+
 ## Report
 
 After the last batch, name the IDs the writer reported, added and patched, and the file (`proposals/<backlog file name>`), and say the stories are on the portal's **Proposed** tab, where they can be edited and accepted into the backlog. Tell the user to check that tab, and not to edit it in the portal while a batch is being written. Do not offer to put them in the backlog yourself.
+
+For edits, name each story and field written and the file (`reviews/<backlog file name>`), and say the suggestions are on those stories in the editor, where the user applies or dismisses each one (an edit to a locked story only after unlocking it). A later full `review-backlog` run without `--append` replaces suggestions that are still open, so the user should apply the ones they want first.
