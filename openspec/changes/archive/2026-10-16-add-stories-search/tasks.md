@@ -18,4 +18,4 @@
 ## 4. Verify
 
 - [x] 4.1 Run `npm test` and `npm run build`
-- [ ] 4.2 Try it in the browser: search a field not in the table, an unknown column, select-all and shift-range with a filter, hidden count, bulk edit confirm total, clearing the query, Editor list unfiltered
+- [x] 4.2 Try it in the browser: search a field not in the table, an unknown column, select-all and shift-range with a filter, hidden count, bulk edit confirm total, clearing the query, Editor list unfiltered
