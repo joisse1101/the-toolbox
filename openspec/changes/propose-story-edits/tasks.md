@@ -14,7 +14,7 @@
 
 ## 4. Docs
 
-- [ ] 4.1 Update `CLAUDE.md` (the `explore-stories`/`propose-stories` paragraph: second writer, append-only, guard form) and any matching sentence in `README.md`. Verify by grep that no sentence still says the propose skill writes only `proposals/`.
+- [x] 4.1 Update `CLAUDE.md` (the `explore-stories`/`propose-stories` paragraph: second writer, append-only, guard form) and any matching sentence in `README.md`. Verify by grep that no sentence still says the propose skill writes only `proposals/`.
 
 ## 5. End to end
 
