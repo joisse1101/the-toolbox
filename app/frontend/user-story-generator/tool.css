@@ -122,6 +122,8 @@ legend { font-weight: 600; padding: 0 6px; }
 .criterion.drop-after { box-shadow: 0 2px 0 var(--accent); }
 .criterion-remove { padding: 9px 8px; line-height: 1; }
 .criterion-remove:disabled { cursor: not-allowed; }
+.criterion-suggestions { grid-column: 1 / -1; }
+.criterion-suggestions .suggestion-list { margin-top: 0; }
 .criterion .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
 
 /* Drag and drop in the story list */
@@ -209,6 +211,8 @@ legend { font-weight: 600; padding: 0 6px; }
 .suggestion-kind { font-weight: 600; color: var(--text); }
 .suggestion-confirm { padding: 0 6px; border-radius: 999px; border: 1px solid var(--warn-border); background: var(--warn-bg); color: var(--warn-text); }
 .suggestion-value { margin: 6px 0 0; white-space: pre-wrap; font: inherit; }
+.suggestion-value mark { background: color-mix(in srgb, var(--ok) 28%, transparent); color: inherit; border-radius: 2px; }
+.suggestion-value del { background: var(--bad-bg); color: var(--bad); }
 .suggestion-rows { margin: 6px 0 0; padding-left: 18px; }
 .suggestion-reason { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
 .suggestion-why { margin: 4px 0 0; font-size: 12px; color: var(--warn-text); }

@@ -1,10 +1,19 @@
 import { unitState } from '../../../../core/review.js';
+import { wordDiff } from '../../../../core/word-diff.js';
 
 // An append adds to the field the row names (Notes text, or a Clarifications question).
 const VERB = { replace: 'Suggested', add: 'Add', remove: 'Remove', append: 'Add', 'add-story': 'New story', unlock: 'Unlock' };
 
 // What a row proposes, as text. Removing a criterion shows the criterion itself, not just its label.
 const valueOf = (row) => (row.action === 'remove' && row.field === 'User Acceptance Criteria' ? row.current : row.suggested);
+
+// A replace shows what changed against the current value (added words marked, removed words struck through).
+function SuggestedValue({ row }) {
+  if (row.action !== 'replace' || !row.current) return valueOf(row);
+  return wordDiff(row.current, row.suggested).map((p, i) => (
+    p.kind === 'added' ? <mark key={i}>{p.text}</mark> : p.kind === 'removed' ? <del key={i}>{p.text}</del> : <span key={i}>{p.text}</span>
+  ));
+}
 
 function rowLine(row) {
   if (row.action === 'add-story' || row.action === 'replace' || row.action === 'append') return `${row.storyId} ${row.field}: ${row.suggested}`;
@@ -50,7 +59,7 @@ export function Suggestion({ unit, stories, onApply, onDismiss, onUnlock, headin
           {unit.rows.map((r, i) => <li key={i}>{rowLine(r)}</li>)}
         </ul>
       ) : (
-        <pre className="suggestion-value">{valueOf(first)}</pre>
+        <pre className="suggestion-value"><SuggestedValue row={first} /></pre>
       )}
       <p className="suggestion-reason">{first.reason}</p>
       {state === 'stale' && <p className="suggestion-why">Out of date: {why}. It can no longer be applied.</p>}

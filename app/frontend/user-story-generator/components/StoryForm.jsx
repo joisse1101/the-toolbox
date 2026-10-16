@@ -4,6 +4,7 @@ import {
 } from '../../../../core/model.js';
 import { openCount, emptyClarification } from '../../../../core/story-text.js';
 import { dependencyChoices, dependentsOf } from '../../../../core/ids.js';
+import { criterionNumberOf } from '../../../../core/review.js';
 import { issueClass } from './issues.js';
 import Info from './Info.jsx';
 import SuggestionList, { Suggestion } from './Suggestions.jsx';
@@ -154,9 +155,17 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
   const unlockUnits = suggestions.filter((u) => u.rows[0].action === 'unlock');
   const forField = (...fields) => suggestions.filter((u) => !u.group && fields.includes(u.rows[0].field));
   const groups = suggestions.filter((u) => u.group);
-  const list = (...fields) => (
-    <SuggestionList units={forField(...fields)} stories={stories} onApply={onApplySuggestion} onDismiss={onDismissSuggestion} onUnlock={onUnlockSuggestion} />
+  const listOf = (units) => (
+    <SuggestionList units={units} stories={stories} onApply={onApplySuggestion} onDismiss={onDismissSuggestion} onUnlock={onUnlockSuggestion} />
   );
+  const list = (...fields) => listOf(forField(...fields));
+  // A criterion's replace/remove suggestions sit under it; adds and ones naming a missing criterion stay below the list.
+  const criteriaUnits = forField('User Acceptance Criteria');
+  const unitsForCriterion = (n) => criteriaUnits.filter((u) => criterionNumberOf(u) === n);
+  const unitsBelowCriteria = criteriaUnits.filter((u) => {
+    const n = criterionNumberOf(u);
+    return !n || n > s.criteria.length;
+  });
 
   // Suggestions come from the open backlog: Feature is narrowed by Epic. Title has none.
   const sameEpic = stories.filter((o) => o.epic === s.epic);
@@ -324,12 +333,13 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
                 >
                   ✕
                 </button>
+                {unitsForCriterion(i + 1).length > 0 && <div className="criterion-suggestions">{listOf(unitsForCriterion(i + 1))}</div>}
               </div>
             );
           })}
         </div>
         <button type="button" id="addCriterionBtn" onClick={addCriterion}>Add criterion</button>
-        {list('User Acceptance Criteria')}
+        {listOf(unitsBelowCriteria)}
         <CellWarning id="criteriaWarning" raw={s.rawCriteria} message={CRITERIA_WARNING} />
         <div className="preview-label">Saved as</div>
         <pre id="criteriaPreview" className="preview">{criteriaCellText(s)}</pre>
