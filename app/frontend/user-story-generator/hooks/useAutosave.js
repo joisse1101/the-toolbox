@@ -6,7 +6,8 @@ const SAVE_DEBOUNCE_MS = 600;
 // Debounced auto-save of the open backlog. `stateRef.current` must always hold the latest store state
 // ({ current, backlog }); the save machine reads it when a write starts, so it never writes stale text.
 // One write in flight at a time; edits made during a write trigger one follow-up with the latest state.
-export function useAutosave({ store, stateRef, onStatus, onMessage }) {
+// `serialize(backlog)` turns the state's `backlog` into the file text (default: a backlog CSV); pass a stable function.
+export function useAutosave({ store, stateRef, onStatus, onMessage, serialize = serializeBacklog }) {
   const callbacks = useRef({ onStatus, onMessage });
   callbacks.current = { onStatus, onMessage };
 
@@ -32,7 +33,7 @@ export function useAutosave({ store, stateRef, onStatus, onMessage }) {
       const { current: name, backlog } = stateRef.current;
       if (m.inFlight || !m.dirty || !name) return m.inFlight ?? Promise.resolve();
       clearTimeout(m.retryTimer);
-      const text = serializeBacklog(backlog);
+      const text = serialize(backlog);
       m.dirty = false;
       setStatus('saving');
       m.inFlight = (async () => {
@@ -93,7 +94,7 @@ export function useAutosave({ store, stateRef, onStatus, onMessage }) {
       isFailed: () => m.status === 'failed',
       lastText: () => m.lastText,
     };
-  }, [store, stateRef]);
+  }, [store, stateRef, serialize]);
 
   useEffect(() => {
     const warn = (e) => {

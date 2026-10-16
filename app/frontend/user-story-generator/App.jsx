@@ -4,6 +4,7 @@ import { unitsOf, unitStoryCode, openCounts, orphanUnits, reviewOverview, openUn
 import { useBacklog } from './hooks/useBacklog.js';
 import { useReview } from './hooks/useReview.js';
 import { useProposals } from './hooks/useProposals.js';
+import { useLexicon } from './hooks/useLexicon.js';
 import { backup } from '../shared/files.js';
 import { acceptProposed, moveToProposed as moveStoryToProposed } from '../../../core/proposals.js';
 import FileBar from './components/FileBar.jsx';
@@ -14,6 +15,7 @@ import StoriesTab from './components/StoriesTab.jsx';
 import GraphTab from './components/GraphTab.jsx';
 import ReviewTab from './components/ReviewTab.jsx';
 import ProposedTab from './components/ProposedTab.jsx';
+import LexiconTab from './components/LexiconTab.jsx';
 import BackupsTab from './components/BackupsTab.jsx';
 
 const STATUS_TEXT = { saved: 'Saved', saving: 'Saving…', failed: 'Save failed', idle: 'No file' };
@@ -76,6 +78,10 @@ export default function App() {
   const proposals = useProposals(current, backlog?.headers);
   const refreshProposals = proposals.actions.refreshFromDisk;
   const [proposedNotice, setProposedNotice] = useState(null);
+
+  // The lexicon of the open backlog (lexicons/<same name>.md); the tab is always there, the file may not be.
+  const lexicon = useLexicon(current);
+  const refreshLexicon = lexicon.actions.refreshFromDisk;
   useEffect(() => setProposedNotice(null), [current]);
 
   // Move proposed stories into the backlog. Nothing changes when acceptProposed refuses. The backlog is replaced
@@ -108,7 +114,7 @@ export default function App() {
 
   // Backup: wait until backlog, proposals and review are on disk, so the copy matches the screen.
   const settleAll = async () => {
-    const saved = await Promise.all([actions.settle(), proposals.actions.settle(), review.settle()]);
+    const saved = await Promise.all([actions.settle(), proposals.actions.settle(), review.settle(), lexicon.actions.settle()]);
     return saved.every(Boolean);
   };
   const [backupNote, setBackupNote] = useState(null);
@@ -143,7 +149,8 @@ export default function App() {
     actions.refreshFromDisk();
     reload();
     refreshProposals();
-  }, [actions, reload, refreshProposals]);
+    refreshLexicon();
+  }, [actions, reload, refreshProposals, refreshLexicon]);
 
   useEffect(() => {
     actions.init();
@@ -247,6 +254,9 @@ export default function App() {
           <button type="button" role="tab" id="tabProposed" className="tab" aria-controls="proposedView" aria-selected={view === 'proposed'} onClick={() => actions.setView('proposed')}>
             {`Proposed (${proposals.stories.length})`}
           </button>
+          <button type="button" role="tab" id="tabLexicon" className="tab" aria-controls="lexiconView" aria-selected={view === 'lexicon'} onClick={() => actions.setView('lexicon')}>
+            {`Lexicon (${lexicon.lexicon.terms.length})`}
+          </button>
           <button type="button" role="tab" id="tabBackups" className="tab" aria-controls="backupsView" aria-selected={view === 'backups'} onClick={() => actions.setView('backups')}>Backups</button>
           {review.exists && (
             <button type="button" role="tab" id="tabReview" className="tab" aria-controls="reviewView" aria-selected={view === 'review'} onClick={() => actions.setView('review')}>
@@ -276,6 +286,11 @@ export default function App() {
           onSelect={proposals.actions.selectStory} onAdd={() => proposals.actions.addStory(stories)} onDelete={proposals.actions.deleteMany}
           onEdit={proposals.actions.editStory} onCommitEpic={proposals.actions.commitEpic} onMove={proposals.actions.moveStory}
           onOpenBacklogStory={openInEditor} onAccept={acceptSelected} onAcceptAll={acceptAll}
+        />
+
+        <LexiconTab
+          hidden={!current || view !== 'lexicon'} lexicon={lexicon.lexicon} selected={lexicon.selected} error={lexicon.state.error} message={lexicon.message}
+          onSelect={lexicon.actions.select} onSave={lexicon.actions.save} onRemove={lexicon.actions.remove} onClearError={lexicon.actions.clearError}
         />
 
         <StoriesTab
