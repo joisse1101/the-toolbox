@@ -10,6 +10,7 @@ const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const R = 'node .claude/skills/explore-stories/read-story-context.mjs';
 const W = 'node .claude/skills/propose-stories/write-proposal.mjs';
 const RW = 'node .claude/skills/review-backlog/write-review.mjs';
+const LW = 'node .claude/skills/propose-stories/write-lexicon.mjs';
 const write = { allowWrite: true };
 const body = "<<'JSON'\n[]\nJSON";
 
@@ -53,6 +54,25 @@ test('the review writer is allowed only with --append, and only in read-write mo
     ['the review reader', 'node .claude/skills/review-backlog/read-backlog.mjs'],
   ]) {
     assert.match(check(c, write) ?? '', /Allowed commands: .*write-review\.mjs <file> --append/, label);
+  }
+});
+
+test('the lexicon writer is allowed in its documented form, and only in read-write mode', () => {
+  const terms = "<<'JSON'\n[{\"term\": \"User\", \"definition\": \"A person.\"}]\nJSON";
+  for (const c of [`${LW} data-portal.csv ${terms}`, `${LW} data-portal.csv <<'JSON'\r\n[]\r\nJSON\r\n`]) {
+    assert.equal(check(c, write), null, c);
+    assert.match(check(c), /may only read.*Allowed commands: node \.claude\/skills\/explore-stories\/read-story-context\.mjs \[file\]$/, c);
+  }
+  for (const [label, c] of [
+    ['no file', `${LW} ${body}`],
+    ["--append is the review writer's flag", `${LW} data-portal.csv --append ${body}`],
+    ['extra argument', `${LW} data-portal.csv out.csv ${body}`],
+    ['no heredoc', `${LW} data-portal.csv`],
+    ['text after JSON', `${LW} data-portal.csv <<'JSON'\n[]\nJSON\ncat secrets`],
+    ['redirect', `${LW} data-portal.csv > out.csv ${body}`],
+    ['pipe', `echo '[]' | ${LW} data-portal.csv`],
+  ]) {
+    assert.match(check(c, write) ?? '', /Allowed commands: .*write-lexicon\.mjs <file>/, label);
   }
 });
 
