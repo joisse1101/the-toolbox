@@ -71,7 +71,7 @@
 .stories-table tr.incomplete td { background: var(--bad-bg); }
 .stories-table tr.warn td { background: var(--warn-bg); }
 .stories-table tr.checked td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
-.link-btn { border: 0; background: none; padding: 0; color: var(--accent); text-align: left; text-decoration: underline; cursor: pointer; font: inherit; }
+.link-btn { border: 0; background: none; padding: 0; color: var(--accent); text-align: left; text-decoration: none; cursor: pointer; font: inherit; }
 
 .story-form { display: grid; gap: 12px; }
 .story-form.incomplete { border-color: var(--bad-border); box-shadow: 0 0 0 2px var(--bad-bg); }
