@@ -97,7 +97,8 @@ test('both skills use the lexicon terms and flag gaps, and explore cannot write 
 
 test('propose-stories says to re-read first, to show old and new values, to prefer a patch and to size by the guideline', () => {
   const text = skill('propose-stories');
-  assert.match(text, /at the start of every use, \*\*even if `explore-stories` already ran it/);
+  assert.match(text, /At the start of every use, \*\*even if `explore-stories` already read the context/);
+  for (const section of ['guidelines', 'index', 'proposals', 'lexicon']) assert.match(text, new RegExp(`--section ${section}`), section);
   assert.match(text, /old value/);
   assert.match(text, /Prefer a patch to a second story/);
   assert.match(text, /sprint-points-guideline\.md/);
