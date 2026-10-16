@@ -118,8 +118,12 @@ export function reducer(state, action) {
       for (const id of action.ids) action.on ? checked.add(id) : checked.delete(id);
       return { ...state, checked, lastChecked: action.anchor };
     }
-    case 'checkAll':
-      return { ...state, checked: new Set(action.on ? action.ids : []), lastChecked: null };
+    // Ticks or unticks exactly action.ids (the rows on screen); a story the Stories search hides keeps its tick.
+    case 'checkAll': {
+      const checked = new Set(state.checked);
+      for (const id of action.ids) action.on ? checked.add(id) : checked.delete(id);
+      return { ...state, checked, lastChecked: null };
+    }
     case 'bulk': {
       const stories = state.backlog.stories.map((s) => ({ ...s }));
       applyBulk(stories, state.checked, action.patch);

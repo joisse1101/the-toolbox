@@ -294,7 +294,7 @@ export default function App() {
         />
 
         <StoriesTab
-          stories={stories} problems={problems} checked={checked} lastChecked={lastChecked} hidden={!current || view !== 'stories'}
+          stories={stories} headers={backlog?.headers ?? []} problems={problems} checked={checked} lastChecked={lastChecked} hidden={!current || view !== 'stories'}
           onOpen={openInEditor} onCheck={actions.toggleChecked} onCheckAll={actions.checkAll} onApplyBulk={actions.applyBulkPatch} onLockChecked={actions.lockChecked}
         />
 

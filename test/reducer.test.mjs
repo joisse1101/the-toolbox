@@ -278,3 +278,15 @@ test('editing clarifications copies them: the previous state keeps its pairs', (
   assert.equal(byTitle(added, 'A').clarifications[0].a, '');
   assert.equal(byTitle(answered, 'A').clarifications[0].a, 'CSV');
 });
+
+test('checkAll ticks or unticks only the given ids, so stories a search hides keep their tick', () => {
+  let state = opened();
+  const [a, b] = state.backlog.stories;
+  state = reducer(state, { type: 'check', ids: [a.id], on: true, anchor: a.id });
+  state = reducer(state, { type: 'checkAll', on: true, ids: [b.id] });
+  assert.deepEqual([...state.checked].sort(), [a.id, b.id].sort());
+  state = reducer(state, { type: 'checkAll', on: false, ids: [b.id] });
+  assert.deepEqual([...state.checked], [a.id]);
+  state = reducer(state, { type: 'checkAll', on: false, ids: state.backlog.stories.map((s) => s.id) });
+  assert.equal(state.checked.size, 0);
+});

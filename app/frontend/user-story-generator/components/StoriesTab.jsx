@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { PRIORITIES, displayOrder, storyIssues, storyLabel } from '../../../../core/model.js';
+import { matchesQuery } from '../../../../core/story-search.js';
 import { issueClass, rowTooltip } from './issues.js';
 
 const KEEP = 'keep'; // bulk Priority "No change" ('' is "None", which clears)
@@ -7,19 +8,24 @@ const KEEP = 'keep'; // bulk Priority "No change" ('' is "None", which clears)
 const distinct = (stories, key) => [...new Set(stories.map((o) => o[key].trim()).filter(Boolean))];
 
 // Every story in one table, with ticks and a bulk edit bar. The table itself is read-only.
-export default function StoriesTab({ stories, problems, checked, lastChecked, hidden, onOpen, onCheck, onCheckAll, onApplyBulk, onLockChecked }) {
+export default function StoriesTab({ stories, headers, problems, checked, lastChecked, hidden, onOpen, onCheck, onCheckAll, onApplyBulk, onLockChecked }) {
   const [priority, setPriority] = useState(KEEP);
   const [epic, setEpic] = useState('');
   const [feature, setFeature] = useState('');
   const [note, setNote] = useState('');
+  const [query, setQuery] = useState('');
   const selectAll = useRef(null);
 
-  const rows = displayOrder(stories);
+  const allRows = useMemo(() => displayOrder(stories), [stories]);
+  const searching = query.trim() !== '';
+  const rows = useMemo(() => (searching ? allRows.filter((s) => matchesQuery(s, query, headers)) : allRows), [allRows, searching, query, headers]);
   const n = checked.size;
+  const shownChecked = rows.filter((r) => checked.has(r.id)).length;
+  const hiddenChecked = n - shownChecked; // ticked stories the search hides; select-all and shift-range leave them alone
 
   useEffect(() => {
-    selectAll.current.indeterminate = n > 0 && n < rows.length;
-  }, [n, rows.length]);
+    selectAll.current.indeterminate = shownChecked > 0 && shownChecked < rows.length;
+  }, [shownChecked, rows.length]);
 
   const patch = {
     priority: priority === KEEP ? undefined : priority,
@@ -62,7 +68,7 @@ export default function StoriesTab({ stories, problems, checked, lastChecked, hi
   return (
     <section id="storiesView" className="card stories-view" role="tabpanel" aria-labelledby="tabStories" hidden={hidden}>
       <div id="bulkBar" className="bulk-bar" hidden={n === 0}>
-        <strong id="selectedCount" role="status" aria-live="polite">{`${n} selected`}</strong>
+        <strong id="selectedCount" role="status" aria-live="polite">{`${n} selected${hiddenChecked ? ` (${hiddenChecked} hidden by the search)` : ''}`}</strong>
         <div>
           <label htmlFor="bulkPriority">Priority</label>
           <select id="bulkPriority" value={priority} onChange={(e) => setPriority(e.target.value)}>
@@ -84,6 +90,11 @@ export default function StoriesTab({ stories, problems, checked, lastChecked, hi
         <button type="button" id="unlockSelectedBtn" onClick={() => lock(false)}>Unlock selected</button>
         <span id="bulkNote" className="muted" role="status" aria-live="polite">{note}</span>
       </div>
+      <div className="row stories-search">
+        <label htmlFor="storiesSearch">Search</label>
+        <input id="storiesSearch" type="search" className="grow" autoComplete="off" value={query} placeholder="any word in any field of a story" onChange={(e) => setQuery(e.target.value)} />
+        {searching && <span id="storiesCount" className="muted" role="status" aria-live="polite">{`${rows.length} of ${allRows.length} stories`}</span>}
+      </div>
       <div className="table-wrap">
         <table className="stories-table">
           <thead>
@@ -91,7 +102,7 @@ export default function StoriesTab({ stories, problems, checked, lastChecked, hi
               <th className="check">
                 <input
                   type="checkbox" id="selectAll" aria-label="Select all stories" ref={selectAll}
-                  checked={rows.length > 0 && n === rows.length} disabled={!rows.length}
+                  checked={rows.length > 0 && shownChecked === rows.length} disabled={!rows.length}
                   onChange={(e) => onCheckAll(e.target.checked, rows.map((r) => r.id))}
                 />
               </th>
@@ -124,7 +135,7 @@ export default function StoriesTab({ stories, problems, checked, lastChecked, hi
           </tbody>
         </table>
       </div>
-      <p id="storiesEmpty" className="muted" hidden={rows.length > 0}>No stories yet.</p>
+      <p id="storiesEmpty" className="muted" hidden={rows.length > 0}>{searching && allRows.length ? `No story matches “${query.trim()}”.` : 'No stories yet.'}</p>
       <datalist id="bulkEpicList">{distinct(stories, 'epic').map((v) => <option key={v} value={v} />)}</datalist>
       <datalist id="bulkFeatureList">{distinct(stories, 'feature').map((v) => <option key={v} value={v} />)}</datalist>
     </section>
