@@ -92,8 +92,7 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
       </div>
       <div className="row stories-search">
         <div className="grow">
-          <label htmlFor="storiesSearch">Search</label>
-          <input id="storiesSearch" type="text" autoComplete="off" value={query} placeholder="any word in any field of a story" onChange={(e) => setQuery(e.target.value)} />
+          <input id="storiesSearch" type="text" autoComplete="off" value={query} placeholder="Search any word in any field of a story" onChange={(e) => setQuery(e.target.value)} />
         </div>
         {searching && <span id="storiesCount" className="muted" role="status" aria-live="polite">{`${rows.length} of ${allRows.length} stories`}</span>}
       </div>
