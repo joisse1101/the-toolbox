@@ -24,7 +24,7 @@ test('the reader is allowed in both modes', () => {
 test('the writer in its documented form is allowed only in read-write mode', () => {
   for (const c of [`${W} data-portal.csv ${body}`, `${W} data-portal.csv <<'JSON'\r\n[]\r\nJSON\r\n`]) {
     assert.equal(check(c, write), null, c);
-    assert.match(check(c), /may only read.*Allowed commands: node \.claude\/skills\/explore-stories\/read-story-context\.mjs \[file\]$/, c);
+    assert.match(check(c), /may only read.*Allowed commands: node \.claude\/skills\/explore-stories\/read-story-context\.mjs \[file \[ID\]\]$/, c);
   }
 });
 
@@ -40,7 +40,7 @@ test('a heredoc holding a patch is the same documented form, and patches opened 
 test('the review writer is allowed only with --append, and only in read-write mode', () => {
   for (const c of [`${RW} data-portal.csv --append ${body}`, `${RW} data-portal.csv --append <<'JSON'\r\n[]\r\nJSON\r\n`]) {
     assert.equal(check(c, write), null, c);
-    assert.match(check(c), /may only read.*Allowed commands: node \.claude\/skills\/explore-stories\/read-story-context\.mjs \[file\]$/, c);
+    assert.match(check(c), /may only read.*Allowed commands: node \.claude\/skills\/explore-stories\/read-story-context\.mjs \[file \[ID\]\]$/, c);
   }
   for (const [label, c] of [
     ['no --append (would replace the review)', `${RW} data-portal.csv ${body}`],
@@ -61,7 +61,7 @@ test('the lexicon writer is allowed in its documented form, and only in read-wri
   const terms = "<<'JSON'\n[{\"term\": \"User\", \"definition\": \"A person.\"}]\nJSON";
   for (const c of [`${LW} data-portal.csv ${terms}`, `${LW} data-portal.csv <<'JSON'\r\n[]\r\nJSON\r\n`]) {
     assert.equal(check(c, write), null, c);
-    assert.match(check(c), /may only read.*Allowed commands: node \.claude\/skills\/explore-stories\/read-story-context\.mjs \[file\]$/, c);
+    assert.match(check(c), /may only read.*Allowed commands: node \.claude\/skills\/explore-stories\/read-story-context\.mjs \[file \[ID\]\]$/, c);
   }
   for (const [label, c] of [
     ['no file', `${LW} ${body}`],
@@ -129,3 +129,36 @@ for (const [skill, mode, allowed, deniedCommand] of [
     assert.match(out.hookSpecificOutput.permissionDecisionReason, /Allowed commands/);
   });
 }
+
+test('the reader with a file name and one story ID is allowed in both modes', () => {
+  for (const c of [`${R} data-portal.csv IAM-0004`, `${R} data-portal.csv NEW-7\n`, `${R} data-portal.csv 7`]) {
+    assert.equal(check(c), null, c);
+    assert.equal(check(c, write), null, c);
+  }
+});
+
+test('the story ID form allows nothing wider', () => {
+  const denied = [
+    ['second ID', `${R} data.csv IAM-0004 IAM-0005`],
+    ['flag after file', `${R} data.csv --all`],
+    ['ID then flag', `${R} data.csv IAM-0004 --all`],
+    ['path as ID', `${R} data.csv ../x`],
+    ['quoted ID with space', `${R} data.csv "a b"`],
+    ['ID with a dot', `${R} data.csv IAM.0004`],
+    ['ID starting with a hyphen', `${R} data.csv -IAM`],
+    ['pipe', `${R} data.csv IAM-0004 | head`],
+    ['semicolon', `${R} data.csv IAM-0004; ls`],
+    ['and', `${R} data.csv IAM-0004 && cat secrets`],
+    ['substitution', `${R} data.csv $(whoami)`],
+    ['redirect', `${R} data.csv IAM-0004 > out`],
+    ['second line', `${R} data.csv IAM-0004\ncat secrets`],
+    ['ID without a file', `${R} IAM-0004 x y`],
+    ['proposal writer with an ID', `${W} data.csv IAM-0004 ${body}`],
+    ['lexicon writer with an ID', `${LW} data.csv IAM-0004 ${body}`],
+    ['review writer with an ID', `${RW} data.csv IAM-0004 --append ${body}`],
+  ];
+  for (const [label, c] of denied) {
+    assert.match(check(c, write) ?? '', /Allowed commands: .*read-story-context\.mjs \[file \[ID\]\]/, label);
+    assert.notEqual(check(c), null, `${label} (read-only)`);
+  }
+});
