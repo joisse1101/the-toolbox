@@ -60,7 +60,7 @@
   border: 1px solid var(--accent); border-radius: var(--radius);
 }
 .bulk-bar > strong { align-self: center; }
-.stories-search { align-items: center; margin-bottom: 10px; }
+.stories-search { align-items: end; margin-bottom: 10px; }
 .table-wrap { overflow-x: auto; }
 .stories-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .stories-table th, .stories-table td { padding: 4px 8px; text-align: left; border-bottom: 1px solid var(--border); }
