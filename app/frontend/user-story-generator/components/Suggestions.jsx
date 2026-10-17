@@ -1,4 +1,4 @@
-import { unitState } from '../../../../core/review.js';
+import { unitState, displayRow } from '../../../../core/review.js';
 import { wordDiff } from '../../../../core/word-diff.js';
 
 // An append adds to the field the row names (Notes text, or a Clarifications question).
@@ -26,7 +26,7 @@ function rowLine(row) {
 // `heading` adds a line above (the Review tab names the story).
 export function Suggestion({ unit, stories, onApply, onDismiss, onUnlock, heading = null }) {
   const { state, why } = unitState(unit, stories);
-  const first = unit.rows[0];
+  const first = unit.group ? unit.rows[0] : displayRow(unit.rows[0], stories);
   const confirm = unit.rows.some((r) => r.confidence === 'confirm');
   const isGroup = !!unit.group;
   if (first.action === 'unlock') {

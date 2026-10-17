@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { loadBacklog } from '../core/model.js';
 import {
   parseReview, serializeReview, validateFindings, fillCurrent, mergeStatus, suggestionState, applySuggestions,
-  unitsOf, unitState, criterionNumberOf, openCounts, openUnitsFor, retargetRows, reviewOverview, REVIEW_COLUMNS,
+  unitsOf, unitState, criterionNumberOf, displayRow, openCounts, openUnitsFor, retargetRows, reviewOverview, REVIEW_COLUMNS,
 } from '../core/review.js';
 
 const CSV =
@@ -579,4 +579,22 @@ test('a criterion edited by hand, or whose text appears twice away from its slot
 
   const nameSlot = edit((c) => [c[0], c[1], { ...c[2] }, { ...c[2] }]); // the named slot is one of the two matches
   assert.equal(suggestionState(row, nameSlot).state, 'open');
+});
+
+test('displayRow shows the number a criterion has now, not the one the review saw; the stored row is untouched', () => {
+  const b = loadBacklog(criteriaCsv(17));
+  const rows = fillCurrent([
+    acRow('remove', 'AC12'), acRow('remove', 'AC15'), acRow('replace', 'AC16: Given g16, when w16, then new'), acRow('add', 'AC18: Given x, when y, then z'),
+  ], b);
+  const after = applySuggestions(b.stories, [rows[0]], b.headers).stories; // AC12 gone: g15 is AC14, g16 is AC15, 16 criteria
+  const [, rm, rep, add] = rows.map((r) => displayRow(r, after));
+  assert.equal(rm.suggested, 'AC14');
+  assert.equal(rm.current, 'AC14: Given g15, when w15, then t15');
+  assert.equal(rep.suggested, 'AC15: Given g16, when w16, then new');
+  assert.equal(rep.current, 'AC15: Given g16, when w16, then t16');
+  assert.equal(add.suggested, 'AC17: Given x, when y, then z', 'an add is labelled with the number it will get');
+  assert.equal(rows[1].suggested, 'AC15', 'the stored row keeps its label');
+  assert.deepEqual(displayRow(finding(), after), finding(), 'other rows are returned as they are');
+  const gone = displayRow({ ...rows[1], current: 'AC15: Given nope, when w, then t' }, after);
+  assert.equal(gone.suggested, 'AC15', 'a row that matches no criterion is left as written');
 });

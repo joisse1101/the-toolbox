@@ -377,6 +377,21 @@ export function criterionNumberOf(unit, story) {
   return locateCriterion(story, row).pos ?? null;
 }
 
+// The row as the screen shows it: the AC<n> labels are generated numbers, so a criterion row shows the number its
+// criterion has now (a replace or remove) or will get (an add: the end of the list), not the one the review saw.
+// Display only: the stored row, and so the matching, is untouched.
+export function displayRow(row, stories) {
+  if (row.field !== 'User Acceptance Criteria' || !['replace', 'remove', 'add'].includes(row.action)) return row;
+  const story = findStory(stories, row.storyId);
+  if (!story || story.rawCriteria !== null) return row;
+  const pos = row.action === 'add'
+    ? (hasBlankOnly(story.criteria) ? 1 : story.criteria.length + 1)
+    : locateCriterion(story, row).pos;
+  if (!pos) return row;
+  const relabel = (text) => text.replace(AC_NUMBER, `AC${pos}`);
+  return { ...row, current: relabel(row.current), suggested: relabel(row.suggested) };
+}
+
 function editExisting(story, row) {
   const v = row.suggested.trim();
   switch (row.field) {
