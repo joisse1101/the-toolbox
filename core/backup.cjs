@@ -2,7 +2,7 @@
 // Pure parts of backing up a backlog: the dated folder name, which names are backup folders, and which files
 // belong to one backlog. No file access here; the server does the copying.
 
-const STORE_NAMES = ['user-stories', 'reviews', 'proposals', 'lexicons'];
+const STORE_NAMES = ['user-stories', 'reviews', 'proposals', 'lexicons', 'lexicon-suggestions'];
 const FOLDER_PATTERN = /^\d{4}-\d{2}-\d{2}_\d{6}(-[1-9]\d*)?$/;
 
 const pad = (n, width = 2) => String(n).padStart(width, '0');

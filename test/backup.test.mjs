@@ -25,12 +25,13 @@ test('isBackupFolderName rejects paths and other text', () => {
   }
 });
 
-test('backupFiles lists the four stores for the name and never a sidecar', () => {
+test('backupFiles lists the five stores for the name and never a sidecar', () => {
   assert.deepEqual(backupFiles('sprint-12.csv'), [
     { store: 'user-stories', name: 'sprint-12.csv' },
     { store: 'reviews', name: 'sprint-12.csv' },
     { store: 'proposals', name: 'sprint-12.csv' },
     { store: 'lexicons', name: 'sprint-12.csv' },
+    { store: 'lexicon-suggestions', name: 'sprint-12.csv' },
   ]);
   assert.ok(backupFiles('a.csv').every((f) => !f.name.endsWith('.decided')));
 });

@@ -23,6 +23,7 @@ const STORES = {
   reviews: path.join(DATA_DIR, 'reviews'), // review suggestions, written by the review-backlog skill's script
   proposals: path.join(DATA_DIR, 'proposals'), // proposed stories awaiting acceptance, one file per backlog
   lexicons: path.join(DATA_DIR, 'lexicons'), // defined terms, one file per backlog
+  'lexicon-suggestions': path.join(DATA_DIR, 'lexicon-suggestions'), // suggested term renames and deletes, one file per backlog
 };
 
 const MIME = {
