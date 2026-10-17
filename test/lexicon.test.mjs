@@ -154,29 +154,34 @@ test('applyTermItems adds a parent and a child defined in the same input', () =>
   assert.deepEqual(names(r.lexicon), ['Dataset', 'Dataset attribute']);
 });
 
-test('applyTermItems patches only the keys given', () => {
-  const r = applyTermItems(sample(), [{ term: 'user', avoid: ['customer', 'account holder'] }]);
+test('applyTermItems refuses a term that exists and points to the suggestion tool', () => {
+  const before = composeLexicon(sample());
+  const lex = sample();
+  const r = applyTermItems(lex, [{ term: 'user', definition: 'x', avoid: ['customer', 'account holder'] }]);
+  assert.equal(r.ok, false);
+  assert.match(r.errors[0], /^item 1: "user" is already a term: suggest a change to it with suggest_lexicon_change/);
+  assert.equal(composeLexicon(lex), before);
+});
+
+test('applyTermItems refuses a name an earlier item of the same list added', () => {
+  const r = applyTermItems(sample(), [{ term: 'Role', definition: 'a' }, { term: 'ROLE', definition: 'b' }]);
+  assert.equal(r.ok, false);
+  assert.match(r.errors[0], /^item 2: "ROLE" is already a term/);
+});
+
+test('applyTermItems adds a child under a parent that is already a term', () => {
+  const r = applyTermItems(sample(), [{ term: 'Dataset owner', definition: 'Who owns it.', partOf: 'Dataset' }]);
   assert.equal(r.ok, true);
-  assert.deepEqual(r.patched, ['User']);
-  const user = r.lexicon.terms[2];
-  assert.deepEqual(user.avoid, ['customer', 'account holder']);
-  assert.equal(user.definition, 'A person with a login.');
-  assert.equal(user.notes, 'Admins are a separate term.');
+  assert.deepEqual(names(r.lexicon), ['Dataset', 'Dataset attribute', 'User', 'Dataset owner']);
+  assert.equal(composeLexicon(r.lexicon).startsWith(CANONICAL.trimEnd()), true, 'existing rows unchanged');
 });
 
 test('applyTermItems keeps unknown columns', () => {
   const lex = parseLexicon('Term,Owner,Definition\r\nUser,Ana,A person.\r\n');
-  const r = applyTermItems(lex, [{ term: 'User', definition: 'A person with a login.' }, { term: 'Role', definition: 'Permissions.' }]);
+  const r = applyTermItems(lex, [{ term: 'Role', definition: 'Permissions.' }]);
   assert.equal(r.ok, true);
   assert.equal(r.lexicon.terms[0].cells[1], 'Ana');
-  assert.equal(composeLexicon(r.lexicon).split('\r\n')[1], 'User,Ana,A person with a login.,,,');
-});
-
-test('applyTermItems clears with empty values', () => {
-  const r = applyTermItems(sample(), [{ term: 'Dataset attribute', partOf: '', avoid: [] }]);
-  assert.equal(r.ok, true);
-  assert.equal(r.lexicon.terms[1].partOf, '');
-  assert.deepEqual(r.lexicon.terms[1].avoid, []);
+  assert.equal(composeLexicon(r.lexicon).split('\r\n')[1], 'User,Ana,A person.,,,');
 });
 
 test('applyTermItems reports every problem, each naming its item, and changes nothing', () => {
@@ -196,9 +201,9 @@ test('applyTermItems reports every problem, each naming its item, and changes no
 });
 
 test('applyTermItems applies the term rules to the whole result', () => {
-  const r = applyTermItems(sample(), [{ term: 'Customer', definition: 'A buyer.' }, { term: 'User', avoid: ['customer'] }]);
+  const r = applyTermItems(sample(), [{ term: 'Client', definition: 'x', avoid: ['user'] }]);
   assert.equal(r.ok, false);
-  assert.match(r.errors[0], /^item 2: "User" avoids "customer"/);
+  assert.match(r.errors[0], /^item 1: "Client" avoids "user"/);
   const sibling = applyTermItems(sample(), [{ term: 'Member', definition: 'x' }]);
   assert.match(sibling.errors[0], /^"User" avoids "member"/, 'a problem in an untouched term has no item number');
 });

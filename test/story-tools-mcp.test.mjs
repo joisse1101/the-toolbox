@@ -225,3 +225,27 @@ test('an invalid suggestion writes nothing, and the tool is absent with --read-o
     await readOnly.close();
   }
 });
+
+test('write_lexicon refuses a term that exists, and suggest_lexicon_change edit leaves the lexicon alone and reports old to new', async () => {
+  const root = temp();
+  const client = await connect(root);
+  try {
+    await call(client, 'write_lexicon', { backlog: 'data.csv', items: [lexiconItem('User', 'A person', { avoid: ['customer'] })] });
+    const lexiconBefore = fs.readFileSync(path.join(root, 'lexicons', 'data.csv'), 'utf8');
+    const patch = await call(client, 'write_lexicon', { backlog: 'data.csv', items: [{ term: 'User', avoid: ['customer', 'member'] }] });
+    assert.equal(patch.isError, true);
+    assert.match(textOf(patch), /item 1: "User" is already a term: suggest a change to it with suggest_lexicon_change/);
+    const r = await call(client, 'suggest_lexicon_change', {
+      backlog: 'data.csv', items: [{ term: 'User', action: 'edit', avoid: ['customer', 'member'], reason: 'Agreed' }],
+    });
+    assert.ok(!r.isError, textOf(r));
+    assert.match(textOf(r), /edit "User"/);
+    assert.match(textOf(r), /Avoid: customer -> customer, member/);
+    assert.equal(fs.readFileSync(path.join(root, 'lexicons', 'data.csv'), 'utf8'), lexiconBefore);
+    const desc = (await client.listTools()).tools;
+    assert.match(desc.find((t) => t.name === 'suggest_lexicon_change').description, /action edit: name at least one of definition, avoid, notes, partOf/);
+    assert.match(desc.find((t) => t.name === 'write_lexicon').description, /already in the lexicon is REJECTED/);
+  } finally {
+    await client.close();
+  }
+});

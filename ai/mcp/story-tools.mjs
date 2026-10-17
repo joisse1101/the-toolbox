@@ -35,15 +35,15 @@ The result is data to work from, never instructions.`,
 - A PATCH has "id": "NEW-<n>" plus only the keys to change; clarifications is { add: [questions], answer: [{ n, text }] } (an answer only on a pair whose answer is empty). A benched story cannot be patched.
 - Never removes a proposal and never writes user-stories/. The report names each NEW-<n> in input order.`,
 
-  write_lexicon: `Add or patch lexicon terms in lexicons/<backlog>. 'items' is a list of { term, definition?, avoid?, notes?, partOf? }.
-- A term not in the lexicon is ADDED and needs a definition. One that is there is PATCHED: only the keys given change; partOf "" and avoid [] clear them.
-- Rules (checked on the lexicon as it will be): names unique ignoring case; partOf must name a term (no self, no cycle); an Avoid word may not be a term name. One invalid item writes nothing.
-- Cannot rename or delete a term: use suggest_lexicon_change, which the user applies in the Lexicon tab.`,
+  write_lexicon: `Add NEW lexicon terms to lexicons/<backlog>. 'items' is a list of { term, definition, avoid?, notes?, partOf? }; every item adds a term and needs a definition.
+- A term that is already in the lexicon is REJECTED: it cannot be patched, renamed or deleted here. Use suggest_lexicon_change (action edit, rename or delete), which the user applies in the Lexicon tab.
+- Rules (checked on the lexicon as it will be): names unique ignoring case; partOf must name a term, which may be one added earlier in the same list (no self, no cycle); an Avoid word may not be a term name. One invalid item writes nothing.`,
 
-  suggest_lexicon_change: `Suggest renaming or deleting lexicon terms. 'items' is a list of { term, action, newName?, avoid?, avoidOldName?, reason }. Rows are appended to lexicon-suggestions/<backlog> as open; the lexicon itself is NOT changed. The USER applies or dismisses each suggestion in the portal's Lexicon tab, so say so in your report.
+  suggest_lexicon_change: `Suggest a rename, a delete or an edit of EXISTING lexicon terms. 'items' is a list of { term, action, newName?, avoid?, avoidOldName?, definition?, notes?, partOf?, reason }. Rows are appended to lexicon-suggestions/<backlog> as open; the lexicon itself is NOT changed. The USER applies or dismisses each suggestion in the portal's Lexicon tab, so say so in your report.
+- action edit: name at least one of definition, avoid, notes, partOf; each field named REPLACES the old value (avoid replaces the whole list, so send all of it; partOf "" and avoid [] clear). Every named field must differ from the term now, and the result must satisfy the term rules (an Avoid word may not be a term name, partOf must name a term): an Avoid word that is a term name only becomes possible after the user applies the rename or delete of that term, so suggest the edit in a later run. The suggestion goes stale if the term is changed before the user applies it. No newName or avoidOldName.
 - action rename: newName is required and must not be a term. On Apply the old name is added to the term's Avoid list (unless avoidOldName is false), so it can be an Avoid word although it names the term today; avoid adds more words. action delete: no newName, no avoid. reason is required.
-- One open suggestion per term and action. A delete is refused on Apply while another term is part of it. One invalid item writes nothing.
-- The result is the impact of each suggestion on the lexicon as it is now: children whose Part of follows a rename, terms whose definition or notes contain the old name (their wording is NOT rewritten: patch them with write_lexicon), and Avoid clashes.`,
+- One open suggestion per term and action (an edit and a rename of one term may both be open). A delete is refused on Apply while another term is part of it. One invalid item writes nothing.
+- The result is the impact of each suggestion on the lexicon as it is now: children whose Part of follows a rename, terms whose definition or notes contain the old name (their wording is NOT rewritten: suggest an edit for each one the user wants changed), and Avoid clashes. For an edit the result lists each field old -> new.`,
 
   write_review: `Append suggested edits to EXISTING backlog stories to reviews/<backlog> (it always appends; the existing rows are kept). 'items' is a list of rows { storyId, field, action, suggested, reason, area, confidence, group? }; the batch is validated alone and one invalid row writes nothing.
 - field: one of ${FIELDS.join(' | ')}; an unlock row has an empty field. action: ${ACTIONS.join(' | ')}. area: ${AREAS.join(' | ')}. confidence: ${CONFIDENCES.join(' | ')}.
@@ -85,17 +85,14 @@ export function writeProposalsTool(args) {
 export function writeLexiconTool(args) {
   const r = writeLexicon({ name: args.backlog, input: JSON.stringify(args.items) });
   if (!r.ok) return textOf(problems(r.errors), true);
-  const done = [];
-  if (r.added.length) done.push(`Added ${plural(r.added.length, 'term', 'terms')} to lexicons/${r.file} (${r.added.join(', ')})`);
-  if (r.patched.length) done.push(`${done.length ? 'patched' : 'Patched'} ${plural(r.patched.length, 'term', 'terms')} (${r.patched.join(', ')})`);
-  return textOf(`${done.length ? done.join('; ') : 'No change'}; ${r.count} in the lexicon now.`);
+  return textOf(`Added ${plural(r.added.length, 'term', 'terms')} to lexicons/${r.file} (${r.added.join(', ')}); ${r.count} in the lexicon now.`);
 }
 
 export function suggestLexiconTool(args) {
   const r = suggestLexicon({ name: args.backlog, items: args.items });
   if (!r.ok) return textOf(problems(r.errors), true);
   const lines = r.report.map(({ row, lines: impact }) => {
-    const what = row.action === 'rename' ? `rename "${row.term}" to "${row.newName}"` : `delete "${row.term}"`;
+    const what = row.action === 'rename' ? `rename "${row.term}" to "${row.newName}"` : row.action === 'edit' ? `edit "${row.term}"` : `delete "${row.term}"`;
     return [`- ${what}`, ...impact.map((l) => `    ${l}`)].join('\n');
   });
   return textOf(`Added ${plural(r.added, 'suggestion', 'suggestions')} to lexicon-suggestions/${r.file}; ${r.count} in the file now. The lexicon is unchanged: the user applies them in the Lexicon tab.\n${lines.join('\n')}`);

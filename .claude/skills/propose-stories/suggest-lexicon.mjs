@@ -1,4 +1,4 @@
-// How the propose-stories skill suggests renaming or deleting a lexicon term (used by the story-tools MCP server's
+// How the propose-stories skill suggests renaming, deleting or editing (definition, avoid, notes, part of) a lexicon term (used by the story-tools MCP server's
 // suggest_lexicon_change; there is no command line form). Reads user-stories/<name> (it must exist) and lexicons/<name>,
 // appends open rows to lexicon-suggestions/<name> and never touches the lexicon: the user applies a suggestion in the
 // portal's Lexicon tab. The rules are core/lexicon-suggestions.js's; one invalid item means nothing is written.
@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { emptyLexicon, parseLexicon } from '../../../core/lexicon.js';
-import { composeSuggestions, emptySuggestions, impactOf, parseSuggestions, validateItems } from '../../../core/lexicon-suggestions.js';
+import { composeSuggestions, emptySuggestions, FIELD_LABELS, impactOf, parseSuggestions, validateItems } from '../../../core/lexicon-suggestions.js';
 import { writeAtomic } from './write-proposal.mjs';
 
 const require = createRequire(import.meta.url);
@@ -27,6 +27,10 @@ const readIfThere = (dir, file, parse, empty) => {
 function impactLines(row, impact) {
   const names = (list) => list.map((n) => `"${n}"`).join(', ');
   const lines = [];
+  if (row.action === 'edit') {
+    const show = (v) => (Array.isArray(v) ? (v.length ? v.join(', ') : '(none)') : (v || '(empty)'));
+    return impact.fields.map((f) => `${FIELD_LABELS[f]}: ${show(row.edit[f].from)} -> ${show(row.edit[f].to)}`);
+  }
   if (row.action === 'delete' && impact.blockedBy.length) lines.push(`Apply is refused while these are part of it: ${names(impact.blockedBy)}`);
   if (row.action === 'rename' && impact.children.length) lines.push(`Part of follows the new name for: ${names(impact.children)}`);
   if (impact.mentionedBy.length) lines.push(`Definition or notes of ${names(impact.mentionedBy)} contain "${row.term}"; their wording is not changed`);
@@ -62,7 +66,7 @@ export function suggestLexicon({ dataDir = DATA_DIR, name, items }) {
   const failed = writeAtomic(suggestionsDir, file, composeSuggestions(next));
   if (failed) return { ok: false, errors: [failed] };
   const report = checked.rows.map((row) => ({
-    row, lines: impactLines(row, impactOf(lexicon.value, row.term, row.action, row.newName)),
+    row, lines: impactLines(row, impactOf(lexicon.value, row.term, row.action, row.newName, row.edit)),
   }));
   return { ok: true, file, added: checked.rows.length, count: next.rows.length, report };
 }

@@ -1,10 +1,10 @@
 // The only way the propose-stories skill changes a lexicon. Usage:
 //   node .claude/skills/propose-stories/write-lexicon.mjs <backlog file name>   (terms as JSON on stdin)
 // Reads user-stories/<name> (it must exist) and lexicons/<name>, applies the input and writes lexicons/<name>. The input
-// is a JSON list of { term, definition?, avoid?, notes?, partOf? }: a term that is not in the lexicon is ADDED (and needs a
-// definition), one that is there is PATCHED (only the keys given change; partOf "" and avoid [] clear). The rules are those
+// is a JSON list of { term, definition, avoid?, notes?, partOf? }: every item ADDS a term (and needs a definition); a term
+// that is already there is refused, because a change to it is a suggestion (suggest-lexicon.mjs). The rules are those
 // of the portal's Lexicon tab (core/lexicon.js), checked on the lexicon as it will be; one invalid item means nothing is
-// written. There is no output path argument: the target is fixed, user-stories/ is only checked, and no term is removed.
+// written. There is no output path argument: the target is fixed, user-stories/ is only checked, and no term is changed or removed.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -17,7 +17,7 @@ const require = createRequire(import.meta.url);
 const { validateName } = require('../../../core/file-name.cjs'); // same name rules as the file API
 const { DATA_DIR } = require('../../../core/paths.cjs');
 
-// Returns { ok: true, file, added, patched, count } or { ok: false, errors: [...] }. Writes nothing unless everything is valid.
+// Returns { ok: true, file, added, count } or { ok: false, errors: [...] }. Writes nothing unless everything is valid.
 export function writeLexicon({ dataDir = DATA_DIR, name, input }) {
   let file;
   try {
@@ -50,7 +50,7 @@ export function writeLexicon({ dataDir = DATA_DIR, name, input }) {
   fs.mkdirSync(lexiconDir, { recursive: true });
   const failed = writeAtomic(lexiconDir, file, composeLexicon(result.lexicon));
   if (failed) return { ok: false, errors: [failed] };
-  return { ok: true, file, added: result.added, patched: result.patched, count: result.lexicon.terms.length };
+  return { ok: true, file, added: result.added, count: result.lexicon.terms.length };
 }
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
@@ -65,9 +65,6 @@ if (isMain) {
     for (const e of result.errors) console.error(`- ${e}`);
     process.exit(1);
   }
-  const plural = (n) => `${n} term${n === 1 ? '' : 's'}`;
-  const done = [];
-  if (result.added.length) done.push(`Added ${plural(result.added.length)} to lexicons/${result.file} (${result.added.join(', ')})`);
-  if (result.patched.length) done.push(`${done.length ? 'patched' : 'Patched'} ${plural(result.patched.length)}${done.length ? '' : ` in lexicons/${result.file}`} (${result.patched.join(', ')})`);
-  console.log(`${done.length ? done.join('; ') : 'No change'}; ${result.count} in the lexicon now.`);
+  const n = result.added.length;
+  console.log(`${n ? `Added ${n} term${n === 1 ? '' : 's'} to lexicons/${result.file} (${result.added.join(', ')})` : 'No change'}; ${result.count} in the lexicon now.`);
 }

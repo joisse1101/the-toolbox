@@ -30,7 +30,7 @@ test('valid input creates lexicons/<name> and leaves the backlog byte-for-byte u
   const root = temp();
   const before = fs.readFileSync(path.join(root, 'user-stories', 'data.csv'));
   const result = run(root, [{ term: 'User', definition: 'A person with a login.', avoid: ['customer'] }]);
-  assert.deepEqual([result.ok, result.added, result.patched, result.count], [true, ['User'], [], 1]);
+  assert.deepEqual([result.ok, result.added, result.count], [true, ['User'], 1]);
   assert.deepEqual(load(root).terms.map((t) => [t.name, t.avoid]), [['User', ['customer']]]);
   assert.ok(fs.readFileSync(lexiconPath(root), 'utf8').startsWith('﻿Term,Part of,Definition,Avoid,Notes\r\n'));
   assert.deepEqual(fs.readFileSync(path.join(root, 'user-stories', 'data.csv')), before);
@@ -47,13 +47,23 @@ test('a parent and its child can be added in one run', () => {
   assert.deepEqual(load(root).terms.map((t) => [t.name, t.partOf]), [['Dataset', ''], ['Dataset attribute', 'Dataset']]);
 });
 
-test('a patch changes only the keys given and keeps unknown columns and other rows', () => {
+test('a term that exists is refused and the file is untouched', () => {
+  const root = temp();
+  const seeded = 'Term,Owner,Definition,Avoid\r\nUser,Ana,A person.,customer\r\nRole,Bo,Permissions.,\r\n';
+  seed(root, seeded);
+  const result = run(root, [{ term: 'user', definition: 'x', avoid: ['customer', 'member'] }]);
+  assert.equal(result.ok, false);
+  assert.match(result.errors[0], /^item 1: "user" is already a term: suggest a change to it with suggest_lexicon_change/);
+  assert.equal(fs.readFileSync(lexiconPath(root), 'utf8'), seeded);
+});
+
+test('adding a term keeps unknown columns and the other rows', () => {
   const root = temp();
   seed(root, 'Term,Owner,Definition,Avoid\r\nUser,Ana,A person.,customer\r\nRole,Bo,Permissions.,\r\n');
-  const result = run(root, [{ term: 'user', avoid: ['customer', 'member'] }]);
-  assert.deepEqual([result.ok, result.added, result.patched], [true, [], ['User']]);
+  const result = run(root, [{ term: 'Group', definition: 'Users together.' }]);
+  assert.deepEqual([result.ok, result.added], [true, ['Group']]);
   const text = fs.readFileSync(lexiconPath(root), 'utf8');
-  assert.equal(text, 'Term,Owner,Definition,Avoid,Part of,Notes\r\nUser,Ana,A person.,customer;member,,\r\nRole,Bo,Permissions.,,,\r\n');
+  assert.equal(text, 'Term,Owner,Definition,Avoid,Part of,Notes\r\nUser,Ana,A person.,customer,,\r\nRole,Bo,Permissions.,,,\r\nGroup,,Users together.,,,\r\n');
 });
 
 test('a term the lexicon rules refuse writes nothing and every problem is reported by item', () => {
@@ -108,8 +118,9 @@ test('the script reports what it did, and a refused run exits 1', () => {
   const ok = spawnSync('node', [SCRIPT, 'data.csv'], { input: '[{"term":"User","definition":"A person."}]', env, encoding: 'utf8' });
   assert.equal(ok.status, 0);
   assert.match(ok.stdout, /^Added 1 term to lexicons\/data\.csv \(User\); 1 in the lexicon now\./);
-  const patched = spawnSync('node', [SCRIPT, 'data.csv'], { input: '[{"term":"User","notes":"n"}]', env, encoding: 'utf8' });
-  assert.match(patched.stdout, /^Patched 1 term in lexicons\/data\.csv \(User\); 1 in the lexicon now\./);
+  const again = spawnSync('node', [SCRIPT, 'data.csv'], { input: '[{"term":"User","definition":"A person."}]', env, encoding: 'utf8' });
+  assert.equal(again.status, 1);
+  assert.match(again.stderr, /"User" is already a term/);
   const bad = spawnSync('node', [SCRIPT, 'data.csv'], { input: '[{"term":"X"}]', env, encoding: 'utf8' });
   assert.equal(bad.status, 1);
   assert.match(bad.stderr, /Nothing was written\. 1 problem:/);

@@ -79,10 +79,12 @@ test('the backlog edit example passes the review writer\'s validation, and the s
 
 test('the lexicon example passes the lexicon writer\'s validation, and the lexicon is written first', () => {
   const text = skill('propose-stories');
-  const lexicon = parseLexicon('Term,Definition,Avoid\r\nUser,A person with a login.,customer\r\n');
+  const lexicon = parseLexicon('Term,Definition,Avoid\r\nRole,A set of privileges.,\r\n');
   const r = applyTermItems(lexicon, examples()[3].items);
   assert.deepEqual(r.errors, undefined);
-  assert.deepEqual([r.added, r.patched], [['Dataset', 'Dataset attribute'], ['User']]);
+  assert.deepEqual(r.added, ['Dataset', 'Dataset attribute', 'User']);
+  const again = applyTermItems(r.lexicon, examples()[3].items);
+  assert.match(again.errors[0], /is already a term: suggest a change to it with suggest_lexicon_change/, 'the example adds only');
   assert.match(text, /`write_lexicon` with the backlog file name/);
   assert.match(text, /run the lexicon writer first/);
   assert.doesNotMatch(text.split('---')[1], /write_/, 'the skill does not pre-approve the writers, so Claude Code asks');
@@ -146,10 +148,11 @@ test('the story skills and /story:propose mention no shell, heredoc, script or g
 
 test('the lexicon suggestion example passes the tool validation and the skill orders the writers', () => {
   const text = skill('propose-stories');
-  const lexicon = parseLexicon('Term,Definition,Avoid\r\nRole,A set of privileges.,\r\nDataset,A table.,\r\n');
+  const lexicon = parseLexicon('Term,Definition,Avoid\r\nRole,A set of privileges.,\r\nDataset,A table.,\r\nUser,A person with a login.,customer;member\r\n');
   const r = validateItems(lexicon, emptySuggestions(), examples()[4].items);
   assert.deepEqual(r.errors, undefined);
-  assert.deepEqual(r.rows.map((x) => [x.action, x.avoid]), [['rename', ['Role', 'function']], ['delete', []]]);
+  assert.deepEqual(r.rows.map((x) => [x.action, x.avoid]), [['rename', ['Role', 'function']], ['delete', []], ['edit', []]]);
+  assert.deepEqual(r.rows[2].edit.avoid.to, ['customer', 'member', 'account holder']);
   assert.match(text, /run the lexicon writer first \(so the stories can use the terms\), then `suggest_lexicon_change`, then the proposal writer, then the review writer/);
   assert.match(text, /only a suggestion the user applies in the Lexicon tab/);
   assert.doesNotMatch(text, /tell the user to use the Lexicon tab/);

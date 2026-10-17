@@ -156,15 +156,14 @@ export function deleteTerm(lexicon, name) {
   return { ok: true, lexicon: { ...lexicon, terms: lexicon.terms.filter((t) => t !== term) } };
 }
 
-// The writer's input: a list of { term, definition?, avoid?, notes?, partOf? }. A term that exists is patched (only the
-// keys given change; partOf "" and avoid [] clear), any other is added and needs a definition. Everything is checked
-// on the lexicon as it will be, so a parent added earlier in the list is fine. Returns { ok, lexicon, added, patched }
-// or { ok: false, errors }, each error naming its item (1-based).
+// The writer's input: a list of { term, definition, avoid?, notes?, partOf? }. Every item adds a term and needs a
+// definition; a term that already exists is refused (a change to it is a suggestion, see core/lexicon-suggestions.js).
+// Everything is checked on the lexicon as it will be, so a parent added earlier in the list is fine. Returns
+// { ok, lexicon, added } or { ok: false, errors }, each error naming its item (1-based).
 export function applyTermItems(lexicon, items) {
   if (!Array.isArray(items)) return { ok: false, errors: ['The input must be a JSON list of terms'] };
   const errors = [];
   const added = [];
-  const patched = [];
   const touched = new Map(); // term key -> position of the last item that set it
   let terms = lexicon.terms.map((t) => ({ ...t, avoid: [...t.avoid], cells: [...t.cells] }));
   items.forEach((item, i) => {
@@ -177,18 +176,12 @@ export function applyTermItems(lexicon, items) {
     for (const k of ['definition', 'notes', 'partOf']) if (k in item && typeof item[k] !== 'string') problem(`"${k}" must be text`);
     if ('avoid' in item && !(Array.isArray(item.avoid) && item.avoid.every((w) => typeof w === 'string'))) problem('"avoid" must be a list of words');
     if (unknown.length || errors.some((e) => e.startsWith(`${at}:`))) return;
-    const existing = terms.find((t) => key(t.name) === key(item.term));
-    if (existing) {
-      if ('definition' in item) existing.definition = item.definition.trim();
-      if ('avoid' in item) existing.avoid = [...new Set(item.avoid.map((w) => w.trim()).filter(Boolean))];
-      if ('notes' in item) existing.notes = item.notes.trim();
-      if ('partOf' in item) existing.partOf = item.partOf.trim();
-      patched.push(existing.name);
-    } else {
-      if (!String(item.definition ?? '').trim()) return problem(`new term "${item.term.trim()}" needs a definition`);
-      terms.push(clean({ ...item, name: item.term }));
-      added.push(item.term.trim());
+    if (terms.some((t) => key(t.name) === key(item.term))) {
+      return problem(`"${item.term.trim()}" is already a term: suggest a change to it with suggest_lexicon_change (action "edit")`);
     }
+    if (!String(item.definition ?? '').trim()) return problem(`new term "${item.term.trim()}" needs a definition`);
+    terms.push(clean({ ...item, name: item.term }));
+    added.push(item.term.trim());
     touched.set(key(item.term), i + 1);
   });
   const result = { ...lexicon, terms };
@@ -196,5 +189,5 @@ export function applyTermItems(lexicon, items) {
     const n = touched.get(key(p.term));
     errors.push(n ? `item ${n}: ${p.message}` : p.message);
   }
-  return errors.length ? { ok: false, errors } : { ok: true, lexicon: result, added, patched };
+  return errors.length ? { ok: false, errors } : { ok: true, lexicon: result, added };
 }
