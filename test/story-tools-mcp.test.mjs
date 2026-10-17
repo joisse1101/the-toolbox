@@ -44,13 +44,13 @@ const story = (over = {}) => ({
   criteria: ['AC1: Given a, when b, then c'], ...over,
 });
 
-test('tool list: all four by default, read_context only with --read-only', async () => {
+test('tool list: all five by default, read_context only with --read-only', async () => {
   const root = temp();
   const full = await connect(root);
   const readOnly = await connect(root, ['--read-only']);
   try {
     const all = (await full.listTools()).tools;
-    assert.deepEqual(all.map((t) => t.name).sort(), ['read_context', 'write_lexicon', 'write_proposals', 'write_review']);
+    assert.deepEqual(all.map((t) => t.name).sort(), ['read_context', 'suggest_lexicon_change', 'write_lexicon', 'write_proposals', 'write_review']);
     assert.equal(all.find((t) => t.name === 'read_context').annotations.readOnlyHint, true);
     for (const t of all.filter((x) => x.name !== 'read_context')) assert.ok(!t.annotations?.readOnlyHint, `${t.name} is not read-only`);
     assert.deepEqual((await readOnly.listTools()).tools.map((t) => t.name), ['read_context']);
@@ -170,5 +170,58 @@ test('read_context without a backlog lists the backlogs', async () => {
     assert.equal(r.isError, true);
   } finally {
     await client.close();
+  }
+});
+
+const lexiconItem = (term, definition, extra = {}) => ({ term, definition, ...extra });
+
+test('suggest_lexicon_change appends open rows, keeps earlier ones, reports impact and leaves the lexicon alone', async () => {
+  const root = temp();
+  const client = await connect(root);
+  try {
+    await call(client, 'write_lexicon', {
+      backlog: 'data.csv', items: [lexiconItem('Role', 'A set of privileges'), lexiconItem('Data owner', 'Holds the role of owner'), lexiconItem('Dataset', 'A table')],
+    });
+    const lexiconBefore = fs.readFileSync(path.join(root, 'lexicons', 'data.csv'), 'utf8');
+    const first = await call(client, 'suggest_lexicon_change', {
+      backlog: 'data.csv', items: [{ term: 'Role', action: 'rename', newName: 'Privilege', reason: 'Clearer' }],
+    });
+    assert.ok(!first.isError, textOf(first));
+    assert.match(textOf(first), /Added 1 suggestion to lexicon-suggestions\/data.csv; 1 in the file now\./);
+    assert.match(textOf(first), /rename "Role" to "Privilege"/);
+    assert.match(textOf(first), /"Data owner" contain "Role"/);
+    assert.match(textOf(first), /Avoid words added to "Privilege": Role/);
+    const second = await call(client, 'suggest_lexicon_change', {
+      backlog: 'data.csv', items: [{ term: 'Dataset', action: 'delete', reason: 'Unused' }],
+    });
+    assert.match(textOf(second), /2 in the file now/);
+    const file = fs.readFileSync(path.join(root, 'lexicon-suggestions', 'data.csv'), 'utf8');
+    assert.match(file, /Role,rename,Privilege,Role,Clearer,open/);
+    assert.match(file, /Dataset,delete,,,Unused,open/);
+    assert.equal(fs.readFileSync(path.join(root, 'lexicons', 'data.csv'), 'utf8'), lexiconBefore);
+  } finally {
+    await client.close();
+  }
+});
+
+test('an invalid suggestion writes nothing, and the tool is absent with --read-only', async () => {
+  const root = temp();
+  const client = await connect(root);
+  const readOnly = await connect(root, ['--read-only']);
+  try {
+    const r = await call(client, 'suggest_lexicon_change', {
+      backlog: 'data.csv', items: [{ term: 'Nope', action: 'delete', reason: 'x' }],
+    });
+    assert.equal(r.isError, true);
+    assert.match(textOf(r), /Nothing was written\. 1 problem:\n- item 1: "Nope" is not a term/);
+    assert.ok(!fs.existsSync(path.join(root, 'lexicon-suggestions')));
+    const desc = (await client.listTools()).tools.find((t) => t.name === 'suggest_lexicon_change').description;
+    assert.match(desc, /user applies|USER applies/);
+    assert.match(desc, /refused on Apply while another term is part of it/);
+    assert.match(desc, /avoidOldName/);
+    assert.ok(!(await readOnly.listTools()).tools.some((t) => t.name === 'suggest_lexicon_change'));
+  } finally {
+    await client.close();
+    await readOnly.close();
   }
 });
