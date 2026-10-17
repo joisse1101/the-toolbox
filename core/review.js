@@ -113,6 +113,21 @@ function parseOneCriterion(text) {
   return r.ok && r.criteria.length === 1 ? r.criteria[0] : null;
 }
 
+const criterionBody = (c) => norm(`Given ${c.given}, when ${c.when}, then ${c.then}`);
+
+// The criterion a replace or remove row targets, found by the text the writer recorded in `current` (the label is
+// only a hint, since earlier removals renumber the criteria): the one named by the label if its text matches,
+// else the only criterion with that text. { pos } is 1-based; { why } says why there is no single match.
+export function locateCriterion(story, row) {
+  const wanted = norm(String(row.current ?? '').replace(AC_LABEL, ''));
+  const n = Number(AC_NUMBER.exec(row.suggested)?.[1]);
+  const named = story.criteria[n - 1];
+  if (named && criterionBody(named) === wanted) return { pos: n };
+  const hits = story.criteria.flatMap((c, i) => (criterionBody(c) === wanted ? [i + 1] : []));
+  if (hits.length === 1) return { pos: hits[0] };
+  return { why: hits.length ? `AC${n} matches ${hits.length} criteria with the same text` : `AC${n} was edited or removed since the review` };
+}
+
 const sameCriterion = (a, b) => norm(a.given) === norm(b.given) && norm(a.when) === norm(b.when) && norm(a.then) === norm(b.then);
 
 // ---------- validation (the write script runs this on the model's findings) ----------
@@ -298,20 +313,16 @@ function editState(row, stories) {
   if (row.field === 'User Acceptance Criteria') {
     if (story.rawCriteria !== null) return stale('the criteria are free text');
     if (row.action === 'remove') {
-      const n = Number(AC_NUMBER.exec(row.suggested)?.[1]);
-      const live = story.criteria[n - 1];
-      if (!live || norm(criterionText(live, n)) !== norm(row.current)) return stale(`AC${n} was edited or moved since the review`);
-      return { state: 'open' };
+      const found = locateCriterion(story, row);
+      return found.pos ? { state: 'open' } : stale(found.why);
     }
     const wanted = parseOneCriterion(row.suggested);
     if (!wanted) return stale('the suggested criterion is not valid');
     if (row.action === 'add') {
       return story.criteria.some((c) => sameCriterion(c, wanted)) ? stale('that criterion already exists') : { state: 'open' };
     }
-    const n = Number(AC_LABEL.exec(row.suggested)?.[1]);
-    const live = story.criteria[n - 1];
-    if (!live || norm(criterionText(live, n)) !== norm(row.current)) return stale(`AC${n} was edited since the review`);
-    return { state: 'open' };
+    const found = locateCriterion(story, row);
+    return found.pos ? { state: 'open' } : stale(found.why);
   }
   if (row.field === 'Clarifications') {
     if (story.rawClarifications !== null) return stale('the Clarifications are free text');
@@ -356,13 +367,14 @@ export function unitState(unit, stories) {
   return locked ? { state: 'locked' } : { state: 'open' };
 }
 
-// The criterion number (AC<n>) a unit's single replace or remove row names, or null for anything else
-// (an add, another field, a split group). The story form shows such a unit under that criterion.
-export function criterionNumberOf(unit) {
+// The position of the criterion a unit's single replace or remove row targets in the story, or null for anything
+// else (an add, another field, a split group, a criterion that cannot be found). The story form shows such a unit
+// under that criterion.
+export function criterionNumberOf(unit, story) {
   const row = unit.rows[0];
   if (unit.group || row.field !== 'User Acceptance Criteria' || (row.action !== 'replace' && row.action !== 'remove')) return null;
-  const n = Number(AC_NUMBER.exec(row.suggested)?.[1]);
-  return n >= 1 ? n : null;
+  if (story.rawCriteria !== null) return null;
+  return locateCriterion(story, row).pos ?? null;
 }
 
 function editExisting(story, row) {
@@ -380,14 +392,14 @@ function editExisting(story, row) {
       return { ...story, asA: us.asA, iWant: us.iWant, soThat: us.soThat, rawUserStory: null };
     }
     case 'User Acceptance Criteria': {
+      // Found by text; rows of one unit edited in sequence may no longer match, so fall back to the labelled slot.
+      const n = locateCriterion(story, row).pos ?? Number(AC_NUMBER.exec(v)[1]);
       if (row.action === 'remove') {
-        const n = Number(AC_NUMBER.exec(v)[1]);
         const left = story.criteria.filter((_, i) => i !== n - 1);
         return { ...story, criteria: left.length ? left : [emptyCriterion()] }; // a story always keeps one (blank) row
       }
       const c = parseOneCriterion(v);
       if (row.action === 'replace') {
-        const n = Number(AC_LABEL.exec(v)[1]);
         return { ...story, criteria: story.criteria.map((x, i) => (i === n - 1 ? { ...c } : x)) };
       }
       const base = hasBlankOnly(story.criteria) ? [] : story.criteria;

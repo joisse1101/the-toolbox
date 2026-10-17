@@ -500,11 +500,83 @@ test('clarification rows round trip through the review CSV and show in the Clari
   assert.deepEqual(o.sections.find((s) => s.area === 'Clarification').units.length, 1);
 });
 
-test('criterionNumberOf names the criterion of a replace or remove row only', () => {
-  const unit = (over, group = '') => ({ group, rows: [finding({ field: 'User Acceptance Criteria', suggested: 'AC2: Given a, when b, then c', ...over })] });
-  assert.equal(criterionNumberOf(unit({})), 2);
-  assert.equal(criterionNumberOf(unit({ action: 'remove', suggested: 'AC3' })), 3);
-  assert.equal(criterionNumberOf(unit({ action: 'add', suggested: 'AC4: Given a, when b, then c' })), null);
-  assert.equal(criterionNumberOf(unit({ field: 'Title', suggested: 'AC2: x' })), null);
-  assert.equal(criterionNumberOf(unit({}, 'split-1')), null);
+test('criterionNumberOf places a replace or remove row on the criterion its Current text names, only', () => {
+  const story = backlog().stories.find((s) => s.code === 'IAM-0001');
+  const unit = (over, group = '') => ({ group, rows: [finding({
+    field: 'User Acceptance Criteria', suggested: 'AC2: Given d, when e, then x', current: 'AC2: Given d, when e, then f', ...over,
+  })] });
+  assert.equal(criterionNumberOf(unit({}), story), 2);
+  assert.equal(criterionNumberOf(unit({ action: 'remove', suggested: 'AC1', current: 'AC1: Given a, when b, then c' }), story), 1);
+  assert.equal(criterionNumberOf(unit({ suggested: 'AC9: Given d, when e, then x' }), story), 2, 'a moved criterion is found by its text');
+  assert.equal(criterionNumberOf(unit({ current: 'AC2: Given d, when e, then gone' }), story), null);
+  assert.equal(criterionNumberOf(unit({ action: 'add', suggested: 'AC4: Given a, when b, then c' }), story), null);
+  assert.equal(criterionNumberOf(unit({ field: 'Title', suggested: 'AC2: x' }), story), null);
+  assert.equal(criterionNumberOf(unit({}, 'split-1'), story), null);
+});
+
+// ---- criteria are tracked by their text, not their position ----
+
+const criteriaCsv = (count) => {
+  const cells = Array.from({ length: count }, (_, i) => `AC${i + 1}: Given g${i + 1}, when w${i + 1}, then t${i + 1}`).join('\n');
+  return 'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes\r\n' +
+    `DAM-0001,Data Asset Management,Sets,Big,"As a user, I want data, so that I know",5,High,,"${cells}",\r\n`;
+};
+const acRow = (action, suggested) => finding({ storyId: 'DAM-0001', field: 'User Acceptance Criteria', action, suggested });
+const givens = (stories) => stories.find((s) => s.code === 'DAM-0001').criteria.map((c) => c.given);
+
+test('rows on one story can be applied one at a time after a removal', () => {
+  const b = loadBacklog(criteriaCsv(17));
+  const rows = fillCurrent([
+    acRow('remove', 'AC12'),
+    acRow('remove', 'AC15'),
+    acRow('replace', 'AC16: Given g16, when w16, then new'),
+    acRow('add', 'AC18: Given extra, when w, then t'),
+  ], b);
+  let stories = b.stories;
+  for (const row of rows) {
+    assert.equal(suggestionState(row, stories).state, 'open', `${row.action} ${row.suggested} stays current`);
+    const out = applySuggestions(stories, [row], b.headers);
+    assert.equal(out.error, undefined);
+    stories = out.stories;
+  }
+  const left = givens(stories);
+  assert.equal(left.length, 16);
+  assert.ok(!left.includes('g12') && !left.includes('g15'));
+  assert.equal(stories.find((s) => s.code === 'DAM-0001').criteria[left.indexOf('g16')].then, 'new');
+  assert.equal(left.at(-1), 'extra');
+});
+
+test('rows applied in any order give the same story', () => {
+  const b = loadBacklog(criteriaCsv(17));
+  const rows = fillCurrent([acRow('remove', 'AC12'), acRow('remove', 'AC15'), acRow('replace', 'AC16: Given g16, when w16, then new')], b);
+  const run = (order) => order.reduce((stories, i) => applySuggestions(stories, [rows[i]], b.headers).stories, b.stories);
+  assert.deepEqual(givens(run([0, 1, 2])), givens(run([2, 1, 0])));
+  assert.deepEqual(givens(run([1, 0, 2])), givens(run([0, 2, 1])));
+});
+
+test('a criterion deleted by hand moves the rows of the others instead of staling them', () => {
+  const b = loadBacklog(criteriaCsv(5));
+  const rows = fillCurrent([acRow('replace', 'AC5: Given g5, when w5, then new'), acRow('remove', 'AC4')], b);
+  const handDeleted = b.stories.map((s) => ({ ...s, criteria: s.criteria.filter((_, i) => i !== 1) }));
+  assert.equal(suggestionState(rows[0], handDeleted).state, 'open');
+  assert.equal(suggestionState(rows[1], handDeleted).state, 'open');
+  const out = applySuggestions(handDeleted, [rows[1]], b.headers);
+  assert.deepEqual(givens(out.stories), ['g1', 'g3', 'g5']);
+});
+
+test('a criterion edited by hand, or whose text appears twice away from its slot, is stale', () => {
+  const b = loadBacklog(criteriaCsv(4));
+  const [row] = fillCurrent([acRow('remove', 'AC3')], b);
+  const edit = (fn) => b.stories.map((s) => ({ ...s, criteria: fn(s.criteria) }));
+
+  const edited = edit((c) => c.map((x, i) => (i === 2 ? { ...x, then: 'changed' } : x)));
+  assert.match(suggestionState(row, edited).why, /edited or removed/);
+
+  const twice = edit((c) => [c[2], { ...c[2] }, c[0], c[1]]); // slot 3 now holds g1, g3 sits at slots 1 and 2
+  const dup = suggestionState(row, twice);
+  assert.equal(dup.state, 'stale');
+  assert.match(dup.why, /2 criteria/);
+
+  const nameSlot = edit((c) => [c[0], c[1], { ...c[2] }, { ...c[2] }]); // the named slot is one of the two matches
+  assert.equal(suggestionState(row, nameSlot).state, 'open');
 });

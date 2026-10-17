@@ -161,11 +161,8 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
   const list = (...fields) => listOf(forField(...fields));
   // A criterion's replace/remove suggestions sit under it; adds and ones naming a missing criterion stay below the list.
   const criteriaUnits = forField('User Acceptance Criteria');
-  const unitsForCriterion = (n) => criteriaUnits.filter((u) => criterionNumberOf(u) === n);
-  const unitsBelowCriteria = criteriaUnits.filter((u) => {
-    const n = criterionNumberOf(u);
-    return !n || n > s.criteria.length;
-  });
+  const unitsForCriterion = (n) => criteriaUnits.filter((u) => criterionNumberOf(u, s) === n);
+  const unitsBelowCriteria = criteriaUnits.filter((u) => !criterionNumberOf(u, s));
 
   // Suggestions come from the open backlog: Feature is narrowed by Epic. Title has none.
   const sameEpic = stories.filter((o) => o.epic === s.epic);
