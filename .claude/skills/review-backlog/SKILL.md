@@ -90,7 +90,7 @@ Build a JSON array, one object per row, with exactly these keys (no `current` an
 - `field`: Epic, Feature, Title, User Story, Sprint points, Depends On, User Acceptance Criteria, Notes, Clarifications (Priority is not accepted). Empty on an `unlock` row.
 - `action`: replace, add, remove, append, add-story, unlock.
 - `area`: Hierarchy, INVEST, Acceptance criteria, Clarification.
-- `confidence`: ready, confirm. `reason` is one sentence.
+- `confidence`: ready, confirm. `reason` is one sentence and never names a criterion by its AC number (the numbers change when another suggestion is applied); quote the criterion's wording instead.
 - An `unlock` row names a locked story and has an empty `field`, `suggested` and `group`.
 - `Sprint points` must be 1, 2, 3, 5, 8, 13, 21, 34 or 55.
 - Ignore Priority: do not review it, report it as missing, or suggest a value for it.

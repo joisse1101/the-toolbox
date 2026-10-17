@@ -138,7 +138,7 @@ A change to a story that is already in the backlog is written as a **review row*
 ```
 
 - `write_review` always appends: the suggestions the audit wrote stay. Write about 8-10 rows per call and run each call **once**.
-- Use `ready` for an edit the user stated and `confirm` for a value you proposed. `reason` is one sentence, usually what was agreed. `area` is the closest of Hierarchy, INVEST, Acceptance criteria and Clarification; do not invent another. An open question for a backlog story is an `append` row on `Clarifications`.
+- Use `ready` for an edit the user stated and `confirm` for a value you proposed. `reason` is one sentence, usually what was agreed, and never names a criterion by its AC number (the numbers change when another suggestion is applied); quote the criterion's wording instead. `area` is the closest of Hierarchy, INVEST, Acceptance criteria and Clarification; do not invent another. An open question for a backlog story is an `append` row on `Clarifications`.
 - **Never `add-story` rows and never a `group`.** A new story always goes to the proposals; to split a backlog story, narrow it with a `replace` row and propose the new stories through `write_proposals`.
 - Do not review the backlog: write only the edits the user agreed. Do not set a Priority; the writer refuses it. Suggest no more than the story already implies.
 - **Locked story** (`Locked` is `Yes` in the CSV): its edits cannot be applied until the user unlocks it. Write one `unlock` row for it (empty `field` and `suggested`, `reason` = why the change is needed) in the same call as its edit rows, and say so in the draft. Do not write edits for a locked story the user did not ask to change.
