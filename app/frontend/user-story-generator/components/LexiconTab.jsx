@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { childrenOf } from '../../../../core/lexicon.js';
-import { impactOf, isOpen, staleReason } from '../../../../core/lexicon-suggestions.js';
+import { FIELD_LABELS, impactOf, isOpen, staleReason } from '../../../../core/lexicon-suggestions.js';
+import { wordDiff } from '../../../../core/word-diff.js';
 
 const blankDraft = { name: '', partOf: '', definition: '', avoid: '', notes: '' };
 const toDraft = (t) => ({ name: t.name, partOf: t.partOf, definition: t.definition, avoid: t.avoid.join('; '), notes: t.notes });
@@ -166,7 +167,33 @@ function TermForm({ term, lexicon, error, onSave, onRemove, onCancel }) {
   );
 }
 
-// The open suggestions to rename or delete a term (written by propose-stories). Nothing changes until Apply, which follows the
+function suggestionTitle(row) {
+  if (row.action === 'rename') return `Rename "${row.term}" to "${row.newName}"`;
+  if (row.action === 'edit') return `Edit "${row.term}"`;
+  return `Delete "${row.term}"`;
+}
+
+// What an edit changes, one labelled line per field: the old value with removed words struck through and added words marked.
+function EditDiff({ edit }) {
+  const text = (v) => (Array.isArray(v) ? v.join('; ') : v);
+  return (
+    <dl className="lexicon-edit">
+      {Object.entries(edit).map(([field, { from, to }]) => (
+        <div key={field}>
+          <dt className="muted">{FIELD_LABELS[field]}</dt>
+          <dd>
+            {text(from) === text(to) ? text(to) : wordDiff(text(from), text(to)).map((p, i) => (
+              p.kind === 'added' ? <mark key={i}>{p.text}</mark> : p.kind === 'removed' ? <del key={i}>{p.text}</del> : <span key={i}>{p.text}</span>
+            ))}
+            {!text(to) && <span className="muted"> (cleared)</span>}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+// The open suggestions to rename, delete or edit a term (written by propose-stories). Nothing changes until Apply, which follows the
 // same rules as renaming or deleting by hand; a refusal is shown here and the suggestion stays open.
 function LexiconSuggestions({ lexicon, file, onApply, onDismiss }) {
   const open = file.rows.map((row, index) => ({ row, index })).filter(({ row }) => isOpen(row));
@@ -185,7 +212,7 @@ function LexiconSuggestion({ lexicon, row, onApply, onDismiss }) {
   const [checked, setChecked] = useState(() => new Set(row.avoid));
   const [refusal, setRefusal] = useState(null);
   const stale = staleReason(lexicon, row);
-  const impact = stale ? null : impactOf(lexicon, row.term, row.action, row.newName);
+  const impact = stale ? null : impactOf(lexicon, row.term, row.action, row.newName, row.edit);
   const names = (list) => list.map((n) => `"${n}"`).join(', ');
   const toggle = (word) => setChecked((c) => {
     const next = new Set(c);
@@ -200,9 +227,10 @@ function LexiconSuggestion({ lexicon, row, onApply, onDismiss }) {
   return (
     <div className={`suggestion${stale ? ' stale' : ''}`} role="group" aria-label={`Suggestion for ${row.term}`}>
       <div className="suggestion-head">
-        <span className="suggestion-kind">{row.action === 'rename' ? `Rename "${row.term}" to "${row.newName}"` : `Delete "${row.term}"`}</span>
+        <span className="suggestion-kind">{suggestionTitle(row)}</span>
       </div>
       <p className="suggestion-reason">{row.reason}</p>
+      {row.action === 'edit' && <EditDiff edit={row.edit} />}
       {stale && <p className="suggestion-why">Out of date: {stale}. It can only be dismissed.</p>}
       {impact && (
         <ul className="muted">

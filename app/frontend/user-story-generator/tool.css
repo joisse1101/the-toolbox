@@ -215,6 +215,11 @@ legend { font-weight: 600; padding: 0 6px; }
 .suggestion-value mark { background: color-mix(in srgb, var(--ok) 28%, transparent); color: inherit; border-radius: 2px; }
 .suggestion-value del { background: var(--bad-bg); color: var(--bad); }
 .suggestion-rows { margin: 6px 0 0; padding-left: 18px; }
+.lexicon-edit { margin: 6px 0 0; }
+.lexicon-edit dt { font-size: 12px; }
+.lexicon-edit dd { margin: 0 0 6px; white-space: pre-wrap; }
+.lexicon-edit mark { background: color-mix(in srgb, var(--ok) 28%, transparent); color: inherit; border-radius: 2px; }
+.lexicon-edit del { background: var(--bad-bg); color: var(--bad); }
 .suggestion-reason { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
 .suggestion-why { margin: 4px 0 0; font-size: 12px; color: var(--warn-text); }
 .suggestion-actions { display: flex; gap: 8px; margin-top: 8px; }
