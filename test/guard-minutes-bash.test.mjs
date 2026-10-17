@@ -10,6 +10,7 @@ test('the two documented forms are allowed', () => {
     `${W} "Sprint Planning" 2026-10-17 ${body}`,
     `${W} "Q&A (weekly), v2" 2026-10-17 <<'MINUTES'\r\n# Minutes\r\nMINUTES\r\n`,
     `${W} --replace sprint-planning_2026-10-17_1.md ${body}`,
+    `${W} --template`,
   ]) assert.equal(check(c), null, c);
 });
 
@@ -28,5 +29,8 @@ test('anything else is denied', () => {
     `${W} --replace ../x.md ${body}`,
     `${W} --replace x.md extra ${body}`,
     `${W} "Title" 2026-10-17 <<MINUTES\n# Minutes\nMINUTES`,
+    `${W} --template > data/x.md`,
+    `${W} --template && rm -rf data`,
+    `${W} --template\nrm -rf data`,
   ]) assert.notEqual(check(c), null, String(c));
 });

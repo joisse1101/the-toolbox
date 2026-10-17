@@ -6,7 +6,7 @@ allowed-tools: Bash(node .claude/skills/meeting-minutes/write-minutes.mjs:*)
 
 # Meeting minutes
 
-Turn pasted notes into minutes that follow `.claude/skills/meeting-minutes/template.md`. Read that file first and keep its headings, order and table columns; do not restate the layout from memory.
+Turn pasted notes into minutes that follow `.claude/skills/meeting-minutes/template.md`. Read that file first and keep its headings, order and table columns; do not restate the layout from memory. In a launcher session there is no file reader, so print it with `node .claude/skills/meeting-minutes/write-minutes.mjs --template` (read-only, no heredoc).
 
 ## Input
 
