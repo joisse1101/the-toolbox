@@ -161,3 +161,14 @@ test('write_review states the one-line AC rule in its error and its description'
     await client.close();
   }
 });
+
+test('read_context without a backlog lists the backlogs', async () => {
+  const client = await connect(temp());
+  try {
+    assert.match(textOf(await call(client, 'read_context', {})), /data\.csv/);
+    const r = await call(client, 'read_context', { section: 'index' });
+    assert.equal(r.isError, true);
+  } finally {
+    await client.close();
+  }
+});
