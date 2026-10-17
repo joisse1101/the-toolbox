@@ -6,7 +6,7 @@ allowed-tools: mcp__story-tools__read_context
 
 # Propose new stories
 
-Draft new stories with the user and, once they confirm, write them to `proposals/<backlog file name>`; the same way, change a proposed story that is already there, and suggest edits to stories that are already in the backlog; and add or change the backlog's agreed terms in its lexicon. **Never edit the backlog CSV or any other file.** You have four tools and no shell: `read_context` reads, and three writers each write one file: `write_proposals` (the proposals file), `write_review` (`reviews/<backlog file name>`, always appended) and `write_lexicon` (`lexicons/<backlog file name>`). Each tool's description lists its keys and rules; follow it, and let the tool's error text tell you what to fix. The proposal writer adds new stories and patches the fields you name on an existing proposed story; it never removes one, and it leaves every other row as the user edited it in the portal. The user reviews and accepts proposed stories into the backlog from the portal's Proposed tab, and applies or dismisses edit suggestions from the story form. Claude Code asks the user to allow each writer call, on top of your yes/no question.
+Draft new stories with the user and, once they confirm, write them to `proposals/<backlog file name>`; the same way, change a proposed story that is already there, and suggest edits to stories that are already in the backlog; and add or change the backlog's agreed terms in its lexicon. **Never edit the backlog CSV or any other file.** You have five tools and no shell: `read_context` reads, and four writers each write one file: `write_proposals` (the proposals file), `write_review` (`reviews/<backlog file name>`, always appended), `write_lexicon` (`lexicons/<backlog file name>`) and `suggest_lexicon_change` (`lexicon-suggestions/<backlog file name>`, appended; it never changes the lexicon). Each tool's description lists its keys and rules; follow it, and let the tool's error text tell you what to fix. The proposal writer adds new stories and patches the fields you name on an existing proposed story; it never removes one, and it leaves every other row as the user edited it in the portal. The user reviews and accepts proposed stories into the backlog from the portal's Proposed tab, and applies or dismisses edit suggestions from the story form. Claude Code asks the user to allow each writer call, on top of your yes/no question.
 
 ## Input
 
@@ -31,7 +31,7 @@ Draft new stories with the user and, once they confirm, write them to `proposals
 
 ## Confirm before writing
 
-1. Show everything in one reply, as **one complete final text**. For every new story, the complete draft: Epic, Feature, Title, User Story, Sprint points, Depends On, User Acceptance Criteria, Notes and Clarifications. For every patch, the story it changes (ID and Title) and each field that changes with its old value (from the proposals you just read) and its new value. For every edit to a backlog story, the story (ID and Title) and each field edit with its old value (from the story you just read), its new value and the reason; say that an edit is a suggestion the user applies in the editor, and for a locked story that it cannot be applied until the story is unlocked. For every lexicon change, the term, whether it is added or patched, and each field with its old value (from the lexicon you just read; none for a new term) and its new value; say that it is written straight into the lexicon. Never refer to an earlier draft ("as before", "unchanged from above"): a story or an edit the user changed is shown whole again.
+1. Show everything in one reply, as **one complete final text**. For every new story, the complete draft: Epic, Feature, Title, User Story, Sprint points, Depends On, User Acceptance Criteria, Notes and Clarifications. For every patch, the story it changes (ID and Title) and each field that changes with its old value (from the proposals you just read) and its new value. For every edit to a backlog story, the story (ID and Title) and each field edit with its old value (from the story you just read), its new value and the reason; say that an edit is a suggestion the user applies in the editor, and for a locked story that it cannot be applied until the story is unlocked. For every lexicon change, the term, whether it is added or patched, and each field with its old value (from the lexicon you just read; none for a new term) and its new value; say that it is written straight into the lexicon. For every suggested rename or delete of a term, the term, the action, the new name, the reason and its impact on the lexicon as it is now (children, definitions that use the name, Avoid lists); say that it is only a suggestion the user applies in the Lexicon tab. Never refer to an earlier draft ("as before", "unchanged from above"): a story or an edit the user changed is shown whole again.
 2. Ask one direct yes/no question that covers everything shown, for example "Write these to the proposals, the editor suggestions and the lexicon?", at the end of that reply, and **stop**. Do not call a writer in the same turn.
 3. Write only after the user answers yes in a separate message. An answer to a design question, or approval of the idea, is not a yes.
 4. If the user changes anything after the question (even a Title), show the changed drafts whole and ask again.
@@ -171,15 +171,35 @@ The lexicon is the backlog's list of agreed terms (`lexicons/<backlog file name>
 - Keys, exactly: `term`, `definition`, `avoid` (a list of words), `notes` and `partOf` (the name of another term, so "Dataset attribute" sits under "Dataset"). Any other key is rejected.
 - A `term` that is not in the lexicon (names compare ignoring case) is **added** and needs a `definition`; one that is there is **patched**: only the keys you give change (`avoid` is replaced as a whole, so send the whole list; `"partOf": ""` and `"avoid": []` clear). Prefer a patch to a second, similar term. Patching is safe to run again; adding is not needed twice.
 - A term is the full phrase stories use. A child term needs its parent: define the parent first in the same list, or use one the lexicon already has. An `avoid` word may not be the name of a defined term, a `partOf` must name a term and not make a cycle. The writer checks all of this on the lexicon as it will be, reports every problem by item position and writes nothing if any item is invalid.
-- Terms are never removed or renamed from here; to delete or reword beyond a patch, tell the user to use the Lexicon tab.
+- Terms are never removed or renamed by `write_lexicon`; see "Suggest renaming or deleting a term" below.
 - Keep definitions short and about meaning, not about one story. Do not define a word just because it appears once.
+
+### Suggest renaming or deleting a term
+
+To rename or delete a term, call `suggest_lexicon_change`. It does not change the lexicon: it adds an open suggestion that the user applies or dismisses in the Lexicon tab, and returns the impact of each one as the lexicon is now.
+
+```json
+{
+  "backlog": "data-portal.csv",
+  "items": [
+    { "term": "Role", "action": "rename", "newName": "Privilege", "reason": "Role clashes with job roles.", "avoid": ["function"] },
+    { "term": "Dataset", "action": "delete", "reason": "Replaced by Table." }
+  ]
+}
+```
+
+- Keys, exactly: `term` (an existing term), `action` (`rename` or `delete`), `newName` (a rename only, not a term yet), `avoid` (more words to add to Avoid, a rename only), `avoidOldName` (`false` to keep the old name out of Avoid) and `reason` (required).
+- A rename adds the old name to the term's Avoid list when the user applies it, so the old name can be an Avoid word although it still names the term today. Do not try to patch that Avoid word with `write_lexicon` first: it is refused.
+- A delete is refused on Apply while another term is part of it; say so in the draft when the impact lists children.
+- The impact lists definitions and notes that still use the old name. They are not rewritten: draft a `write_lexicon` patch for each one the user wants changed, and a story or review edit for wording in stories.
+- A suggestion changes nothing until the user applies it, so tell the user to apply it before accepting stories that use the new name. One open suggestion per term and action.
 
 ### Order of the writes
 
-When one confirmed outcome has several of these, run the lexicon writer first (so the stories can use the terms), then the proposal writer, then the review writer. Each call is validated and written on its own, so a later one can be rejected after an earlier one succeeded. Print the drafts of a part right before its call. Then report what was written, fix only the rejected part, show the changed part and ask again; **never run an earlier call again**, because new stories would be added twice.
+When one confirmed outcome has several of these, run the lexicon writer first (so the stories can use the terms), then `suggest_lexicon_change`, then the proposal writer, then the review writer. Each call is validated and written on its own, so a later one can be rejected after an earlier one succeeded. Print the drafts of a part right before its call. Then report what was written, fix only the rejected part, show the changed part and ask again; **never run an earlier call again**, because new stories would be added twice.
 
 ## Report
 
 After the last call, name the IDs the writer reported, added and patched (each against its numbered draft), and the file (`proposals/<backlog file name>`), and say the stories are on the portal's **Proposed** tab, where they can be edited and accepted into the backlog. Tell the user to check that tab, and not to edit it in the portal while a call is being written. Do not offer to put them in the backlog yourself.
 
-For edits, name each story and field written and the file (`reviews/<backlog file name>`), and say the suggestions are on those stories in the editor, where the user applies or dismisses each one (an edit to a locked story only after unlocking it). For lexicon changes, name each term added or patched and the file (`lexicons/<backlog file name>`), and say they are on the portal's **Lexicon** tab, where the user can edit or delete them. A later full `review-backlog` run replaces suggestions that are still open, so the user should apply the ones they want first.
+For edits, name each story and field written and the file (`reviews/<backlog file name>`), and say the suggestions are on those stories in the editor, where the user applies or dismisses each one (an edit to a locked story only after unlocking it). For lexicon changes, name each term added or patched and the file (`lexicons/<backlog file name>`), and say they are on the portal's **Lexicon** tab, where the user can edit or delete them. For suggested renames and deletes, name each one and the file (`lexicon-suggestions/<backlog file name>`) and say they are listed at the top of the **Lexicon** tab, where the user applies or dismisses each one. A later full `review-backlog` run replaces suggestions that are still open, so the user should apply the ones they want first.

@@ -7,12 +7,13 @@ import { buildProposals } from '../core/proposal-input.js';
 import { loadBacklog } from '../core/model.js';
 import { validateFindings } from '../core/review.js';
 import { applyTermItems, parseLexicon } from '../core/lexicon.js';
+import { emptySuggestions, validateItems } from '../core/lexicon-suggestions.js';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (...parts) => fs.readFileSync(path.join(REPO, ...parts), 'utf8').replace(/\r\n/g, '\n');
 const skill = (name) => read('.claude', 'skills', name, 'SKILL.md');
 // The tool-call examples in propose-stories/SKILL.md: json blocks of { backlog, items }, in file order
-// (new stories, a patch, a backlog edit, lexicon terms).
+// (new stories, a patch, a backlog edit, lexicon terms, lexicon suggestions).
 const examples = () => [...skill('propose-stories').matchAll(/```json\n([\s\S]*?)\n```/g)].map((m) => JSON.parse(m[1]));
 
 const HEAD = 'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes\r\n';
@@ -21,9 +22,9 @@ const BACKLOG =
   'IAM-0001,Identity & Access Management,Auth,Login,"As a user, I want to log in, so that I can access the portal",5,High,,"AC1: Given a, when b, then c",\r\n';
 const PROPOSALS = HEAD + 'NEW-3,Identity & Access Management,Auth,Earlier idea,,,,,,\r\n';
 
-test('the examples in propose-stories/SKILL.md are the four tool calls, each with a backlog and items', () => {
+test('the examples in propose-stories/SKILL.md are the five tool calls, each with a backlog and items', () => {
   const all = examples();
-  assert.equal(all.length, 4, 'one example of new stories, one of a patch, one of a backlog edit and one of lexicon terms');
+  assert.equal(all.length, 5, 'one example of new stories, one of a patch, one of a backlog edit, one of lexicon terms and one of lexicon suggestions');
   for (const call of all) {
     assert.equal(call.backlog, 'data-portal.csv');
     assert.ok(Array.isArray(call.items) && call.items.length);
@@ -141,4 +142,17 @@ test('the story skills and /story:propose mention no shell, heredoc, script or g
   for (const text of [skill('explore-stories'), skill('propose-stories'), read('.claude', 'commands', 'story', 'propose.md')]) {
     assert.doesNotMatch(text, /Bash|heredoc|<<'JSON'|read-story-context\.mjs|write-\w+\.mjs|guard/i);
   }
+});
+
+test('the lexicon suggestion example passes the tool validation and the skill orders the writers', () => {
+  const text = skill('propose-stories');
+  const lexicon = parseLexicon('Term,Definition,Avoid\r\nRole,A set of privileges.,\r\nDataset,A table.,\r\n');
+  const r = validateItems(lexicon, emptySuggestions(), examples()[4].items);
+  assert.deepEqual(r.errors, undefined);
+  assert.deepEqual(r.rows.map((x) => [x.action, x.avoid]), [['rename', ['Role', 'function']], ['delete', []]]);
+  assert.match(text, /run the lexicon writer first \(so the stories can use the terms\), then `suggest_lexicon_change`, then the proposal writer, then the review writer/);
+  assert.match(text, /only a suggestion the user applies in the Lexicon tab/);
+  assert.doesNotMatch(text, /tell the user to use the Lexicon tab/);
+  assert.doesNotMatch(text.split('---')[1], /suggest_lexicon_change/, 'the skill does not pre-approve the tool, so Claude Code asks');
+  assert.match(read('.claude', 'commands', 'story', 'propose.md'), /suggest_lexicon_change/);
 });
