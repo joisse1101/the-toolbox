@@ -30,5 +30,5 @@
 ## 6. Checks
 
 - [x] 6.1 `npm test` and `npm run build` pass
-- [ ] 6.2 By hand on a scratch `TLT_DATA_DIR`: suggest "Role" -> "Privilege", see impact, apply with "role" in Avoid, back up and compare
+- [x] 6.2 By hand on a scratch `TLT_DATA_DIR`: suggest "Role" -> "Privilege", see impact, apply with "role" in Avoid, back up and compare
 - [x] 6.3 `openspec validate lexicon-change-suggestions`
