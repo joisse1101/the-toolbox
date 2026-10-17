@@ -9,9 +9,9 @@
 # Starts in /explore-stories (discussion only) with both already filled in; when you are happy with the drafts, run
 # /propose-stories in the same session (it asks yes/no first), or /story:propose to write the drafts straight away. Both write
 # new stories to the proposals and changes to backlog stories as suggestions in the story editor.
-# Tools are limited to Bash (guarded: the reader, the proposal writer and the review writer with --append, see
-# propose-stories/locked-settings.json), Skill and AskUserQuestion.
-# The reader is pre-approved. The writers are not: Claude Code asks you before every write, on top of the skill's yes/no question.
+# Tools are limited to the story-tools MCP server (read_context, write_proposals, write_lexicon, write_review), Skill and
+# AskUserQuestion: no Bash. The reader is pre-approved. The writers are not: Claude Code asks you before every write, on top
+# of the skill's yes/no question (--permission-mode default keeps that prompt on, whatever mode your settings use).
 param(
   [string]$Backlog = '',
   [string]$Story = ''
@@ -22,8 +22,8 @@ $ErrorActionPreference = 'Stop'
 
 $root = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 Set-Location $root
-$explore = '.claude/skills/explore-stories'
 $propose = '.claude/skills/propose-stories'
+. (Join-Path $PSScriptRoot 'story-tools-config.ps1')
 $dataDir = if ($env:TLT_DATA_DIR) { $env:TLT_DATA_DIR } else { Join-Path $root 'data' }
 
 function Stop-Launcher([string]$Message) {
@@ -64,8 +64,16 @@ if ($Story -match '^NEW-\d+$') {
 $prompt = "/explore-stories $file $Story"
 if ($PSVersionTable.PSVersion.Major -lt 7) { $prompt = $prompt.Replace('"', '\"') }
 
-claude $prompt `
-  --tools "Bash,Skill,AskUserQuestion" `
-  --allowedTools "Bash(node $explore/read-story-context.mjs:*)" `
-  --strict-mcp-config `
-  --settings "$propose/locked-settings.json"
+$mcp = New-StoryToolsConfig $root
+
+try {
+  claude $prompt `
+    --tools "Skill,AskUserQuestion" `
+    --mcp-config $mcp `
+    --strict-mcp-config `
+    --allowedTools "mcp__story-tools__read_context" `
+    --permission-mode default `
+    --settings "$propose/locked-settings.json"
+} finally {
+  Remove-Item -LiteralPath $mcp -Force -ErrorAction SilentlyContinue
+}
