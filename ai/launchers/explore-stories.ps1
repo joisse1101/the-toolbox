@@ -22,5 +22,5 @@ try {
     --permission-mode default `
     --settings "$skill/locked-settings.json"
 } finally {
-  Remove-Item -LiteralPath $mcp -Force -ErrorAction SilentlyContinue
+  Remove-Item -LiteralPath $mcp, $env:TLT_MCP_READY_FILE -Force -ErrorAction SilentlyContinue
 }

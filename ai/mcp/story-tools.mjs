@@ -3,8 +3,10 @@
 //   node ai/mcp/story-tools.mjs --read-only  read_context only
 // The tools call the same exported functions as the CLI scripts (read-story-context.mjs, write-proposal.mjs, write-lexicon.mjs,
 // write-review.mjs), so the validation and the error text are the scripts'. stdout carries the protocol: log to stderr only.
+// With TLT_MCP_READY_FILE set it writes that file once the client has connected.
 // Permissions are not decided here: the launcher pre-approves read_context (--allowedTools), so Claude Code asks before a writer.
 
+import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -118,6 +120,9 @@ if (isMain) {
     console.error('Usage: node ai/mcp/story-tools.mjs [--read-only]');
     process.exit(2);
   }
-  await createServer({ readOnly: flags.includes('--read-only') }).connect(new StdioServerTransport());
+  const server = createServer({ readOnly: flags.includes('--read-only') });
+  // The launcher's hook (wait-for-story-tools.mjs) holds the first prompt until this file exists: the client has connected.
+  if (process.env.TLT_MCP_READY_FILE) server.server.oninitialized = () => fs.writeFileSync(process.env.TLT_MCP_READY_FILE, 'ready');
+  await server.connect(new StdioServerTransport());
   console.error('story-tools MCP server ready');
 }

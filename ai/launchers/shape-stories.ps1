@@ -75,5 +75,5 @@ try {
     --permission-mode default `
     --settings "$propose/locked-settings.json"
 } finally {
-  Remove-Item -LiteralPath $mcp -Force -ErrorAction SilentlyContinue
+  Remove-Item -LiteralPath $mcp, $env:TLT_MCP_READY_FILE -Force -ErrorAction SilentlyContinue
 }
