@@ -9,7 +9,11 @@ import { validateFindings } from '../core/review.js';
 import { applyTermItems, parseLexicon } from '../core/lexicon.js';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const skill = (name) => fs.readFileSync(path.join(REPO, '.claude', 'skills', name, 'SKILL.md'), 'utf8').replace(/\r\n/g, '\n');
+const read = (...parts) => fs.readFileSync(path.join(REPO, ...parts), 'utf8').replace(/\r\n/g, '\n');
+const skill = (name) => read('.claude', 'skills', name, 'SKILL.md');
+// The tool-call examples in propose-stories/SKILL.md: json blocks of { backlog, items }, in file order
+// (new stories, a patch, a backlog edit, lexicon terms).
+const examples = () => [...skill('propose-stories').matchAll(/```json\n([\s\S]*?)\n```/g)].map((m) => JSON.parse(m[1]));
 
 const HEAD = 'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes\r\n';
 const BACKLOG =
@@ -17,13 +21,18 @@ const BACKLOG =
   'IAM-0001,Identity & Access Management,Auth,Login,"As a user, I want to log in, so that I can access the portal",5,High,,"AC1: Given a, when b, then c",\r\n';
 const PROPOSALS = HEAD + 'NEW-3,Identity & Access Management,Auth,Earlier idea,,,,,,\r\n';
 
-test('the example in propose-stories/SKILL.md passes the writer\'s validation', () => {
-  const text = skill('propose-stories');
-  const m = /<<'JSON'\n([\s\S]*?)\nJSON\n```/.exec(text);
-  assert.ok(m, 'the example heredoc is in the file');
-  const input = JSON.parse(m[1]);
+test('the examples in propose-stories/SKILL.md are the four tool calls, each with a backlog and items', () => {
+  const all = examples();
+  assert.equal(all.length, 4, 'one example of new stories, one of a patch, one of a backlog edit and one of lexicon terms');
+  for (const call of all) {
+    assert.equal(call.backlog, 'data-portal.csv');
+    assert.ok(Array.isArray(call.items) && call.items.length);
+  }
+});
+
+test('the new-stories example passes the writer\'s validation', () => {
   const r = buildProposals({
-    input,
+    input: examples()[0].items,
     backlog: loadBacklog(BACKLOG),
     proposals: loadBacklog(PROPOSALS, { placeholderIds: true }),
   });
@@ -35,8 +44,8 @@ test('the example in propose-stories/SKILL.md passes the writer\'s validation', 
 
 test('explore-stories names no writer and neither skill copies the guidelines\' definitions', () => {
   const explore = skill('explore-stories');
-  assert.doesNotMatch(explore, /write-proposal/);
-  assert.match(explore.split('---')[1], /allowed-tools: Bash\(node \.claude\/skills\/explore-stories\/read-story-context\.mjs:\*\)\n$/);
+  assert.doesNotMatch(explore, /write_proposals/);
+  assert.match(explore.split('---')[1], /allowed-tools: mcp__story-tools__read_context\n$/);
   for (const text of [explore, skill('propose-stories')]) {
     assert.match(text, /guidelines\/product-backlog\.md/);
     assert.doesNotMatch(text, /INVEST (stands|means)|Independent, Negotiable/i);
@@ -45,10 +54,8 @@ test('explore-stories names no writer and neither skill copies the guidelines\' 
 
 const FULL = (code) => `${code},Identity & Access Management,Auth,Earlier idea,"As a user, I want x, so that y",3,,,"AC1: Given a, when b, then c",\r\n`;
 
-test('the patch example in propose-stories/SKILL.md passes the writer\'s validation', () => {
-  const all = [...skill('propose-stories').matchAll(/<<'JSON'\n([\s\S]*?)\nJSON\n```/g)];
-  assert.equal(all.length, 4, 'one example of new stories, one of a patch, one of a backlog edit and one of lexicon terms');
-  const input = JSON.parse(all[1][1]);
+test('the patch example passes the writer\'s validation', () => {
+  const input = examples()[1].items;
   assert.ok(input.every((item) => /^NEW-\d+$/.test(item.id)));
   const r = buildProposals({
     input,
@@ -59,29 +66,25 @@ test('the patch example in propose-stories/SKILL.md passes the writer\'s validat
   assert.deepEqual(r.patchedIds, input.map((i) => i.id));
 });
 
-test('the backlog edit example in propose-stories/SKILL.md passes the review writer\'s validation, and the skill uses --append only', () => {
+test('the backlog edit example passes the review writer\'s validation, and the skill only appends', () => {
   const text = skill('propose-stories');
-  const all = [...text.matchAll(/<<'JSON'\n([\s\S]*?)\nJSON\n```/g)];
-  const findings = JSON.parse(all[2][1]);
+  const findings = examples()[2].items;
   assert.deepEqual(validateFindings(findings, loadBacklog(BACKLOG)), []);
   assert.ok(findings.every((f) => f.action !== 'add-story' && !f.group), 'edits never create stories or groups');
-  assert.match(text, /write-review\.mjs data-portal\.csv --append <<'JSON'/);
-  assert.doesNotMatch(text, /write-review\.mjs [^\n]*?\.csv <<'JSON'/);
-  assert.match(text, /Always `--append`/);
-  assert.match(text, /never run an earlier command again/);
+  assert.match(text, /`write_review` always appends/);
+  assert.match(text, /never run an earlier call again/);
+  assert.doesNotMatch(text, /review-backlog\/SKILL\.md/, 'the row rules are in the tool description, not in a file the session cannot read');
 });
 
-test('the lexicon example in propose-stories/SKILL.md passes the lexicon writer\'s validation, and the lexicon is written first', () => {
+test('the lexicon example passes the lexicon writer\'s validation, and the lexicon is written first', () => {
   const text = skill('propose-stories');
-  const all = [...text.matchAll(/<<'JSON'\n([\s\S]*?)\nJSON\n```/g)];
-  const items = JSON.parse(all[3][1]);
   const lexicon = parseLexicon('Term,Definition,Avoid\r\nUser,A person with a login.,customer\r\n');
-  const r = applyTermItems(lexicon, items);
+  const r = applyTermItems(lexicon, examples()[3].items);
   assert.deepEqual(r.errors, undefined);
   assert.deepEqual([r.added, r.patched], [['Dataset', 'Dataset attribute'], ['User']]);
-  assert.match(text, /write-lexicon\.mjs data-portal\.csv <<'JSON'/);
+  assert.match(text, /`write_lexicon` with the backlog file name/);
   assert.match(text, /run the lexicon writer first/);
-  assert.match(text.split('---')[1], /allowed-tools:.*write-lexicon\.mjs/);
+  assert.doesNotMatch(text.split('---')[1], /write_/, 'the skill does not pre-approve the writers, so Claude Code asks');
 });
 
 test('both skills use the lexicon terms and flag gaps, and explore cannot write them', () => {
@@ -91,18 +94,17 @@ test('both skills use the lexicon terms and flag gaps, and explore cannot write 
     assert.match(text, /`Avoid` column/, name);
     assert.match(text, /full name/, name);
   }
-  assert.doesNotMatch(skill('explore-stories'), /write-lexicon/);
+  assert.doesNotMatch(skill('explore-stories'), /write_lexicon/);
   assert.match(skill('explore-stories'), /Lexicon terms change only through `propose-stories`/);
 });
 
 test('propose-stories says to re-read first, to show old and new values, to prefer a patch and to size by the guideline', () => {
   const text = skill('propose-stories');
   assert.match(text, /At the start of every use, \*\*even if `explore-stories` already read the context/);
-  for (const section of ['guidelines', 'index', 'proposals', 'lexicon']) assert.match(text, new RegExp(`--section ${section}`), section);
+  for (const section of ['guidelines', 'index', 'proposals', 'lexicon']) assert.match(text, new RegExp(`\`${section}\``), section);
   assert.match(text, /old value/);
   assert.match(text, /Prefer a patch to a second story/);
   assert.match(text, /sprint-points-guideline\.md/);
-  assert.doesNotMatch(text, /The writer only adds/);
   assert.match(text, /added and patched/);
 });
 
@@ -120,4 +122,23 @@ test('explore-stories asks only for what is missing and opens a proposed story o
   assert.match(text, /Ask neither question/);
   assert.match(text, /start by showing it as it is now.*"What should change\?"/);
   assert.doesNotMatch(text, /decided first/);
+});
+
+test('the skills carry the process rules: shape question, term check, numbering, one complete text', () => {
+  const explore = skill('explore-stories');
+  const propose = skill('propose-stories');
+  assert.match(explore, /Ask the shape-deciding question first/);
+  assert.match(explore, /Check terms early/);
+  assert.match(propose, /Check terms before drafting/);
+  assert.match(propose, /Number the new stories in the order they will be written/);
+  assert.match(propose, /one complete final text/);
+  assert.match(propose, /Never refer to an earlier draft \("as before"/);
+  assert.match(propose, /Print the drafts again, in the same turn and right before the call/);
+  assert.match(propose, /split it by writer/);
+});
+
+test('the story skills and /story:propose mention no shell, heredoc, script or guard', () => {
+  for (const text of [skill('explore-stories'), skill('propose-stories'), read('.claude', 'commands', 'story', 'propose.md')]) {
+    assert.doesNotMatch(text, /Bash|heredoc|<<'JSON'|read-story-context\.mjs|write-\w+\.mjs|guard/i);
+  }
 });
