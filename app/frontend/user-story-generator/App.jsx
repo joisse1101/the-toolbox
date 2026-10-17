@@ -5,6 +5,7 @@ import { useBacklog } from './hooks/useBacklog.js';
 import { useReview } from './hooks/useReview.js';
 import { useProposals } from './hooks/useProposals.js';
 import { useLexicon } from './hooks/useLexicon.js';
+import { useLexiconSuggestions } from './hooks/useLexiconSuggestions.js';
 import { backup } from '../shared/files.js';
 import { acceptProposed, moveToProposed as moveStoryToProposed } from '../../../core/proposals.js';
 import FileBar from './components/FileBar.jsx';
@@ -15,6 +16,7 @@ import StoriesTab from './components/StoriesTab.jsx';
 import GraphTab from './components/GraphTab.jsx';
 import ReviewTab from './components/ReviewTab.jsx';
 import ProposedTab from './components/ProposedTab.jsx';
+import { openRows } from '../../../core/lexicon-suggestions.js';
 import LexiconTab from './components/LexiconTab.jsx';
 import BackupsTab from './components/BackupsTab.jsx';
 
@@ -82,7 +84,10 @@ export default function App() {
   // The lexicon of the open backlog (lexicons/<same name>.md); the tab is always there, the file may not be.
   const lexicon = useLexicon(current);
   const refreshLexicon = lexicon.actions.refreshFromDisk;
+  const lexiconSuggestions = useLexiconSuggestions(current);
+  const reloadLexiconSuggestions = lexiconSuggestions.reload;
   useEffect(() => setProposedNotice(null), [current]);
+  const openSuggestions = openRows(lexiconSuggestions.file).length;
 
   // Move proposed stories into the backlog. Nothing changes when acceptProposed refuses. The backlog is replaced
   // first and the proposals second, so a crash between the two saves leaves a duplicate rather than a lost story.
@@ -114,7 +119,7 @@ export default function App() {
 
   // Backup: wait until backlog, proposals and review are on disk, so the copy matches the screen.
   const settleAll = async () => {
-    const saved = await Promise.all([actions.settle(), proposals.actions.settle(), review.settle(), lexicon.actions.settle()]);
+    const saved = await Promise.all([actions.settle(), proposals.actions.settle(), review.settle(), lexicon.actions.settle(), lexiconSuggestions.settle()]);
     return saved.every(Boolean);
   };
   const [backupNote, setBackupNote] = useState(null);
@@ -150,7 +155,8 @@ export default function App() {
     reload();
     refreshProposals();
     refreshLexicon();
-  }, [actions, reload, refreshProposals, refreshLexicon]);
+    reloadLexiconSuggestions();
+  }, [actions, reload, refreshProposals, refreshLexicon, reloadLexiconSuggestions]);
 
   useEffect(() => {
     actions.init();
@@ -255,7 +261,7 @@ export default function App() {
             {`Proposed (${proposals.stories.length})`}
           </button>
           <button type="button" role="tab" id="tabLexicon" className="tab" aria-controls="lexiconView" aria-selected={view === 'lexicon'} onClick={() => actions.setView('lexicon')}>
-            {`Lexicon (${lexicon.lexicon.terms.length})`}
+            {`Lexicon (${lexicon.lexicon.terms.length}${openSuggestions ? `, ${openSuggestions} suggested` : ''})`}
           </button>
           <button type="button" role="tab" id="tabBackups" className="tab" aria-controls="backupsView" aria-selected={view === 'backups'} onClick={() => actions.setView('backups')}>Backups</button>
           {review.exists && (
@@ -290,6 +296,13 @@ export default function App() {
 
         <LexiconTab
           hidden={!current || view !== 'lexicon'} lexicon={lexicon.lexicon} selected={lexicon.selected} error={lexicon.state.error} message={lexicon.message}
+          suggestions={lexiconSuggestions.file} suggestionsMessage={lexiconSuggestions.message}
+          onApplySuggestion={(index, row, avoid) => {
+            const result = lexicon.actions.apply(row, avoid);
+            if (result.ok) lexiconSuggestions.decide(index, 'applied');
+            return result;
+          }}
+          onDismissSuggestion={(index) => lexiconSuggestions.decide(index, 'dismissed')}
           onSelect={lexicon.actions.select} onSave={lexicon.actions.save} onRemove={lexicon.actions.remove} onClearError={lexicon.actions.clearError}
         />
 

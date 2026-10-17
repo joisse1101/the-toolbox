@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { createFileStore } from '../../shared/files.js';
 import { composeLexicon, deleteTerm, emptyLexicon, findTerm, parseLexicon, saveTerm } from '../../../../core/lexicon.js';
+import { applySuggestion } from '../../../../core/lexicon-suggestions.js';
 import { useAutosave } from './useAutosave.js';
 
 const lexiconStore = createFileStore('lexicons');
@@ -56,6 +57,13 @@ export function reducer(state, action) {
       if (!result.ok) return { ...state, error: result.errors };
       const at = state.backlog.terms.findIndex((t) => t.name === action.name);
       const next = result.lexicon.terms[Math.min(at, result.lexicon.terms.length - 1)]?.name ?? null;
+      return { ...state, backlog: result.lexicon, selected: next, error: null, edits: state.edits + 1 };
+    }
+    // Applies a lexicon suggestion (a rename with its Avoid words in one save, or a delete). A refusal keeps the lexicon.
+    case 'apply': {
+      const result = applySuggestion(state.backlog, action.row, { avoid: action.avoid });
+      if (!result.ok) return state;
+      const next = action.row.action === 'rename' ? action.row.newName : result.lexicon.terms[0]?.name ?? null;
       return { ...state, backlog: result.lexicon, selected: next, error: null, edits: state.edits + 1 };
     }
     default:
@@ -143,6 +151,12 @@ export function useLexicon(current) {
       save(term, replaces = null) {
         const result = saveTerm(stateRef.current.backlog, term, { replaces });
         dispatch({ type: 'save', term, replaces });
+        return result;
+      },
+      // Returns { ok, errors }; nothing changes unless ok.
+      apply(row, avoid) {
+        const result = applySuggestion(stateRef.current.backlog, row, { avoid });
+        if (result.ok) dispatch({ type: 'apply', row, avoid });
         return result;
       },
       remove(name) {

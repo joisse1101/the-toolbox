@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { childrenOf } from '../../../../core/lexicon.js';
+import { impactOf, isOpen, staleReason } from '../../../../core/lexicon-suggestions.js';
 
 const blankDraft = { name: '', partOf: '', definition: '', avoid: '', notes: '' };
 const toDraft = (t) => ({ name: t.name, partOf: t.partOf, definition: t.definition, avoid: t.avoid.join('; '), notes: t.notes });
@@ -28,7 +29,7 @@ const matches = (t, q) => [t.name, t.definition, t.notes, ...t.avoid].some((text
 // The Lexicon tab: the defined terms of the open backlog. A term's fields are saved when a field is left; a change a rule
 // refuses (`error`, a list of messages) is shown and the term on screen stays as typed until it is fixed or discarded.
 // `onSave(term, replaces)` and `onRemove(name)` return { ok }.
-export default function LexiconTab({ hidden, lexicon, selected, error, message, onSelect, onSave, onRemove, onClearError }) {
+export default function LexiconTab({ hidden, lexicon, selected, error, message, suggestions, suggestionsMessage, onApplySuggestion, onDismissSuggestion, onSelect, onSave, onRemove, onClearError }) {
   const [query, setQuery] = useState('');
   const [adding, setAdding] = useState(false);
   const q = query.trim().toLowerCase();
@@ -69,6 +70,8 @@ export default function LexiconTab({ hidden, lexicon, selected, error, message, 
           </div>
           <div>
             {message && <p className="warning" role="status">{message}</p>}
+            {suggestionsMessage && <p className="warning" role="status">{suggestionsMessage}</p>}
+            <LexiconSuggestions lexicon={lexicon} file={suggestions} onApply={onApplySuggestion} onDismiss={onDismissSuggestion} />
             {adding && (
               <TermForm
                 key="new" term={null} lexicon={lexicon} error={error}
@@ -160,5 +163,70 @@ function TermForm({ term, lexicon, error, onSave, onRemove, onCancel }) {
         )}
       </div>
     </form>
+  );
+}
+
+// The open suggestions to rename or delete a term (written by propose-stories). Nothing changes until Apply, which follows the
+// same rules as renaming or deleting by hand; a refusal is shown here and the suggestion stays open.
+function LexiconSuggestions({ lexicon, file, onApply, onDismiss }) {
+  const open = file.rows.map((row, index) => ({ row, index })).filter(({ row }) => isOpen(row));
+  if (!open.length) return null;
+  return (
+    <div className="card" id="lexiconSuggestions">
+      <h2>{`Suggested changes (${open.length})`}</h2>
+      {open.map(({ row, index }) => (
+        <LexiconSuggestion key={index} lexicon={lexicon} row={row} onApply={(avoid) => onApply(index, row, avoid)} onDismiss={() => onDismiss(index)} />
+      ))}
+    </div>
+  );
+}
+
+function LexiconSuggestion({ lexicon, row, onApply, onDismiss }) {
+  const [checked, setChecked] = useState(() => new Set(row.avoid));
+  const [refusal, setRefusal] = useState(null);
+  const stale = staleReason(lexicon, row);
+  const impact = stale ? null : impactOf(lexicon, row.term, row.action, row.newName);
+  const names = (list) => list.map((n) => `"${n}"`).join(', ');
+  const toggle = (word) => setChecked((c) => {
+    const next = new Set(c);
+    if (next.has(word)) next.delete(word);
+    else next.add(word);
+    return next;
+  });
+  const apply = () => {
+    const result = onApply(row.avoid.filter((w) => checked.has(w)));
+    setRefusal(result.ok ? null : result.errors);
+  };
+  return (
+    <div className={`suggestion${stale ? ' stale' : ''}`} role="group" aria-label={`Suggestion for ${row.term}`}>
+      <div className="suggestion-head">
+        <span className="suggestion-kind">{row.action === 'rename' ? `Rename "${row.term}" to "${row.newName}"` : `Delete "${row.term}"`}</span>
+      </div>
+      <p className="suggestion-reason">{row.reason}</p>
+      {stale && <p className="suggestion-why">Out of date: {stale}. It can only be dismissed.</p>}
+      {impact && (
+        <ul className="muted">
+          {impact.blockedBy?.length > 0 && <li>Cannot be applied while {names(impact.blockedBy)} {impact.blockedBy.length === 1 ? 'is' : 'are'} part of it.</li>}
+          {row.action === 'rename' && impact.children.length > 0 && <li>Part of follows the new name for {names(impact.children)}.</li>}
+          {impact.mentionedBy.length > 0 && <li>The wording of {names(impact.mentionedBy)} contains "{row.term}"; it is not changed.</li>}
+          {impact.avoidedBy.length > 0 && <li>The Avoid list of {names(impact.avoidedBy)} contains a name involved.</li>}
+        </ul>
+      )}
+      {!stale && row.action === 'rename' && row.avoid.length > 0 && (
+        <fieldset>
+          <legend className="muted">Add to Avoid</legend>
+          {row.avoid.map((word) => (
+            <label key={word} style={{ display: 'inline-block', marginRight: 12 }}>
+              <input type="checkbox" checked={checked.has(word)} onChange={() => toggle(word)} /> {word}
+            </label>
+          ))}
+        </fieldset>
+      )}
+      {refusal && <div className="error" role="alert">{refusal.map((m) => <div key={m}>{m}</div>)}</div>}
+      <div className="suggestion-actions">
+        <button type="button" className="primary" disabled={Boolean(stale)} onClick={apply}>Apply</button>
+        <button type="button" onClick={onDismiss}>Dismiss</button>
+      </div>
+    </div>
   );
 }
