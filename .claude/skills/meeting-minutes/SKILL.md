@@ -26,9 +26,9 @@ Turn pasted notes into minutes that follow `.claude/skills/meeting-minutes/templ
 ## Show, then save
 
 1. Show the complete minutes in the reply, and list any relative dates you resolved and the fields left as `[TBC]`. Ask whether to save them or change something. Save nothing yet.
-2. When the user confirms, save through the writer, with the minutes on stdin (a heredoc):
+2. When the user confirms, save through the writer, with the minutes on stdin as a quoted heredoc that ends with a line of exactly `MINUTES` and nothing after it (the launcher's guard allows no other form; the title is plain words, no `$`, backticks, quotes or backslashes):
 
-   `node .claude/skills/meeting-minutes/write-minutes.mjs "<title>" <YYYY-MM-DD>`
+   `node .claude/skills/meeting-minutes/write-minutes.mjs "<title>" <YYYY-MM-DD> <<'MINUTES'`
 
    It writes `data/meetings/<title>_<date>.md`, adds `_1`, `_2`, ... when that name is taken, and prints the name it used. Report that name. Do not write the file any other way: `data/` is not readable or editable by the other tools.
 3. If the writer refuses (bad title or date, empty input), fix the cause and run it again; if it writes nothing, say so.
@@ -37,6 +37,6 @@ Turn pasted notes into minutes that follow `.claude/skills/meeting-minutes/templ
 
 If the user says the notes refine minutes already saved ("add this to the same meeting", "update the minutes"), do not create a new file. Rebuild the full minutes from the earlier minutes plus the new notes, show them, and after confirmation run
 
-`node .claude/skills/meeting-minutes/write-minutes.mjs --replace <file name>`
+`node .claude/skills/meeting-minutes/write-minutes.mjs --replace <file name> <<'MINUTES'`
 
-with the file name the writer printed earlier in this session, or the one the user names. If neither is known, ask which file. The skill cannot read `data/`, so for minutes from an earlier session ask the user to paste them. State the file you replaced. If the user does not say it is a refinement, it is a new file, even for the same title and date.
+(same heredoc) with the file name the writer printed earlier in this session, or the one the user names. If neither is known, ask which file. The skill cannot read `data/`, so for minutes from an earlier session ask the user to paste them. State the file you replaced. If the user does not say it is a refinement, it is a new file, even for the same title and date.

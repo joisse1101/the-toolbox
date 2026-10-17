@@ -1,0 +1,11 @@
+{
+  "claudeMdExcludes": ["**/CLAUDE.md", "**/.claude/rules/**"],
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [{ "type": "command", "command": "node .claude/skills/meeting-minutes/guard-bash.mjs" }]
+      }
+    ]
+  }
+}
