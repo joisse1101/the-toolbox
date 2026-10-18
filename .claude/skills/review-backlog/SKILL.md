@@ -122,12 +122,12 @@ Output the report as text in the reply, in this order:
 
 1. **Summary**: backlog name, number of stories submitted for review and number locked, Epics and Features, and the count of findings per area (Hierarchy, INVEST, Acceptance criteria).
 2. **Findings** grouped under those three headings, most important first. Each finding gives:
-   - where: the story ID and Title (or the Epic or Feature it concerns),
+   - where: the story by its Title (add its Epic and Feature when another story has the same Title, and its ID only in parentheses after the Title), or the Epic or Feature it concerns,
    - what is wrong, in one sentence,
    - **Suggested fix**, concrete enough to apply (for example the reworded Title, the split stories, or the criterion to add).
 3. For an area with no findings, say so plainly ("Acceptance criteria: nothing found").
-4. **Suggestions to unlock**, after the areas, only when you wrote `unlock` rows: each locked story's ID and Title and the reason, ending with "unlock it and run the review again to review it".
+4. **Suggestions to unlock**, after the areas, only when you wrote `unlock` rows: each locked story by Title and the reason, ending with "unlock it and run the review again to review it".
 
-Keep it specific to this backlog. Do not pad with generic Agile advice, and do not repeat the same finding for every story: group identical problems ("7 stories have no failure-path criterion: IAM-0001, ...").
+Keep it specific to this backlog. Do not pad with generic Agile advice, and do not repeat the same finding for every story: group identical problems ("7 stories have no failure-path criterion: "Log in with a password", ..."), naming each story by Title.
 
 Name the review file (`reviews/<backlog file name>`) and say its suggestions can be applied or dismissed from the story form in the portal. End by offering to explain any finding. Do not offer to apply the fixes yourself; the user applies them in the portal.

@@ -21,10 +21,10 @@
 
 ## 5. Skills and command text
 
-- [ ] 5.1 `propose-stories/SKILL.md`: name stories by Title in drafts, patches, edits, dependencies and the report; add the relocation rule once; show examples with `storyTitle` and `{id, title}`; verify `test/propose-skill.test.mjs` (update its expectations) passes
-- [ ] 5.2 `explore-stories/SKILL.md` and `read-story-context.mjs` usage text: Titles in prose, match a loosely named story against the `index`, ask when several fit
-- [ ] 5.3 `review-backlog/SKILL.md`: report and unlock list by Title, row examples with `storyTitle`; keep `guard-bash.mjs` rules (verify its test passes)
-- [ ] 5.4 `.claude/commands/story/propose.md`: call `read_context` with `storyId` and `storyTitle`; cite the relocation rule
+- [x] 5.1 `propose-stories/SKILL.md`: name stories by Title in drafts, patches, edits, dependencies and the report; add the relocation rule once; show examples with `storyTitle` and `{id, title}`; verify `test/propose-skill.test.mjs` (update its expectations) passes
+- [x] 5.2 `explore-stories/SKILL.md` and `read-story-context.mjs` usage text: Titles in prose, match a loosely named story against the `index`, ask when several fit
+- [x] 5.3 `review-backlog/SKILL.md`: report and unlock list by Title, row examples with `storyTitle`; keep `guard-bash.mjs` rules (verify its test passes)
+- [x] 5.4 `.claude/commands/story/propose.md`: call `read_context` with `storyId` and `storyTitle`; cite the relocation rule
 
 ## 6. Docs and close-out
 

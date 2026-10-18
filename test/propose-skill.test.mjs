@@ -19,8 +19,8 @@ const examples = () => [...skill('propose-stories').matchAll(/```json\n([\s\S]*?
 const HEAD = 'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes\r\n';
 const BACKLOG =
   HEAD +
-  'IAM-0001,Identity & Access Management,Auth,Login,"As a user, I want to log in, so that I can access the portal",5,High,,"AC1: Given a, when b, then c",\r\n';
-const PROPOSALS = HEAD + 'NEW-3,Identity & Access Management,Auth,Earlier idea,,,,,,\r\n';
+  'IAM-0001,Identity & Access Management,Auth,Log in with a password,"As a user, I want to log in, so that I can access the portal",5,High,,"AC1: Given a, when b, then c",\r\n';
+const PROPOSALS = HEAD + 'NEW-3,Identity & Access Management,Auth,Send a welcome email,,,,,,\r\n';
 
 test('the examples in propose-stories/SKILL.md are the five tool calls, each with a backlog and items', () => {
   const all = examples();
@@ -36,6 +36,7 @@ test('the new-stories example passes the writer\'s validation', () => {
     input: examples()[0].items,
     backlog: loadBacklog(BACKLOG),
     proposals: loadBacklog(PROPOSALS, { placeholderIds: true }),
+    requireTitles: true,
   });
   assert.deepEqual(r.errors, undefined);
   assert.equal(r.ok, true);
@@ -84,7 +85,7 @@ test('the propose skill and command check before asking, read every write back a
   assert.doesNotMatch(command, /run each call once/);
 });
 
-const FULL = (code) => `${code},Identity & Access Management,Auth,Earlier idea,"As a user, I want x, so that y",3,,,"AC1: Given a, when b, then c",\r\n`;
+const FULL = (code, title) => `${code},Identity & Access Management,Auth,${title},"As a user, I want x, so that y",3,,,"AC1: Given a, when b, then c",\r\n`;
 
 test('the patch example passes the writer\'s validation', () => {
   const input = examples()[1].items;
@@ -92,7 +93,8 @@ test('the patch example passes the writer\'s validation', () => {
   const r = buildProposals({
     input,
     backlog: loadBacklog(BACKLOG),
-    proposals: loadBacklog(HEAD + input.map((i) => FULL(i.id)).join(''), { placeholderIds: true }),
+    proposals: loadBacklog(HEAD + input.map((i) => FULL(i.id, i.storyTitle)).join(''), { placeholderIds: true }),
+    requireTitles: true,
   });
   assert.deepEqual(r.errors, undefined);
   assert.deepEqual(r.patchedIds, input.map((i) => i.id));
@@ -101,7 +103,7 @@ test('the patch example passes the writer\'s validation', () => {
 test('the backlog edit example passes the review writer\'s validation, and the skill only appends', () => {
   const text = skill('propose-stories');
   const findings = examples()[2].items;
-  assert.deepEqual(validateFindings(findings, loadBacklog(BACKLOG)), []);
+  assert.deepEqual(validateFindings(findings, loadBacklog(BACKLOG), { requireTitles: true }), []);
   assert.ok(findings.every((f) => f.action !== 'add-story' && !f.group), 'edits never create stories or groups');
   assert.match(text, /`write_review` always appends/);
   assert.match(text, /do not run an earlier call again once its read-back matched/);
@@ -189,4 +191,18 @@ test('the lexicon suggestion example passes the tool validation and the skill or
   assert.doesNotMatch(text, /tell the user to use the Lexicon tab/);
   assert.doesNotMatch(text.split('---')[1], /suggest_lexicon_change/, 'the skill does not pre-approve the tool, so Claude Code asks');
   assert.match(read('.claude', 'commands', 'story', 'propose.md'), /suggest_lexicon_change/);
+});
+
+test('the story skills and the command name stories by Title, and say what to do on a mismatch', () => {
+  const propose = skill('propose-stories');
+  assert.match(propose, /## Name stories by Title/);
+  const section = propose.split('## Name stories by Title')[1].split('## Draft the stories')[0];
+  assert.match(section, /never the only name/);
+  assert.match(section, /When a tool answers with a mismatch/);
+  assert.match(section, /never send a pair the tool refused again/);
+  for (const text of [skill('explore-stories'), propose]) assert.match(text, /storyTitle/);
+  assert.match(skill('explore-stories'), /\*\*Name stories by Title\.\*\*/);
+  assert.match(skill('explore-stories'), /Do not repeat a refused pair/);
+  assert.match(read('.claude', 'commands', 'story', 'propose.md'), /`storyTitle`/);
+  assert.match(skill('review-backlog'), /by Title/);
 });
