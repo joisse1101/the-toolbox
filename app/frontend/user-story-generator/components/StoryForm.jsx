@@ -90,7 +90,7 @@ function CellWarning({ id, raw, message }) {
   );
 }
 
-const STORY_WARNING = 'The User Story cell does not follow "As a …, I want …, so that …", so it is kept as it is';
+const STORY_WARNING = 'The User Story cell does not follow "As …, I want …, so that …", so it is kept as it is';
 const CLARIFICATIONS_WARNING = 'The Clarifications cell does not follow "Q1: …" / "A1: …", so it is kept as it is';
 const CRITERIA_WARNING = 'The User Acceptance Criteria cell does not follow "AC1: Given …, when …, then …", so it is kept as it is';
 
@@ -110,7 +110,7 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
     const value = e.target.value;
     edit((d) => { d[key] = value; });
   };
-  // Editing any of As a / I want / So that replaces the original cell text.
+  // Editing any of As / I want / So that replaces the original cell text.
   const setStoryPart = (key) => (e) => {
     const value = e.target.value;
     edit((d) => { d[key] = value; d.rawUserStory = null; });
@@ -223,7 +223,7 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
       <fieldset>
         <legend>User story</legend>
         <div className="grid3">
-          <div><label htmlFor="asA">As a</label><input type="text" id="asA" className={partMissing('asA')} value={s.asA} onChange={setStoryPart('asA')} /></div>
+          <div><label htmlFor="asA">As</label><input type="text" id="asA" placeholder="a team lead" className={partMissing('asA')} value={s.asA} onChange={setStoryPart('asA')} /></div>
           <div><label htmlFor="iWant">I want</label><input type="text" id="iWant" className={partMissing('iWant')} value={s.iWant} onChange={setStoryPart('iWant')} /></div>
           <div><label htmlFor="soThat">So that</label><input type="text" id="soThat" className={partMissing('soThat')} value={s.soThat} onChange={setStoryPart('soThat')} /></div>
         </div>
