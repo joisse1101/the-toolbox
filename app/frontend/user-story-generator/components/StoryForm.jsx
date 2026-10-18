@@ -175,38 +175,42 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
       className={`card story-form${cls === 'incomplete' ? ' incomplete' : ''}${cls === 'warn' ? ' warn' : ''}${s.locked ? ' locked' : ''}`}
       onKeyDown={(e) => onNavKeyDown(e, s)}
     >
-      <div className="story-code" id="storyCode">
-        {s.code ? <>ID: <strong>{s.code}</strong></> : 'No ID yet: one is assigned once an Epic is set.'}
-        {onLock && (
-          <label className="lock-toggle" title={s.code ? (s.locked ? 'Locked: reference only. It is not reviewed, reordered, moved or deleted, and its Epic and ID stay.' : 'Lock this story: reference only, not submitted for review') : 'Set an Epic first'}>
-            <input type="checkbox" id="lockToggle" checked={!!s.locked} disabled={!s.code} onChange={(e) => onLock(s.id, e.target.checked)} />
-            {' '}Locked
-          </label>
-        )}
-        {onBench && (
-          <label className="lock-toggle" title="Bench this story: the explore and propose skills ignore it. Nothing else changes.">
-            <input type="checkbox" id="benchToggle" checked={!!s.benched} onChange={(e) => onBench(s.id, e.target.checked)} />
-            {' '}Benched
-          </label>
-        )}
-        {onMoveToProposed && (
-          <button
-            type="button" id="moveToProposedBtn" disabled={!s.code || s.locked}
-            title={!s.code ? 'Set an Epic first' : s.locked ? 'Unlock the story first' : 'Remove this story from the backlog and make it a proposed story'}
-            onClick={() => onMoveToProposed(s)}
-          >
-            Move to Proposed
-          </button>
-        )}
-        {onDelete && (
-          <button
-            type="button" id="deleteStoryBtn" className="danger" disabled={s.locked}
-            title={s.locked ? 'Unlock the story first' : 'Delete this story'}
-            onClick={() => onDelete()}
-          >
-            Delete story
-          </button>
-        )}
+      <div className="story-header" id="storyHeader">
+        <div className="story-code" id="storyCode">
+          {s.code ? <>ID: <strong>{s.code}</strong></> : 'No ID yet: one is assigned once an Epic is set.'}
+          {onLock && (
+            <label className="lock-toggle" title={s.code ? (s.locked ? 'Locked: reference only. It is not reviewed, reordered, moved or deleted, and its Epic and ID stay.' : 'Lock this story: reference only, not submitted for review') : 'Set an Epic first'}>
+              <input type="checkbox" id="lockToggle" checked={!!s.locked} disabled={!s.code} onChange={(e) => onLock(s.id, e.target.checked)} />
+              {' '}Locked
+            </label>
+          )}
+          {onBench && (
+            <label className="lock-toggle" title="Bench this story: the explore and propose skills ignore it. Nothing else changes.">
+              <input type="checkbox" id="benchToggle" checked={!!s.benched} onChange={(e) => onBench(s.id, e.target.checked)} />
+              {' '}Benched
+            </label>
+          )}
+        </div>
+        <div className="story-actions" id="storyActions">
+          {onMoveToProposed && (
+            <button
+              type="button" id="moveToProposedBtn" disabled={!s.code || s.locked}
+              title={!s.code ? 'Set an Epic first' : s.locked ? 'Unlock the story first' : 'Remove this story from the backlog and make it a proposed story'}
+              onClick={() => onMoveToProposed(s)}
+            >
+              Move to Proposed
+            </button>
+          )}
+          {onDelete && (
+            <button
+              type="button" id="deleteStoryBtn" className="danger" disabled={s.locked}
+              title={s.locked ? 'Unlock the story first' : 'Delete this story'}
+              onClick={() => onDelete()}
+            >
+              Delete story
+            </button>
+          )}
+        </div>
       </div>
 
       {unlockUnits.length > 0 && (
