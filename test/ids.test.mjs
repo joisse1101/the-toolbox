@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { parseCsv } from '../core/csv.js';
 import { loadBacklog, serializeBacklog, newStory, storyIssues, COLUMNS } from '../core/model.js';
 import {
-  epicPrefix, renumber, moveStory, commitEpic, commitEpics, removeStory, removeStories, lockStories, unlockStories, dependentsOf, wouldCycle, dependencyChoices, backlogProblems,
+  epicPrefix, renumber, moveStory, moveGroup, gatherFeatures, recodedBetween, commitEpic, commitEpics, removeStory, removeStories, lockStories, unlockStories, dependentsOf, wouldCycle, dependencyChoices, backlogProblems,
 } from '../core/ids.js';
 
 let n = 0;
@@ -303,4 +303,90 @@ test('lockStories / unlockStories: skip stories without an ID', () => {
   const open = unlockStories(locked.stories, new Set([x.id, y.id]));
   assert.deepEqual(open.stories.map((s) => s.locked), [false, false]);
   assert.equal(open.skipped, 0);
+});
+
+const ft = (epic, feature, extra = {}) => st(epic, { feature, ...extra });
+const features = (stories) => stories.map((s) => s.feature);
+
+test('moveGroup feature: block moves inside its epic, other epics keep their rows', () => {
+  const stories = renumber([ft('Billing', 'Pay'), ft('Onboarding', 'Intro'), ft('Billing', 'Refund'), ft('Billing', 'Pay'), ft('Billing', 'Invoice')]);
+  const [p1, o1, r1, p2, i1] = stories;
+  const out = moveGroup(stories, { epic: 'Billing', feature: 'Invoice' }, 'Pay');
+  assert.deepEqual(out.map((s) => s.id), [i1.id, o1.id, p1.id, p2.id, r1.id]); // Onboarding stays in row 2
+  assert.deepEqual(codes(out), ['B-0001', 'O-0001', 'B-0002', 'B-0003', 'B-0004']);
+  const last = moveGroup(stories, { epic: 'Billing', feature: 'Pay' }, null);
+  assert.deepEqual(last.map((s) => s.id), [r1.id, o1.id, i1.id, p1.id, p2.id]);
+});
+
+test('moveGroup feature: same order, another epic, unknown or blank group return the same array', () => {
+  const stories = renumber([ft('Billing', 'Pay'), ft('Billing', 'Refund'), ft('Onboarding', 'Intro')]);
+  assert.equal(moveGroup(stories, { epic: 'Billing', feature: 'Pay' }, 'Refund'), stories); // already before it
+  assert.equal(moveGroup(stories, { epic: 'Billing', feature: 'Pay' }, 'Pay'), stories);
+  assert.equal(moveGroup(stories, { epic: 'Billing', feature: 'Pay' }, 'Intro'), stories); // feature of another epic
+  assert.equal(moveGroup(stories, { epic: 'Billing', feature: 'Nope' }, null), stories);
+  assert.equal(moveGroup(stories, { epic: '', feature: 'Pay' }, null), stories);
+});
+
+test('moveGroup epic: whole block moves, interleaved epics are gathered', () => {
+  const stories = renumber([ft('Billing', 'Pay'), ft('Onboarding', 'Intro'), ft('Billing', 'Refund'), ft('Onboarding', 'Intro')]);
+  const [b1, o1, b2, o2] = stories;
+  const out = moveGroup(stories, { epic: 'Onboarding' }, 'Billing');
+  assert.deepEqual(out.map((s) => s.id), [o1.id, o2.id, b1.id, b2.id]);
+  assert.deepEqual(codes(out), ['O-0001', 'O-0002', 'B-0001', 'B-0002']);
+  assert.equal(moveGroup(stories, { epic: 'Billing' }, 'Onboarding'), stories); // group order unchanged: nothing is gathered
+  assert.equal(moveGroup(stories, { epic: 'Billing' }, 'Billing'), stories);
+  assert.equal(moveGroup(stories, { epic: 'Billing' }, 'Nope'), stories);
+  assert.equal(moveGroup(stories, { epic: '' }, null), stories);
+  assert.deepEqual(moveGroup(stories, { epic: 'Billing' }, null).map((s) => s.id), [o1.id, o2.id, b1.id, b2.id]);
+});
+
+test('moveGroup: a locked story keeps its ID, shared prefixes swap, links follow', () => {
+  const stories = renumber([ft('Billing', 'Pay'), ft('Billing', 'Refund'), ft('Billing', 'Refund')]);
+  const locked = lockStories(stories, new Set([stories[1].id])).stories; // B-0002 in Refund
+  const out = moveGroup(locked, { epic: 'Billing', feature: 'Refund' }, 'Pay');
+  assert.deepEqual(features(out), ['Refund', 'Refund', 'Pay']);
+  assert.equal(out.find((s) => s.id === locked[1].id).code, 'B-0002');
+  assert.deepEqual(codes(out), ['B-0002', 'B-0001', 'B-0003']); // the locked story keeps B-0002
+
+  const dd = renumber([st('Data Delivery'), st('Digital Dashboards')]);
+  const dep = st('Other', { dependsOn: [dd[1].code] });
+  const swapped = moveGroup([...dd, dep], { epic: 'Digital Dashboards' }, 'Data Delivery');
+  assert.deepEqual(codes(swapped), ['DD-0001', 'DDA-0001', 'O-0001']);
+  assert.deepEqual(swapped[2].dependsOn, ['DD-0001']); // still the Digital Dashboards story
+});
+
+test('gatherFeatures: interleaved features become blocks, other epics untouched, no-op returns the same array', () => {
+  const stories = renumber([ft('Billing', 'Pay'), ft('Onboarding', 'Intro'), ft('Billing', 'Refund'), ft('Billing', 'Pay')]);
+  const [p1, o1, r1, p2] = stories;
+  const out = gatherFeatures(stories);
+  assert.deepEqual(out.map((s) => s.id), [p1.id, o1.id, p2.id, r1.id]);
+  assert.deepEqual(codes(out), ['B-0001', 'O-0001', 'B-0002', 'B-0003']);
+  assert.equal(gatherFeatures(out), out);
+});
+
+test('gatherFeatures: a locked story keeps its ID', () => {
+  const stories = renumber([ft('Billing', 'Pay'), ft('Billing', 'Refund'), ft('Billing', 'Pay')]);
+  const locked = lockStories(stories, new Set([stories[1].id])).stories; // B-0002 in Refund
+  const out = gatherFeatures(locked);
+  assert.deepEqual(features(out), ['Pay', 'Pay', 'Refund']);
+  assert.equal(out[2].code, 'B-0002');
+  assert.deepEqual(codes(out), ['B-0001', 'B-0003', 'B-0002']);
+});
+
+test('recodedBetween: old code -> new code for changed stories only', () => {
+  const stories = renumber([ft('Billing', 'Pay'), ft('Billing', 'Refund'), ft('Billing', 'Invoice'), st('')]);
+  const out = moveGroup(stories, { epic: 'Billing', feature: 'Invoice' }, 'Pay');
+  assert.deepEqual([...recodedBetween(stories, out)], [['B-0001', 'B-0002'], ['B-0002', 'B-0003'], ['B-0003', 'B-0001']]);
+  assert.equal(recodedBetween(stories, stories).size, 0);
+  const gathered = gatherFeatures(renumber([ft('Billing', 'Pay'), ft('Billing', 'Refund'), ft('Billing', 'Pay')]));
+  assert.equal(recodedBetween(stories.slice(0, 2), gathered.slice(0, 2)).size, 0); // other ids: nothing to map
+});
+
+test('recodedBetween: a locked story that keeps its code is not listed; a repeated old code is left out', () => {
+  const stories = renumber([ft('Billing', 'Pay'), ft('Billing', 'Refund'), ft('Billing', 'Refund')]);
+  const locked = lockStories(stories, new Set([stories[1].id])).stories;
+  const out = moveGroup(locked, { epic: 'Billing', feature: 'Refund' }, 'Pay');
+  assert.ok(![...recodedBetween(locked, out).keys()].includes('B-0002'));
+  const twin = [{ ...stories[0] }, { ...stories[1], code: stories[0].code }];
+  assert.equal(recodedBetween(twin, [{ ...twin[0], code: 'X-0001' }, { ...twin[1], code: 'X-0002' }]).size, 0);
 });

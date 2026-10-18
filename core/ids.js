@@ -141,6 +141,87 @@ export function moveStory(stories, id, epic, beforeId = null) {
   return renumber(rest);
 }
 
+const liveFeature = (s) => String(s.feature ?? '').trim();
+
+// Group the stories by `keyOf` in order of first appearance: [[key, stories]].
+function groupBy(stories, keyOf) {
+  const groups = new Map();
+  for (const s of stories) {
+    const key = keyOf(s);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(s);
+  }
+  return [...groups];
+}
+
+// Move key `key` before `beforeKey` (null = last) in `keys`.
+function reorderKeys(keys, key, beforeKey) {
+  const rest = keys.filter((k) => k !== key);
+  const at = beforeKey === null ? -1 : rest.indexOf(beforeKey);
+  rest.splice(at < 0 ? rest.length : at, 0, key);
+  return rest;
+}
+
+// The listed rows of `epic` refilled with `ordered`, so rows of other epics keep their positions.
+function refillEpic(stories, epic, ordered) {
+  let k = 0;
+  return stories.map((s) => (liveEpic(s) === epic ? ordered[k++] : s));
+}
+
+// Move a whole group as one block: { epic } before the epic `beforeKey`, or { epic, feature } before the feature
+// `beforeKey` of the same epic (null = last). Stories keep their relative order inside the group. An epic move gathers
+// the rows of every epic into blocks; a feature move only rearranges the rows its epic already occupies. The group
+// order unchanged, a blank epic or an unknown group or target returns the same array. A locked story moves with its group.
+export function moveGroup(stories, group, beforeKey = null) {
+  const epic = String(group.epic ?? '').trim();
+  if (!epic) return stories;
+  const target = beforeKey === null ? null : String(beforeKey).trim();
+
+  if (group.feature === undefined) {
+    const epics = groupBy(stories, liveEpic);
+    const keys = epics.map(([k]) => k);
+    if (!keys.includes(epic) || (target !== null && (!keys.includes(target) || target === epic))) return stories;
+    const order = reorderKeys(keys, epic, target);
+    if (order.every((k, i) => k === keys[i])) return stories;
+    const byEpic = new Map(epics);
+    return renumber(order.flatMap((k) => byEpic.get(k)));
+  }
+
+  const feature = String(group.feature).trim();
+  const features = groupBy(stories.filter((s) => liveEpic(s) === epic), liveFeature);
+  const keys = features.map(([k]) => k);
+  if (!keys.includes(feature) || (target !== null && (!keys.includes(target) || target === feature))) return stories;
+  const order = reorderKeys(keys, feature, target);
+  if (order.every((k, i) => k === keys[i])) return stories;
+  const byFeature = new Map(features);
+  return renumber(refillEpic(stories, epic, order.flatMap((k) => byFeature.get(k))));
+}
+
+// Put the rows of each feature together inside its epic, features in the order they are shown, then renumber.
+// Other epics' rows keep their positions and a locked story keeps its ID. Same array when nothing changes.
+export function gatherFeatures(stories) {
+  let out = stories;
+  for (const [epic, rows] of groupBy(stories, liveEpic)) {
+    if (!epic) continue;
+    const gathered = groupBy(rows, liveFeature).flatMap(([, group]) => group);
+    if (gathered.some((s, i) => s !== rows[i])) out = refillEpic(out, epic, gathered);
+  }
+  return renumber(out);
+}
+
+// Old code -> new code of the stories (matched by id) whose ID changed between two versions of the list; a code that
+// more than one story had is left out. Feeds the review rows, which follow their story (`retargetRows`).
+export function recodedBetween(before, after) {
+  const now = new Map(after.map((s) => [s.id, s.code]));
+  const count = new Map();
+  for (const s of before) if (s.code) count.set(s.code, (count.get(s.code) ?? 0) + 1);
+  const recoded = new Map();
+  for (const s of before) {
+    if (s.code && count.get(s.code) === 1 && now.has(s.id) && now.get(s.id) !== s.code) recoded.set(s.code, now.get(s.id));
+  }
+  return recoded;
+}
+
 // The Epic field was left. A changed epic moves the story to the bottom of it; a blank one takes its ID away.
 export function commitEpic(stories, id) {
   const s = stories.find((x) => x.id === id);
