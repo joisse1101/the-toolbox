@@ -8,12 +8,12 @@
 - [x] 2.1 `read-story-context.mjs`: take `storyTitle` for a story and `{id, title}` pairs for `storyIds`, call the helper, and verify `npm test` read-story-context cases for match, mismatch reply and CLI call without a Title (unchanged output)
 - [x] 2.2 `core/proposal-input.js`: check patch `storyTitle` and `{id, title}` `dependsOn` entries for backlog and `proposed:` stories, keep `NEW-<k>` bare, report all mismatches together, and verify `proposal-input` and `write-proposal` tests incl. the rename-through-patch and CLI-bare-ID scenarios
 - [x] 2.3 `core/review.js` / `write-review.mjs`: check row `storyTitle` and `Depends On` `targetTitle` without storing them, and verify `review` and `write-review` tests incl. "stored row unchanged" and the CLI call without Titles
-- [ ] 2.4 Make `checkProposal` and `checkReview` return the same mismatch problems, and verify `check_drafts` reports them without changing any file
+- [x] 2.4 Make `checkProposal` and `checkReview` return the same mismatch problems, and verify `check_drafts` reports them without changing any file
 
 ## 3. MCP server
 
-- [ ] 3.1 `ai/mcp/story-tools.mjs`: add the Title fields to the schemas, pass `requireTitles: true`, and update `DESCRIPTIONS` (the rule, the `{id, title}` shape, "on a mismatch read the candidate and repeat"); verify `test/story-tools-mcp.test.mjs` covers refusal of a bare ID, a matching pair, a mismatch reply and the descriptions naming the rule
-- [ ] 3.2 Verify the read-only server and the permissions are unchanged (existing mcp tests still pass)
+- [x] 3.1 `ai/mcp/story-tools.mjs`: add the Title fields to the schemas, pass `requireTitles: true`, and update `DESCRIPTIONS` (the rule, the `{id, title}` shape, "on a mismatch read the candidate and repeat"); verify `test/story-tools-mcp.test.mjs` covers refusal of a bare ID, a matching pair, a mismatch reply and the descriptions naming the rule
+- [x] 3.2 Verify the read-only server and the permissions are unchanged (existing mcp tests still pass)
 
 ## 4. Launcher
 

@@ -34,8 +34,9 @@ async function connect(root, args = []) {
 const call = (client, name, args) => client.callTool({ name, arguments: args });
 const textOf = (r) => r.content.map((c) => c.text).join('\n');
 
+const TITLES = { 'IAM-0001': 'Login', 'IAM-0002': 'SSO Login' };
 const row = (over = {}) => ({
-  storyId: 'IAM-0001', field: 'Title', action: 'replace', suggested: 'Log in with a password', reason: 'Clearer',
+  storyId: 'IAM-0001', storyTitle: TITLES[over.storyId ?? 'IAM-0001'], field: 'Title', action: 'replace', suggested: 'Log in with a password', reason: 'Clearer',
   area: 'Hierarchy', confidence: 'ready', ...over,
 });
 const story = (over = {}) => ({
@@ -67,11 +68,11 @@ test('read_context: menu, one story, bad section, section with storyId', async (
     const menu = textOf(await call(client, 'read_context', { backlog: 'data.csv' }));
     for (const s of ['guidelines', 'index', 'proposals', 'lexicon', 'reviews', 'lexicon-suggestions']) assert.match(menu, new RegExp(`${s}: \\d+ characters`));
     assert.doesNotMatch(menu, /node \.claude/, 'the menu names no shell command');
-    assert.match(textOf(await call(client, 'read_context', { backlog: 'data.csv', storyId: 'IAM-0001' })), /Login/);
-    const missing = await call(client, 'read_context', { backlog: 'data.csv', storyId: 'IAM-9999' });
+    assert.match(textOf(await call(client, 'read_context', { backlog: 'data.csv', storyId: 'IAM-0001', storyTitle: 'Login' })), /Login/);
+    const missing = await call(client, 'read_context', { backlog: 'data.csv', storyId: 'IAM-9999', storyTitle: 'Nothing' });
     assert.equal(missing.isError, true);
-    assert.match(textOf(missing), /not found/);
-    const both = await call(client, 'read_context', { backlog: 'data.csv', section: 'index', storyId: 'IAM-0001' });
+    assert.match(textOf(missing), /IAM-9999 is not in the file/);
+    const both = await call(client, 'read_context', { backlog: 'data.csv', section: 'index', storyId: 'IAM-0001', storyTitle: 'Login' });
     assert.equal(both.isError, true);
     assert.match(textOf(await call(client, 'read_context', { backlog: 'data.csv', section: 'other' })), /section/i);
     assert.match(textOf(await call(client, 'read_context', { backlog: 'data.csv', storyId: 'IAM-1; rm' })), /storyId/);
@@ -330,14 +331,83 @@ test('read_context reads the reviews and lexicon-suggestions sections, storyIds 
     const overview = textOf(await call(client, 'read_context', { backlog: 'data.csv', section: 'reviews' }));
     assert.match(overview, /reviews\/data.csv: 2 rows, 2 open/);
     assert.match(overview, /IAM-0001: 1 open\nIAM-0002: 1 open/);
-    const rows = textOf(await call(client, 'read_context', { backlog: 'data.csv', section: 'reviews', storyIds: ['IAM-0002'] }));
+    const rows = textOf(await call(client, 'read_context', { backlog: 'data.csv', section: 'reviews', storyIds: [{ id: 'IAM-0002', title: 'SSO Login' }] }));
     assert.match(rows, /open rows of IAM-0002/);
     assert.match(rows, /^IAM-0002,Title,replace/m);
     assert.doesNotMatch(rows, /^IAM-0001,/m);
-    const wrong = await call(client, 'read_context', { backlog: 'data.csv', section: 'index', storyIds: ['IAM-0002'] });
+    const wrong = await call(client, 'read_context', { backlog: 'data.csv', section: 'index', storyIds: [{ id: 'IAM-0002', title: 'SSO Login' }] });
     assert.equal(wrong.isError, true);
     assert.match(textOf(wrong), /storyIds/);
     assert.match(textOf(await call(client, 'read_context', { backlog: 'data.csv', section: 'lexicon-suggestions' })), /no suggestions yet/);
+  } finally {
+    await client.close();
+  }
+});
+
+// The parts occur in this order in the text (plain strings, so nothing needs escaping).
+const inOrder = (text, ...parts) => {
+  let at = 0;
+  for (const part of parts) {
+    const found = text.indexOf(part, at);
+    assert.notEqual(found, -1, `${JSON.stringify(part)} after position ${at} in: ${text}`);
+    at = found + part.length;
+  }
+};
+
+test('a story ID needs its Title: bare, stale and renamed pairs are refused with what the ID holds now and the candidates', async () => {
+  const root = temp();
+  const client = await connect(root);
+  try {
+    const bare = await call(client, 'read_context', { backlog: 'data.csv', storyId: 'IAM-0001' });
+    assert.equal(bare.isError, true);
+    inOrder(textOf(bare), "IAM-0001 needs the story's current Title next to it (storyTitle)");
+    const stale = await call(client, 'read_context', { backlog: 'data.csv', storyId: 'IAM-0001', storyTitle: 'SSO Login' });
+    assert.equal(stale.isError, true);
+    inOrder(textOf(stale), 'IAM-0001 is now "Login" (Identity & Access Management > Auth), not "SSO Login". Stories titled "SSO Login": IAM-0002 (Identity & Access Management > SSO)');
+    assert.match(textOf(await call(client, 'read_context', { backlog: 'data.csv', storyId: 'IAM-0002', storyTitle: ' sso login ' })), /SSO Login/);
+    const ids = await call(client, 'read_context', { backlog: 'data.csv', section: 'reviews', storyIds: ['IAM-0001', { id: 'IAM-0002', title: 'Login' }] });
+    assert.equal(ids.isError, true);
+    inOrder(textOf(ids), 'storyIds[1]: IAM-0001 needs', 'storyIds[2]: IAM-0002 is now "SSO Login"');
+  } finally {
+    await client.close();
+  }
+});
+
+test('write_review and write_proposals refuse a stale pair and write nothing; the agent relocates and repeats', async () => {
+  const root = temp();
+  const client = await connect(root);
+  try {
+    const stale = await call(client, 'write_review', { backlog: 'data.csv', items: [row({ storyTitle: 'SSO Login' }), row({ storyId: 'IAM-0002', storyTitle: 'Login' })] });
+    assert.equal(stale.isError, true);
+    inOrder(textOf(stale), 'Finding 1 in this batch (IAM-0001 Title): IAM-0001 is now "Login"', 'Finding 2 in this batch (IAM-0002 Title): IAM-0002 is now "SSO Login"');
+    const dep = { ...story({ title: 'Needs login' }), dependsOn: ['IAM-0001'] };
+    const bare = await call(client, 'write_proposals', { backlog: 'data.csv', items: [dep] });
+    assert.match(textOf(bare), /Depends On: IAM-0001 needs the story's current Title/);
+    const checked = await call(client, 'check_drafts', { backlog: 'data.csv', items: [dep], rows: [row({ storyTitle: 'Logout' })] });
+    assert.equal(checked.isError, true);
+    inOrder(textOf(checked), 'items: Story 1 Depends On: IAM-0001 needs', 'rows: Finding 1 in this batch (IAM-0001 Title): IAM-0001 is now "Login"');
+    assert.ok(!fs.existsSync(path.join(root, 'reviews')) && !fs.existsSync(path.join(root, 'proposals')), 'check_drafts and the refused writes create no file');
+    const ok = await call(client, 'write_proposals', { backlog: 'data.csv', items: [{ ...dep, dependsOn: [{ id: 'IAM-0001', title: 'Login' }] }] });
+    assert.ok(!ok.isError, textOf(ok));
+    const patch = await call(client, 'write_proposals', { backlog: 'data.csv', items: [{ id: 'NEW-1', points: 5 }] });
+    inOrder(textOf(patch), "NEW-1 needs the story's current Title next to it (storyTitle)");
+    const patched = await call(client, 'write_proposals', { backlog: 'data.csv', items: [{ id: 'NEW-1', storyTitle: 'Needs login', points: 5 }] });
+    assert.ok(!patched.isError, textOf(patched));
+    assert.ok(!(await call(client, 'write_review', { backlog: 'data.csv', items: [row()] })).isError);
+  } finally {
+    await client.close();
+  }
+});
+
+test('the descriptions state the Title rule', async () => {
+  const client = await connect(temp());
+  try {
+    const tools = Object.fromEntries((await client.listTools()).tools.map((t) => [t.name, t.description]));
+    for (const name of ['read_context', 'write_review', 'write_proposals']) assert.match(tools[name], /current Title next to its ID/, name);
+    inOrder(tools.write_review, 'storyTitle', 'targetTitle');
+    inOrder(tools.write_proposals, '{ id, title }');
+    assert.match(tools.write_proposals, /storyTitle/);
+    assert.match(tools.check_drafts, /Titles are checked/);
   } finally {
     await client.close();
   }
