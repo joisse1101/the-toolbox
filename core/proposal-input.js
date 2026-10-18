@@ -45,12 +45,13 @@ function checkFields(raw, skip = []) {
 
   if ('userStory' in raw) {
     const text = raw.userStory;
-    if (typeof text !== 'string' || LINE_BREAK.test(text)) errors.push('User Story must be one line of text: "As a …, I want …, so that …"');
+    if (typeof text !== 'string' || LINE_BREAK.test(text)) errors.push('User Story must be one line of text: "As a …" or "As an …", "I want …", "so that …"');
     else {
       const us = parseStory(text);
       if (!us.ok || isBlank(us.asA) || isBlank(us.iWant) || isBlank(us.soThat)) {
-        errors.push('User Story does not follow "As a …, I want …, so that …"');
+        errors.push('User Story does not follow "As a …" or "As an …", "I want …", "so that …"');
       } else {
+        fields.article = us.article;
         fields.asA = us.asA;
         fields.iWant = us.iWant;
         fields.soThat = us.soThat;
@@ -162,7 +163,7 @@ function applyPatch(stored, patch, fields, clar) {
     next.clarifications = [...pairs, ...clar.add.map((q) => ({ q, a: '' }))];
   }
   if ('epic' in patch) Object.assign(next, { epic: fields.epic, codedEpic: fields.epic });
-  if ('userStory' in patch) Object.assign(next, { asA: fields.asA, iWant: fields.iWant, soThat: fields.soThat, rawUserStory: null });
+  if ('userStory' in patch) Object.assign(next, { article: fields.article, asA: fields.asA, iWant: fields.iWant, soThat: fields.soThat, rawUserStory: null });
   if ('criteria' in patch) Object.assign(next, { criteria: fields.criteria, rawCriteria: null });
   for (const key of ['feature', 'title', 'points', 'notes']) {
     if (key in patch) next[key] = fields[key];
@@ -316,6 +317,7 @@ export function buildProposals({ input, backlog, proposals = null }) {
         codedEpic: fields.epic,
         feature: fields.feature,
         title: fields.title,
+        article: fields.article,
         asA: fields.asA,
         iWant: fields.iWant,
         soThat: fields.soThat,
