@@ -1,32 +1,37 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { composeStory, parseStory, composeCriteria, parseCriteria } from '../core/story-text.js';
+import { composeStory, parseStory, roleIsBlank, composeCriteria, parseCriteria } from '../core/story-text.js';
 
 test('story round trip', () => {
-  const f = { asA: 'team lead', iWant: 'to export a backlog', soThat: 'I can share it' };
+  const f = { asA: 'a team lead', iWant: 'to export a backlog', soThat: 'I can share it' };
   const text = composeStory(f);
   assert.equal(text, 'As a team lead, I want to export a backlog, so that I can share it');
-  assert.deepEqual(parseStory(text), { ok: true, article: 'a', ...f });
+  assert.deepEqual(parseStory(text), { ok: true, ...f });
 });
 
-test('story: "As an" is accepted and the article is kept', () => {
+test('story: "As an" is read and written as typed', () => {
   const text = 'As an approver, I want to sign off, so that releases are controlled';
   const parsed = parseStory(text);
-  assert.deepEqual(parsed, { ok: true, article: 'an', asA: 'approver', iWant: 'to sign off', soThat: 'releases are controlled' });
+  assert.deepEqual(parsed, { ok: true, asA: 'an approver', iWant: 'to sign off', soThat: 'releases are controlled' });
   assert.equal(composeStory(parsed), text);
-  assert.equal(parseStory('As another user, I want x, so that y').ok, false);
-  assert.equal(composeStory({ article: 'an', asA: 'admin', iWant: 'x', soThat: 'y' }), 'As an admin, I want x, so that y');
+  assert.equal(composeStory({ asA: 'an admin', iWant: 'x', soThat: 'y' }), 'As an admin, I want x, so that y');
+});
+
+test('a role that is empty or only an article is blank', () => {
+  for (const role of ['', '  ', 'a', 'An', ' an ', undefined]) assert.equal(roleIsBlank(role), true, String(role));
+  for (const role of ['a user', 'an approver', 'admin', 'another user']) assert.equal(roleIsBlank(role), false, role);
+  assert.equal(roleIsBlank(parseStory('As a , I want x, so that y').asA), true);
 });
 
 test('story: missing commas tolerated, case-insensitive', () => {
   assert.deepEqual(parseStory('as A team lead I WANT to export SO THAT I can share'),
-    { ok: true, article: 'a', asA: 'team lead', iWant: 'to export', soThat: 'I can share' });
+    { ok: true, asA: 'A team lead', iWant: 'to export', soThat: 'I can share' });
 });
 
 test('story: failures and empties', () => {
   assert.equal(parseStory('Just some free text').ok, false);
   assert.equal(parseStory('As a x, so that z, I want y').ok, false);
-  assert.deepEqual(parseStory(''), { ok: true, article: 'a', asA: '', iWant: '', soThat: '' });
+  assert.deepEqual(parseStory(''), { ok: true, asA: '', iWant: '', soThat: '' });
   assert.equal(composeStory({}), '');
 });
 

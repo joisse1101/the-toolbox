@@ -295,19 +295,23 @@ test('a cycle through a patch is refused', () => {
   assert.match(patchErrors([patch({ dependsOn: ['proposed:NEW-11'] })], rows).join('\n'), /Patch 1 \(NEW-10\) .*cycle/);
 });
 
-test('"As an" is accepted, stored with its article, and named in the rejection message', () => {
+test('"As an" is accepted as written and the rejection message shows the form', () => {
   const text = 'As an approver, I want to sign off, so that releases are controlled';
   const r = build([story({ userStory: text })]);
   assert.equal(r.ok, true);
-  assert.equal(r.stories[0].article, 'an');
+  assert.equal(r.stories[0].asA, 'an approver');
   assert.equal(storyCellText(r.stories[0]), text);
-  assert.match(errorsOf([story({ userStory: 'Approvers sign off' })]).join(), /"As a …" or "As an …"/);
+  assert.match(errorsOf([story({ userStory: 'Approvers sign off' })]).join(), /"As a …, I want …, so that …" .{1}"As an …" is accepted/);
 });
 
-test('a patch can set "As an", and the stored article survives a patch of another field', () => {
+test('a patch can set "As an", and the stored sentence survives a patch of another field', () => {
   const text = 'As an approver, I want to sign off, so that releases are controlled';
   const patched = patchOf([patch({ userStory: text })]).proposed[0];
-  assert.equal(patched.article, 'an');
+  assert.equal(patched.asA, 'an approver');
   const rows = [ROW('NEW-10', { userStory: `"${text}"` })];
   assert.equal(storyCellText(patchOf([patch({ points: 5 })], rows).proposed[0]), text);
+});
+
+test('a role that is only an article is rejected', () => {
+  assert.match(errorsOf([story({ userStory: 'As a , I want x, so that y' })]).join(), /User Story/);
 });

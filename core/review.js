@@ -3,7 +3,7 @@
 // No DOM and no file access. One row = one field edit; rows that share a Group are applied together.
 
 import { parseCsv, toCsv } from './csv.js';
-import { parseStory, parseCriteria } from './story-text.js';
+import { parseStory, roleIsBlank, parseCriteria } from './story-text.js';
 import { POINTS, newStory, storyCellText, emptyCriterion } from './model.js';
 import { renumber, commitEpics, wouldCycle } from './ids.js';
 
@@ -203,7 +203,7 @@ export function validateFindings(findings, backlog, { existingRows = [] } = {}) 
     if (r.suggested && FIELDS.includes(r.field)) {
       if (r.field === 'User Story') {
         const us = parseStory(r.suggested);
-        if (!us.ok || blank(us.asA) || blank(us.iWant) || blank(us.soThat)) bad('User Story must read "As a ..., I want ..., so that ...".');
+        if (!us.ok || roleIsBlank(us.asA) || blank(us.iWant) || blank(us.soThat)) bad('User Story must read "As a ..., I want ..., so that ...".');
       } else if (r.field === 'Sprint points') {
         if (!POINTS.map(String).includes(r.suggested)) bad(`Sprint points must be one of ${POINTS.join(', ')}.`);
       } else if (r.field === 'User Acceptance Criteria' && r.action === 'remove') {
@@ -448,7 +448,7 @@ function editExisting(story, row) {
     case 'Clarifications': return { ...story, clarifications: [...story.clarifications, { q: v, a: '' }] };
     case 'User Story': {
       const us = parseStory(v);
-      return { ...story, article: us.article, asA: us.asA, iWant: us.iWant, soThat: us.soThat, rawUserStory: null };
+      return { ...story, asA: us.asA, iWant: us.iWant, soThat: us.soThat, rawUserStory: null };
     }
     case 'User Acceptance Criteria': {
       // Found by text; rows of one unit edited in sequence may no longer match, so fall back to the labelled slot.
@@ -486,7 +486,6 @@ function buildNewStory(headers, rows, original) {
       case 'Clarifications': s.clarifications = [...s.clarifications, { q: v, a: '' }]; break;
       case 'User Story': {
         const us = parseStory(v);
-        s.article = us.article;
         s.asA = us.asA;
         s.iWant = us.iWant;
         s.soThat = us.soThat;

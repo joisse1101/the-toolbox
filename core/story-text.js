@@ -1,5 +1,5 @@
 // Compose and parse the two text-syntax CSV cells:
-//   User Story:          As a <a>, I want <w>, so that <s>
+//   User Story:          As <a>, I want <w>, so that <s>   (<a> is the role with its article: "a team lead", "an approver")
 //   User Acceptance Criteria: AC<n>: Given <g>, when <w>, then <t>   (one per line)
 // Parsing is a case-insensitive keyword split, first occurrence of each keyword, in order.
 
@@ -25,22 +25,24 @@ function splitByKeywords(text, keywords) {
   return parts;
 }
 
-const STORY_KEYWORDS = [/\bas an?\b/i, /\bi want\b/i, /\bso that\b/i];
+const STORY_KEYWORDS = [/\bas\b/i, /\bi want\b/i, /\bso that\b/i];
 const CRITERION_KEYWORDS = [/\bgiven\b/i, /\bwhen\b/i, /\bthen\b/i];
 
-// `article` is the "a" or "an" the sentence begins with; a story that has none uses "a".
-export function composeStory({ article = 'a', asA = '', iWant = '', soThat = '' }) {
+// `asA` is the role with its article: "a team lead", "an approver".
+export function composeStory({ asA = '', iWant = '', soThat = '' }) {
   if (isBlank(asA, iWant, soThat)) return '';
-  return `As ${article === 'an' ? 'an' : 'a'} ${asA}, I want ${iWant}, so that ${soThat}`;
+  return `As ${asA}, I want ${iWant}, so that ${soThat}`;
 }
 
+// A role that is empty, or only the article ("As a , I want …"), names nobody.
+export const roleIsBlank = (asA) => !String(asA ?? '').trim().replace(/^an?$/i, '');
+
 export function parseStory(text) {
-  if (!String(text ?? '').trim()) return { ok: true, article: 'a', asA: '', iWant: '', soThat: '' };
+  if (!String(text ?? '').trim()) return { ok: true, asA: '', iWant: '', soThat: '' };
   const parts = splitByKeywords(text, STORY_KEYWORDS);
   if (!parts) return { ok: false };
   const [asA, iWant, soThat] = parts;
-  const article = /^\s*as\s+an\b/i.test(text) ? 'an' : 'a';
-  return { ok: true, article, asA, iWant, soThat };
+  return { ok: true, asA, iWant, soThat };
 }
 
 // Criteria with no text at all are skipped; the rest are numbered by position.

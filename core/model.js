@@ -4,7 +4,7 @@
 
 import { parseCsv, toCsv } from './csv.js';
 import { renumber } from './ids.js';
-import { composeStory, parseStory, composeCriteria, parseCriteria, composeClarifications, parseClarifications } from './story-text.js';
+import { composeStory, parseStory, roleIsBlank, composeCriteria, parseCriteria, composeClarifications, parseClarifications } from './story-text.js';
 
 export const COLUMNS = [
   'ID', 'Epic', 'Feature', 'Title', 'User Story', 'Sprint points', 'Priority', 'Depends On', 'User Acceptance Criteria', 'Notes', 'Locked', 'Clarifications',
@@ -42,7 +42,7 @@ export function newStory(headers) {
     dependsOn: [], // IDs of the stories this one depends on
     ambiguous: [], // dependsOn entries that named an ID several stories held in the loaded file
     epic: '', codedEpic: '', feature: '', title: '', // codedEpic: the epic the ID was last computed for
-    article: 'a', asA: '', iWant: '', soThat: '', // article: the "a" or "an" of "As a …"
+    asA: '', iWant: '', soThat: '',
     points: '', priority: '', notes: '',
     benched: false, // proposed stories only: parked, hidden from the explore and propose skills
     locked: false, // reference only: keeps its ID, is not reordered, moved, deleted or reviewed (valid only with a code)
@@ -72,7 +72,6 @@ function storyFromCells(cells, idx) {
 
   const us = parseStory(get('User Story'));
   if (us.ok) {
-    story.article = us.article;
     story.asA = us.asA;
     story.iWant = us.iWant;
     story.soThat = us.soThat;
@@ -178,8 +177,8 @@ export function storyIssues(story, problems = []) {
     if (blank(story[key])) errors.push(`${label} is missing`);
   }
   if (story.rawUserStory === null) {
-    for (const [key, label] of [['asA', 'As a'], ['iWant', 'I want'], ['soThat', 'So that']]) {
-      if (blank(story[key])) errors.push(`${label} is missing`);
+    for (const [key, label] of [['asA', 'As'], ['iWant', 'I want'], ['soThat', 'So that']]) {
+      if (key === 'asA' ? roleIsBlank(story[key]) : blank(story[key])) errors.push(`${label} is missing`);
     }
   }
   if (story.rawCriteria === null) {
