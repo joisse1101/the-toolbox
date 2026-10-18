@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { createFileStore } from '../../shared/files.js';
 import { loadBacklog, newBacklogText, newStory, displayOrder, applyBulk } from '../../../../core/model.js';
-import { commitEpic, commitEpics, moveStory, removeStory, wouldCycle, lockStories, unlockStories } from '../../../../core/ids.js';
+import { commitEpic, commitEpics, moveStory, removeStory, removeStories, wouldCycle, lockStories, unlockStories } from '../../../../core/ids.js';
 import { applySuggestions, acceptAll } from '../../../../core/review.js';
 import { useAutosave } from './useAutosave.js';
 
@@ -80,6 +80,15 @@ export function reducer(state, action) {
       const rest = removeStory(stories, action.id);
       if (rest === stories) return state; // a locked story is not deleted
       return withStories(state, rest, { selectedId: rest.length ? rest[Math.min(i, rest.length - 1)].id : null });
+    }
+    // Delete the ticked stories (action.ids) except locked ones. The selected story moves to the nearest survivor.
+    case 'deleteMany': {
+      const stories = state.backlog.stories;
+      const { stories: rest } = removeStories(stories, action.ids);
+      if (rest === stories) return state;
+      const i = stories.findIndex((s) => s.id === state.selectedId);
+      const keep = rest.some((s) => s.id === state.selectedId);
+      return withStories(state, rest, { selectedId: keep ? state.selectedId : (rest[Math.min(Math.max(i, 0), rest.length - 1)]?.id ?? null) });
     }
     // Link/unlink from the Graph tab. A link to a missing story, to itself, a repeat or one that closes a cycle is ignored.
     case 'addDependency': {
@@ -269,6 +278,18 @@ export function useBacklog() {
         if (selectedId === null || !confirm('Delete the selected story?')) return false;
         dispatch({ type: 'delete', id: selectedId });
         return true;
+      },
+
+      // Asks first. Deletes the ticked stories that are not locked. Returns { deleted, skipped } (skipped: locked ones kept);
+      // nothing is asked or deleted when all of them are locked, and deleted is 0 when the user cancels.
+      deleteChecked() {
+        const { backlog, checked } = stateRef.current;
+        const { skipped } = removeStories(backlog.stories, checked);
+        const deleted = [...checked].filter((id) => backlog.stories.some((s) => s.id === id)).length - skipped;
+        if (deleted <= 0) return { deleted: 0, skipped };
+        if (!confirm(`Delete ${deleted} ${deleted === 1 ? 'story' : 'stories'}?${skipped ? `\n\n${skipped} locked ${skipped === 1 ? 'story is' : 'stories are'} kept.` : ''}\n\nThis cannot be undone.`)) return { deleted: 0, skipped: 0 };
+        dispatch({ type: 'deleteMany', ids: checked });
+        return { deleted, skipped };
       },
 
       // Select the neighbouring story in display order.

@@ -97,7 +97,7 @@ const CRITERIA_WARNING = 'The User Acceptance Criteria cell does not follow "AC1
 // `focusRequest` = { id } or null: focus the element with that id (default: Epic) once rendered, then call onFocused.
 // `suggestions`: the open review units for this story ({ key, group, rows }); see review.js. Ungrouped ones sit next to
 // their field, split groups in their own section.
-export default function StoryForm({ story: s, stories, problems, suggestions = [], focusRequest, onFocused, onEdit, onCommitEpic, onOpen, onApplySuggestion, onDismissSuggestion, onUnlockSuggestion, onMoveToProposed, onLock, onBench }) {
+export default function StoryForm({ story: s, stories, problems, suggestions = [], focusRequest, onFocused, onEdit, onCommitEpic, onOpen, onApplySuggestion, onDismissSuggestion, onUnlockSuggestion, onMoveToProposed, onDelete, onLock, onBench }) {
   const [depInput, setDepInput] = useState('');
   useEffect(() => {
     if (!focusRequest) return;
@@ -196,6 +196,15 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
             onClick={() => onMoveToProposed(s)}
           >
             Move to Proposed
+          </button>
+        )}
+        {onDelete && (
+          <button
+            type="button" id="deleteStoryBtn" className="danger" disabled={s.locked}
+            title={s.locked ? 'Unlock the story first' : 'Delete this story'}
+            onClick={() => onDelete()}
+          >
+            Delete story
           </button>
         )}
       </div>

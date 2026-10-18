@@ -17,7 +17,7 @@ const COLUMNS = [
 const NO_FILTER = { priority: '', epic: '', feature: '' };
 
 // Every story in one table, with ticks and a bulk edit bar. The table itself is read-only.
-export default function StoriesTab({ stories, headers, problems, checked, lastChecked, hidden, onOpen, onCheck, onCheckAll, onApplyBulk, onLockChecked }) {
+export default function StoriesTab({ stories, headers, problems, checked, lastChecked, hidden, onOpen, onCheck, onCheckAll, onApplyBulk, onLockChecked, onDeleteChecked }) {
   const [priority, setPriority] = useState(KEEP);
   const [epic, setEpic] = useState('');
   const [feature, setFeature] = useState('');
@@ -89,6 +89,12 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
     setNote(skipped ? `${skipped} skipped (no ID)` : '');
   };
 
+  const remove = () => {
+    const { deleted, skipped } = onDeleteChecked();
+    if (deleted) setNote(skipped ? `${skipped} locked ${skipped === 1 ? 'story was' : 'stories were'} kept.` : '');
+    else if (skipped) setNote(`Nothing deleted: ${skipped === 1 ? 'the selected story is' : 'all selected stories are'} locked. Unlock to delete.`);
+  };
+
   return (
     <section id="storiesView" className="card stories-view" role="tabpanel" aria-labelledby="tabStories" hidden={hidden}>
       <div id="bulkBar" className="bulk-bar">
@@ -111,6 +117,7 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
         <button type="button" id="bulkApplyBtn" className="primary" disabled={n === 0 || isEmpty} onClick={apply}>Apply to selected</button>
         <button type="button" id="lockSelectedBtn" disabled={n === 0} onClick={() => lock(true)} title="Lock the selected stories: reference only, not reviewed, reordered, moved or deleted">Lock selected</button>
         <button type="button" id="unlockSelectedBtn" disabled={n === 0} onClick={() => lock(false)}>Unlock selected</button>
+        <button type="button" id="deleteSelectedBtn" className="danger" disabled={n === 0} onClick={remove} title="Delete the selected stories; locked ones are kept">{`Delete selected (${n})`}</button>
         <button type="button" id="deselectAllBtn" disabled={n === 0} onClick={() => onCheckAll(false, [...checked])}>Deselect all</button>
         <span id="bulkNote" className="muted" role="status" aria-live="polite">{note}</span>
       </div>

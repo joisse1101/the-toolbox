@@ -286,12 +286,12 @@ export default function App() {
         <div id="editor" className="editor" role="tabpanel" aria-labelledby="tabEditor" hidden={!current || view !== 'editor'}>
           {inEditor && (
             <>
-              <StoryList stories={stories} problems={problems} suggestionCounts={suggestionCounts} selectedId={selectedId} onSelect={actions.selectStory} onAdd={addStory} onDelete={actions.deleteSelected} onMove={actions.moveStory} />
+              <StoryList stories={stories} problems={problems} suggestionCounts={suggestionCounts} selectedId={selectedId} onSelect={actions.selectStory} onAdd={addStory} onMove={actions.moveStory} />
               {selected && (
                 <StoryForm
                   story={selected} stories={stories} problems={problems} suggestions={selectedUnits} focusRequest={focusRequest}
                   onFocused={() => setFocusRequest(null)} onEdit={actions.editStory} onCommitEpic={actions.commitEpic} onOpen={actions.selectStory}
-                  onApplySuggestion={applyUnit} onDismissSuggestion={dismissUnit} onUnlockSuggestion={unlockUnit} onMoveToProposed={moveToProposed} onLock={actions.lockStory}
+                  onApplySuggestion={applyUnit} onDismissSuggestion={dismissUnit} onUnlockSuggestion={unlockUnit} onMoveToProposed={moveToProposed} onDelete={actions.deleteSelected} onLock={actions.lockStory}
                 />
               )}
             </>
@@ -320,7 +320,7 @@ export default function App() {
 
         <StoriesTab
           stories={stories} headers={backlog?.headers ?? []} problems={problems} checked={checked} lastChecked={lastChecked} hidden={!current || view !== 'stories'}
-          onOpen={openInEditor} onCheck={actions.toggleChecked} onCheckAll={actions.checkAll} onApplyBulk={actions.applyBulkPatch} onLockChecked={actions.lockChecked}
+          onOpen={openInEditor} onCheck={actions.toggleChecked} onCheckAll={actions.checkAll} onApplyBulk={actions.applyBulkPatch} onLockChecked={actions.lockChecked} onDeleteChecked={actions.deleteChecked}
         />
 
         {review.exists && (

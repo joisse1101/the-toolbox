@@ -6,7 +6,7 @@ import { issueClass, rowTooltip } from './issues.js';
 // Drag a story to reorder it inside its epic, or onto another epic's group to move it there. Dropping on the
 // "(No epic)" group does nothing. `drag` is the story being dragged, `drop` = { epic, beforeId } where it would land
 // (beforeId null = at the end of the group).
-export default function StoryList({ stories, problems, suggestionCounts = new Map(), selectedId, onSelect, onAdd, onDelete, onMove, heading = 'Stories', checked, onToggle }) {
+export default function StoryList({ stories, problems, suggestionCounts = new Map(), selectedId, onSelect, onAdd, onMove, heading = 'Stories', checked, onToggle }) {
   const [drag, setDrag] = useState(null);
   const [drop, setDrop] = useState(null);
   const [closed, setClosed] = useState(() => new Set()); // collapsed accordion keys; everything starts open
@@ -115,9 +115,8 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
         ])}
         {!stories.length && <li className="muted" style={{ cursor: 'default' }}>No stories yet.</li>}
       </ul>
-      {(onAdd || onDelete) && <div className="row">
-        {onAdd && <button type="button" id="addStoryBtn" className="primary" onClick={onAdd}>Add story</button>}
-        {onDelete && <button type="button" id="deleteStoryBtn" className="danger" disabled={selectedId === null || !stories.some((s) => s.id === selectedId && !s.locked)} title={stories.some((s) => s.id === selectedId && s.locked) ? 'Unlock the story to delete it' : undefined} onClick={onDelete}>Delete selected</button>}
+      {onAdd && <div className="row">
+        <button type="button" id="addStoryBtn" className="primary" onClick={onAdd}>Add story</button>
       </div>}
     </aside>
   );
