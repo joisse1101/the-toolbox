@@ -70,7 +70,7 @@ function writeAtomic(dir, file, text, writer) {
 // Reads the backlog and the review and validates the findings against them. Returns { ok: true, file, batch, rows,
 // decided } (batch: the new rows, rows: the whole file as it will be, decided: the decisions to keep aside) or
 // { ok: false, errors }. Writes nothing.
-function prepare({ dataDir, name, input, append }) {
+function prepare({ dataDir, name, input, append, requireTitles }) {
   let file;
   try {
     file = validateName(name);
@@ -100,7 +100,7 @@ function prepare({ dataDir, name, input, append }) {
   const earlier = readRows(path.join(reviewDir, `${file}.decided`));
   // A field edit on a locked story needs an unlock row in the resulting file: the rows this batch is added to count.
   const existingRows = append && old.ok ? old.rows : [];
-  const errors = validateFindings(findings, backlog, { existingRows }).map((e) => e.replace(/^Finding (\d+)/, 'Finding $1 in this batch'));
+  const errors = validateFindings(findings, backlog, { existingRows, requireTitles }).map((e) => e.replace(/^Finding (\d+)/, 'Finding $1 in this batch'));
 
   if (append && !old.ok) errors.push(`reviews/${file} cannot be appended to: ${old.error}`);
   if (append && old.ok && Array.isArray(findings)) {
@@ -123,8 +123,8 @@ function prepare({ dataDir, name, input, append }) {
 
 // Same input and problems as writeReview, and for valid input the number of rows it would add; no file is created or
 // changed. Returns { ok: true, file, added } or { ok: false, errors }.
-export function checkReview({ dataDir = DATA_DIR, name, input, append = false }) {
-  const prepared = prepare({ dataDir, name, input, append });
+export function checkReview({ dataDir = DATA_DIR, name, input, append = false, requireTitles = false }) {
+  const prepared = prepare({ dataDir, name, input, append, requireTitles });
   if (!prepared.ok) return prepared;
   return { ok: true, file: prepared.file, added: prepared.batch.length };
 }
@@ -132,8 +132,8 @@ export function checkReview({ dataDir = DATA_DIR, name, input, append = false })
 // Returns { ok: true, file, added, count } or { ok: false, errors: [...] }. Writes nothing unless everything is valid. After
 // the write the file is read again; `count` is the number of rows read back, and a file that does not hold the rows
 // that were written is an error.
-export function writeReview({ dataDir = DATA_DIR, name, input, append = false }) {
-  const prepared = prepare({ dataDir, name, input, append });
+export function writeReview({ dataDir = DATA_DIR, name, input, append = false, requireTitles = false }) {
+  const prepared = prepare({ dataDir, name, input, append, requireTitles });
   if (!prepared.ok) return prepared;
   const { file, batch, rows, decided } = prepared;
   const reviewDir = path.join(dataDir, 'reviews');

@@ -343,3 +343,40 @@ test('CLI: --section reviews takes story IDs, and IDs with another section are r
   assert.equal(run('data.csv', '--section', 'index', 'IAM-0002').status, 2);
   assert.equal(run('data.csv', '--section', 'reviews').status, 0);
 });
+
+const readWith = (root, over) => readStoryContext({ dataDir: root, guidelinesDir: GD(root), name: 'data.csv', ...over });
+
+test('a story ID with its Title reads as before, ignoring case and spacing', () => {
+  const root = withFull();
+  const r = readWith(root, { id: 'IAM-0001', storyTitle: ' login ', requireTitles: true });
+  assert.equal(r.ok, true);
+  assert.deepEqual(r, readWith(root, { id: 'IAM-0001' }));
+});
+
+test('a story ID whose Title no longer matches says what it holds now and where the Title is', () => {
+  const root = withFull();
+  const r = readWith(root, { id: 'IAM-0001', storyTitle: 'Logout' });
+  assert.equal(r.ok, false);
+  assert.match(r.errors[0], /^user-stories\/data.csv: IAM-0001 is now "Login" \(IAM > Auth\), not "Logout"\. Stories titled "Logout": IAM-0002 \(IAM > Auth\)/);
+  assert.match(readWith(root, { id: 'IAM-0009', storyTitle: 'Login' }).errors[0], /IAM-0009 is not in the file\. Stories titled "Login": IAM-0001/);
+});
+
+test('requireTitles refuses a story ID without a Title; without it the call is unchanged', () => {
+  const root = withFull();
+  assert.match(readWith(root, { id: 'IAM-0001', requireTitles: true }).errors[0], /IAM-0001 needs the story's current Title next to it \(storyTitle\)/);
+  assert.equal(readWith(root, { id: 'IAM-0001' }).ok, true);
+});
+
+test('storyIds as { id, title } pairs: checked, every mismatch reported, plain IDs still accepted without requireTitles', () => {
+  const root = withReview(ROWS);
+  const ok = readWith(root, { section: 'reviews', storyIds: [{ id: 'IAM-0001', title: 'Login' }], requireTitles: true });
+  assert.equal(ok.ok, true);
+  assert.deepEqual(ok.storyIds, ['IAM-0001']);
+  const bad = readWith(root, { section: 'reviews', storyIds: [{ id: 'IAM-0001', title: 'Logout' }, { id: 'IAM-0002', title: 'Login' }], requireTitles: true });
+  assert.equal(bad.ok, false);
+  assert.equal(bad.errors.length, 2);
+  assert.match(bad.errors[0], /^storyIds\[1\]: IAM-0001 is now "Login"/);
+  assert.match(bad.errors[1], /^storyIds\[2\]: IAM-0002 is now "Logout"/);
+  assert.match(readWith(root, { section: 'reviews', storyIds: ['IAM-0001'], requireTitles: true }).errors[0], /storyIds\[1\]: IAM-0001 needs/);
+  assert.equal(readWith(root, { section: 'reviews', storyIds: ['IAM-0001'] }).ok, true);
+});

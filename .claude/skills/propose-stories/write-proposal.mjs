@@ -49,7 +49,7 @@ export function writeAtomic(dir, file, text, writer) {
 
 // Reads the backlog and the proposals and validates the input against them. Returns { ok: true, file, backlog,
 // proposals, built } (built: the buildProposals result) or { ok: false, errors }. Writes nothing.
-function prepare({ dataDir, name, input }) {
+function prepare({ dataDir, name, input, requireTitles }) {
   let file;
   try {
     file = validateName(name);
@@ -82,15 +82,15 @@ function prepare({ dataDir, name, input }) {
   } catch (err) {
     return { ok: false, errors: [describeParseError(err, input)] };
   }
-  const built = buildProposals({ input: stories, backlog, proposals });
+  const built = buildProposals({ input: stories, backlog, proposals, requireTitles });
   if (!built.ok) return built;
   return { ok: true, file, backlog, proposals, built };
 }
 
 // Same input and problems as writeProposal, and for valid input what it would do; no file is created or changed.
 // Returns { ok: true, file, ids, patchedIds, skipped } or { ok: false, errors }.
-export function checkProposal({ dataDir = DATA_DIR, name, input }) {
-  const prepared = prepare({ dataDir, name, input });
+export function checkProposal({ dataDir = DATA_DIR, name, input, requireTitles = false }) {
+  const prepared = prepare({ dataDir, name, input, requireTitles });
   if (!prepared.ok) return prepared;
   const { file, built } = prepared;
   return { ok: true, file, ids: built.ids, patchedIds: built.patchedIds, skipped: built.skipped };
@@ -100,8 +100,8 @@ export function checkProposal({ dataDir = DATA_DIR, name, input }) {
 // new stories that repeat a stored one) or { ok: false, errors: [...] }. Writes nothing unless everything is valid, and
 // leaves the file alone when there is nothing to add or patch. After the write the file is read again: `count` and `found`
 // (the added and patched IDs) are what was read from disk, and a file that does not hold them is an error.
-export function writeProposal({ dataDir = DATA_DIR, name, input }) {
-  const prepared = prepare({ dataDir, name, input });
+export function writeProposal({ dataDir = DATA_DIR, name, input, requireTitles = false }) {
+  const prepared = prepare({ dataDir, name, input, requireTitles });
   if (!prepared.ok) return prepared;
   const { file, backlog, proposals, built } = prepared;
   const proposalDir = path.join(dataDir, 'proposals');

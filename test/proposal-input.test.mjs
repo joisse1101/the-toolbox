@@ -364,3 +364,47 @@ test('a story with a blank key part is not treated as a repeat', () => {
   assert.equal(errors.length, 2);
   assert.ok(errors.every((e) => /has no Title/.test(e)));
 });
+
+const STRICT = { requireTitles: true };
+
+test('a patch with storyTitle is checked against the proposal; a rename keeps title as the new Title', () => {
+  const rows = [ROW('NEW-10')];
+  const current = withRows(...rows).stories[0].title;
+  const ok = buildProposals({ input: [patch({ storyTitle: ` ${current.toUpperCase()} `, title: 'Brand new title' })], backlog: backlog(), proposals: withRows(...rows), ...STRICT });
+  assert.equal(ok.ok, true, JSON.stringify(ok.errors));
+  assert.equal(ok.proposed[0].title, 'Brand new title');
+  const bad = buildProposals({ input: [patch({ storyTitle: 'Export audit log', points: 5 })], backlog: backlog(), proposals: withRows(...rows), ...STRICT });
+  assert.equal(bad.ok, false);
+  assert.ok(bad.errors[0].startsWith(`Patch 1 (NEW-10) NEW-10 is now "${current}"`), bad.errors[0]);
+  assert.match(bad.errors[0], /not "Export audit log"/);
+});
+
+test('requireTitles: a patch without storyTitle is refused; without it the patch works as before', () => {
+  const rows = [ROW('NEW-10')];
+  const strict = buildProposals({ input: [patch({ points: 5 })], backlog: backlog(), proposals: withRows(...rows), ...STRICT });
+  assert.match(strict.errors[0], /NEW-10 needs the story's current Title next to it \(storyTitle\)/);
+  assert.equal(patchOf([patch({ points: 5 })]).ok, true);
+});
+
+test('dependsOn entries { id, title }: backlog and proposed stories are checked, NEW-<k> stays bare', () => {
+  const p = proposals('NEW-7,Identity & Access Management,Auth,Seven,,,,,,,\r\n');
+  const dep = (...dependsOn) => buildProposals({ input: [story({ dependsOn }), story({ title: 'Second', dependsOn: ['NEW-1'] })], backlog: backlog(), proposals: p, ...STRICT });
+  const ok = dep({ id: 'IAM-0001', title: 'login' }, { id: 'proposed:NEW-7', title: 'Seven' });
+  assert.equal(ok.ok, true, JSON.stringify(ok.errors));
+  assert.deepEqual(ok.stories[0].dependsOn, ['IAM-0001', 'NEW-7']);
+  assert.deepEqual(ok.stories[1].dependsOn, [ok.ids[0]]);
+  const bad = dep({ id: 'IAM-0001', title: 'SSO Login' }, { id: 'proposed:NEW-7', title: 'Other' });
+  assert.equal(bad.ok, false);
+  assert.equal(bad.errors.length, 2);
+  assert.match(bad.errors[0], /^Story 1 Depends On: IAM-0001 is now "Login".*Stories titled "SSO Login": IAM-0002/);
+  assert.match(bad.errors[1], /^Story 1 Depends On: NEW-7 is now "Seven"/);
+});
+
+test('requireTitles: a bare ID for a stored story in dependsOn is refused; without it the CLI form works', () => {
+  const strict = build([story({ dependsOn: ['IAM-0001'] })], STRICT);
+  assert.equal(strict.ok, false);
+  assert.match(strict.errors[0], /Depends On: IAM-0001 needs the story's current Title next to it \(title\)/);
+  assert.equal(build([story({ dependsOn: ['IAM-0001'] })]).ok, true);
+  assert.match(errorsOf([story({ dependsOn: [{ id: 'IAM-0099', title: 'Nope' }] })]).join(), /IAM-0099 is not in the file/);
+  assert.match(errorsOf([story({ dependsOn: [5] })]).join(), /list of IDs, or of \{ id, title \} objects/);
+});

@@ -6,7 +6,15 @@
 import { newStory } from './model.js';
 import { nextPlaceholder } from './proposals.js';
 import { backlogProblems } from './ids.js';
+import { resolveStoryRef } from './story-ref.js';
 import { parseStory, roleIsBlank, parseCriteria, composeStory, composeCriteria } from './story-text.js';
+
+// A Depends On entry is an ID, or { id, title } (the Title of the backlog or proposed story it names); null when it is neither.
+const depEntry = (d) => {
+  if (typeof d === 'string') return { id: d.trim() };
+  const ok = d && typeof d === 'object' && !Array.isArray(d) && typeof d.id === 'string' && (d.title === undefined || typeof d.title === 'string');
+  return ok ? { id: d.id.trim(), title: d.title } : null;
+};
 
 const KEYS = ['epic', 'feature', 'title', 'userStory', 'points', 'dependsOn', 'criteria', 'notes', 'clarifications'];
 const REQUIRED = KEYS.filter((k) => k !== 'notes' && k !== 'clarifications');
@@ -81,8 +89,8 @@ function checkFields(raw, skip = []) {
     }
   }
 
-  if ('dependsOn' in raw && (!Array.isArray(raw.dependsOn) || raw.dependsOn.some((d) => typeof d !== 'string'))) {
-    errors.push('Depends On must be a list of IDs');
+  if ('dependsOn' in raw && (!Array.isArray(raw.dependsOn) || raw.dependsOn.some((d) => !depEntry(d)))) {
+    errors.push('Depends On must be a list of IDs, or of { id, title } objects');
   }
   return { errors, fields };
 }
@@ -173,7 +181,7 @@ function applyPatch(stored, patch, fields, clar) {
 // Returns { ok: true, stories, ids, skipped, proposed, patchedIds } (the new stories that are added, in input order with
 // their placeholders; the repeats of stored stories that were skipped; and the stored proposals with their patches applied) or { ok: false, errors } with every problem found, each naming its item
 // by position. An item with an "id" is a patch of that proposed story; any other item is a new story.
-export function buildProposals({ input, backlog, proposals = null }) {
+export function buildProposals({ input, backlog, proposals = null, requireTitles = false }) {
   if (!Array.isArray(input) || !input.length) {
     return { ok: false, errors: ['The input must be a JSON list with at least one story or patch.'] };
   }
@@ -187,6 +195,9 @@ export function buildProposals({ input, backlog, proposals = null }) {
   const headers = proposals ? proposals.headers : backlog.headers;
   const existing = proposals ? proposals.stories : [];
   const storedByCode = new Map(existing.map((s) => [s.code, s]));
+  const refOf = (s) => ({ code: s.code, title: s.title, epic: s.epic, feature: s.feature, benched: s.benched });
+  const proposedRefs = existing.map(refOf);
+  const backlogRefs = backlog.stories.map(refOf);
   const seenPatches = new Set();
 
   const checked = input.map((raw, i) => {
@@ -202,10 +213,15 @@ export function buildProposals({ input, backlog, proposals = null }) {
       return { raw, fields, clar };
     }
 
-    const { id, ...rest } = raw;
+    const { id, storyTitle, ...rest } = raw;
     const code = patchCode(raw);
     if (typeof id !== 'string' || !/^NEW-\d+$/.test(code)) {
       fail(i, 'id must be a proposed story ID like NEW-8');
+      return null;
+    }
+    const ref = resolveStoryRef(proposedRefs, { id: code, title: storyTitle }, { required: requireTitles, hint: 'the proposals section of read_context' });
+    if (!ref.ok) {
+      fail(i, ref.message);
       return null;
     }
     const stored = storedByCode.get(code);
@@ -289,11 +305,17 @@ export function buildProposals({ input, backlog, proposals = null }) {
   const resolved = checked.map((c, i) => {
     if (!c) return [];
     if (!('dependsOn' in c.raw)) return c.stored ? null : [];
-    if (!Array.isArray(c.raw.dependsOn) || c.raw.dependsOn.some((d) => typeof d !== 'string')) return [];
+    if (!Array.isArray(c.raw.dependsOn) || c.raw.dependsOn.some((d) => !depEntry(d))) return [];
     const own = c.stored ? c.stored.code : null;
     const deps = [];
-    for (const entry of c.raw.dependsOn.map((d) => d.trim())) {
+    for (const { id: entry, title } of c.raw.dependsOn.map(depEntry)) {
       let code;
+      // A story that is already stored is named with its Title; a NEW-<k> of this input is a position and needs none.
+      const named = (list, id, hint) => {
+        const ref = resolveStoryRef(list, { id, title }, { required: requireTitles, key: 'title', hint });
+        if (!ref.ok) fail(i, `Depends On: ${ref.message}`);
+        return ref.ok;
+      };
       const batch = /^NEW-(\d+)$/.exec(entry);
       const proposed = /^proposed:(NEW-\d+)$/.exec(entry);
       if (batch) {
@@ -310,6 +332,7 @@ export function buildProposals({ input, backlog, proposals = null }) {
         if (!code) continue; // a repeat inside the input, already reported
       } else if (proposed) {
         code = proposed[1];
+        if (!named(proposedRefs, code, 'the proposals section of read_context')) continue;
         if (!proposedCodes.has(code)) {
           fail(i, `Depends On lists ${entry}, but the proposals file has no ${code}`);
           continue;
@@ -318,7 +341,8 @@ export function buildProposals({ input, backlog, proposals = null }) {
           fail(i, 'Depends On lists the story itself');
           continue;
         }
-      } else if (backlogCodes.has(entry)) {
+      } else if (backlogCodes.has(entry) || title !== undefined) {
+        if (!named(backlogRefs, entry, 'the index section of read_context')) continue;
         code = entry;
       } else {
         fail(i, `Depends On lists ${entry || '(empty)'}, which is not a story in the backlog`);

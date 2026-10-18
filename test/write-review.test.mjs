@@ -318,3 +318,34 @@ test('a write that does not stick fails with the row counts, and is not reported
     lossy.mock.restore();
   }
 });
+
+test('with requireTitles each row needs its story Title, a stale pair writes nothing and the stored row is the same', () => {
+  const root = temp();
+  const strict = (rows, fn = writeReview) => fn({ dataDir: root, name: 'data.csv', input: JSON.stringify(rows), append: true, requireTitles: true });
+  const missing = strict([finding()]);
+  assert.match(missing.errors[0], /IAM-0001 needs the story's current Title next to it \(storyTitle\)/);
+  const stale = strict([finding({ storyTitle: 'SSO Login' })]);
+  assert.match(stale.errors[0], /IAM-0001 is now "Login" \(Identity & Access Management > Auth\), not "SSO Login"\. Stories titled "SSO Login": IAM-0002/);
+  assert.deepEqual(strict([finding({ storyTitle: 'SSO Login' })], checkReview).errors, stale.errors);
+  assert.equal(fs.existsSync(reviewPath(root)), false);
+  assert.equal(strict([finding({ storyTitle: ' login ' })]).ok, true);
+  const plain = temp();
+  run(plain, [finding()]);
+  assert.equal(fs.readFileSync(reviewPath(root), 'utf8'), fs.readFileSync(reviewPath(plain), 'utf8'));
+});
+
+test('a Depends On row names the Title of its target; a stale target writes nothing', () => {
+  const root = temp();
+  const dep = (over = {}) => finding({ field: 'Depends On', action: 'add', suggested: 'IAM-0001', storyId: 'IAM-0002', storyTitle: 'SSO Login', area: 'INVEST', ...over });
+  const strict = (rows) => writeReview({ dataDir: root, name: 'data.csv', input: JSON.stringify(rows), append: true, requireTitles: true });
+  assert.match(strict([dep()]).errors[0], /Suggested: IAM-0001 needs the story's current Title next to it \(targetTitle\)/);
+  assert.match(strict([dep({ targetTitle: 'Logout' })]).errors[0], /Suggested: IAM-0001 is now "Login".*not "Logout"/);
+  assert.equal(strict([dep({ targetTitle: 'Login' })]).ok, true);
+  assert.equal(run(temp(), [dep({ storyTitle: undefined })]).ok, true, 'the CLI form without Titles is unchanged');
+});
+
+test('an unlock row is checked against the Title as well', () => {
+  const root = temp();
+  const r = writeReview({ dataDir: root, name: 'data.csv', append: true, requireTitles: true, input: JSON.stringify([{ storyId: 'IAM-0001', storyTitle: 'Nope', field: '', action: 'unlock', suggested: '', reason: 'r', area: 'INVEST', confidence: 'confirm' }]) });
+  assert.match(r.errors[0], /IAM-0001 is now "Login"/);
+});

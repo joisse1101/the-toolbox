@@ -6,6 +6,7 @@ import { parseCsv, toCsv } from './csv.js';
 import { parseStory, roleIsBlank, parseCriteria } from './story-text.js';
 import { POINTS, newStory, storyCellText, emptyCriterion } from './model.js';
 import { renumber, commitEpics, wouldCycle } from './ids.js';
+import { resolveStoryRef } from './story-ref.js';
 
 export const REVIEW_COLUMNS = [
   'Story ID', 'Field', 'Action', 'Current', 'Suggested', 'Reason', 'Area', 'Confidence', 'Group', 'Status',
@@ -134,8 +135,10 @@ const sameCriterion = (a, b) => norm(a.given) === norm(b.given) && norm(a.when) 
 
 // findings: [{ storyId, field, action, suggested, reason, area, confidence, group }]. Returns every problem found.
 // `existingRows`: the rows the review file keeps next to these findings (an --append batch); a field edit on a locked
-// story needs an unlock row for it among them or among the findings.
-export function validateFindings(findings, backlog, { existingRows = [] } = {}) {
+// story needs an unlock row for it among them or among the findings. A finding may carry `storyTitle` (the Title of the story it
+// names) and a Depends On finding `targetTitle` (the Title of the story in Suggested): a Title that is given is checked against the
+// backlog, and with `requireTitles` it must be given. The Titles are not part of the stored row.
+export function validateFindings(findings, backlog, { existingRows = [], requireTitles = false } = {}) {
   if (!Array.isArray(findings)) return ['The input must be a JSON array of findings.'];
   const errors = [];
   const stories = backlog.stories;
@@ -145,7 +148,9 @@ export function validateFindings(findings, backlog, { existingRows = [] } = {}) 
   const rows = findings.map((f) => ({
     storyId: str(f?.storyId), field: str(f?.field), action: str(f?.action), suggested: str(f?.suggested),
     reason: str(f?.reason), area: str(f?.area), confidence: str(f?.confidence), group: str(f?.group),
+    storyTitle: str(f?.storyTitle), targetTitle: str(f?.targetTitle),
   }));
+  const refs = stories.filter((s) => s.code).map((s) => ({ code: s.code, title: s.title, epic: s.epic, feature: s.feature }));
 
   // New stories declared per group, for Depends On targets and the Title check.
   const newIds = new Map(); // group -> Set of NEW ids
@@ -185,6 +190,11 @@ export function validateFindings(findings, backlog, { existingRows = [] } = {}) 
       else if (!newTitles.get(`${r.group}|${r.storyId}`)) bad(`new story ${r.storyId} in group "${r.group}" has no Title row.`);
     } else {
       if (NEW_ID.test(r.storyId)) bad(`${r.storyId} is a new-story ID, so the Action must be add-story.`);
+      const ref = resolveStoryRef(refs, { id: r.storyId, title: r.storyTitle }, { required: requireTitles });
+      if (!ref.ok) {
+        bad(ref.message);
+        return;
+      }
       const matches = byCode.get(r.storyId) ?? [];
       if (!matches.length) bad(`the backlog has no story ${r.storyId}.`);
       else if (matches.length > 1) bad(`${r.storyId} is held by more than one story.`);
@@ -231,7 +241,11 @@ export function validateFindings(findings, backlog, { existingRows = [] } = {}) 
         if (target === r.storyId) bad('a story cannot depend on itself.');
         else if (NEW_ID.test(target)) {
           if (!inGroup) bad(`${target} is not a new story in group "${r.group}".`);
-        } else if (!byCode.has(target)) bad(`${target} is not a story in the backlog.`);
+        } else {
+          const named = resolveStoryRef(refs, { id: target, title: r.targetTitle }, { required: requireTitles, key: 'targetTitle' });
+          if (!named.ok) bad(`Suggested: ${named.message}`);
+          else if (!byCode.has(target)) bad(`${target} is not a story in the backlog.`);
+        }
         if (r.action === 'remove' && story && !story.dependsOn.includes(target)) bad(`${r.storyId} does not depend on ${target}.`);
       }
     }

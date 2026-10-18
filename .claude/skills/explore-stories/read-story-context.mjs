@@ -19,6 +19,7 @@ import { pathToFileURL } from 'node:url';
 import { parseCsv, toCsv } from '../../../core/csv.js';
 import { BENCHED_COLUMN } from '../../../core/model.js';
 import { parseReview, serializeReview } from '../../../core/review.js';
+import { resolveStoryRef } from '../../../core/story-ref.js';
 import { parseSuggestions, composeSuggestions, isOpen } from '../../../core/lexicon-suggestions.js';
 
 const require = createRequire(import.meta.url);
@@ -65,10 +66,26 @@ export function backlogStory(text, id) {
   return row ? (text.charCodeAt(0) === 0xfeff ? '﻿' : '') + toCsv([rows[0], row]) : null;
 }
 
+// The backlog's stories as resolveStoryRef checks them: { code, title, epic, feature }.
+export function backlogRefs(text) {
+  const rows = parseCsv(text);
+  if (!rows.length) return [];
+  const [id, title, epic, feature] = ['id', 'title', 'epic', 'feature'].map((name) => rows[0].findIndex((h) => h.trim().toLowerCase() === name));
+  const cell = (r, i) => (i < 0 ? '' : (r[i] ?? '').trim());
+  return rows.slice(1).map((r) => ({ code: cell(r, id), title: cell(r, title), epic: cell(r, epic), feature: cell(r, feature) })).filter((s) => s.code);
+}
+
+// A storyIds entry is an ID, or { id, title }; null when it is neither.
+const storyRef = (s) => {
+  if (typeof s === 'string') return s.trim() ? { id: s.trim() } : null;
+  const ok = s && typeof s === 'object' && typeof s.id === 'string' && s.id.trim() && (s.title === undefined || typeof s.title === 'string');
+  return ok ? { id: s.id.trim(), title: s.title } : null;
+};
+
 // Returns { ok: true, file, guidelines, sprintPoints, csv, proposals, lexicon, benched } (proposals and lexicon are null when the file does not
 // exist yet; benched = how many proposed stories were left out) or { ok: false, errors: [...] }. With `id` it returns { ok: true, file, id, story }.
 // With `section` only that section's files are read (the backlog is always checked to exist); the fields of the other sections are undefined.
-export function readStoryContext({ dataDir = DATA_DIR, guidelinesDir = GUIDELINES_DIR, name, id, section, storyIds }) {
+export function readStoryContext({ dataDir = DATA_DIR, guidelinesDir = GUIDELINES_DIR, name, id, storyTitle, section, storyIds, requireTitles = false }) {
   let file;
   try {
     file = validateName(name);
@@ -78,8 +95,8 @@ export function readStoryContext({ dataDir = DATA_DIR, guidelinesDir = GUIDELINE
   if (section !== undefined && !SECTIONS.includes(section)) return { ok: false, errors: [`Unknown section '${section}'. Sections: ${SECTIONS.join(', ')}`] };
   if (section !== undefined && id !== undefined) return { ok: false, errors: ['A story ID and --section cannot be combined.'] };
   if (storyIds !== undefined && section !== 'reviews') return { ok: false, errors: ["storyIds can only be used with the section 'reviews'."] };
-  if (storyIds !== undefined && (!Array.isArray(storyIds) || storyIds.some((s) => typeof s !== 'string' || !s.trim()))) {
-    return { ok: false, errors: ['storyIds must be a list of story IDs.'] };
+  if (storyIds !== undefined && (!Array.isArray(storyIds) || storyIds.some((s) => !storyRef(s)))) {
+    return { ok: false, errors: ['storyIds must be a list of story IDs (or of { id, title } pairs).'] };
   }
   const backlogDir = path.join(dataDir, 'user-stories');
   const backlogPath = path.join(backlogDir, file);
@@ -90,9 +107,17 @@ export function readStoryContext({ dataDir = DATA_DIR, guidelinesDir = GUIDELINE
   } catch {
     return { ok: false, errors: [`user-stories/${file} was not found.`] };
   }
+  const refs = id !== undefined || storyIds !== undefined ? backlogRefs(csv) : [];
+  const check = (ref, key) => resolveStoryRef(refs, ref, { required: requireTitles, key });
   if (id !== undefined) {
+    const found = check({ id, title: storyTitle }, 'storyTitle');
+    if (!found.ok) return { ok: false, errors: [`user-stories/${file}: ${found.message}`] };
     const story = backlogStory(csv, id);
     return story === null ? { ok: false, errors: [`${id} was not found in user-stories/${file}.`] } : { ok: true, file, id, story };
+  }
+  if (storyIds !== undefined) {
+    const problems = storyIds.map((s, i) => [i, check(storyRef(s), 'title')]).filter(([, r]) => !r.ok).map(([i, r]) => `storyIds[${i + 1}]: ${r.message}`);
+    if (problems.length) return { ok: false, errors: problems };
   }
   const wants = (s) => section === undefined || section === s;
   const result = { ok: true, file, csv };
@@ -127,7 +152,7 @@ export function readStoryContext({ dataDir = DATA_DIR, guidelinesDir = GUIDELINE
   }
   if (wants('reviews')) {
     result.reviews = null;
-    result.storyIds = (storyIds ?? []).map((s) => s.trim());
+    result.storyIds = (storyIds ?? []).map((s) => storyRef(s).id);
     try {
       result.reviews = parseReview(fs.readFileSync(path.join(dataDir, 'reviews', file), 'utf8'));
     } catch (err) {

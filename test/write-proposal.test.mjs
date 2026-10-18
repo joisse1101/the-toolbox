@@ -374,3 +374,18 @@ test('a write is recorded in the write log under the tool name; a check and a sk
   assert.deepEqual([lines[0].writer, lines[0].store, lines[0].file], ['write_proposals', 'proposals', 'data.csv']);
   assert.equal(lines[0].bytes, fs.statSync(proposalPath(root)).size);
 });
+
+test('requireTitles: a bare ID writes nothing, the Title form writes, and check reports the same problem', () => {
+  const root = temp();
+  const bare = [story({ dependsOn: ['IAM-0001'] })];
+  const strict = (stories, fn = writeProposal) => fn({ dataDir: root, name: 'data.csv', input: JSON.stringify(stories), requireTitles: true });
+  const refused = strict(bare);
+  assert.equal(refused.ok, false);
+  assert.match(refused.errors[0], /IAM-0001 needs the story's current Title/);
+  assert.deepEqual(strict(bare, checkProposal).errors, refused.errors);
+  assert.equal(fs.existsSync(proposalPath(root)), false);
+  const stale = strict([story({ dependsOn: [{ id: 'IAM-0001', title: 'Logout' }] })]);
+  assert.match(stale.errors[0], /IAM-0001 is now "Login" \(Identity & Access Management > Auth\), not "Logout"/);
+  assert.equal(strict([story({ dependsOn: [{ id: 'IAM-0001', title: 'Login' }] })]).ok, true);
+  assert.deepEqual(load(root).stories[0].dependsOn, ['IAM-0001']);
+});
