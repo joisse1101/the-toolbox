@@ -42,7 +42,7 @@ export function newStory(headers) {
     dependsOn: [], // IDs of the stories this one depends on
     ambiguous: [], // dependsOn entries that named an ID several stories held in the loaded file
     epic: '', codedEpic: '', feature: '', title: '', // codedEpic: the epic the ID was last computed for
-    asA: '', iWant: '', soThat: '',
+    article: 'a', asA: '', iWant: '', soThat: '', // article: the "a" or "an" of "As a …"
     points: '', priority: '', notes: '',
     benched: false, // proposed stories only: parked, hidden from the explore and propose skills
     locked: false, // reference only: keeps its ID, is not reordered, moved, deleted or reviewed (valid only with a code)
@@ -72,6 +72,7 @@ function storyFromCells(cells, idx) {
 
   const us = parseStory(get('User Story'));
   if (us.ok) {
+    story.article = us.article;
     story.asA = us.asA;
     story.iWant = us.iWant;
     story.soThat = us.soThat;

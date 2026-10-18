@@ -291,3 +291,13 @@ test('an older file gains the Clarifications column on save with every cell empt
   assert.deepEqual(b.stories[0].clarifications, []);
   assert.match(serializeBacklog(b), /Clarifications\r\nE-0001,E,One,keep,,,,,,,,\r\n$/);
 });
+
+test('"As an" survives load and save with its article', () => {
+  const text = 'Title,Epic,User Story\r\nT,E,"As an approver, I want to sign off, so that it is controlled"\r\n';
+  const b = loadBacklog(text);
+  const s = b.stories[0];
+  assert.equal(s.rawUserStory, null);
+  assert.deepEqual([s.article, s.asA], ['an', 'approver']);
+  assert.equal(parseCsv(serializeBacklog(b))[1][2], 'As an approver, I want to sign off, so that it is controlled');
+  assert.equal(newStory(b.headers).article, 'a');
+});

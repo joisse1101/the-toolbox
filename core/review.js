@@ -448,7 +448,7 @@ function editExisting(story, row) {
     case 'Clarifications': return { ...story, clarifications: [...story.clarifications, { q: v, a: '' }] };
     case 'User Story': {
       const us = parseStory(v);
-      return { ...story, asA: us.asA, iWant: us.iWant, soThat: us.soThat, rawUserStory: null };
+      return { ...story, article: us.article, asA: us.asA, iWant: us.iWant, soThat: us.soThat, rawUserStory: null };
     }
     case 'User Acceptance Criteria': {
       // Found by text; rows of one unit edited in sequence may no longer match, so fall back to the labelled slot.
@@ -486,6 +486,7 @@ function buildNewStory(headers, rows, original) {
       case 'Clarifications': s.clarifications = [...s.clarifications, { q: v, a: '' }]; break;
       case 'User Story': {
         const us = parseStory(v);
+        s.article = us.article;
         s.asA = us.asA;
         s.iWant = us.iWant;
         s.soThat = us.soThat;

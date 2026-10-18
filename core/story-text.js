@@ -25,20 +25,22 @@ function splitByKeywords(text, keywords) {
   return parts;
 }
 
-const STORY_KEYWORDS = [/\bas a\b/i, /\bi want\b/i, /\bso that\b/i];
+const STORY_KEYWORDS = [/\bas an?\b/i, /\bi want\b/i, /\bso that\b/i];
 const CRITERION_KEYWORDS = [/\bgiven\b/i, /\bwhen\b/i, /\bthen\b/i];
 
-export function composeStory({ asA = '', iWant = '', soThat = '' }) {
+// `article` is the "a" or "an" the sentence begins with; a story that has none uses "a".
+export function composeStory({ article = 'a', asA = '', iWant = '', soThat = '' }) {
   if (isBlank(asA, iWant, soThat)) return '';
-  return `As a ${asA}, I want ${iWant}, so that ${soThat}`;
+  return `As ${article === 'an' ? 'an' : 'a'} ${asA}, I want ${iWant}, so that ${soThat}`;
 }
 
 export function parseStory(text) {
-  if (!String(text ?? '').trim()) return { ok: true, asA: '', iWant: '', soThat: '' };
+  if (!String(text ?? '').trim()) return { ok: true, article: 'a', asA: '', iWant: '', soThat: '' };
   const parts = splitByKeywords(text, STORY_KEYWORDS);
   if (!parts) return { ok: false };
   const [asA, iWant, soThat] = parts;
-  return { ok: true, asA, iWant, soThat };
+  const article = /^\s*as\s+an\b/i.test(text) ? 'an' : 'a';
+  return { ok: true, article, asA, iWant, soThat };
 }
 
 // Criteria with no text at all are skipped; the rest are numbered by position.

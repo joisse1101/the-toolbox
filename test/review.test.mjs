@@ -169,6 +169,13 @@ test('applying a User Story replace parses it into the three fields', () => {
   assert.deepEqual([s.asA, s.iWant, s.soThat], ['visitor', 'in', 'I see things']);
 });
 
+test('applying a User Story replace with "As an" keeps the article', () => {
+  const b = backlog();
+  const rows = rowsFor([finding({ field: 'User Story', suggested: 'As an auditor, I want in, so that I see things' })], b);
+  const s = applySuggestions(b.stories, rows, b.headers).stories.find((x) => x.code === 'IAM-0001');
+  assert.deepEqual([s.article, s.asA], ['an', 'auditor']);
+});
+
 test('adding a criterion to a story with only the blank placeholder replaces the placeholder', () => {
   const b = backlog();
   const rows = rowsFor([finding({ storyId: 'IAM-0003', field: 'User Acceptance Criteria', action: 'add', suggested: 'AC1: Given x, when y, then z' })], b);
