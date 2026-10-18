@@ -92,7 +92,7 @@ test('the input must be a non-empty list of objects', () => {
 });
 
 test('several problems are reported together, each naming its story', () => {
-  const errors = errorsOf([story(), story({ epic: '' }), story({ points: 21 })]);
+  const errors = errorsOf([story(), story({ title: 'Two', epic: '' }), story({ title: 'Three', points: 21 })]);
   assert.equal(errors.length, 2);
   assert.match(errors[0], /^Story 2 /);
   assert.match(errors[1], /^Story 3 /);
@@ -314,4 +314,53 @@ test('a patch can set "As an", and the stored sentence survives a patch of anoth
 
 test('a role that is only an article is rejected', () => {
   assert.match(errorsOf([story({ userStory: 'As a , I want x, so that y' })]).join(), /User Story/);
+});
+
+// --- a new story that repeats a stored proposal is skipped, so a batch can be sent again ---
+
+const STORED = (code, title) => `${code},Identity & Access Management,Auth,${title},,,,,,,\r\n`;
+
+test('a repeat of a stored proposal is skipped and reported with the ID it matched', () => {
+  const p = proposals(STORED('NEW-11', 'One') + STORED('NEW-12', 'Two'));
+  const r = build([story({ title: 'One' }), story({ title: 'Three' }), story({ title: 'Two' })], { proposals: p });
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.ids, ['NEW-13']);
+  assert.deepEqual(r.stories.map((s) => s.title), ['Three']);
+  assert.deepEqual(r.skipped, [{ name: 'Story 1', id: 'NEW-11' }, { name: 'Story 3', id: 'NEW-12' }]);
+});
+
+test('sending a batch twice adds nothing the second time', () => {
+  const first = build([story({ title: 'One' }), story({ title: 'Two' })]);
+  const stored = { headers: proposalHeaders(backlog().headers), stories: first.stories, hasBom: true };
+  const again = build([story({ title: 'One' }), story({ title: 'Two' })], { proposals: stored });
+  assert.equal(again.ok, true);
+  assert.deepEqual(again.ids, []);
+  assert.deepEqual(again.skipped.map((s) => s.id), ['NEW-10', 'NEW-11']);
+});
+
+test('a repeat is found ignoring case and surrounding spaces, and other content is not compared', () => {
+  const p = proposals(STORED('NEW-12', 'Reset password'));
+  const r = build([story({ title: '  RESET Password ', points: 8 })], { proposals: p });
+  assert.deepEqual(r.skipped, [{ name: 'Story 1', id: 'NEW-12' }]);
+  assert.deepEqual(r.stories, []);
+});
+
+test('a skipped story takes no number, and Depends On NEW-<k> follows it to the stored ID', () => {
+  const p = proposals(STORED('NEW-13', 'One'));
+  const r = build([story({ title: 'One' }), story({ title: 'Two', dependsOn: ['NEW-1'] }), story({ title: 'Three', dependsOn: ['NEW-2'] })], { proposals: p });
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.ids, ['NEW-14', 'NEW-15']);
+  assert.deepEqual(r.stories.map((s) => s.dependsOn), [['NEW-13'], ['NEW-14']]);
+});
+
+test('two new stories with the same Epic, Feature and Title in one input are an error naming both', () => {
+  const errors = errorsOf([story({ title: 'One' }), story({ title: 'Other' }), story({ title: 'one' })]);
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /^Story 3 repeats Story 1/);
+});
+
+test('a story with a blank key part is not treated as a repeat', () => {
+  const errors = errorsOf([story({ title: '' }), story({ title: '' })]);
+  assert.equal(errors.length, 2);
+  assert.ok(errors.every((e) => /has no Title/.test(e)));
 });

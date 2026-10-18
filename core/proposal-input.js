@@ -170,8 +170,8 @@ function applyPatch(stored, patch, fields, clar) {
   return next;
 }
 
-// Returns { ok: true, stories, ids, proposed, patchedIds } (the new stories in input order with their placeholders, and the
-// stored proposals with their patches applied) or { ok: false, errors } with every problem found, each naming its item
+// Returns { ok: true, stories, ids, skipped, proposed, patchedIds } (the new stories that are added, in input order with
+// their placeholders; the repeats of stored stories that were skipped; and the stored proposals with their patches applied) or { ok: false, errors } with every problem found, each naming its item
 // by position. An item with an "id" is a patch of that proposed story; any other item is a new story.
 export function buildProposals({ input, backlog, proposals = null }) {
   if (!Array.isArray(input) || !input.length) {
@@ -249,7 +249,39 @@ export function buildProposals({ input, backlog, proposals = null }) {
     return isPatch(raw) ? n : n + 1;
   }, 0);
   const start = Number(/^NEW-(\d+)$/.exec(nextPlaceholder(existing, backlog.stories))[1]);
-  const ids = Array.from({ length: newCount }, (_, k) => `NEW-${start + k}`);
+
+  // A new story with the Epic, Feature and Title of a stored proposal is a repeat: it is skipped and reported with the ID it
+  // matched, so a batch can be sent again after a doubtful write. Two equal keys in one input are an error.
+  const keyOf = (v) => {
+    const parts = [v.epic, v.feature, v.title].map((x) => (typeof x === 'string' ? x.trim().toLowerCase() : ''));
+    return parts.every(Boolean) ? parts.join('') : null;
+  };
+  const storedByKey = new Map();
+  for (const s of existing) {
+    const key = keyOf(s);
+    if (key && !storedByKey.has(key)) storedByKey.set(key, s.code);
+  }
+  const codeOf = []; // new story ordinal - 1 -> the code it has afterwards (added, or the stored story it repeats)
+  const skipped = []; // { name, id }
+  const addedAt = []; // input indexes of the stories that are added, in order
+  const firstOfKey = new Map();
+  input.forEach((raw, i) => {
+    if (!isObject(raw) || isPatch(raw)) return;
+    const key = keyOf(raw);
+    if (key && firstOfKey.has(key)) {
+      fail(i, `repeats ${names[firstOfKey.get(key)]} (same Epic, Feature and Title)`);
+      return;
+    }
+    if (key) firstOfKey.set(key, i);
+    if (key && storedByKey.has(key)) {
+      codeOf[newOrdinal[i] - 1] = storedByKey.get(key);
+      skipped.push({ name: names[i], id: storedByKey.get(key) });
+      return;
+    }
+    codeOf[newOrdinal[i] - 1] = `NEW-${start + addedAt.length}`;
+    addedAt.push(i);
+  });
+  const ids = addedAt.map((i) => codeOf[newOrdinal[i] - 1]);
   const backlogCodes = new Set(backlog.stories.map((s) => s.code).filter(Boolean));
   const proposedCodes = new Set(existing.map((s) => s.code).filter(Boolean));
 
@@ -274,7 +306,8 @@ export function buildProposals({ input, backlog, proposals = null }) {
           fail(i, 'Depends On lists the story itself');
           continue;
         }
-        code = ids[k - 1];
+        code = codeOf[k - 1];
+        if (!code) continue; // a repeat inside the input, already reported
       } else if (proposed) {
         code = proposed[1];
         if (!proposedCodes.has(code)) {
@@ -302,6 +335,7 @@ export function buildProposals({ input, backlog, proposals = null }) {
   const stories = [];
   const patched = new Map();
   checked.forEach((c, i) => {
+    if (!c.stored && !addedAt.includes(i)) return; // skipped as a repeat
     if (c.stored) {
       const next = applyPatch(c.stored, c.raw, c.fields, c.clar);
       if (resolved[i]) next.dependsOn = resolved[i];
@@ -311,7 +345,7 @@ export function buildProposals({ input, backlog, proposals = null }) {
     const { fields } = c;
     stories.push(
       Object.assign(newStory(headers), {
-        code: ids[newOrdinal[i] - 1],
+        code: codeOf[newOrdinal[i] - 1],
         epic: fields.epic,
         codedEpic: fields.epic,
         feature: fields.feature,
@@ -331,10 +365,13 @@ export function buildProposals({ input, backlog, proposals = null }) {
 
   // Cycles can only run through the new and patched stories; report them by position.
   const mine = new Map();
-  checked.forEach((c, i) => mine.set(c.stored ? patched.get(c.stored.code).id : stories[newOrdinal[i] - 1].id, i));
+  checked.forEach((c, i) => {
+    if (c.stored) mine.set(patched.get(c.stored.code).id, i);
+    else if (addedAt.includes(i)) mine.set(stories[addedAt.indexOf(i)].id, i);
+  });
   for (const [id, msgs] of backlogProblems([...backlog.stories, ...proposed, ...stories])) {
     if (mine.has(id) && msgs.some((m) => m.includes('cycle'))) fail(mine.get(id), 'Depends On is part of a dependency cycle');
   }
   if (errors.length) return { ok: false, errors };
-  return { ok: true, stories, ids, proposed, patchedIds: [...patched.keys()] };
+  return { ok: true, stories, ids, skipped, proposed, patchedIds: [...patched.keys()] };
 }

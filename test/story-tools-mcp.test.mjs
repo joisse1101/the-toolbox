@@ -99,7 +99,7 @@ test('a bad write call writes nothing and returns the writer messages', async ()
   const root = temp();
   const client = await connect(root);
   try {
-    const r = await call(client, 'write_proposals', { backlog: 'data.csv', items: [story(), story({ points: 21 })] });
+    const r = await call(client, 'write_proposals', { backlog: 'data.csv', items: [story(), story({ title: 'Two', points: 21 })] });
     assert.equal(r.isError, true);
     assert.match(textOf(r), /Nothing was written\. 1 problem:\n- /);
     assert.ok(!fs.existsSync(path.join(root, 'proposals')));

@@ -68,7 +68,7 @@ test('invalid input reports every problem and writes nothing, keeping an existin
   const root = temp();
   run(root, [story()]);
   const good = fs.readFileSync(proposalPath(root), 'utf8');
-  const r = run(root, [story(), story({ epic: '' }), story({ points: 21 })]);
+  const r = run(root, [story(), story({ title: 'Two', epic: '' }), story({ title: 'Three', points: 21 })]);
   assert.equal(r.ok, false);
   assert.equal(r.errors.length, 2);
   assert.match(r.errors[0], /^Story 2 /);
