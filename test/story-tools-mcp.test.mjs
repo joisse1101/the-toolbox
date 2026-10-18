@@ -44,15 +44,16 @@ const story = (over = {}) => ({
   criteria: ['AC1: Given a, when b, then c'], ...over,
 });
 
-test('tool list: all five by default, read_context only with --read-only', async () => {
+test('tool list: all six by default, read_context only with --read-only', async () => {
   const root = temp();
   const full = await connect(root);
   const readOnly = await connect(root, ['--read-only']);
   try {
     const all = (await full.listTools()).tools;
-    assert.deepEqual(all.map((t) => t.name).sort(), ['read_context', 'suggest_lexicon_change', 'write_lexicon', 'write_proposals', 'write_review']);
-    assert.equal(all.find((t) => t.name === 'read_context').annotations.readOnlyHint, true);
-    for (const t of all.filter((x) => x.name !== 'read_context')) assert.ok(!t.annotations?.readOnlyHint, `${t.name} is not read-only`);
+    assert.deepEqual(all.map((t) => t.name).sort(), ['check_drafts', 'read_context', 'suggest_lexicon_change', 'write_lexicon', 'write_proposals', 'write_review']);
+    const readers = ['read_context', 'check_drafts'];
+    for (const t of all.filter((x) => readers.includes(x.name))) assert.equal(t.annotations.readOnlyHint, true, `${t.name} is read-only`);
+    for (const t of all.filter((x) => !readers.includes(x.name))) assert.ok(!t.annotations?.readOnlyHint, `${t.name} is not read-only`);
     assert.deepEqual((await readOnly.listTools()).tools.map((t) => t.name), ['read_context']);
   } finally {
     await full.close();
@@ -64,7 +65,7 @@ test('read_context: menu, one story, bad section, section with storyId', async (
   const client = await connect(temp());
   try {
     const menu = textOf(await call(client, 'read_context', { backlog: 'data.csv' }));
-    for (const s of ['guidelines', 'index', 'proposals', 'lexicon']) assert.match(menu, new RegExp(`${s}: \\d+ characters`));
+    for (const s of ['guidelines', 'index', 'proposals', 'lexicon', 'reviews', 'lexicon-suggestions']) assert.match(menu, new RegExp(`${s}: \\d+ characters`));
     assert.doesNotMatch(menu, /node \.claude/, 'the menu names no shell command');
     assert.match(textOf(await call(client, 'read_context', { backlog: 'data.csv', storyId: 'IAM-0001' })), /Login/);
     const missing = await call(client, 'read_context', { backlog: 'data.csv', storyId: 'IAM-9999' });
@@ -248,6 +249,95 @@ test('write_lexicon refuses a term that exists, and suggest_lexicon_change edit 
     const desc = (await client.listTools()).tools;
     assert.match(desc.find((t) => t.name === 'suggest_lexicon_change').description, /action edit: name at least one of definition, avoid, notes, partOf/);
     assert.match(desc.find((t) => t.name === 'write_lexicon').description, /already in the lexicon is REJECTED/);
+  } finally {
+    await client.close();
+  }
+});
+
+test('check_drafts reports the writers\' problems and writes nothing; valid drafts say what would happen', async () => {
+  const root = temp();
+  const client = await connect(root);
+  try {
+    const bad = await call(client, 'check_drafts', {
+      backlog: 'data.csv',
+      items: [story({ userStory: 'Approvers sign off' }), story({ title: 'Other', points: 21 })],
+      terms: [{ term: 'Role' }],
+      rows: [row({ field: 'Nope' })],
+    });
+    assert.equal(bad.isError, true);
+    const text = textOf(bad);
+    assert.match(text, /^Check found \d+ problems; nothing was written:/);
+    assert.match(text, /items: Story 1 User Story does not follow "As a …, I want …, so that …"/);
+    assert.match(text, /items: Story 2 Sprint points 21/);
+    assert.match(text, /terms: /);
+    assert.match(text, /rows: /);
+    for (const dir of ['proposals', 'lexicons', 'reviews', 'logs']) assert.ok(!fs.existsSync(path.join(root, dir)), `${dir} is not created`);
+
+    const ok = await call(client, 'check_drafts', {
+      backlog: 'data.csv',
+      items: [story({ userStory: 'As an approver, I want to sign off, so that releases are controlled' }), story({ title: 'Other' })],
+      terms: [{ term: 'Role', definition: 'A set of privileges' }],
+    });
+    assert.ok(!ok.isError, textOf(ok));
+    assert.match(textOf(ok), /^Check passed; nothing was written\. items: would add 2 proposed stories \(NEW-1, NEW-2\)\. terms: would add 1 term \(Role\)\.$/);
+    assert.ok(!fs.existsSync(path.join(root, 'proposals')));
+    assert.ok(!fs.existsSync(path.join(root, 'lexicons')));
+  } finally {
+    await client.close();
+  }
+});
+
+test('check_drafts: needs something to check, reports repeats of stored proposals, and is absent with --read-only', async () => {
+  const root = temp();
+  writeProposal({ dataDir: root, name: 'data.csv', input: JSON.stringify([story()]) });
+  const before = fs.readFileSync(path.join(root, 'proposals', 'data.csv'));
+  const client = await connect(root);
+  const readOnly = await connect(root, ['--read-only']);
+  try {
+    const none = await call(client, 'check_drafts', { backlog: 'data.csv' });
+    assert.equal(none.isError, true);
+    assert.match(textOf(none), /at least one of items, terms or rows/);
+    const again = await call(client, 'check_drafts', { backlog: 'data.csv', items: [story(), story({ title: 'Other' })] });
+    assert.match(textOf(again), /items: would add 1 proposed story \(NEW-2\); would skip 1 already in the file \(Story 1 = NEW-1\)\./);
+    assert.deepEqual(fs.readFileSync(path.join(root, 'proposals', 'data.csv')), before);
+    assert.ok(!(await readOnly.listTools()).tools.some((t) => t.name === 'check_drafts'));
+    const desc = (await client.listTools()).tools.find((t) => t.name === 'check_drafts').description;
+    assert.match(desc, /WITHOUT writing/);
+  } finally {
+    await client.close();
+    await readOnly.close();
+  }
+});
+
+test('write_proposals states the retry rule and "As an" in its description', async () => {
+  const client = await connect(temp());
+  try {
+    const desc = (await client.listTools()).tools.find((t) => t.name === 'write_proposals').description;
+    assert.match(desc, /"As an \.\.\." is accepted/);
+    assert.match(desc, /SKIPPED, not added again/);
+    assert.match(desc, /repeated safely/);
+    assert.doesNotMatch(desc, /added twice/);
+  } finally {
+    await client.close();
+  }
+});
+
+test('read_context reads the reviews and lexicon-suggestions sections, storyIds only with reviews', async () => {
+  const root = temp();
+  writeReview({ dataDir: root, name: 'data.csv', input: JSON.stringify([row(), row({ storyId: 'IAM-0002', field: 'Title' })]) });
+  const client = await connect(root);
+  try {
+    const overview = textOf(await call(client, 'read_context', { backlog: 'data.csv', section: 'reviews' }));
+    assert.match(overview, /reviews\/data.csv: 2 rows, 2 open/);
+    assert.match(overview, /IAM-0001: 1 open\nIAM-0002: 1 open/);
+    const rows = textOf(await call(client, 'read_context', { backlog: 'data.csv', section: 'reviews', storyIds: ['IAM-0002'] }));
+    assert.match(rows, /open rows of IAM-0002/);
+    assert.match(rows, /^IAM-0002,Title,replace/m);
+    assert.doesNotMatch(rows, /^IAM-0001,/m);
+    const wrong = await call(client, 'read_context', { backlog: 'data.csv', section: 'index', storyIds: ['IAM-0002'] });
+    assert.equal(wrong.isError, true);
+    assert.match(textOf(wrong), /storyIds/);
+    assert.match(textOf(await call(client, 'read_context', { backlog: 'data.csv', section: 'lexicon-suggestions' })), /no suggestions yet/);
   } finally {
     await client.close();
   }
