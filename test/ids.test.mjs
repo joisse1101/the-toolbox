@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { parseCsv } from '../core/csv.js';
 import { loadBacklog, serializeBacklog, newStory, storyIssues, COLUMNS } from '../core/model.js';
 import {
-  epicPrefix, renumber, moveStory, commitEpic, commitEpics, removeStory, lockStories, unlockStories, dependentsOf, wouldCycle, dependencyChoices, backlogProblems,
+  epicPrefix, renumber, moveStory, commitEpic, commitEpics, removeStory, removeStories, lockStories, unlockStories, dependentsOf, wouldCycle, dependencyChoices, backlogProblems,
 } from '../core/ids.js';
 
 let n = 0;
@@ -131,6 +131,34 @@ test('removeStory strips references and closes the gap', () => {
   assert.deepEqual(codes(out), ['B-0001', 'B-0002']);
   assert.deepEqual(out[0].dependsOn, []);
   assert.deepEqual(out[1].dependsOn, ['B-0001']); // was b, now B-0001
+});
+
+test('removeStories: removes several, cleans links and renumbers once', () => {
+  const [a, b, c, d] = renumber([st('Billing'), st('Billing'), st('Billing'), st('Billing')]);
+  const withDeps = [a, b, { ...c, dependsOn: [a.code, b.code] }, { ...d, dependsOn: [a.code, c.code] }];
+  const out = removeStories(withDeps, new Set([a.id, c.id]));
+  assert.equal(out.skipped, 0);
+  assert.deepEqual(codes(out.stories), ['B-0001', 'B-0002']);
+  assert.deepEqual(out.stories.map((s) => s.id), [b.id, d.id]);
+  assert.deepEqual(out.stories[1].dependsOn, []);
+});
+
+test('removeStories: a locked story is kept and counted', () => {
+  const a = st(IAM);
+  const stories = renumber([a, st(IAM), lk(IAM, 'IAM-0003')]);
+  const locked = stories[2];
+  const out = removeStories(stories, new Set([a.id, stories[1].id, locked.id]));
+  assert.equal(out.skipped, 1);
+  assert.deepEqual(codes(out.stories), ['IAM-0003']);
+  assert.equal(out.stories[0].id, locked.id);
+});
+
+test('removeStories: same array when nothing is removed', () => {
+  const stories = renumber([lk(IAM, 'IAM-0001'), st(IAM)]);
+  const onlyLocked = removeStories(stories, new Set([stories[0].id]));
+  assert.equal(onlyLocked.stories, stories);
+  assert.equal(onlyLocked.skipped, 1);
+  assert.equal(removeStories(stories, new Set()).stories, stories);
 });
 
 test('dependents, cycles and choices', () => {

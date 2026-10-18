@@ -166,6 +166,22 @@ export function removeStory(stories, id) {
   return renumber(rest);
 }
 
+// Remove the listed stories, except locked ones (unlock them first). Their codes leave every Depends On, then the rest
+// is renumbered once. Returns the new list and how many listed stories were locked and kept. Same array when none is removed.
+export function removeStories(stories, ids) {
+  const listed = stories.filter((s) => ids.has(s.id));
+  const gone = new Set(listed.filter((s) => !s.locked).map((s) => s.id));
+  const skipped = listed.length - gone.size;
+  if (!gone.size) return { stories, skipped };
+  const stripped = new Set(
+    stories.filter((s) => gone.has(s.id) && s.code && stories.filter((x) => x.code === s.code).length === 1).map((s) => s.code),
+  );
+  const rest = stories
+    .filter((s) => !gone.has(s.id))
+    .map((s) => (s.dependsOn.some((c) => stripped.has(c)) ? { ...s, dependsOn: s.dependsOn.filter((c) => !stripped.has(c)) } : s));
+  return { stories: renumber(rest), skipped };
+}
+
 // Lock or unlock the listed stories. Only a story with an ID can be locked. Returns the new list and how many
 // stories were skipped (no ID when locking). Same array when nothing changes.
 function setLocked(stories, ids, locked) {
