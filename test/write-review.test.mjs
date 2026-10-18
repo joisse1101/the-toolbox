@@ -1,11 +1,11 @@
-import test from 'node:test';
+import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { writeReview } from '../.claude/skills/review-backlog/write-review.mjs';
+import { writeReview, checkReview } from '../.claude/skills/review-backlog/write-review.mjs';
 import { parseReview, serializeReview } from '../core/review.js';
 
 const SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../.claude/skills/review-backlog/write-review.mjs');
@@ -276,4 +276,45 @@ test('clarification rows are accepted, also with --append, and existing rows are
   const bad = writeReview({ dataDir: root, name: 'data.csv', input: JSON.stringify([ask({ suggested: 'Q1: no' })]), append: true });
   assert.equal(bad.ok, false);
   assert.equal(parseReview(fs.readFileSync(reviewPath(root), 'utf8')).rows.length, 2);
+});
+
+test('a check reports the same problems and the rows it would add, and changes nothing', () => {
+  const root = temp();
+  const check = (findings, append = false) => checkReview({ dataDir: root, name: 'data.csv', input: JSON.stringify(findings), append });
+  const ok = check([finding(), finding({ field: 'Notes', suggested: 'n' })]);
+  assert.deepEqual([ok.ok, ok.added], [true, 2]);
+  assert.equal(fs.existsSync(path.join(root, 'reviews')), false, 'a check creates nothing');
+
+  const bad = [finding({ storyId: 'ZZ-0009' })];
+  assert.deepEqual(check(bad).errors, run(root, bad).errors, 'same problems as the writer');
+
+  run(root, [finding()]);
+  const before = fs.readFileSync(reviewPath(root));
+  assert.equal(check([finding({ field: 'Notes', suggested: 'n' })], true).ok, true);
+  assert.deepEqual(fs.readFileSync(reviewPath(root)), before);
+});
+
+test('the row count in the result is the one read back from the file', () => {
+  const root = temp();
+  run(root, [finding()]);
+  const r = writeReview({ dataDir: root, name: 'data.csv', input: JSON.stringify([finding({ field: 'Notes', suggested: 'n' })]), append: true });
+  assert.deepEqual([r.ok, r.added, r.count], [true, 1, 2]);
+});
+
+test('a write that does not stick fails with the row counts, and is not reported as written', () => {
+  const root = temp();
+  const realRename = fs.renameSync;
+  const lossy = mock.method(fs, 'renameSync', (from, to) => {
+    const lines = fs.readFileSync(from, 'utf8').split('\r\n');
+    fs.writeFileSync(from, [...lines.slice(0, -2), ''].join('\r\n')); // the last row never reaches the file
+    realRename(from, to);
+  });
+  try {
+    const r = run(root, [finding(), finding({ field: 'Notes', suggested: 'n' })]);
+    assert.equal(r.ok, false);
+    assert.match(r.errors[0], /read back is wrong: 1 rows on disk, 2 expected/);
+    assert.match(r.errors[0], /Do not report these suggestions as written/);
+  } finally {
+    lossy.mock.restore();
+  }
 });

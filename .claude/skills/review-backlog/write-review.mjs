@@ -65,8 +65,10 @@ function writeAtomic(dir, file, text) {
   return null;
 }
 
-// Returns { ok: true, file, added, count } or { ok: false, errors: [...] }. Writes nothing unless everything is valid.
-export function writeReview({ dataDir = DATA_DIR, name, input, append = false }) {
+// Reads the backlog and the review and validates the findings against them. Returns { ok: true, file, batch, rows,
+// decided } (batch: the new rows, rows: the whole file as it will be, decided: the decisions to keep aside) or
+// { ok: false, errors }. Writes nothing.
+function prepare({ dataDir, name, input, append }) {
   let file;
   try {
     file = validateName(name);
@@ -114,6 +116,25 @@ export function writeReview({ dataDir = DATA_DIR, name, input, append = false })
   );
   const batch = mergeStatus(fillCurrent(findings, backlog), decided);
   const rows = append && old.ok ? [...old.rows, ...batch] : batch;
+  return { ok: true, file, batch, rows, decided };
+}
+
+// Same input and problems as writeReview, and for valid input the number of rows it would add; no file is created or
+// changed. Returns { ok: true, file, added } or { ok: false, errors }.
+export function checkReview({ dataDir = DATA_DIR, name, input, append = false }) {
+  const prepared = prepare({ dataDir, name, input, append });
+  if (!prepared.ok) return prepared;
+  return { ok: true, file: prepared.file, added: prepared.batch.length };
+}
+
+// Returns { ok: true, file, added, count } or { ok: false, errors: [...] }. Writes nothing unless everything is valid. After
+// the write the file is read again; `count` is the number of rows read back, and a file that does not hold the rows
+// that were written is an error.
+export function writeReview({ dataDir = DATA_DIR, name, input, append = false }) {
+  const prepared = prepare({ dataDir, name, input, append });
+  if (!prepared.ok) return prepared;
+  const { file, batch, rows, decided } = prepared;
+  const reviewDir = path.join(dataDir, 'reviews');
 
   fs.mkdirSync(reviewDir, { recursive: true });
   if (!append && decided.length) {
@@ -122,7 +143,13 @@ export function writeReview({ dataDir = DATA_DIR, name, input, append = false })
   }
   const failed = writeAtomic(reviewDir, file, serializeReview(rows));
   if (failed) return { ok: false, errors: [failed] };
-  return { ok: true, file, added: batch.length, count: rows.length };
+
+  const stored = readRows(path.join(reviewDir, file));
+  if (!stored.ok || stored.rows.length !== rows.length) {
+    const what = stored.ok ? `${stored.rows.length} rows on disk, ${rows.length} expected` : stored.error;
+    return { ok: false, errors: [`Wrote reviews/${file} but the file read back is wrong: ${what}. Do not report these suggestions as written.`] };
+  }
+  return { ok: true, file, added: batch.length, count: stored.rows.length };
 }
 
 // Accepts `<name>` or `<name> --append`; anything else is null.
