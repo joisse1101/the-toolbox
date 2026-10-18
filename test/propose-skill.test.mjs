@@ -65,6 +65,25 @@ test('only the readers are pre-approved: check_drafts for the propose session, n
   assert.equal(allowed('explore-stories.ps1'), '"mcp__story-tools__read_context"');
 });
 
+test('the propose skill and command check before asking, read every write back and recover from a mismatch', () => {
+  const text = skill('propose-stories');
+  const command = read('.claude', 'commands', 'story', 'propose.md');
+  assert.match(text, /\*\*Check the drafts first\.\*\* Before you show anything for confirmation, call `check_drafts`/);
+  assert.ok(text.indexOf('Check the drafts first') < text.indexOf('Ask one direct yes/no question'), 'the check comes before the question');
+  assert.match(text, /## Verify every write/);
+  for (const reader of ['proposals', 'lexicon', 'reviews', 'lexicon-suggestions']) assert.match(text.split('## Verify every write')[1].split('## Report')[0], new RegExp(`section \`${reader}\``));
+  assert.match(text, /only on the strength of a read made in the current turn/);
+  assert.match(text, /send again \*\*only the missing part\*\*/);
+  assert.match(text, /If the second read-back still does not match, stop and tell the user/);
+  assert.match(text, /"As an approver, I want/);
+  assert.doesNotMatch(text, /Run each call \*\*once\*\*/);
+  assert.doesNotMatch(text, /new stories are added again|new stories would be added twice/);
+  assert.match(command, /`check_drafts`/);
+  assert.match(command, /read that file back with `read_context` in the same turn/);
+  assert.match(command, /send again only the missing part/);
+  assert.doesNotMatch(command, /run each call once/);
+});
+
 const FULL = (code) => `${code},Identity & Access Management,Auth,Earlier idea,"As a user, I want x, so that y",3,,,"AC1: Given a, when b, then c",\r\n`;
 
 test('the patch example passes the writer\'s validation', () => {
@@ -85,7 +104,7 @@ test('the backlog edit example passes the review writer\'s validation, and the s
   assert.deepEqual(validateFindings(findings, loadBacklog(BACKLOG)), []);
   assert.ok(findings.every((f) => f.action !== 'add-story' && !f.group), 'edits never create stories or groups');
   assert.match(text, /`write_review` always appends/);
-  assert.match(text, /never run an earlier call again/);
+  assert.match(text, /do not run an earlier call again once its read-back matched/);
   assert.doesNotMatch(text, /review-backlog\/SKILL\.md/, 'the row rules are in the tool description, not in a file the session cannot read');
 });
 
