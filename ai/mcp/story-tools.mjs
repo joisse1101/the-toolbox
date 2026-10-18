@@ -13,7 +13,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { listBacklogs, readStoryContext, formatSection, formatStory, SECTIONS } from '../../.claude/skills/explore-stories/read-story-context.mjs';
-import { writeProposal } from '../../.claude/skills/propose-stories/write-proposal.mjs';
+import { writeProposal, skippedText } from '../../.claude/skills/propose-stories/write-proposal.mjs';
 import { writeLexicon } from '../../.claude/skills/propose-stories/write-lexicon.mjs';
 import { suggestLexicon } from '../../.claude/skills/propose-stories/suggest-lexicon.mjs';
 import { writeReview } from '../../.claude/skills/review-backlog/write-review.mjs';
@@ -79,6 +79,8 @@ export function writeProposalsTool(args) {
   const done = [];
   if (r.ids.length) done.push(`Added ${plural(r.ids.length, 'proposed story', 'proposed stories')} to proposals/${r.file} (${r.ids.join(', ')})`);
   if (r.patchedIds.length) done.push(`${done.length ? 'patched' : 'Patched'} ${plural(r.patchedIds.length, 'proposed story', 'proposed stories')} (${r.patchedIds.join(', ')})`);
+  const skipped = skippedText(r.skipped, done.length ? 'skipped' : 'Skipped');
+  if (skipped) done.push(skipped);
   return textOf(`${done.join('; ')}; ${r.count} in the file now.`);
 }
 

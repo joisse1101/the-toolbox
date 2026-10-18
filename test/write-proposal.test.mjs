@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { writeProposal } from '../.claude/skills/propose-stories/write-proposal.mjs';
+import { writeProposal, checkProposal } from '../.claude/skills/propose-stories/write-proposal.mjs';
 import { loadBacklog, serializeBacklog, proposalHeaders } from '../core/model.js';
 
 const SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../.claude/skills/propose-stories/write-proposal.mjs');
@@ -261,4 +261,61 @@ test('clarifications on a story whose cell is free text are refused', () => {
   fs.writeFileSync(proposalPath(root), serializeBacklog(p));
   const r = run(root, [{ id: 'NEW-1', clarifications: { add: ['Who?'] } }]);
   assert.match(r.errors.join('\n'), /free text/);
+});
+
+test('a check leaves every file as it was, reports the same problems and what would be added', () => {
+  const root = temp();
+  const check = (stories) => checkProposal({ dataDir: root, name: 'data.csv', input: JSON.stringify(stories) });
+  const ok = check([story(), story({ title: 'Two' })]);
+  assert.deepEqual([ok.ok, ok.ids, ok.patchedIds, ok.skipped], [true, ['NEW-1', 'NEW-2'], [], []]);
+  assert.equal(fs.existsSync(path.join(root, 'proposals')), false, 'a check creates nothing');
+
+  const bad = check([story({ points: 21 })]);
+  assert.deepEqual(bad.errors, run(root, [story({ points: 21 })]).errors, 'same problems as the writer');
+
+  run(root, [story()]);
+  const before = fs.readFileSync(proposalPath(root));
+  const again = check([story(), story({ title: 'Two' })]);
+  assert.deepEqual([again.ids, again.skipped.map((s) => s.id)], [['NEW-2'], ['NEW-1']]);
+  assert.deepEqual(fs.readFileSync(proposalPath(root)), before, 'a check changes nothing');
+});
+
+test('sending a batch again adds nothing, leaves the file byte-for-byte as it was and reports the repeats', () => {
+  const root = temp();
+  const batch = [story(), story({ title: 'Two' })];
+  run(root, batch);
+  const before = fs.readFileSync(proposalPath(root));
+  const r = run(root, batch);
+  assert.deepEqual([r.ok, r.ids, r.count, r.skipped.map((s) => s.id)], [true, [], 2, ['NEW-1', 'NEW-2']]);
+  assert.deepEqual(fs.readFileSync(proposalPath(root)), before);
+});
+
+test('a batch sent again after one story went missing adds only the missing one', () => {
+  const root = temp();
+  const batch = [story(), story({ title: 'Two' }), story({ title: 'Three' })];
+  run(root, batch);
+  const lines = fs.readFileSync(proposalPath(root), 'utf8').split('\r\n');
+  fs.writeFileSync(proposalPath(root), [lines[0], lines[1], lines[3], ''].join('\r\n')); // 'Two' is gone
+  const r = run(root, batch);
+  assert.deepEqual([r.ok, r.ids, r.skipped.map((s) => s.id), r.count], [true, ['NEW-4'], ['NEW-1', 'NEW-3'], 3]);
+  assert.deepEqual(load(root).stories.map((s) => s.title), ['Reset password', 'Three', 'Two']);
+});
+
+test('CLI: --check prints what would happen and writes nothing; a repeat is reported as skipped', () => {
+  const root = temp();
+  const cli = (args, input) => spawnSync(process.execPath, [SCRIPT, ...args], {
+    input: JSON.stringify(input), encoding: 'utf8', env: { ...process.env, TLT_DATA_DIR: root },
+  });
+  const checked = cli(['data.csv', '--check'], [story()]);
+  assert.equal(checked.status, 0, checked.stderr);
+  assert.match(checked.stdout, /^Check passed, nothing written\. Would be: Added 1 proposed story to proposals\/data\.csv \(NEW-1\)\./);
+  assert.equal(fs.existsSync(path.join(root, 'proposals')), false);
+  assert.equal(cli(['data.csv', '--check'], [story({ points: 21 })]).status, 1);
+  assert.equal(cli(['data.csv', '--nope'], []).status, 2);
+
+  cli(['data.csv'], [story()]);
+  const again = cli(['data.csv'], [story(), story({ title: 'Two' })]);
+  assert.match(again.stdout, /^Added 1 proposed story to proposals\/data\.csv \(NEW-2\); skipped 1 already in the file \(Story 1 = NEW-1\); 2 in the file now\./);
+  const none = cli(['data.csv'], [story()]);
+  assert.match(none.stdout, /^Skipped 1 already in the file \(Story 1 = NEW-1\); 2 in the file now\./);
 });

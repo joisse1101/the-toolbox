@@ -90,6 +90,9 @@ test('write_proposals gives the script result', async () => {
     assert.match(textOf(r), /Added 1 proposed story to proposals\/data.csv \(NEW-1\); 1 in the file now\./);
     writeProposal({ dataDir: other, name: 'data.csv', input: JSON.stringify([story()]) });
     assert.equal(fs.readFileSync(path.join(root, 'proposals', 'data.csv'), 'utf8'), fs.readFileSync(path.join(other, 'proposals', 'data.csv'), 'utf8'));
+    const again = await call(client, 'write_proposals', { backlog: 'data.csv', items: [story()] });
+    assert.ok(!again.isError, textOf(again));
+    assert.match(textOf(again), /^Skipped 1 already in the file [(]Story 1 = NEW-1[)]; 1 in the file now[.]/);
   } finally {
     await client.close();
   }
