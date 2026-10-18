@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { loadBacklog } from '../core/model.js';
 import {
   parseReview, serializeReview, validateFindings, fillCurrent, mergeStatus, suggestionState, applySuggestions,
-  unitsOf, unitState, criterionNumberOf, displayRow, openCounts, openUnitsFor, retargetRows, reviewOverview, REVIEW_COLUMNS,
+  unitsOf, unitState, acceptAll, acceptSummaryText, criterionNumberOf, displayRow, openCounts, openUnitsFor, retargetRows, reviewOverview, REVIEW_COLUMNS,
 } from '../core/review.js';
 
 const CSV =
@@ -597,4 +597,85 @@ test('displayRow shows the number a criterion has now, not the one the review sa
   assert.deepEqual(displayRow(finding(), after), finding(), 'other rows are returned as they are');
   const gone = displayRow({ ...rows[1], current: 'AC15: Given nope, when w, then t' }, after);
   assert.equal(gone.suggested, 'AC15', 'a row that matches no criterion is left as written');
+});
+
+// ---- acceptAll ----
+
+const open = (over = {}) => ({ ...finding(), current: 'Login', status: 'open', ...over });
+const unitsFor = (rows) => unitsOf(rows);
+
+test('acceptAll applies every eligible unit in order', () => {
+  const b = backlog();
+  const rows = [open(), open({ storyId: 'IAM-0002', suggested: 'Sign out', current: 'Logout' })];
+  const r = acceptAll(b.stories, unitsFor(rows), b.headers);
+  assert.equal(r.applied.length, 2);
+  assert.equal(r.skipped.length, 0);
+  assert.equal(r.stories.find((s) => s.code === 'IAM-0001').title, 'Log in with a password');
+  assert.equal(r.stories.find((s) => s.code === 'IAM-0002').title, 'Sign out');
+});
+
+test('acceptAll skips a confirm default and an unlock row and leaves them untouched', () => {
+  const b = backlog();
+  const rows = [open({ confidence: 'confirm' }), open({ storyId: 'IAM-0002', field: '', action: 'unlock', suggested: '' })];
+  const r = acceptAll(b.stories, unitsFor(rows), b.headers);
+  assert.equal(r.applied.length, 0);
+  assert.deepEqual(r.skipped.map((s) => s.reason), ['check', 'unlock']);
+  assert.equal(r.stories, b.stories);
+});
+
+test('acceptAll skips a unit of a locked story', () => {
+  const b = backlog();
+  const stories = b.stories.map((s) => (s.code === 'IAM-0001' ? { ...s, locked: true } : s));
+  const r = acceptAll(stories, unitsFor([open()]), b.headers);
+  assert.deepEqual(r.skipped.map((s) => s.reason), ['locked']);
+  assert.equal(r.applied.length, 0);
+});
+
+test('acceptAll skips a unit made stale by an earlier one and still applies the next', () => {
+  const b = backlog();
+  const rows = [
+    open({ suggested: 'First' }),
+    open({ suggested: 'Second' }), // expects the old title, gone after the first
+    open({ storyId: 'IAM-0002', suggested: 'Sign out', current: 'Logout' }),
+  ];
+  const r = acceptAll(b.stories, unitsFor(rows), b.headers);
+  assert.equal(r.applied.length, 2);
+  assert.deepEqual(r.skipped.map((s) => s.reason), ['failed']);
+  assert.equal(r.stories.find((s) => s.code === 'IAM-0001').title, 'First');
+});
+
+test('acceptAll with nothing eligible returns the stories unchanged', () => {
+  const b = backlog();
+  const r = acceptAll(b.stories, [], b.headers);
+  assert.equal(r.stories, b.stories);
+  assert.deepEqual(r.applied, []);
+});
+
+test('acceptAll skips a unit whose apply is refused (dependency cycle) and applies the rest', () => {
+  const b = backlog();
+  const rows = [
+    open({ field: 'Depends On', action: 'add', current: '', suggested: 'IAM-0002' }), // IAM-0002 already depends on IAM-0001
+    open({ storyId: 'IAM-0002', suggested: 'Sign out', current: 'Logout' }),
+  ];
+  const r = acceptAll(b.stories, unitsFor(rows), b.headers);
+  assert.deepEqual(r.skipped.map((s) => s.reason), ['failed']);
+  assert.equal(r.applied.length, 1);
+});
+
+test('acceptAll counts a split group as one unit; groups are always confirm defaults, so it is skipped as a check', () => {
+  const b = backlog();
+  const group = [
+    open({ storyId: 'IAM-0003', field: 'Title', current: 'SSO Login', suggested: 'SSO sign-in', confidence: 'confirm', group: 'split-3' }),
+    open({ storyId: 'NEW-1', field: 'Title', action: 'add-story', current: '', suggested: 'SSO sign-out', confidence: 'confirm', group: 'split-3' }),
+  ];
+  const r = acceptAll(b.stories, unitsFor(group), b.headers);
+  assert.equal(r.skipped.length, 1);
+  assert.equal(r.skipped[0].reason, 'check');
+  assert.equal(r.skipped[0].unit.rows.length, 2);
+});
+
+test('acceptSummaryText says how many were applied and why the rest stayed open', () => {
+  assert.equal(acceptSummaryText(3, []), 'Applied 3.');
+  const skipped = [{ reason: 'check' }, { reason: 'locked' }, { reason: 'check' }];
+  assert.equal(acceptSummaryText(0, skipped), 'Applied 0. Left 3 open (1 locked story, 2 needs a check).');
 });

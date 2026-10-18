@@ -367,6 +367,50 @@ export function unitState(unit, stories) {
   return locked ? { state: 'locked' } : { state: 'open' };
 }
 
+// Why Accept all leaves a unit alone before trying it, or null when it may be tried: an unlock row is not an edit, a
+// `confirm` default needs a human check, and a locked story cannot be edited.
+function skipReason(unit, stories) {
+  if (unit.rows.some((r) => r.action === 'unlock')) return 'unlock';
+  if (unit.rows.some((r) => r.confidence === 'confirm')) return 'check';
+  return unitState(unit, stories).state === 'locked' ? 'locked' : null;
+}
+
+// Accept all: apply the units in order, each on the stories the previous one left. A unit that is skipped, stale or
+// refused stays open and the run goes on. Returns { stories, applied: [units], skipped: [{ unit, reason }] } with
+// reason `unlock`, `check`, `locked` or `failed`; `stories` is the input when nothing was applied.
+export function acceptAll(stories, units, headers) {
+  let current = stories;
+  const applied = [];
+  const skipped = [];
+  for (const unit of units) {
+    const reason = skipReason(unit, current);
+    if (reason) {
+      skipped.push({ unit, reason });
+      continue;
+    }
+    const result = unitState(unit, current).state === 'stale' ? { error: true } : applySuggestions(current, unit.rows, headers);
+    if (result.error) {
+      skipped.push({ unit, reason: 'failed' });
+      continue;
+    }
+    current = result.stories;
+    applied.push(unit);
+  }
+  return { stories: current, applied, skipped };
+}
+
+const SKIP_LABEL = { unlock: 'unlock row', locked: 'locked story', check: 'needs a check', failed: 'could not be applied' };
+
+// One line for the end of an Accept all run: how many were applied and how many stayed open, by reason.
+export function acceptSummaryText(appliedCount, skipped) {
+  const applied = `Applied ${appliedCount}.`;
+  if (!skipped.length) return applied;
+  const counts = new Map();
+  for (const { reason } of skipped) counts.set(reason, (counts.get(reason) ?? 0) + 1);
+  const why = Object.keys(SKIP_LABEL).filter((r) => counts.has(r)).map((r) => `${counts.get(r)} ${SKIP_LABEL[r]}`).join(', ');
+  return `${applied} Left ${skipped.length} open (${why}).`;
+}
+
 // The position of the criterion a unit's single replace or remove row targets in the story, or null for anything
 // else (an add, another field, a split group, a criterion that cannot be found). The story form shows such a unit
 // under that criterion.
