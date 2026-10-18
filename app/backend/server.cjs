@@ -10,6 +10,7 @@ const { spawn } = require('child_process');
 const { HttpError, validateName } = require('../../core/file-name.cjs');
 const { DATA_DIR } = require('../../core/paths.cjs');
 const { backupFolderName, isBackupFolderName, backupFiles } = require('../../core/backup.cjs');
+const { logWrite } = require('../../core/write-log.cjs');
 
 const HOST = '127.0.0.1';
 const PORT = Number(process.env.PORT) || 3000;
@@ -395,7 +396,9 @@ async function handleApi(req, res, segments) {
     if (req.method === 'GET') return send(res, 200, { files: await listFiles(folder) });
     if (req.method === 'POST') {
       const body = await readJson(req);
-      const name = await createFile(folder, body.name, typeof body.content === 'string' ? body.content : '');
+      const content = typeof body.content === 'string' ? body.content : '';
+      const name = await createFile(folder, body.name, content);
+      logWrite({ writer: 'portal', store: storeId, file: name, text: content });
       return send(res, 201, { name });
     }
     throw new HttpError(405, 'Method not allowed');
@@ -419,11 +422,16 @@ async function handleApi(req, res, segments) {
       const content = await readBody(req);
       await fs.promises.access(full); // PUT never creates; 404 if missing
       await fs.promises.writeFile(full, content, 'utf8');
+      logWrite({ writer: 'portal', store: storeId, file: name, text: content });
       return send(res, 200, { name });
     }
     if (req.method === 'PATCH') {
       const body = await readJson(req);
       const newName = await renameFile(folder, name, body.name);
+      if (newName !== name) {
+        // The file now exists under a new name: log its content so a later write can be traced to this one.
+        logWrite({ writer: 'portal', store: storeId, file: newName, text: await fs.promises.readFile(resolveInStore(folder, newName), 'utf8') });
+      }
       return send(res, 200, { name: newName });
     }
   } catch (err) {

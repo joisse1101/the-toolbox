@@ -18,6 +18,7 @@ import { buildProposals } from '../../../core/proposal-input.js';
 const require = createRequire(import.meta.url);
 const { validateName } = require('../../../core/file-name.cjs'); // same name rules as the file API
 const { DATA_DIR } = require('../../../core/paths.cjs');
+const { logWrite } = require('../../../core/write-log.cjs');
 
 // A JSON.parse failure message plus line, column and a short excerpt, so a missing comma can be found.
 export function describeParseError(err, text, what = 'stories') {
@@ -31,8 +32,9 @@ export function describeParseError(err, text, what = 'stories') {
 }
 
 // Write beside the target, then rename over it, so a failure never leaves a partly written file. A .tmp file is
-// not listed by the file API. Returns an error message, or null.
-export function writeAtomic(dir, file, text) {
+// not listed by the file API. `writer` (the tool's name) is recorded in the write log when given. Returns an error
+// message, or null.
+export function writeAtomic(dir, file, text, writer) {
   const tmp = path.join(dir, `${file}.${process.pid}.tmp`);
   try {
     fs.writeFileSync(tmp, text, 'utf8');
@@ -41,6 +43,7 @@ export function writeAtomic(dir, file, text) {
     fs.rmSync(tmp, { force: true });
     return `Could not write ${path.basename(dir)}/${file}: ${err.message} (is it open in Excel?)`;
   }
+  if (writer) logWrite({ writer, store: path.basename(dir), file, text, dataDir: path.dirname(dir) });
   return null;
 }
 
@@ -109,7 +112,7 @@ export function writeProposal({ dataDir = DATA_DIR, name, input }) {
   const result = { ok: true, file, ids: built.ids, patchedIds: built.patchedIds, skipped: built.skipped, count: all.stories.length };
   if (proposals && !built.ids.length && !built.patchedIds.length) return result;
   fs.mkdirSync(proposalDir, { recursive: true });
-  const failed = writeAtomic(proposalDir, file, serializeBacklog(all));
+  const failed = writeAtomic(proposalDir, file, serializeBacklog(all), 'write_proposals');
   if (failed) return { ok: false, errors: [failed] };
 
   // Read the file again: what is reported as written is what is on disk now.

@@ -19,6 +19,7 @@ import {
 const require = createRequire(import.meta.url);
 const { validateName } = require('../../../core/file-name.cjs'); // same name rules as the file API
 const { DATA_DIR } = require('../../../core/paths.cjs');
+const { logWrite } = require('../../../core/write-log.cjs');
 
 // A JSON.parse failure message plus line, column and a short excerpt, so a missing comma can be found.
 function describeParseError(err, text) {
@@ -53,7 +54,7 @@ function readRows(filePath) {
 
 // Write beside the target, then rename over it, so a failure never leaves a partly written file. A .tmp file is
 // not listed by the file API. Returns an error message, or null.
-function writeAtomic(dir, file, text) {
+function writeAtomic(dir, file, text, writer) {
   const tmp = path.join(dir, `${file}.${process.pid}.tmp`);
   try {
     fs.writeFileSync(tmp, text, 'utf8');
@@ -62,6 +63,7 @@ function writeAtomic(dir, file, text) {
     fs.rmSync(tmp, { force: true });
     return `Could not write reviews/${file}: ${err.message} (is it open in Excel?)`;
   }
+  logWrite({ writer, store: 'reviews', file, text, dataDir: path.dirname(dir) });
   return null;
 }
 
@@ -138,10 +140,10 @@ export function writeReview({ dataDir = DATA_DIR, name, input, append = false })
 
   fs.mkdirSync(reviewDir, { recursive: true });
   if (!append && decided.length) {
-    const failed = writeAtomic(reviewDir, `${file}.decided`, serializeReview(decided));
+    const failed = writeAtomic(reviewDir, `${file}.decided`, serializeReview(decided), 'write_review');
     if (failed) return { ok: false, errors: [failed] };
   }
-  const failed = writeAtomic(reviewDir, file, serializeReview(rows));
+  const failed = writeAtomic(reviewDir, file, serializeReview(rows), 'write_review');
   if (failed) return { ok: false, errors: [failed] };
 
   const stored = readRows(path.join(reviewDir, file));

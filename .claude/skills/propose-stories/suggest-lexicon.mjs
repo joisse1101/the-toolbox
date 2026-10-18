@@ -63,7 +63,7 @@ export function suggestLexicon({ dataDir = DATA_DIR, name, items }) {
 
   const next = { ...existing.value, rows: [...existing.value.rows, ...checked.rows] };
   fs.mkdirSync(suggestionsDir, { recursive: true });
-  const failed = writeAtomic(suggestionsDir, file, composeSuggestions(next));
+  const failed = writeAtomic(suggestionsDir, file, composeSuggestions(next), 'suggest_lexicon_change');
   if (failed) return { ok: false, errors: [failed] };
   const report = checked.rows.map((row) => ({
     row, lines: impactLines(row, impactOf(lexicon.value, row.term, row.action, row.newName, row.edit)),

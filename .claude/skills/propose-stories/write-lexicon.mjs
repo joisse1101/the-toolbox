@@ -67,7 +67,7 @@ export function writeLexicon({ dataDir = DATA_DIR, name, input }) {
   const lexiconDir = path.join(dataDir, 'lexicons');
 
   fs.mkdirSync(lexiconDir, { recursive: true });
-  const failed = writeAtomic(lexiconDir, file, composeLexicon(result.lexicon));
+  const failed = writeAtomic(lexiconDir, file, composeLexicon(result.lexicon), 'write_lexicon');
   if (failed) return { ok: false, errors: [failed] };
 
   let stored;
