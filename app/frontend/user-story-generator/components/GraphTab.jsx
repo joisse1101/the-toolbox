@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { storyIssues, storyLabel } from '../../../../core/model.js';
 import { wouldCycle } from '../../../../core/ids.js';
-import { layoutGraph, relatedIds, fitView, zoomAt, panBy, toGraphPoint } from '../graph.js';
+import { layoutGraph, groupStories, relatedIds, fitView, zoomAt, panBy, toGraphPoint } from '../graph.js';
 import { issueClass, rowTooltip } from './issues.js';
 
 const NODE_W = 176;
@@ -14,6 +14,8 @@ const BAND_GAP = 28;
 const MAX_TITLE = 22;
 const KEY_PAN = 48;
 const ZOOM_STEP = 1.25;
+const MIN_LABEL_ZOOM = 0.5; // below this the weight labels on arrows are left out
+const LEVELS = [['stories', 'Stories'], ['features', 'Features'], ['epics', 'Epics']];
 
 const slot = (layer, row, top) => ({ x: BAND_PAD + layer * (NODE_W + GAP_X), y: top + LABEL_H + BAND_PAD + row * (NODE_H + GAP_Y) });
 const edgeKey = (e) => `${e.from}>${e.to}`;
@@ -62,7 +64,10 @@ function edgePath(from, to, via, top, back) {
 // The dependencies as a layered graph that can be zoomed, panned and edited: drag from a node's handle onto the
 // story it depends on, or use Link; select an arrow to remove it.
 export default function GraphTab({ stories, problems, current, hidden, onOpen, onAddDependency, onRemoveDependency }) {
-  const layout = useMemo(() => layoutGraph(stories), [stories]);
+  const [level, setLevel] = useState('stories');
+  const coarse = level !== 'stories'; // Features and Epics: groups of stories, read-only
+  const grouping = useMemo(() => (coarse ? groupStories(stories, level) : null), [stories, level, coarse]);
+  const layout = useMemo(() => layoutGraph(grouping ? grouping.items : stories), [stories, grouping]);
   const byId = useMemo(() => new Map(stories.map((s) => [s.id, s])), [stories]);
   const nodeById = useMemo(() => new Map(layout.nodes.map((n) => [n.id, n])), [layout]);
   const epicHue = useMemo(() => {
@@ -79,6 +84,7 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
   const [selectedEdge, setSelectedEdge] = useState(null);
   const [linkFrom, setLinkFrom] = useState(null); // story id: Link mode, the next story chosen is its dependency
   const [drag, setDrag] = useState(null); // { from: story id, point: graph coordinates } while a link is dragged
+  const [focus, setFocus] = useState(null); // Set of story ids kept prominent after "Show stories", else null
   const [note, setNote] = useState('');
   const panel = useRef(null);
   const gesture = useRef(null);
@@ -103,17 +109,20 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
     setView((v) => zoomAt(v, point ?? { x: size.width / 2, y: size.height / 2 }, factor));
   };
 
-  // A different backlog starts with nothing selected and the whole graph in view.
+  // A different backlog starts at the Stories level with nothing selected and the whole graph in view; so does each level.
   useEffect(() => {
+    setLevel('stories');
     setSelectedId(null);
     setSelectedEdge(null);
     setLinkFrom(null);
+    setFocus(null);
     setNote('');
   }, [current]);
   useLayoutEffect(() => {
-    if (hidden || !hasNodes || fittedFor.current === current) return;
-    if (fit()) fittedFor.current = current;
-  }, [hidden, hasNodes, current]);
+    const key = `${current}|${level}`;
+    if (hidden || !hasNodes || fittedFor.current === key) return;
+    if (fit()) fittedFor.current = key;
+  }, [hidden, hasNodes, current, level]);
 
   // Ctrl+wheel (and a trackpad pinch) zooms about the pointer, the plain wheel pans. Needs a non-passive listener.
   useEffect(() => {
@@ -133,12 +142,38 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
   const selected = nodeById.get(selectedId) ?? null;
   const edge = layout.edges.find((e) => edgeKey(e) === selectedEdge) ?? null;
   const related = useMemo(() => (selected ? relatedIds(layout.edges, selected.id) : null), [layout, selected]);
-  const lit = (id) => !related || id === selected.id || related.has(id);
-  const litEdge = (e) => !related || (lit(e.from) && lit(e.to));
+  const lit = (id) => (focus ? focus.has(id) : !related || id === selected.id || related.has(id));
+  const litEdge = (e) => (focus || related ? lit(e.from) && lit(e.to) : true);
 
   const clearSelection = () => {
     setSelectedId(null);
     setSelectedEdge(null);
+    setFocus(null);
+  };
+
+  // Features and Epics levels: the group names, and the story links behind the selected group or arrow.
+  const groupLabel = (id) => {
+    const g = grouping.groups.get(id);
+    return level === 'features' ? `${g.epic} › ${g.name}` : g.name;
+  };
+  const selectedGroup = coarse && selected ? grouping.groups.get(selected.id) : null;
+  const detailPairs = !coarse
+    ? null
+    : edge
+      ? grouping.pairs.get(edgeKey(edge))
+      : selectedGroup
+        ? [...grouping.pairs].filter(([k]) => k.split('>').includes(String(selectedGroup.id))).flatMap(([, pairs]) => pairs)
+        : null;
+  const chooseLevel = (next) => {
+    setLevel(next);
+    clearSelection();
+    setLinkFrom(null);
+    setNote('');
+  };
+  const showStories = () => {
+    const ids = edge ? detailPairs.flatMap((p) => [p.from, p.to]) : selectedGroup.storyIds;
+    chooseLevel('stories');
+    setFocus(new Set(ids));
   };
   const cancelLink = () => {
     gesture.current = null;
@@ -161,6 +196,7 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
   };
 
   const removeEdge = (e) => {
+    if (coarse) return;
     const from = byId.get(e.from);
     const to = byId.get(e.to);
     if (!from || !to) return;
@@ -248,12 +284,20 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
   };
 
   const linkSource = linkFrom !== null ? byId.get(linkFrom) : null;
-  const openStory = selected ? byId.get(selected.id) : null;
+  const openStory = selected && !coarse ? byId.get(selected.id) : null;
   const dragNode = drag ? nodeById.get(drag.from) : null;
 
   return (
     <section id="graphView" className="card graph-view" role="tabpanel" aria-labelledby="tabGraph" hidden={hidden}>
       <div className="graph-bar">
+        <div className="graph-levels" role="group" aria-label="Detail level">
+          {LEVELS.map(([key, label]) => (
+            <button
+              key={key} type="button" id={`graphLevel-${key}`} aria-pressed={level === key}
+              title={key === 'stories' ? 'Every story and dependency' : `Dependencies between ${key}`} onClick={() => chooseLevel(key)}
+            >{label}</button>
+          ))}
+        </div>
         <button type="button" id="graphZoomOut" aria-label="Zoom out" title="Zoom out (-)" disabled={!hasNodes} onClick={() => zoomBy(1 / ZOOM_STEP)}>−</button>
         <span className="graph-zoom" aria-live="polite">{Math.round(view.k * 100)}%</span>
         <button type="button" id="graphZoomIn" aria-label="Zoom in" title="Zoom in (+)" disabled={!hasNodes} onClick={() => zoomBy(ZOOM_STEP)}>+</button>
@@ -263,20 +307,44 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
           type="button" id="graphLink" aria-pressed={linkFrom !== null} disabled={!selected || !openStory?.code}
           title="Choose the story the selected one depends on" onClick={() => setLinkFrom(linkFrom === null ? selected.id : null)}
         >Link</button>
-        <button type="button" id="graphRemove" disabled={!edge} title="Remove the selected dependency (Delete)" onClick={() => edge && removeEdge(edge)}>Remove dependency</button>
+        <button type="button" id="graphRemove" disabled={!edge || coarse} title="Remove the selected dependency (Delete)" onClick={() => edge && removeEdge(edge)}>Remove dependency</button>
         <button type="button" id="graphOpen" disabled={!selected} onClick={() => openStory && onOpen(openStory.id)}>Open in Editor</button>
       </div>
       <p className="graph-hint muted" role="status" aria-live="polite">
-        {linkSource
-          ? `${linkSource.code || title(linkSource)} depends on… choose a story (Escape cancels).`
-          : edge
-            ? `${byId.get(edge.from)?.code} depends on ${byId.get(edge.to)?.code}.`
-            : selected
-              ? `${openStory?.code}: its dependencies and dependents are highlighted.`
+        {coarse
+          ? edge
+            ? `${groupLabel(edge.from)} depends on ${groupLabel(edge.to)}: ${detailPairs.length} story ${detailPairs.length === 1 ? 'link' : 'links'}.`
+            : selectedGroup
+              ? `${groupLabel(selectedGroup.id)}: the ${level} it depends on and that depend on it are highlighted.`
               : hasNodes
-                ? 'Drag from a story’s dot onto the story it depends on to link them. Ctrl+wheel zooms, drag the background to pan.'
-                : ''}
+                ? `Read-only overview. Select a node or an arrow to see the story links behind it; dependencies are edited at the Stories level.`
+                : ''
+          : linkSource
+            ? `${linkSource.code || title(linkSource)} depends on… choose a story (Escape cancels).`
+            : edge
+              ? `${byId.get(edge.from)?.code} depends on ${byId.get(edge.to)?.code}.`
+              : selected
+                ? `${openStory?.code}: its dependencies and dependents are highlighted.`
+                : focus
+                  ? 'The stories of the chosen group or link are highlighted. Select the background to clear.'
+                  : hasNodes
+                    ? 'Drag from a story’s dot onto the story it depends on to link them. Ctrl+wheel zooms, drag the background to pan.'
+                    : ''}
       </p>
+      {detailPairs && (
+        <div className="graph-detail">
+          <ul>
+            {detailPairs.map((p) => (
+              <li key={`${p.from}>${p.to}`}>
+                <button type="button" className="link-btn" onClick={() => onOpen(p.from)}>{byId.get(p.from).code} {title(byId.get(p.from))}</button>
+                {' depends on '}
+                <button type="button" className="link-btn" onClick={() => onOpen(p.to)}>{byId.get(p.to).code} {title(byId.get(p.to))}</button>
+              </li>
+            ))}
+          </ul>
+          <button type="button" id="graphShowStories" onClick={showStories}>Show stories</button>
+        </div>
+      )}
       {note && <p className="warning graph-note" role="alert">{note}</p>}
 
       {hasNodes ? (
@@ -299,7 +367,7 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
               {layout.clusters.map((c) => (
                 <g key={c.index} className="graph-band" data-cluster={c.index}>
                   <rect className="graph-band-box" x="0" y={bands[c.index].top} width={bands[c.index].width} height={bands[c.index].height} rx="10" />
-                  <text className="graph-band-label" x={BAND_PAD} y={bands[c.index].top + 18}>{`Cluster ${c.index + 1} · ${c.size} stories`}</text>
+                  <text className="graph-band-label" x={BAND_PAD} y={bands[c.index].top + 18}>{`Cluster ${c.index + 1} · ${c.size} ${coarse ? level : 'stories'}`}</text>
                 </g>
               ))}
               {layout.edges.map((e) => {
@@ -309,7 +377,14 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
                 const on = selectedEdge === edgeKey(e);
                 const marker = e.back ? 'back' : on ? 'hi' : '';
                 const cls = ['graph-edge', e.back ? 'back' : '', on ? 'selected' : '', litEdge(e) ? '' : 'dim'].filter(Boolean).join(' ');
-                const label = `${byId.get(e.from).code} depends on ${byId.get(e.to).code}`;
+                const label = coarse
+                  ? `${groupLabel(e.from)} depends on ${groupLabel(e.to)}`
+                  : `${byId.get(e.from).code} depends on ${byId.get(e.to).code}`;
+                const weight = coarse ? grouping.pairs.get(edgeKey(e)).length : 0;
+                const mid = {
+                  x: (slot(from.layer, 0, 0).x + slot(to.layer, 0, 0).x + NODE_W) / 2,
+                  y: (slot(0, from.row, bands[from.cluster].top).y + slot(0, to.row, bands[from.cluster].top).y + NODE_H) / 2 - 5,
+                };
                 return (
                   <g
                     key={edgeKey(e)} className={cls} data-edge={edgeKey(e)} tabIndex={0} role="button" aria-label={label} aria-pressed={on}
@@ -319,10 +394,32 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
                     <title>{label}</title>
                     <path d={d} className="graph-edge-hit" />
                     <path d={d} className="graph-edge-line" markerEnd={`url(#graph-arrow${marker ? `-${marker}` : ''})`} />
+                    {coarse && view.k >= MIN_LABEL_ZOOM && <text className="graph-edge-weight" x={mid.x} y={mid.y}>{weight}</text>}
                   </g>
                 );
               })}
-              {layout.nodes.map((n) => {
+              {coarse && layout.nodes.map((n) => {
+                const g = grouping.groups.get(n.id);
+                const { x, y } = pos(n);
+                const hue = epicHue.get(g.epic);
+                const counts = `${g.storyIds.length} ${g.storyIds.length === 1 ? 'story' : 'stories'}${g.internal ? ` · ${g.internal} internal` : ''}`;
+                const cls = ['graph-node', 'group', selected?.id === n.id ? 'selected' : '', lit(n.id) ? '' : 'dim'].filter(Boolean).join(' ');
+                return (
+                  <g
+                    key={n.id} className={cls} data-node={n.id} transform={`translate(${x} ${y})`} tabIndex={0} role="button"
+                    aria-label={`${groupLabel(n.id)}, ${counts}`} aria-pressed={selected?.id === n.id}
+                    onClick={() => clickNode(n.id)} onKeyDown={activate(() => clickNode(n.id))}
+                  >
+                    <title>{`${groupLabel(n.id)}\n${counts}`}</title>
+                    {level === 'features' && <text className="graph-node-epiclabel" x="0" y="-5">{clip(g.epic)}</text>}
+                    <rect className="graph-node-box" width={NODE_W} height={NODE_H} rx="6" />
+                    <rect className="graph-node-epic" width="6" height={NODE_H} rx="3" style={hue === undefined ? undefined : { fill: `hsl(${hue} 62% 52%)` }} />
+                    <text className="graph-node-code" x="16" y="18">{counts}</text>
+                    <text className="graph-node-title" x="16" y="35">{clip(g.name)}</text>
+                  </g>
+                );
+              })}
+              {!coarse && layout.nodes.map((n) => {
                 const s = byId.get(n.id);
                 const { x, y } = pos(n);
                 const { errors, warnings } = storyIssues(s, problems.get(s.id));
@@ -354,17 +451,37 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
           </svg>
         </div>
       ) : (
-        <p className="muted graph-empty" id="graphEmpty">{stories.length ? 'No dependencies yet.' : 'No stories yet.'}</p>
+        <p className="muted graph-empty" id="graphEmpty">
+          {coarse ? `No dependencies between ${level} yet.` : stories.length ? 'No dependencies yet.' : 'No stories yet.'}
+        </p>
       )}
 
-      {(layout.cyclic || layout.unresolved.length > 0) && (
+      {coarse && layout.cyclic && (
+        <ul className="muted graph-notes">
+          {grouping.mutual.map(([a, b]) => <li key={`${a}>${b}`}>{groupLabel(a)} and {groupLabel(b)} depend on each other.</li>)}
+          {grouping.mutual.length === 0 && <li>Some {level} depend on each other in a circle.</li>}
+        </ul>
+      )}
+      {!coarse && (layout.cyclic || layout.unresolved.length > 0) && (
         <ul className="warning graph-notes">
           {layout.cyclic && <li>This backlog has a dependency cycle. The stories in it are marked.</li>}
           {layout.unresolved.map((u) => <li key={`${u.from}-${u.code}`}>{byId.get(u.from)?.code} lists {u.code}, which no story has.</li>)}
         </ul>
       )}
 
-      {layout.unlinked.length > 0 && (
+      {coarse && layout.unlinked.length > 0 && (
+        <div className="graph-unlinked">
+          <h3 className="dep-heading">No dependencies</h3>
+          <ul>
+            {layout.unlinked.map((item) => {
+              const g = grouping.groups.get(item.id);
+              return <li key={item.id}>{groupLabel(item.id)} <span className="code">{g.storyIds.length} {g.storyIds.length === 1 ? 'story' : 'stories'}</span></li>;
+            })}
+          </ul>
+        </div>
+      )}
+
+      {!coarse && layout.unlinked.length > 0 && (
         <div className="graph-unlinked">
           <h3 className="dep-heading">No dependencies</h3>
           <ul>

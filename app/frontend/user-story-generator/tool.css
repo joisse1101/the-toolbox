@@ -185,6 +185,12 @@ legend { font-weight: 600; padding: 0 6px; }
 .graph-node:hover .graph-handle, .graph-node:focus-visible .graph-handle, .graph-node.selected .graph-handle { opacity: 1; }
 .graph-rubber { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 6 4; pointer-events: none; }
 
+.graph-levels { display: inline-flex; gap: 4px; margin-right: 8px; }
+.graph-edge-weight { font-size: 12px; font-weight: 600; fill: var(--text); text-anchor: middle; pointer-events: none; paint-order: stroke; stroke: var(--bg); stroke-width: 4px; }
+.graph-node-epiclabel { font-size: 10px; fill: var(--muted); pointer-events: none; }
+.graph-detail { margin: 0 0 8px; padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; }
+.graph-detail ul { list-style: none; margin: 0 0 6px; padding: 0; max-height: 9em; overflow: auto; }
+
 .graph-unlinked ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
 .graph-unlinked li { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; }
 .graph-unlinked li.incomplete { background: var(--bad-bg); border-color: var(--bad-border); }
