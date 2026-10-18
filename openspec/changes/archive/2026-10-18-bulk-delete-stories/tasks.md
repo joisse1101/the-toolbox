@@ -16,4 +16,4 @@
 ## 4. Verify
 
 - [x] 4.1 `npm test` and `npm run build`
-- [ ] 4.2 Try it in the browser: bulk delete with a locked story ticked, Delete story in the form, Alt+D, a locked story's disabled button
+- [x] 4.2 Try it in the browser: bulk delete with a locked story ticked, Delete story in the form, Alt+D, a locked story's disabled button
