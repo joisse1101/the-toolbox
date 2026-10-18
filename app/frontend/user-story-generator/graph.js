@@ -150,6 +150,71 @@ function arrangeCluster(group, edges, layer) {
   return { row, height: Math.max(...layers.map((items) => items.length)), chains };
 }
 
+const KEY_SEP = '\u0001';
+
+// Coarser view of the same stories, for the Features and Epics levels: one item per feature (epic + feature) or epic,
+// shaped like a story so `layoutGraph` can lay it out. A story with no ID, no Epic or (features) no Feature is left out.
+// Links between stories of one group are counted in the group, not made into edges. Returns:
+//   items   { id, code, dependsOn } for layoutGraph; `code` is the group key, `id` a small number
+//   groups  id -> { id, key, name, epic, storyIds, internal (links inside the group) }
+//   pairs   `${from}>${to}` group ids -> the story links { from, to } (story ids) behind that group edge
+//   mutual  [a, b] group ids that depend on each other
+export function groupStories(stories, level) {
+  const trim = (v) => String(v ?? '').trim();
+  const keyOf = (s) => {
+    const epic = trim(s.epic);
+    if (!s.code || !epic) return null;
+    if (level === 'epics') return epic;
+    return trim(s.feature) ? `${epic}${KEY_SEP}${trim(s.feature)}` : null;
+  };
+
+  const groups = new Map(); // key -> group
+  const groupOf = new Map(); // story id -> group
+  for (const s of stories) {
+    const key = keyOf(s);
+    if (key === null) continue;
+    if (!groups.has(key)) {
+      groups.set(key, { id: groups.size + 1, key, name: trim(level === 'epics' ? s.epic : s.feature), epic: trim(s.epic), storyIds: [], internal: 0, dependsOn: new Set() });
+    }
+    groups.get(key).storyIds.push(s.id);
+    groupOf.set(s.id, groups.get(key));
+  }
+
+  const byCode = new Map();
+  for (const s of stories) if (s.code && !byCode.has(s.code)) byCode.set(s.code, s);
+  const pairs = new Map();
+  for (const s of stories) {
+    const from = groupOf.get(s.id);
+    if (!from) continue;
+    for (const code of new Set(s.dependsOn)) {
+      const target = byCode.get(code);
+      const to = target && groupOf.get(target.id);
+      if (!to || target.id === s.id) continue;
+      if (to === from) {
+        from.internal++;
+        continue;
+      }
+      from.dependsOn.add(to.key);
+      const edge = `${from.id}>${to.id}`;
+      if (!pairs.has(edge)) pairs.set(edge, []);
+      pairs.get(edge).push({ from: s.id, to: target.id });
+    }
+  }
+
+  const mutual = [];
+  for (const edge of pairs.keys()) {
+    const [a, b] = edge.split('>').map(Number);
+    if (a < b && pairs.has(`${b}>${a}`)) mutual.push([a, b]);
+  }
+  const list = [...groups.values()];
+  return {
+    items: list.map((g) => ({ id: g.id, code: g.key, dependsOn: [...g.dependsOn] })),
+    groups: new Map(list.map((g) => [g.id, g])),
+    pairs,
+    mutual,
+  };
+}
+
 // Ids of everything `id` depends on and everything that depends on it, directly or indirectly (not `id` itself).
 export function relatedIds(edges, id) {
   const walk = (next) => {
