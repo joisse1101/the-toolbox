@@ -1,11 +1,11 @@
-import test from 'node:test';
+import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { writeLexicon } from '../.claude/skills/propose-stories/write-lexicon.mjs';
+import { writeLexicon, checkLexicon } from '../.claude/skills/propose-stories/write-lexicon.mjs';
 import { parseLexicon } from '../core/lexicon.js';
 
 const SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../.claude/skills/propose-stories/write-lexicon.mjs');
@@ -125,4 +125,38 @@ test('the script reports what it did, and a refused run exits 1', () => {
   assert.equal(bad.status, 1);
   assert.match(bad.stderr, /Nothing was written\. 1 problem:/);
   assert.equal(spawnSync('node', [SCRIPT], { input: '[]', env, encoding: 'utf8' }).status, 2);
+});
+
+test('a check reports the same problems and the terms it would add, and changes nothing', () => {
+  const root = temp();
+  const check = (items) => checkLexicon({ dataDir: root, name: 'data.csv', input: JSON.stringify(items) });
+  const ok = check([{ term: 'User', definition: 'A person with a login.' }]);
+  assert.deepEqual([ok.ok, ok.added], [true, ['User']]);
+  assert.equal(fs.existsSync(path.join(root, 'lexicons')), false, 'a check creates nothing');
+
+  const bad = [{ term: 'User' }];
+  assert.deepEqual(check(bad).errors, run(root, bad).errors, 'same problems as the writer');
+
+  run(root, [{ term: 'User', definition: 'A person with a login.' }]);
+  const before = fs.readFileSync(lexiconPath(root));
+  assert.equal(check([{ term: 'user', definition: 'again' }]).ok, false, 'an existing term is refused');
+  assert.deepEqual(fs.readFileSync(lexiconPath(root)), before);
+});
+
+test('a write that does not stick fails naming the missing term', () => {
+  const root = temp();
+  const realRename = fs.renameSync;
+  const lossy = mock.method(fs, 'renameSync', (from, to) => {
+    const lines = fs.readFileSync(from, 'utf8').split('\r\n');
+    fs.writeFileSync(from, [...lines.slice(0, -2), ''].join('\r\n')); // the last term never reaches the file
+    realRename(from, to);
+  });
+  try {
+    const r = run(root, [{ term: 'User', definition: 'A person.' }, { term: 'Role', definition: 'A set of rights.' }]);
+    assert.equal(r.ok, false);
+    assert.match(r.errors[0], /read back is wrong: Role not found/);
+    assert.match(r.errors[0], /Do not report these terms as written/);
+  } finally {
+    lossy.mock.restore();
+  }
 });
