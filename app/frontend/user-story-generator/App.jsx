@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { backlogProblems } from '../../../core/ids.js';
-import { unitsOf, unitStoryCode, openCounts, orphanUnits, reviewOverview, openUnitsFor } from '../../../core/review.js';
+import { unitsOf, unitStoryCode, openCounts, orphanUnits, reviewOverview, openUnitsFor, acceptAll, acceptSummaryText } from '../../../core/review.js';
 import { useBacklog } from './hooks/useBacklog.js';
 import { useReview } from './hooks/useReview.js';
 import { useProposals } from './hooks/useProposals.js';
@@ -67,6 +67,17 @@ export default function App() {
     if (!story) return;
     actions.lockStory(story.id, false);
     review.decide(unit.indexes, 'applied');
+  };
+  // Accept all (whole review or one Area): confirm with the number a dry run applies, then apply the run as one edit.
+  const [acceptSummary, setAcceptSummary] = useState(null);
+  useEffect(() => setAcceptSummary(null), [current]);
+  const acceptUnits = (units) => {
+    const expected = acceptAll(stories, units, backlog.headers).applied.length;
+    if (expected && !window.confirm(`Apply ${expected} review suggestion${expected > 1 ? 's' : ''}?`)) return;
+    const { applied, skipped } = actions.acceptAll(units);
+    if (applied.length) review.decide(applied.flatMap((u) => u.indexes), 'applied');
+    review.notify(null);
+    setAcceptSummary(acceptSummaryText(applied.length, skipped));
   };
   const openReviewCount = useMemo(() => reviewOverview(review.rows, stories).openCount, [review.rows, stories]);
   const dismissOrphans = () => review.decide(orphans.flatMap((u) => u.indexes), 'dismissed');
@@ -236,10 +247,11 @@ export default function App() {
           onSelect={actions.selectFile} onRename={actions.renameFile} onNew={newBacklog} onBackup={backUp} onOpenFolder={actions.openFolder} onRefresh={refreshAll}
         />
 
-        {(review.message || review.notice || orphans.length > 0) && (
+        {(review.message || review.notice || acceptSummary || orphans.length > 0) && (
           <div id="reviewNotices" role="status">
             {review.message && <p className="warning">{review.message}</p>}
             {review.notice && <p className="error">{review.notice}</p>}
+            {acceptSummary && <p id="acceptSummary" className="card muted">{acceptSummary}</p>}
             {orphans.length > 0 && (
               <p className="warning">
                 {`${orphans.length} review suggestion${orphans.length > 1 ? 's' : ''} no longer match a story (it was renumbered, moved or deleted). Run /review-backlog again, or `}
@@ -314,7 +326,7 @@ export default function App() {
         {review.exists && (
           <ReviewTab
             rows={review.rows} stories={stories} hidden={!current || view !== 'review'}
-            onOpen={openInEditor} onApply={applyUnit} onDismiss={dismissUnit} onUnlock={unlockUnit}
+            onOpen={openInEditor} onApply={applyUnit} onDismiss={dismissUnit} onUnlock={unlockUnit} onAcceptAll={acceptUnits}
           />
         )}
 

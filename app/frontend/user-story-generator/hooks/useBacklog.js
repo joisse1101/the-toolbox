@@ -2,7 +2,7 @@ import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { createFileStore } from '../../shared/files.js';
 import { loadBacklog, newBacklogText, newStory, displayOrder, applyBulk } from '../../../../core/model.js';
 import { commitEpic, commitEpics, moveStory, removeStory, wouldCycle, lockStories, unlockStories } from '../../../../core/ids.js';
-import { applySuggestions } from '../../../../core/review.js';
+import { applySuggestions, acceptAll } from '../../../../core/review.js';
 import { useAutosave } from './useAutosave.js';
 
 const store = createFileStore('user-stories');
@@ -102,6 +102,9 @@ export function reducer(state, action) {
       const result = applySuggestions(state.backlog.stories, action.rows, state.backlog.headers);
       return result.error ? state : withStories(state, result.stories);
     }
+    // Accept all: the stories acceptAll (core/review.js) computed for a whole run, stored as one edit.
+    case 'acceptSuggestions':
+      return withStories(state, action.stories);
     // The whole story list was recomputed elsewhere (accepting proposed stories, see proposals.js): store it and save.
     case 'replaceStories': {
       const stories = action.stories;
@@ -313,6 +316,14 @@ export function useBacklog() {
         if (result.error) return { error: result.error };
         dispatch({ type: 'applySuggestions', rows });
         return { ok: true };
+      },
+
+      // Applies the eligible units in order as one edit. Returns { applied, skipped } (see acceptAll in core/review.js).
+      acceptAll(units) {
+        const { backlog } = stateRef.current;
+        const result = acceptAll(backlog.stories, units, backlog.headers);
+        if (result.applied.length) dispatch({ type: 'acceptSuggestions', stories: result.stories });
+        return { applied: result.applied, skipped: result.skipped };
       },
     };
   }, [autosave]);
