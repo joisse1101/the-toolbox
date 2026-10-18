@@ -6,6 +6,7 @@
 # Whatever is missing, this script asks for (a numbered list of the backlogs, then the story), so Claude does not have to.
 # It refuses an unknown backlog, an empty story, a NEW-<n> that is not in data/proposals/<backlog>.csv and a backlog ID
 # (letters, a dash, digits) that is not in data/user-stories/<backlog>.csv before Claude starts.
+# A NEW-<n> or backlog ID goes into the opening prompt with the story's Title (NEW-57 titled "Reset password"); free text as typed.
 # Starts in /explore-stories (discussion only) with both already filled in; when you are happy with the drafts, run
 # /propose-stories in the same session (it asks yes/no first), or /story:propose to write the drafts straight away. Both write
 # new stories to the proposals and changes to backlog stories as suggestions in the story editor.
@@ -48,16 +49,26 @@ if (-not $Story.Trim()) { $Story = Read-Host 'What story? (a proposed ID like NE
 $Story = $Story.Trim()
 if (-not $Story) { Stop-Launcher 'No story given.' }
 
+# The ID with the Title read from the file, e.g. NEW-57 titled "Reset password", so the session names the story by Title from its
+# first reply. A Title is one line; quotes inside it become apostrophes; the ID alone is kept when the Title is empty.
+function Add-Title([string]$Id, $Row) {
+  $title = ([string]$Row.Title -replace '\s+', ' ' -replace '"', "'").Trim()
+  if ($title) { return "$Id titled `"$title`"" }
+  return $Id
+}
+
 if ($Story -match '^NEW-\d+$') {
   $Story = $Story.ToUpper()
   $proposals = Join-Path (Join-Path $dataDir 'proposals') $file
   $known = @()
   if (Test-Path -LiteralPath $proposals) { $known = @(Import-Csv -LiteralPath $proposals -Encoding UTF8 | Where-Object { $_.ID -eq $Story }) }
   if (-not $known.Count) { Stop-Launcher "$Story is not in data/proposals/$file." }
+  $Story = Add-Title $Story $known[0]
 } elseif ($Story -match '^[A-Za-z]+-\d+$') {
   $Story = $Story.ToUpper()
   $known = @(Import-Csv -LiteralPath (Join-Path (Join-Path $dataDir 'user-stories') $file) -Encoding UTF8 | Where-Object { $_.ID -eq $Story })
   if (-not $known.Count) { Stop-Launcher "$Story is not in data/user-stories/$file." }
+  $Story = Add-Title $Story $known[0]
 }
 
 # Windows PowerShell 5.1 does not escape quotes inside an argument for a native command.

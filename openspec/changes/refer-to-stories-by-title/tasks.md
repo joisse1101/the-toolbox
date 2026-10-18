@@ -17,7 +17,7 @@
 
 ## 4. Launcher
 
-- [ ] 4.1 `ai/launchers/shape-stories.ps1`: read the Title of a resolved `NEW-<n>` / backlog ID and put it in the opening prompt; free text unchanged. Verify by running the script against a scratch `TLT_DATA_DIR` and reading the prompt it builds for `NEW-57`, `IAM-0004`, free text and an unknown ID
+- [x] 4.1 `ai/launchers/shape-stories.ps1`: read the Title of a resolved `NEW-<n>` / backlog ID and put it in the opening prompt; free text unchanged. Verify by running the script against a scratch `TLT_DATA_DIR` and reading the prompt it builds for `NEW-57`, `IAM-0004`, free text and an unknown ID
 
 ## 5. Skills and command text
 
