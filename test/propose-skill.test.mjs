@@ -53,6 +53,18 @@ test('explore-stories names no writer and neither skill copies the guidelines\' 
   }
 });
 
+test('only the readers are pre-approved: check_drafts for the propose session, never a writer, and not in the read-only explore session', () => {
+  const WRITERS = ['write_proposals', 'write_lexicon', 'write_review', 'suggest_lexicon_change'];
+  const front = (text) => text.split('---')[1];
+  for (const text of [skill('propose-stories'), read('.claude', 'commands', 'story', 'propose.md')]) {
+    assert.match(front(text), /allowed-tools: mcp__story-tools__read_context, mcp__story-tools__check_drafts\n$/);
+    for (const writer of WRITERS) assert.doesNotMatch(front(text), new RegExp(writer));
+  }
+  const allowed = (script) => read('ai', 'launchers', script).match(/--allowedTools ([^\n]*?)\s*`?\n/)[1];
+  assert.equal(allowed('shape-stories.ps1'), '"mcp__story-tools__read_context" "mcp__story-tools__check_drafts"');
+  assert.equal(allowed('explore-stories.ps1'), '"mcp__story-tools__read_context"');
+});
+
 const FULL = (code) => `${code},Identity & Access Management,Auth,Earlier idea,"As a user, I want x, so that y",3,,,"AC1: Given a, when b, then c",\r\n`;
 
 test('the patch example passes the writer\'s validation', () => {

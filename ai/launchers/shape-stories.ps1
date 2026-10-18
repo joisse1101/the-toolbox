@@ -71,7 +71,7 @@ try {
     --tools "Skill,AskUserQuestion" `
     --mcp-config $mcp `
     --strict-mcp-config `
-    --allowedTools "mcp__story-tools__read_context" `
+    --allowedTools "mcp__story-tools__read_context" "mcp__story-tools__check_drafts" `
     --permission-mode default `
     --settings "$propose/locked-settings.json"
 } finally {
