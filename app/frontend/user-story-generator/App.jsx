@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { backlogProblems } from '../../../core/ids.js';
-import { unitsOf, unitStoryCode, openCounts, orphanUnits, reviewOverview, openUnitsFor, acceptAll, acceptSummaryText } from '../../../core/review.js';
+import { unitsOf, unitStoryCode, openCounts, orphanUnits, reviewOverview, openUnitsFor, acceptAll as acceptReviewUnits, acceptSummaryText } from '../../../core/review.js';
 import { useBacklog } from './hooks/useBacklog.js';
 import { useReview } from './hooks/useReview.js';
 import { useProposals } from './hooks/useProposals.js';
@@ -72,7 +72,7 @@ export default function App() {
   const [acceptSummary, setAcceptSummary] = useState(null);
   useEffect(() => setAcceptSummary(null), [current]);
   const acceptUnits = (units) => {
-    const expected = acceptAll(stories, units, backlog.headers).applied.length;
+    const expected = acceptReviewUnits(stories, units, backlog.headers).applied.length;
     if (expected && !window.confirm(`Apply ${expected} review suggestion${expected > 1 ? 's' : ''}?`)) return;
     const { applied, skipped } = actions.acceptAll(units);
     if (applied.length) review.decide(applied.flatMap((u) => u.indexes), 'applied');
