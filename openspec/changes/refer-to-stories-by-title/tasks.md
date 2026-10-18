@@ -28,5 +28,5 @@
 
 ## 6. Docs and close-out
 
-- [ ] 6.1 Update `CLAUDE.md` (the tool descriptions, the Title witness, the launcher note) and verify it matches the specs
-- [ ] 6.2 Run `npm test` and `openspec validate refer-to-stories-by-title --strict`, and verify both pass
+- [x] 6.1 Update `CLAUDE.md` (the tool descriptions, the Title witness, the launcher note) and verify it matches the specs
+- [x] 6.2 Run `npm test` and `openspec validate refer-to-stories-by-title --strict`, and verify both pass
