@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { createFileStore } from '../../shared/files.js';
 import { loadBacklog, newBacklogText, newStory, displayOrder, applyBulk } from '../../../../core/model.js';
-import { commitEpic, commitEpics, moveStory, removeStory, removeStories, wouldCycle, lockStories, unlockStories } from '../../../../core/ids.js';
+import { commitEpic, commitEpics, moveStory, moveGroup, gatherFeatures, recodedBetween, removeStory, removeStories, wouldCycle, lockStories, unlockStories } from '../../../../core/ids.js';
 import { applySuggestions, acceptAll } from '../../../../core/review.js';
 import { useAutosave } from './useAutosave.js';
 
@@ -72,6 +72,14 @@ export function reducer(state, action) {
     case 'move': {
       const stories = moveStory(state.backlog.stories, action.id, action.epic, action.beforeId);
       return stories === state.backlog.stories ? state : withStories(state, stories, { selectedId: action.id });
+    }
+    case 'moveGroup': {
+      const stories = moveGroup(state.backlog.stories, action.group, action.beforeKey);
+      return stories === state.backlog.stories ? state : withStories(state, stories);
+    }
+    case 'renumberDisplayed': {
+      const stories = gatherFeatures(state.backlog.stories);
+      return stories === state.backlog.stories ? state : withStories(state, stories);
     }
     case 'delete': {
       const stories = state.backlog.stories;
@@ -306,7 +314,37 @@ export function useBacklog() {
       commitEpic: (id) => dispatch({ type: 'commitEpic', id }),
       addDependency: (id, code) => dispatch({ type: 'addDependency', id, code }),
       removeDependency: (id, code) => dispatch({ type: 'removeDependency', id, code }),
-      moveStory: (id, epic, beforeId) => dispatch({ type: 'move', id, epic, beforeId }),
+      // The three moves below resolve the old code -> new code of the stories whose ID changed, so the caller can
+      // make their review suggestions follow (review.retarget).
+      moveStory(id, epic, beforeId) {
+        const { stories } = stateRef.current.backlog;
+        const recoded = recodedBetween(stories, moveStory(stories, id, epic, beforeId));
+        dispatch({ type: 'move', id, epic, beforeId });
+        return recoded;
+      },
+      // `group` is { epic } or { epic, feature }; beforeKey the epic or feature to land before (null = last).
+      moveGroup(group, beforeKey) {
+        const { stories } = stateRef.current.backlog;
+        const recoded = recodedBetween(stories, moveGroup(stories, group, beforeKey));
+        dispatch({ type: 'moveGroup', group, beforeKey });
+        return recoded;
+      },
+      // Asks first. Resolves the recoded map, or null when nothing changes or the user cancels.
+      renumberDisplayed() {
+        const { stories } = stateRef.current.backlog;
+        const after = gatherFeatures(stories);
+        if (after === stories) return null;
+        const recoded = recodedBetween(stories, after);
+        const n = recoded.size;
+        const effect = n ? `${n} ${n === 1 ? 'story gets' : 'stories get'} a new ID, and links to ${n === 1 ? 'it are' : 'them are'} updated.` : 'No ID changes; the rows are only put in the order shown.';
+        if (!confirm(`Put the stories of each feature together, in the order shown, and renumber?
+
+${effect} Locked stories keep their IDs.
+
+This cannot be undone.`)) return null;
+        dispatch({ type: 'renumberDisplayed' });
+        return recoded;
+      },
 
       replaceStories: (stories) => dispatch({ type: 'replaceStories', stories }),
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { backlogProblems } from '../../../core/ids.js';
+import { backlogProblems, gatherFeatures } from '../../../core/ids.js';
 import { unitsOf, unitStoryCode, openCounts, orphanUnits, reviewOverview, openUnitsFor, acceptAll as acceptReviewUnits, acceptSummaryText } from '../../../core/review.js';
 import { useBacklog } from './hooks/useBacklog.js';
 import { useReview } from './hooks/useReview.js';
@@ -47,6 +47,7 @@ export default function App() {
   const { files, current, backlog, selectedId, view, checked, lastChecked } = state;
   const stories = backlog?.stories ?? [];
   const problems = useMemo(() => backlogProblems(stories), [stories]);
+  const renumberDisabled = useMemo(() => gatherFeatures(stories) === stories, [stories]); // nothing to put in order
 
   // Review suggestions for the open backlog (reviews/<same name>), shown next to the fields they concern.
   const review = useReview(current);
@@ -181,6 +182,14 @@ export default function App() {
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [refreshAll]);
 
+  // Dragging a story or a group, and Renumber, renumber stories: their open review suggestions follow them.
+  const moveStory = (id, epic, beforeId) => review.retarget(actions.moveStory(id, epic, beforeId));
+  const moveGroup = (group, beforeKey) => review.retarget(actions.moveGroup(group, beforeKey));
+  const renumberDisplayed = () => {
+    const recoded = actions.renumberDisplayed();
+    if (recoded) review.retarget(recoded);
+  };
+
   const addStory = () => {
     actions.addStory();
     requestFocus();
@@ -286,7 +295,7 @@ export default function App() {
         <div id="editor" className="editor" role="tabpanel" aria-labelledby="tabEditor" hidden={!current || view !== 'editor'}>
           {inEditor && (
             <>
-              <StoryList stories={stories} problems={problems} suggestionCounts={suggestionCounts} selectedId={selectedId} onSelect={actions.selectStory} onAdd={addStory} onMove={actions.moveStory} />
+              <StoryList stories={stories} problems={problems} suggestionCounts={suggestionCounts} selectedId={selectedId} onSelect={actions.selectStory} onAdd={addStory} onMove={moveStory} onMoveGroup={moveGroup} onRenumber={renumberDisplayed} renumberDisabled={renumberDisabled} />
               {selected && (
                 <StoryForm
                   story={selected} stories={stories} problems={problems} suggestions={selectedUnits} focusRequest={focusRequest}

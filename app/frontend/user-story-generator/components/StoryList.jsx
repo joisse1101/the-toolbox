@@ -6,9 +6,15 @@ import { issueClass, rowTooltip } from './issues.js';
 // Drag a story to reorder it inside its epic, or onto another epic's group to move it there. Dropping on the
 // "(No epic)" group does nothing. `drag` is the story being dragged, `drop` = { epic, beforeId } where it would land
 // (beforeId null = at the end of the group).
-export default function StoryList({ stories, problems, suggestionCounts = new Map(), selectedId, onSelect, onAdd, onMove, heading = 'Stories', checked, onToggle }) {
+// With `onMoveGroup`, an epic or feature head drags its whole group (collapsed or not): `groupDrag` = { epic } or
+// { epic, feature }, `groupDrop` = { beforeKey } (the epic or feature it lands before, null = last). Only group
+// boundaries accept a drop: the upper half of a head, or the lower half of the last visible row of a group, which
+// stands for "before the next group". A feature can only land among the features of its own epic.
+export default function StoryList({ stories, problems, suggestionCounts = new Map(), selectedId, onSelect, onAdd, onMove, onMoveGroup, onRenumber, renumberDisabled, heading = 'Stories', checked, onToggle }) {
   const [drag, setDrag] = useState(null);
   const [drop, setDrop] = useState(null);
+  const [groupDrag, setGroupDrag] = useState(null);
+  const [groupDrop, setGroupDrop] = useState(null);
   const [closed, setClosed] = useState(() => new Set()); // collapsed accordion keys; everything starts open
 
   const epicKey = (g) => `e:${g.epic}`;
@@ -34,8 +40,52 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
   const end = () => {
     setDrag(null);
     setDrop(null);
+    setGroupDrag(null);
+    setGroupDrop(null);
+  };
+  // `ctx` describes the row: { epic, head: 'epic' | 'feature' | undefined, feature, epicAfter, featureAfter }; an
+  // `...After` field is set on the last visible row of that group and names the group that follows (null = none).
+  const groupOver = (e, ctx) => {
+    if (!groupDrag) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    const upper = e.clientY < r.top + r.height / 2;
+    let target;
+    if (groupDrag.feature === undefined) {
+      if (ctx.head === 'epic' && upper) target = ctx.epic;
+      else if (ctx.epicAfter !== undefined && !upper) target = ctx.epicAfter;
+    } else if (ctx.epic === groupDrag.epic) {
+      if (ctx.head === 'feature' && upper) target = ctx.feature;
+      else if (ctx.featureAfter !== undefined && !upper) target = ctx.featureAfter;
+    }
+    if (target === undefined) return setGroupDrop(null);
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (groupDrop?.beforeKey !== target) setGroupDrop({ beforeKey: target });
+  };
+  const groupMark = (ctx) => {
+    if (!groupDrag || !groupDrop) return '';
+    const key = groupDrop.beforeKey;
+    if (groupDrag.feature === undefined) {
+      if (key !== null) return ctx.head === 'epic' && ctx.epic === key ? 'drop-before' : '';
+      return ctx.epicAfter === null ? 'drop-after' : '';
+    }
+    if (ctx.epic !== groupDrag.epic) return '';
+    if (key !== null) return ctx.head === 'feature' && ctx.feature === key ? 'drop-before' : '';
+    return ctx.epicAfter !== undefined ? 'drop-after' : '';
+  };
+  const startGroupDrag = (e, group) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', group.feature === undefined ? group.epic : `${group.epic}\n${group.feature}`); // Firefox needs data to start a drag
+    setGroupDrag(group);
   };
   const dropHere = (e) => {
+    if (groupDrag) {
+      if (groupDrop) {
+        e.preventDefault();
+        onMoveGroup(groupDrag, groupDrop.beforeKey);
+      }
+      return end();
+    }
     if (drag === null || !drop) return end();
     e.preventDefault();
     onMove(drag, drop.epic, drop.beforeId);
@@ -45,29 +95,45 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
   return (
     <aside className="card story-list-panel">
       <h2>{heading}</h2>
-      <ul id="storyList" className="story-list" onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDrop(null); }}>
-        {groupByEpic(stories).flatMap((group) => [
+      <ul id="storyList" className="story-list" onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) { setDrop(null); setGroupDrop(null); } }}>
+        {groupByEpic(stories).flatMap((group, gi, groups) => {
+          const nextEpic = groups[gi + 1]?.epic ?? null;
+          const epicClosed = closed.has(epicKey(group));
+          const epicCtx = { epic: group.epic, head: 'epic', epicAfter: epicClosed ? nextEpic : undefined };
+          return [
           <li
-            key={`epic:${group.epic}`} className="epic-head accordion-head" title={group.label}
-            role="button" tabIndex={0} aria-expanded={!closed.has(epicKey(group))}
+            key={`epic:${group.epic}`} title={group.label}
+            className={['epic-head accordion-head', groupDrag?.feature === undefined && groupDrag?.epic === group.epic ? 'dragging' : '', groupMark(epicCtx)].join(' ').trim()}
+            role="button" tabIndex={0} aria-expanded={!epicClosed}
+            draggable={Boolean(onMoveGroup && group.epic)}
+            onDragStart={(e) => startGroupDrag(e, { epic: group.epic })} onDragEnd={end}
             onClick={() => toggle(epicKey(group))} onKeyDown={(e) => toggleKey(e, epicKey(group))}
-            onDragOver={(e) => over(e, group, group.stories[0]?.id ?? null)} onDrop={dropHere}
+            onDragOver={(e) => (groupDrag ? groupOver(e, epicCtx) : over(e, group, group.stories[0]?.id ?? null))} onDrop={dropHere}
           >
-            {`${closed.has(epicKey(group)) ? '▸' : '▾'} ${group.label} (${group.stories.length})`}
+            {`${epicClosed ? '▸' : '▾'} ${group.label} (${group.stories.length})`}
           </li>,
-          ...(closed.has(epicKey(group)) ? [] : group.features.flatMap((fg) => [
+          ...(epicClosed ? [] : group.features.flatMap((fg, fi) => {
+            const nextFeature = group.features[fi + 1]?.feature ?? null;
+            const lastFeature = fi === group.features.length - 1;
+            const featureClosed = closed.has(featureKey(group, fg));
+            const headCtx = { epic: group.epic, head: 'feature', feature: fg.feature, featureAfter: featureClosed ? nextFeature : undefined, epicAfter: featureClosed && lastFeature ? nextEpic : undefined };
+            return [
             <li
-              key={`feature:${group.epic}:${fg.feature}`} className="feature-head accordion-head" title={fg.label}
-              role="button" tabIndex={0} aria-expanded={!closed.has(featureKey(group, fg))}
+              key={`feature:${group.epic}:${fg.feature}`} title={fg.label}
+              className={['feature-head accordion-head', groupDrag?.feature === fg.feature && groupDrag.epic === group.epic ? 'dragging' : '', groupMark(headCtx)].join(' ').trim()}
+              role="button" tabIndex={0} aria-expanded={!featureClosed}
+              draggable={Boolean(onMoveGroup && group.epic)}
+              onDragStart={(e) => startGroupDrag(e, { epic: group.epic, feature: fg.feature })} onDragEnd={end}
               onClick={() => toggle(featureKey(group, fg))} onKeyDown={(e) => toggleKey(e, featureKey(group, fg))}
-              onDragOver={(e) => over(e, group, fg.stories[0]?.id ?? null)} onDrop={dropHere}
+              onDragOver={(e) => (groupDrag ? groupOver(e, headCtx) : over(e, group, fg.stories[0]?.id ?? null))} onDrop={dropHere}
             >
-              {`${closed.has(featureKey(group, fg)) ? '▸' : '▾'} ${fg.label} (${fg.stories.length})`}
+              {`${featureClosed ? '▸' : '▾'} ${fg.label} (${fg.stories.length})`}
             </li>,
-            ...(closed.has(featureKey(group, fg)) ? [] : fg.stories.map((s, i) => {
+            ...(featureClosed ? [] : fg.stories.map((s, i) => {
             const { errors, warnings } = storyIssues(s, problems.get(s.id));
             const next = fg.stories[i + 1];
-            const marker = drop?.epic === group.epic && drag !== null
+            const rowCtx = { epic: group.epic, featureAfter: next ? undefined : nextFeature, epicAfter: next || !lastFeature ? undefined : nextEpic };
+            const marker = groupDrag ? groupMark(rowCtx) : drop?.epic === group.epic && drag !== null
               ? (drop.beforeId === s.id ? 'drop-before' : drop.beforeId === null && !next ? 'drop-after' : '')
               : '';
             return (
@@ -85,6 +151,7 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
                 }}
                 onDragEnd={end}
                 onDragOver={(e) => {
+                  if (groupDrag) return groupOver(e, rowCtx);
                   const r = e.currentTarget.getBoundingClientRect();
                   over(e, group, e.clientY < r.top + r.height / 2 ? s.id : next?.id ?? null);
                 }}
@@ -111,12 +178,20 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
               </li>
             );
             })),
-          ])),
-        ])}
+            ];
+          })),
+          ];
+        })}
         {!stories.length && <li className="muted" style={{ cursor: 'default' }}>No stories yet.</li>}
       </ul>
       {onAdd && <div className="row">
         <button type="button" id="addStoryBtn" className="primary" onClick={onAdd}>Add story</button>
+        {onRenumber && (
+          <button
+            type="button" id="renumberBtn" onClick={onRenumber} disabled={renumberDisabled}
+            title={renumberDisabled ? 'The IDs already follow the order shown' : "Put each feature's stories together, in the order shown, and renumber them. Locked stories keep their IDs."}
+          >Renumber</button>
+        )}
       </div>}
     </aside>
   );
