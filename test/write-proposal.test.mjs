@@ -1,11 +1,11 @@
-import test from 'node:test';
+import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { writeProposal, checkProposal } from '../.claude/skills/propose-stories/write-proposal.mjs';
+import { writeProposal, checkProposal, missingAfterWrite } from '../.claude/skills/propose-stories/write-proposal.mjs';
 import { loadBacklog, serializeBacklog, proposalHeaders } from '../core/model.js';
 
 const SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../.claude/skills/propose-stories/write-proposal.mjs');
@@ -318,4 +318,45 @@ test('CLI: --check prints what would happen and writes nothing; a repeat is repo
   assert.match(again.stdout, /^Added 1 proposed story to proposals\/data\.csv \(NEW-2\); skipped 1 already in the file \(Story 1 = NEW-1\); 2 in the file now\./);
   const none = cli(['data.csv'], [story()]);
   assert.match(none.stdout, /^Skipped 1 already in the file \(Story 1 = NEW-1\); 2 in the file now\./);
+});
+
+test('the result comes from the file read back: row count and the IDs found on disk', () => {
+  const root = temp();
+  run(root, [story()]);
+  const r = run(root, [{ id: 'NEW-1', points: 5 }, story({ title: 'Two' })]);
+  assert.deepEqual([r.ok, r.count, r.found], [true, 2, ['NEW-2', 'NEW-1']]);
+});
+
+test('missingAfterWrite names the IDs that are not on disk, or a wrong row count', () => {
+  const stored = loadBacklog(`${CSV.split('\r\n')[0]}\r\nNEW-1,E,F,One,,,,,,,\r\nNEW-3,E,F,Three,,,,,,,\r\n`, { placeholderIds: true });
+  assert.equal(missingAfterWrite(stored, ['NEW-1', 'NEW-3'], 2), null);
+  assert.match(missingAfterWrite(stored, ['NEW-1', 'NEW-2'], 3), /NEW-2 not found \(2 stories on disk, 3 expected\)/);
+  assert.match(missingAfterWrite(stored, ['NEW-1'], 3), /2 stories on disk, 3 expected/);
+});
+
+test('a write that does not stick fails naming the missing story, and is not reported as written', () => {
+  const root = temp();
+  const realRename = fs.renameSync;
+  // The rename "succeeds" but the last row never reaches the file.
+  const lossy = mock.method(fs, 'renameSync', (from, to) => {
+    const lines = fs.readFileSync(from, 'utf8').split('\r\n');
+    fs.writeFileSync(from, [...lines.slice(0, -2), ''].join('\r\n'));
+    realRename(from, to);
+  });
+  try {
+    const r = run(root, [story(), story({ title: 'Two' })]);
+    assert.equal(r.ok, false);
+    assert.match(r.errors[0], /read back is wrong: NEW-2 not found \(1 stories on disk, 2 expected\)/);
+    assert.match(r.errors[0], /Do not report these stories as written/);
+  } finally {
+    lossy.mock.restore();
+  }
+});
+
+test('CLI and message: the IDs read back are listed', () => {
+  const root = temp();
+  const out = spawnSync(process.execPath, [SCRIPT, 'data.csv'], {
+    input: JSON.stringify([story(), story({ title: 'Two' })]), encoding: 'utf8', env: { ...process.env, TLT_DATA_DIR: root },
+  });
+  assert.match(out.stdout, /2 in the file now\. On disk: NEW-1, NEW-2\./);
 });

@@ -95,7 +95,8 @@ export function checkProposal({ dataDir = DATA_DIR, name, input }) {
 
 // Returns { ok: true, file, ids, patchedIds, skipped, count } (ids: the stories added, patchedIds: the stories patched, skipped: the
 // new stories that repeat a stored one) or { ok: false, errors: [...] }. Writes nothing unless everything is valid, and
-// leaves the file alone when there is nothing to add or patch.
+// leaves the file alone when there is nothing to add or patch. After the write the file is read again: `count` and `found`
+// (the added and patched IDs) are what was read from disk, and a file that does not hold them is an error.
 export function writeProposal({ dataDir = DATA_DIR, name, input }) {
   const prepared = prepare({ dataDir, name, input });
   if (!prepared.ok) return prepared;
@@ -110,8 +111,30 @@ export function writeProposal({ dataDir = DATA_DIR, name, input }) {
   fs.mkdirSync(proposalDir, { recursive: true });
   const failed = writeAtomic(proposalDir, file, serializeBacklog(all));
   if (failed) return { ok: false, errors: [failed] };
-  return result;
+
+  // Read the file again: what is reported as written is what is on disk now.
+  let stored;
+  try {
+    stored = loadBacklog(fs.readFileSync(path.join(proposalDir, file), 'utf8'), { placeholderIds: true });
+  } catch (err) {
+    return { ok: false, errors: [`Wrote proposals/${file} but could not read it back: ${err.message}`] };
+  }
+  const missing = missingAfterWrite(stored, [...built.ids, ...built.patchedIds], all.stories.length);
+  if (missing) return { ok: false, errors: [`Wrote proposals/${file} but the file read back is wrong: ${missing}. Do not report these stories as written.`] };
+  return { ...result, count: stored.stories.length, found: [...built.ids, ...built.patchedIds] };
 }
+
+// What is wrong with the file read back after a write, or null when every expected ID is in it and the row count is right.
+export function missingAfterWrite(stored, expectedCodes, expectedCount) {
+  const have = new Set(stored.stories.map((s) => s.code));
+  const lost = expectedCodes.filter((code) => !have.has(code));
+  if (lost.length) return `${lost.join(', ')} not found (${stored.stories.length} stories on disk, ${expectedCount} expected)`;
+  if (stored.stories.length !== expectedCount) return `${stored.stories.length} stories on disk, ${expectedCount} expected`;
+  return null;
+}
+
+// " On disk: NEW-1, NEW-2." for the IDs that were read back from the file, or "" when none were written.
+export const foundText = (found = []) => (found.length ? ` On disk: ${found.join(', ')}.` : '');
 
 const plural = (n) => `${n} proposed stor${n === 1 ? 'y' : 'ies'}`;
 
@@ -139,5 +162,5 @@ if (isMain) {
   if (result.patchedIds.length) done.push(`${done.length ? 'patched' : 'Patched'} ${plural(result.patchedIds.length)}${done.length ? '' : ` in proposals/${result.file}`} (${result.patchedIds.join(', ')})`);
   const skipped = skippedText(result.skipped, done.length ? 'skipped' : 'Skipped');
   if (skipped) done.push(skipped);
-  console.log(check ? `Check passed, nothing written. Would be: ${done.join('; ')}.` : `${done.join('; ')}; ${result.count} in the file now.`);
+  console.log(check ? `Check passed, nothing written. Would be: ${done.join('; ')}.` : `${done.join('; ')}; ${result.count} in the file now.${foundText(result.found)}`);
 }
