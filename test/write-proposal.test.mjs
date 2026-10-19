@@ -263,6 +263,81 @@ test('clarifications on a story whose cell is free text are refused', () => {
   assert.match(r.errors.join('\n'), /free text/);
 });
 
+// multi-line Notes and resolving clarifications
+
+test('Notes may have several lines on a new story and a patch, while a Title still may not', () => {
+  const root = temp();
+  assert.equal(run(root, [story({ notes: 'First.\r\nSecond.\n' })]).ok, true);
+  assert.equal(load(root).stories[0].notes, 'First.\nSecond.');
+  assert.equal(run(root, [{ id: 'NEW-1', notes: 'A\nB\nC' }]).ok, true);
+  assert.equal(load(root).stories[0].notes, 'A\nB\nC');
+  const bad = run(root, [{ id: 'NEW-1', title: 'Two\nlines' }]);
+  assert.equal(bad.ok, false);
+  assert.match(bad.errors.join('\n'), /Title must be on one line/);
+});
+
+test('resolve moves a pair into Notes and removes it; a filled and an open pair both work', () => {
+  const root = temp();
+  run(root, [story({ notes: 'Existing.', clarifications: ['One?', 'Two?', 'Three?'] })]);
+  run(root, [{ id: 'NEW-1', clarifications: { answer: [{ n: 1, text: 'Yes' }] } }]);
+  const r = run(root, [{ id: 'NEW-1', clarifications: { resolve: [{ n: 1, note: 'One is yes' }, { n: 3, note: 'Three is\nfor Finance' }] } }]);
+  assert.equal(r.ok, true, r.errors?.join('\n'));
+  const s = load(root).stories[0];
+  assert.equal(s.notes, 'Existing.\nOne is yes\nThree is\nfor Finance');
+  assert.deepEqual(s.clarifications, [{ q: 'Two?', a: '' }]);
+});
+
+test('resolve fills an empty Notes, runs with add and notes, and add comes after the removal', () => {
+  const root = temp();
+  run(root, [story({ clarifications: ['One?', 'Two?'] })]);
+  const r = run(root, [{ id: 'NEW-1', notes: 'Fresh', clarifications: { resolve: [{ n: 1, note: 'Decided' }], add: ['Three?'] } }]);
+  assert.equal(r.ok, true, r.errors?.join('\n'));
+  const s = load(root).stories[0];
+  assert.equal(s.notes, 'Fresh\nDecided');
+  assert.deepEqual(s.clarifications, [{ q: 'Two?', a: '' }, { q: 'Three?', a: '' }]);
+  run(root, [story({ title: 'Other', clarifications: ['Only?'] })]);
+  run(root, [{ id: 'NEW-2', clarifications: { resolve: [{ n: 1, note: 'Done' }] } }]);
+  assert.equal(load(root).stories[1].notes, 'Done');
+});
+
+test('a bad resolve writes nothing and names the pair', () => {
+  const root = temp();
+  run(root, [story({ clarifications: ['One?', 'Two?'] })]);
+  const before = fs.readFileSync(proposalPath(root), 'utf8');
+  const cases = [
+    [{ resolve: [{ n: 3, note: 'x' }] }, /pair 3, but the story has 2 pairs/],
+    [{ resolve: [{ n: 1, note: '  ' }] }, /each clarifications\.resolve item/],
+    [{ resolve: [{ n: 1 }] }, /each clarifications\.resolve item/],
+    [{ resolve: [{ n: 1, note: 'a' }, { n: 1, note: 'b' }] }, /resolves pair 1 more than once/],
+    [{ answer: [{ n: 2, text: 'y' }], resolve: [{ n: 2, note: 'x' }] }, /pair 2 in both answer and resolve/],
+    [{ resolve: 'x' }, /must be a list/],
+    [{ resolve: [] }, /changes nothing/],
+  ];
+  for (const [clarifications, re] of cases) {
+    const r = run(root, [{ id: 'NEW-1', clarifications }]);
+    assert.equal(r.ok, false);
+    assert.match(r.errors.join('\n'), re);
+    assert.equal(fs.readFileSync(proposalPath(root), 'utf8'), before);
+  }
+});
+
+test('resolve is refused on a benched story, on free text, and with an invalid item in the call', () => {
+  const root = temp();
+  run(root, [story({ clarifications: ['One?'] })]);
+  const before = fs.readFileSync(proposalPath(root), 'utf8');
+  const bad = run(root, [{ id: 'NEW-1', clarifications: { resolve: [{ n: 1, note: 'x' }] } }, story({ points: 21, title: 'Other' })]);
+  assert.equal(bad.ok, false);
+  assert.equal(fs.readFileSync(proposalPath(root), 'utf8'), before);
+  const p = load(root);
+  p.stories[0].rawClarifications = 'ask Sam';
+  fs.writeFileSync(proposalPath(root), serializeBacklog(p));
+  assert.match(run(root, [{ id: 'NEW-1', clarifications: { resolve: [{ n: 1, note: 'x' }] } }]).errors.join('\n'), /free text/);
+  p.stories[0].rawClarifications = null;
+  p.stories[0].benched = true;
+  fs.writeFileSync(proposalPath(root), serializeBacklog(p));
+  assert.match(run(root, [{ id: 'NEW-1', clarifications: { resolve: [{ n: 1, note: 'x' }] } }]).errors.join('\n'), /benched/);
+});
+
 test('a check leaves every file as it was, reports the same problems and what would be added', () => {
   const root = temp();
   const check = (stories) => checkProposal({ dataDir: root, name: 'data.csv', input: JSON.stringify(stories) });

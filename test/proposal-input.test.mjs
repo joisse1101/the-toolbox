@@ -75,10 +75,16 @@ test('criteria need at least one Given-When-Then line', () => {
 });
 
 test('line breaks in single-line fields are refused', () => {
-  for (const key of ['epic', 'feature', 'title', 'notes', 'userStory']) {
+  for (const key of ['epic', 'feature', 'title', 'userStory']) {
     assert.match(errorsOf([story({ [key]: 'a\nb' })]).join(), /one line|must be/, key);
   }
   assert.match(errorsOf([story({ criteria: ['AC1: Given a,\nwhen b, then c'] })]).join(), /one line/);
+});
+
+test('Notes may have several lines, stored with \\n', () => {
+  const r = build([story({ notes: 'a\r\nb\n' })]);
+  assert.equal(r.ok, true);
+  assert.equal(r.stories[0].notes, 'a\nb');
 });
 
 test('unknown keys are refused, and Priority says why', () => {

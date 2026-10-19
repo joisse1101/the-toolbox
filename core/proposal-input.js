@@ -47,8 +47,7 @@ function checkFields(raw, skip = []) {
 
   if ('notes' in raw) {
     if (typeof raw.notes !== 'string') errors.push('Notes must be text');
-    else if (LINE_BREAK.test(raw.notes)) errors.push('Notes must be on one line');
-    else fields.notes = raw.notes.trim();
+    else fields.notes = raw.notes.replace(/\r\n?/g, '\n').trim();
   }
 
   if ('userStory' in raw) {
@@ -98,36 +97,39 @@ function checkFields(raw, skip = []) {
 const isQuestionList = (v) => Array.isArray(v) && v.every((q) => typeof q === 'string' && !isBlank(q) && !LINE_BREAK.test(q));
 const numbered = (stored) => stored.clarifications.filter((p) => !isBlank(p.q) || !isBlank(p.a)); // pair n = position n, as stored
 
-// The `clarifications` key. A new story (stored = null) sends a list of questions; a patch sends { add, answer }: `add`
-// questions appended after the stored pairs, `answer` a list of { n, text } for stored pairs whose answer is empty.
-// Never deletes a pair or changes an answer. Returns { errors, add, answer } (add: trimmed questions, answer: Map n -> text).
+// The `clarifications` key. A new story (stored = null) sends a list of questions; a patch sends { add, answer, resolve }:
+// `add` questions appended after the stored pairs, `answer` a list of { n, text } for stored pairs whose answer is empty,
+// `resolve` a list of { n, note } that moves a stored pair (answered or not) into Notes. Never deletes a pair except
+// through `resolve`, and never changes an answer. n is the number of the pair as stored before the patch.
+// Returns { errors, add, answer, resolve } (add: trimmed questions, answer: Map n -> text, resolve: Map n -> note).
 function checkClarifications(value, stored) {
   const errors = [];
   const add = [];
   const answer = new Map();
+  const resolve = new Map();
   const QUESTIONS = 'a list of questions, each one line of text';
   if (!stored) {
     if (!isQuestionList(value)) errors.push(`clarifications must be ${QUESTIONS}`);
     else add.push(...value.map((q) => q.trim()));
-    return { errors, add, answer };
+    return { errors, add, answer, resolve };
   }
   if (stored.rawClarifications !== null) {
     errors.push('cannot change clarifications: the stored cell is free text that does not follow "Q<n>: …" / "A<n>: …"; edit it in the portal');
-    return { errors, add, answer };
+    return { errors, add, answer, resolve };
   }
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    errors.push('clarifications must be { "add": [questions], "answer": [{ "n": 1, "text": "…" }] }');
-    return { errors, add, answer };
+    errors.push('clarifications must be { "add": [questions], "answer": [{ "n": 1, "text": "…" }], "resolve": [{ "n": 1, "note": "…" }] }');
+    return { errors, add, answer, resolve };
   }
   for (const key of Object.keys(value)) {
-    if (key !== 'add' && key !== 'answer') errors.push(`clarifications has the unknown key "${key}" (allowed: add, answer)`);
+    if (!['add', 'answer', 'resolve'].includes(key)) errors.push(`clarifications has the unknown key "${key}" (allowed: add, answer, resolve)`);
   }
   if ('add' in value) {
     if (!isQuestionList(value.add)) errors.push(`clarifications.add must be ${QUESTIONS}`);
     else add.push(...value.add.map((q) => q.trim()));
   }
+  const pairs = numbered(stored);
   if ('answer' in value) {
-    const pairs = numbered(stored);
     if (!Array.isArray(value.answer)) errors.push('clarifications.answer must be a list of { "n": 1, "text": "…" }');
     else {
       for (const item of value.answer) {
@@ -144,8 +146,25 @@ function checkClarifications(value, stored) {
       }
     }
   }
-  if (!errors.length && !add.length && !answer.size) errors.push('clarifications changes nothing');
-  return { errors, add, answer };
+  if ('resolve' in value) {
+    if (!Array.isArray(value.resolve)) errors.push('clarifications.resolve must be a list of { "n": 1, "note": "…" }');
+    else {
+      for (const item of value.resolve) {
+        const n = item && typeof item === 'object' ? item.n : undefined;
+        if (!Number.isInteger(n) || typeof item.note !== 'string' || isBlank(item.note)) {
+          errors.push('each clarifications.resolve item must be { "n": pair number, "note": the decision to add to Notes }');
+        } else if (n < 1 || n > pairs.length) {
+          errors.push(`clarifications.resolve names pair ${n}, but the story has ${pairs.length} pair${pairs.length === 1 ? '' : 's'}`);
+        } else if (resolve.has(n)) {
+          errors.push(`clarifications.resolve resolves pair ${n} more than once`);
+        } else if (answer.has(n)) {
+          errors.push(`clarifications names pair ${n} in both answer and resolve; resolve alone moves the decision into Notes`);
+        } else resolve.set(n, item.note.replace(/\r\n?/g, '\n').trim());
+      }
+    }
+  }
+  if (!errors.length && !add.length && !answer.size && !resolve.size) errors.push('clarifications changes nothing');
+  return { errors, add, answer, resolve };
 }
 
 // A stored story in the shape the input uses, so a patch can be laid over it and the result checked like a new story.
@@ -166,7 +185,9 @@ function storedAsInput(stored) {
 function applyPatch(stored, patch, fields, clar) {
   const next = { ...stored };
   if (clar) {
-    const pairs = numbered(stored).map((p, i) => (clar.answer.has(i + 1) ? { ...p, a: clar.answer.get(i + 1) } : p));
+    const pairs = numbered(stored)
+      .map((p, i) => (clar.answer.has(i + 1) ? { ...p, a: clar.answer.get(i + 1) } : p))
+      .filter((p, i) => !clar.resolve.has(i + 1));
     next.clarifications = [...pairs, ...clar.add.map((q) => ({ q, a: '' }))];
   }
   if ('epic' in patch) Object.assign(next, { epic: fields.epic, codedEpic: fields.epic });
@@ -175,6 +196,8 @@ function applyPatch(stored, patch, fields, clar) {
   for (const key of ['feature', 'title', 'points', 'notes']) {
     if (key in patch) next[key] = fields[key];
   }
+  // The decisions of resolved pairs go to the end of Notes, one per line, in the order the patch gives them.
+  for (const note of clar?.resolve.values() ?? []) next.notes = next.notes.trim() ? `${next.notes.replace(/\s+$/, '')}\n${note}` : note;
   return next;
 }
 
