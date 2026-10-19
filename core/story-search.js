@@ -1,4 +1,4 @@
-import { COLUMNS, BENCHED_COLUMN, clarificationsCellText, criteriaCellText, storyCellText } from './model.js';
+import { COLUMNS, BENCHED_COLUMN, NO_EPIC, NO_FEATURE, clarificationsCellText, criteriaCellText, storyCellText } from './model.js';
 
 const KNOWN = new Set([...COLUMNS, BENCHED_COLUMN].map((c) => c.toLowerCase()));
 
@@ -20,4 +20,22 @@ export function matchesQuery(story, query, headers) {
   if (!words.length) return true;
   const text = haystack(story, headers);
   return words.every((w) => text.includes(w));
+}
+
+export const SEARCH_CAP = 25;
+
+// One line per matching story, `ID | Title | Epic > Feature | source`. Benched proposed stories never match.
+export function findStories(stories, query, headers, source) {
+  return stories
+    .filter((s) => !s.benched && matchesQuery(s, query, headers))
+    .map((s) => `${s.code} | ${s.title || '(no title)'} | ${s.epic || NO_EPIC} > ${s.feature || NO_FEATURE} | ${source}`);
+}
+
+// The reply for the lines of all sources: the count, at most SEARCH_CAP lines, and what was left out.
+export function searchReply(lines) {
+  if (!lines.length) return 'No story matches.';
+  const shown = lines.slice(0, SEARCH_CAP);
+  const more = lines.length - shown.length;
+  const head = `${lines.length} ${lines.length === 1 ? 'story matches' : 'stories match'} (ID | Title | Epic > Feature | source):`;
+  return [head, ...shown, ...(more ? [`${more} more matched; narrow the query.`] : [])].join('\n');
 }
