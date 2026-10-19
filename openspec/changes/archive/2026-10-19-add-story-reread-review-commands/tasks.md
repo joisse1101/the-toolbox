@@ -10,4 +10,4 @@
 
 ## 3. Check
 
-- [ ] 3.1 Try both in a shape session: edit a proposal in the portal, run `/story:re-read`; run `/story:review` with one unwritten agreed edit and one open lexicon suggestion
+- [x] 3.1 Try both in a shape session: edit a proposal in the portal, run `/story:re-read`; run `/story:review` with one unwritten agreed edit and one open lexicon suggestion
