@@ -15,7 +15,7 @@ export const FIELDS = [
   'Epic', 'Feature', 'Title', 'User Story', 'Sprint points', 'Depends On', 'User Acceptance Criteria', 'Notes', 'Clarifications',
 ];
 export const ACTIONS = ['replace', 'add', 'remove', 'append', 'resolve', 'add-story', 'unlock'];
-export const AREAS = ['Hierarchy', 'INVEST', 'Acceptance criteria', 'Clarification'];
+export const AREAS = ['Hierarchy', 'INVEST', 'Acceptance criteria', 'Clarification', 'Consistency'];
 export const CONFIDENCES = ['ready', 'confirm'];
 export const STATUSES = ['open', 'applied', 'dismissed'];
 

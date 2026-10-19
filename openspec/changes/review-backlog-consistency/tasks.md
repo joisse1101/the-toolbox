@@ -8,7 +8,7 @@
 
 ## 3. Consistency Area
 
-- [ ] 3.1 Add `'Consistency'` to `AREAS` in `core/review.js`. Verify `test/review.test.mjs` accepts a finding with that Area, rejects an unknown Area naming the five allowed ones, groups Consistency rows in their own section in `reviewOverview` after the others, and omits it when empty; `test/story-tools-mcp.test.mjs` shows the Area in the `write_review` description; an old review file without such rows still loads.
+- [x] 3.1 Add `'Consistency'` to `AREAS` in `core/review.js`. Verify `test/review.test.mjs` accepts a finding with that Area, rejects an unknown Area naming the five allowed ones, groups Consistency rows in their own section in `reviewOverview` after the others, and omits it when empty; `test/story-tools-mcp.test.mjs` shows the Area in the `write_review` description; an old review file without such rows still loads.
 
 ## 4. Sectioned reader
 

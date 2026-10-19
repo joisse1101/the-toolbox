@@ -310,7 +310,7 @@ test('overview groups open suggestions by Area in backlog order and lists out-of
   const staleRow = rows.find((r) => r.storyId === 'IAM-0003');
   const edited = b.stories.map((s) => (s.code === 'IAM-0003' ? { ...s, title: 'By hand' } : s));
   const o = reviewOverview(rows, edited);
-  assert.deepEqual(o.sections.map((s) => [s.area, s.units.length]), [['Hierarchy', 1], ['INVEST', 2], ['Acceptance criteria', 0], ['Clarification', 0]]);
+  assert.deepEqual(o.sections.map((s) => [s.area, s.units.length]), [['Hierarchy', 1], ['INVEST', 2], ['Acceptance criteria', 0], ['Clarification', 0], ['Consistency', 0]]);
   assert.deepEqual(o.sections[1].units.map((u) => u.rows[0].storyId), ['IAM-0001', 'IAM-0002']);
   assert.equal(o.outOfDate.length, 2, 'the hand-edited title and the missing story');
   assert.equal(o.openCount, 3);
@@ -768,4 +768,30 @@ test('acceptSummaryText says how many were applied and why the rest stayed open'
   assert.equal(acceptSummaryText(3, []), 'Applied 3.');
   const skipped = [{ reason: 'check' }, { reason: 'locked' }, { reason: 'check' }];
   assert.equal(acceptSummaryText(0, skipped), 'Applied 0. Left 3 open (1 locked story, 2 needs a check).');
+});
+
+test('Consistency is an allowed Area, and an unknown Area names the five allowed ones', () => {
+  assert.deepEqual(validateFindings([finding({ area: 'Consistency' })], backlog()), []);
+  const errors = validateFindings([finding({ area: 'Cohesion' })], backlog());
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /Area "Cohesion" is not one of Hierarchy, INVEST, Acceptance criteria, Clarification, Consistency/);
+});
+
+test('overview puts Consistency rows in their own section after the others', () => {
+  const b = backlog();
+  const rows = fillCurrent([
+    finding({ storyId: 'IAM-0002', field: 'Title', suggested: 'Log out', area: 'Consistency' }),
+    finding({ storyId: 'IAM-0001', field: 'Feature', suggested: 'Sign in', area: 'Hierarchy' }),
+  ], b);
+  const o = reviewOverview(rows, b.stories);
+  assert.equal(o.sections.at(-1).area, 'Consistency');
+  assert.deepEqual(o.sections.map((s) => s.units.length), [1, 0, 0, 0, 1]);
+  assert.equal(o.openCount, 2);
+});
+
+test('a review file without Consistency rows loads as before', () => {
+  const text = serializeReview(fillCurrent([finding({ area: 'INVEST' })], backlog()));
+  const back = parseReview(text);
+  assert.equal(back.ok, true);
+  assert.equal(reviewOverview(back.rows, backlog().stories).sections.find((s) => s.area === 'Consistency').units.length, 0);
 });
