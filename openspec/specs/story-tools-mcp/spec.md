@@ -7,7 +7,7 @@ Gives the shape-stories sessions typed tools (an stdio MCP server) to read the b
 ## Requirements
 
 ### Requirement: Story tools MCP server
-The repository SHALL contain a stdio MCP server, `ai/mcp/story-tools.mjs`, started as `node ai/mcp/story-tools.mjs [--read-only]`. It SHALL expose typed tools, each with a description and a JSON input schema, and each calling the same exported function as the matching script: `read_context` (`readStoryContext`), `check_drafts` (the validation step of the writers), `write_proposals` (`writeProposal`), `write_lexicon` (`writeLexicon`) and `write_review` (`writeReview`). With `--read-only` it SHALL expose `read_context` only. The scripts SHALL remain runnable from the command line and SHALL produce the results they did before. The server SHALL write nothing but through those functions, so every rule of the writers (atomic write, all-or-nothing validation, fixed target folders) applies unchanged.
+The repository SHALL contain a stdio MCP server, `ai/mcp/story-tools.mjs`, started as `node ai/mcp/story-tools.mjs [--read-only]`. It SHALL expose typed tools, each with a description and a JSON input schema, and each calling the same exported function as the matching script: `read_context` (`readStoryContext`), `search_stories`, `check_drafts` (the validation step of the writers), `write_proposals` (`writeProposal`), `write_lexicon` (`writeLexicon`) and `write_review` (`writeReview`). With `--read-only` it SHALL expose `read_context` and `search_stories` only. The scripts SHALL remain runnable from the command line and SHALL produce the results they did before. The server SHALL write nothing but through those functions, so every rule of the writers (atomic write, all-or-nothing validation, fixed target folders) applies unchanged.
 
 #### Scenario: Same result as the script
 - **WHEN** `write_lexicon` is called with the input the script accepts
@@ -15,7 +15,7 @@ The repository SHALL contain a stdio MCP server, `ai/mcp/story-tools.mjs`, start
 
 #### Scenario: Read-only server
 - **WHEN** the server is started with `--read-only`
-- **THEN** its tool list holds `read_context` and no writer and no `check_drafts`
+- **THEN** its tool list holds `read_context` and `search_stories` and no writer and no `check_drafts`
 
 ### Requirement: Tools carry their own rules
 Each tool's description and input schema SHALL state what an agent needs to call it correctly, so no other file has to be read. `read_context` SHALL take an optional `backlog` (without it, it SHALL list the backlog file names) and at most one of `section` (one of `guidelines`, `index`, `proposals`, `lexicon`, `reviews`, `lexicon-suggestions`) or `storyId`, and with neither SHALL return the menu of sections with their sizes. `write_proposals` SHALL describe the new-story and patch keys, the three `dependsOn` forms, that the User Story starts with `As a` or `As an`, and that a new story whose Epic, Feature and Title are already in the proposals is skipped, so a call can be repeated. `write_review` SHALL describe the row keys, actions, fields and the Sprint points scale; that an acceptance criterion is one `AC<n>: Given …, when …, then …` line per row; that a `replace` starts with the label of the criterion it replaces and that the label is the criterion's position; that a `remove` takes the label alone; that an edit to a locked story needs an `unlock` row in the same call; and that new stories never go in a review row. `write_lexicon` SHALL describe the term keys, that it only adds terms and that a term that already exists is rejected. `suggest_lexicon_change` SHALL describe its three actions (`rename`, `delete`, `edit`) and their keys, that an `edit` replaces the whole Avoid list, that the lexicon is not changed by the call and that the user applies each suggestion in the Lexicon tab. `check_drafts` SHALL say that it writes nothing and takes the same `items` as `write_proposals`. A schema violation SHALL be reported as a tool error naming the field, and nothing SHALL be written.
@@ -44,7 +44,7 @@ Each tool's description and input schema SHALL state what an agent needs to call
 - **THEN** the file holds 15 rows and the original 12 are unchanged
 
 ### Requirement: Permissions
-`read_context` and `check_drafts` SHALL be annotated read-only and pre-approved by the launchers. `write_proposals`, `write_lexicon` and `write_review` SHALL NOT be pre-approved, so Claude Code asks the user before every write.
+`read_context`, `search_stories` and `check_drafts` SHALL be annotated read-only and pre-approved by the launchers. `write_proposals`, `write_lexicon` and `write_review` SHALL NOT be pre-approved, so Claude Code asks the user before every write.
 
 #### Scenario: Writer asks first
 - **WHEN** the agent calls `write_proposals`
@@ -53,6 +53,10 @@ Each tool's description and input schema SHALL state what an agent needs to call
 #### Scenario: Reader does not ask
 - **WHEN** the agent calls `read_context`
 - **THEN** it runs without a prompt
+
+#### Scenario: Search does not ask
+- **WHEN** the agent calls `search_stories`
+- **THEN** it runs without a prompt and no file changes
 
 #### Scenario: Check does not ask
 - **WHEN** the agent calls `check_drafts`
@@ -137,3 +141,34 @@ When an ID and Title do not match, the tool SHALL write nothing and SHALL return
 #### Scenario: Several mismatches in one call
 - **WHEN** rows 1 and 3 of a `write_review` call have a mismatched pair and row 2 is valid
 - **THEN** nothing is written and one reply names rows 1 and 3
+
+### Requirement: Story search tool
+The server SHALL expose a read-only tool `search_stories` that finds stories by words, so a session can look up related stories without reading the whole `index` or `proposals` section. It SHALL take a `backlog` and a `query` and nothing else. A story matches when every space-separated word of the query appears, ignoring case, in some field of the story: the same rule as the search box of the portal's Stories tab. It SHALL search the stories of `user-stories/<backlog>` and the proposed stories of `proposals/<backlog>` (when that file exists), and SHALL leave out benched proposed stories. It SHALL return one line per match with the story's ID, its Title, its Epic > Feature and whether it is a backlog story or a proposed story, in file order with the backlog stories first, and the number of matches. It SHALL return at most 25 lines; when there are more, it SHALL say how many were left out and ask for a narrower query. It SHALL NOT return any other field of a story. A query with no words SHALL be refused with an error that points to the `index` section, and a query that matches nothing SHALL be a normal reply saying so, not an error. The description SHALL say that the result is data, that a backlog story is read in full with `read_context` using its ID and Title, and that a proposed story is read from the `proposals` section.
+
+#### Scenario: Found by a word that is not in the Stories table
+- **WHEN** a story's acceptance criteria contain "CSV" and `search_stories` is called with the query `csv`
+- **THEN** the reply lists that story with its ID, Title, Epic > Feature and `backlog`, and no other field
+
+#### Scenario: Proposed story found
+- **WHEN** `proposals/data-portal.csv` holds `NEW-3` titled "Export report as CSV" and the query is `export csv`
+- **THEN** the reply lists `NEW-3` with its Title, Epic > Feature and `proposed`
+
+#### Scenario: Benched story left out
+- **WHEN** the only proposed story that matches is benched
+- **THEN** the reply does not list it
+
+#### Scenario: Too many matches
+- **WHEN** 40 stories match
+- **THEN** the reply lists 25, says 15 more matched and asks for a narrower query
+
+#### Scenario: Nothing matches
+- **WHEN** no story matches the query
+- **THEN** the reply says there are no matches and is not an error
+
+#### Scenario: Blank query
+- **WHEN** the query is empty or only spaces
+- **THEN** the call returns an error that points to the `index` section and nothing else
+
+#### Scenario: Missing proposals file
+- **WHEN** `proposals/<backlog>` does not exist
+- **THEN** only the backlog is searched and the call succeeds
