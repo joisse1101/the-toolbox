@@ -79,7 +79,8 @@ The `checks` section lists problems found without judgement, one per line as `ID
 
 | Kind | What to write |
 |---|---|
-| `dependency` (does not exist, itself, cycle, still proposed) | `remove` on `Depends On` (Area `INVEST`); for a story still proposed, say in the reason that the dependency returns when the proposal is accepted |
+| `dependency` that is a cycle | `remove` on `Depends On` for the link that is a hard block or the weakest (Area `INVEST`) |
+| `dependency` that does not exist, lists the story itself, or names a story that is still proposed | a Clarifications `append` (Area `INVEST`) asking what was meant: the writer cannot remove such a link, and IDs shift when stories are renumbered, so the link may be meant for another story |
 | `incomplete` | the part that is missing: `replace` with the value the story implies, or a Clarifications `append` when it needs the user's decision; Area by the part (Epic, Feature, Title: `Hierarchy`; User Story: `INVEST`; criteria: `Acceptance criteria`) |
 | `points` | missing or off the scale: `replace` on `Sprint points` with your estimate from the `sizing` section, `confirm`. Above 13: a split group |
 | `duplicate`, `proposal-overlap` | a Clarifications `append` asking which to keep (Area `Consistency`); you cannot delete stories or edit the proposals |
