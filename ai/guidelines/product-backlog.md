@@ -115,3 +115,25 @@ Every story is checked against these six principles.
 - Ask the user for such unknowns while the story is being discussed, not only when it is written down.
 - Notes hold facts and decisions; Clarifications hold what is still unknown.
 - When the user answers a question while the story is being shaped, resolve it: the answer goes into Notes as a decision, and the question is removed from Clarifications. Write the decision so it reads on its own (for example "Approvals are owned by Finance"); leave out the question's wording when the answer already carries it. Resolve only an answer the user stated, and never remove a question without recording its decision in Notes.
+
+---
+
+## 7. Edge cases
+
+**What it is:** the situations at the edge of a story's normal path that its acceptance criteria should still answer. Check a story's criteria against this list; the failure path in section 5 is the first item of it.
+
+**Checklist** (skip an item that does not apply to the story):
+
+- **Empty and boundary input:** nothing entered, the smallest and largest allowed value, exactly at a limit. Does not apply to a story with no input.
+- **Invalid input:** wrong format, wrong type, a value outside the allowed set. Does not apply to a story with no input.
+- **Not found:** the thing the story acts on no longer exists or never did.
+- **Not allowed:** a user who may not do this tries to. Does not apply to a story open to every user of the product.
+- **Repeated action:** the same action done twice, or two users doing it at once. Does not apply to a story that only reads data.
+- **Cancelled or undone part-way:** the user stops, goes back or closes the page before the end. Does not apply to a story with a single step.
+- **Partial failure:** one part of the action succeeds and another fails, or a system the story relies on is unavailable. Does not apply to a story that only reads data from one place.
+- **Data volume:** none, one, and more than fits on one page or in one message. Does not apply to a story that handles a single item.
+
+**A case that is missing is either a criterion or a question:**
+
+- If the story's Title and "I want" already imply the answer, write it as an acceptance criterion (section 5).
+- If the answer needs a decision, or would add a capability, user group, permission or rule the story does not imply, do not write it as a criterion and do not guess it. Record it as a question in Clarifications (section 6).

@@ -1,6 +1,6 @@
 ## 1. Guidelines
 
-- [ ] 1.1 Add section 7 "Edge cases" to `ai/guidelines/product-backlog.md`: the checklist, when each item does not apply, and the rule (implied by Title and I-want -> criterion; needs a decision or new scope -> Clarifications question). Verify the section exists and the file still has no restated rule elsewhere (`grep` the skills for the checklist wording finds nothing).
+- [x] 1.1 Add section 7 "Edge cases" to `ai/guidelines/product-backlog.md`: the checklist, when each item does not apply, and the rule (implied by Title and I-want -> criterion; needs a decision or new scope -> Clarifications question). Verify the section exists and the file still has no restated rule elsewhere (`grep` the skills for the checklist wording finds nothing).
 
 ## 2. Mechanical checks (core)
 
