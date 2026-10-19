@@ -12,4 +12,4 @@
 ## 3. Docs and specs
 
 - [x] 3.1 Update the review-backlog paragraph of `CLAUDE.md`: replace the sentence that a missing, self or still-proposed `Depends On` link cannot be removed through a review row with the new rule (a `remove` row deletes the listed entry; only a story-holding code needs `targetTitle`). Verify with `grep` that the old sentence is gone.
-- [ ] 3.2 Run `openspec validate remove-missing-dependency-links --strict` and `npm test`; verify both pass.
+- [x] 3.2 Run `openspec validate remove-missing-dependency-links --strict` and `npm test`; verify both pass.
