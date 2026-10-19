@@ -278,6 +278,21 @@ test('clarification rows are accepted, also with --append, and existing rows are
   assert.equal(parseReview(fs.readFileSync(reviewPath(root), 'utf8')).rows.length, 2);
 });
 
+test('a resolve row stores the question of its pair in Current and not the pair number', () => {
+  const root = temp();
+  const p = path.join(root, 'user-stories', 'data.csv');
+  fs.writeFileSync(p, CSV.replace('"AC1: Given a, when b, then c",', '"AC1: Given a, when b, then c",,,"Q1: Who owns approvals?\nA1:\nQ2: Which format?\nA2: CSV"').replace('Notes\r\n', 'Notes,Locked,Clarifications\r\n'));
+  const resolve = (over = {}) => finding({ field: 'Clarifications', action: 'resolve', pair: 2, suggested: 'Format is CSV', area: 'Clarification', ...over });
+  const r = run(root, [resolve()]);
+  assert.equal(r.ok, true, JSON.stringify(r.errors));
+  const [row] = parseReview(fs.readFileSync(reviewPath(root), 'utf8')).rows;
+  assert.deepEqual([row.action, row.current, row.suggested], ['resolve', 'Which format?', 'Format is CSV']);
+  const bad = run(root, [resolve({ pair: 3 })]);
+  assert.equal(bad.ok, false);
+  assert.match(bad.errors.join('\n'), /no question 3 \(it has 2\)/);
+  assert.equal(parseReview(fs.readFileSync(reviewPath(root), 'utf8')).rows.length, 1, 'the earlier review is kept');
+});
+
 test('a check reports the same problems and the rows it would add, and changes nothing', () => {
   const root = temp();
   const check = (findings, append = false) => checkReview({ dataDir: root, name: 'data.csv', input: JSON.stringify(findings), append });

@@ -14,7 +14,7 @@ export const REVIEW_COLUMNS = [
 export const FIELDS = [
   'Epic', 'Feature', 'Title', 'User Story', 'Sprint points', 'Depends On', 'User Acceptance Criteria', 'Notes', 'Clarifications',
 ];
-export const ACTIONS = ['replace', 'add', 'remove', 'append', 'add-story', 'unlock'];
+export const ACTIONS = ['replace', 'add', 'remove', 'append', 'resolve', 'add-story', 'unlock'];
 export const AREAS = ['Hierarchy', 'INVEST', 'Acceptance criteria', 'Clarification'];
 export const CONFIDENCES = ['ready', 'confirm'];
 export const STATUSES = ['open', 'applied', 'dismissed'];
@@ -27,7 +27,7 @@ const ALLOWED_ACTIONS = {
   'User Story': ['replace'],
   'Sprint points': ['replace'],
   Notes: ['replace', 'append'],
-  Clarifications: ['append'], // the question to ask; Apply adds it with an empty answer
+  Clarifications: ['append', 'resolve'], // append: the question to ask, Apply adds it with an empty answer; resolve: the decision for Notes, Apply also removes the question
   'Depends On': ['add', 'remove'],
   'User Acceptance Criteria': ['add', 'replace', 'remove'],
 };
@@ -129,7 +129,34 @@ export function locateCriterion(story, row) {
   return { why: hits.length ? `AC${n} matches ${hits.length} criteria with the same text` : `AC${n} was edited or removed since the review` };
 }
 
+// The pairs of a story's Clarifications as the story read numbers them: n = position among the pairs that are not blank.
+const readPairs = (story) => story.clarifications.filter((p) => !blank(p.q) || !blank(p.a));
+
+// The pair a resolve row targets, found by the question text the writer recorded in `current` (a removal renumbers the
+// pairs, so a number would not hold). { index } is the position in story.clarifications; { why } says why there is no
+// single match.
+export function locatePair(story, row) {
+  const wanted = norm(row.current);
+  const hits = story.clarifications.flatMap((p, i) => (norm(p.q) === wanted ? [i] : []));
+  if (hits.length === 1) return { index: hits[0] };
+  return { why: hits.length ? 'several questions have the same text' : 'the question was edited or removed since the suggestion' };
+}
+
+// A resolve row's effect: its Suggested text goes to the end of Notes on a new line, and the question is removed.
+function resolvePair(story, row) {
+  const found = locatePair(story, row);
+  const v = row.suggested.trim();
+  return {
+    ...story,
+    notes: story.notes.trim() ? `${story.notes.replace(/\s+$/, '')}\n${v}` : v,
+    clarifications: story.clarifications.filter((_, i) => i !== found.index),
+  };
+}
+
 const sameCriterion = (a, b) => norm(a.given) === norm(b.given) && norm(a.when) === norm(b.when) && norm(a.then) === norm(b.then);
+
+// A resolve finding names its pair by number, as a number or as the digits ("2", "Q2"); NaN when it names none.
+const pairNumber = (v) => (typeof v === 'number' ? v : Number(/^\s*Q?(\d+)\s*$/i.exec(String(v ?? ''))?.[1]));
 
 // ---------- validation (the write script runs this on the model's findings) ----------
 
@@ -148,7 +175,7 @@ export function validateFindings(findings, backlog, { existingRows = [], require
   const rows = findings.map((f) => ({
     storyId: str(f?.storyId), field: str(f?.field), action: str(f?.action), suggested: str(f?.suggested),
     reason: str(f?.reason), area: str(f?.area), confidence: str(f?.confidence), group: str(f?.group),
-    storyTitle: str(f?.storyTitle), targetTitle: str(f?.targetTitle),
+    storyTitle: str(f?.storyTitle), targetTitle: str(f?.targetTitle), pair: pairNumber(f?.pair),
   }));
   const refs = stories.filter((s) => s.code).map((s) => ({ code: s.code, title: s.title, epic: s.epic, feature: s.feature }));
 
@@ -232,9 +259,15 @@ export function validateFindings(findings, backlog, { existingRows = [], require
         }
         if (r.action === 'add' && story && story.rawCriteria !== null) bad(`${r.storyId}'s User Acceptance Criteria cell is free text, so a criterion cannot be added.`);
       } else if (r.field === 'Clarifications') {
+        const resolve = r.action === 'resolve';
         if (r.group) bad('a Clarifications row takes no Group.');
-        if (/^\s*[QA]\d+\s*:/im.test(r.suggested)) bad('Suggested is the question text alone, without a "Q<n>:" label.');
-        if (story && story.rawClarifications !== null) bad(`${r.storyId}'s Clarifications cell is free text, so a question cannot be added.`);
+        if (/^\s*[QA]\d+\s*:/im.test(r.suggested)) bad(resolve ? 'Suggested is the decision for Notes, without a "Q<n>:" or "A<n>:" label.' : 'Suggested is the question text alone, without a "Q<n>:" label.');
+        if (story && story.rawClarifications !== null) bad(`${r.storyId}'s Clarifications cell is free text, so a question cannot be ${resolve ? 'resolved' : 'added'}.`);
+        else if (resolve && story) {
+          const count = readPairs(story).length;
+          if (!Number.isInteger(r.pair)) bad('a resolve row names the question by its number in "pair", e.g. 2.');
+          else if (r.pair < 1 || r.pair > count) bad(`${r.storyId} has ${count ? `no question ${r.pair} (it has ${count})` : 'no questions'}.`);
+        }
       } else if (r.field === 'Depends On') {
         const target = r.suggested;
         const inGroup = r.group && newIds.get(r.group)?.has(target);
@@ -271,6 +304,10 @@ export function fillCurrent(findings, backlog) {
       reason: str(f.reason), area: str(f.area), confidence: str(f.confidence), group: str(f.group), status: 'open',
     };
     const story = byCode.get(row.storyId);
+    if (story && row.action === 'resolve') {
+      row.current = readPairs(story)[pairNumber(f.pair) - 1]?.q ?? '';
+      return row;
+    }
     if (!story || row.action === 'unlock' || row.action === 'add' || row.action === 'add-story' || row.field === 'Clarifications') return row;
     if (row.field === 'User Acceptance Criteria') {
       const n = Number(AC_NUMBER.exec(row.suggested)?.[1]);
@@ -340,6 +377,11 @@ function editState(row, stories) {
   }
   if (row.field === 'Clarifications') {
     if (story.rawClarifications !== null) return stale('the Clarifications are free text');
+    if (row.action === 'resolve') {
+      if (norm(story.notes).includes(norm(row.suggested))) return stale('Notes already contain this text');
+      const found = locatePair(story, row);
+      return found.why ? stale(found.why) : { state: 'open' };
+    }
     return story.clarifications.some((p) => norm(p.q) === norm(row.suggested)) ? stale('this question was already asked') : { state: 'open' };
   }
   if (row.action === 'append') {
@@ -459,7 +501,8 @@ function editExisting(story, row) {
     case 'Sprint points': return { ...story, points: v };
     case 'Notes':
       return { ...story, notes: row.action === 'append' && story.notes.trim() ? `${story.notes.replace(/\s+$/, '')}\n${v}` : v };
-    case 'Clarifications': return { ...story, clarifications: [...story.clarifications, { q: v, a: '' }] };
+    case 'Clarifications':
+      return row.action === 'resolve' ? resolvePair(story, row) : { ...story, clarifications: [...story.clarifications, { q: v, a: '' }] };
     case 'User Story': {
       const us = parseStory(v);
       return { ...story, asA: us.asA, iWant: us.iWant, soThat: us.soThat, rawUserStory: null };

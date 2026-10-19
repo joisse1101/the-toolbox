@@ -2,7 +2,7 @@ import { unitState, displayRow } from '../../../../core/review.js';
 import { wordDiff } from '../../../../core/word-diff.js';
 
 // An append adds to the field the row names (Notes text, or a Clarifications question).
-const VERB = { replace: 'Suggested', add: 'Add', remove: 'Remove', append: 'Add', 'add-story': 'New story', unlock: 'Unlock' };
+const VERB = { replace: 'Suggested', add: 'Add', remove: 'Remove', append: 'Add', resolve: 'Resolve', 'add-story': 'New story', unlock: 'Unlock' };
 
 // What a row proposes, as text. Removing a criterion shows the criterion itself, not just its label.
 const valueOf = (row) => (row.action === 'remove' && row.field === 'User Acceptance Criteria' ? row.current : row.suggested);
@@ -50,7 +50,7 @@ export function Suggestion({ unit, stories, onApply, onDismiss, onUnlock, headin
     <div className={`suggestion${state === 'stale' ? ' stale' : ''}`} role="group" aria-label={isGroup ? `Split suggestion ${unit.group}` : `Suggestion for ${first.field}`}>
       {heading}
       <div className="suggestion-head">
-        <span className="suggestion-kind">{isGroup ? 'Suggested split' : first.action === 'append' ? `Add to ${first.field}` : `${VERB[first.action]}: ${first.field}`}</span>
+        <span className="suggestion-kind">{isGroup ? 'Suggested split' : first.action === 'append' ? `Add to ${first.field}` : first.action === 'resolve' ? 'Move to Notes' : `${VERB[first.action]}: ${first.field}`}</span>
         <span className="suggestion-area">{first.area}</span>
         {confirm && <span className="suggestion-confirm" title="A proposed default: check it before applying">check this default</span>}
       </div>
@@ -61,6 +61,7 @@ export function Suggestion({ unit, stories, onApply, onDismiss, onUnlock, headin
       ) : (
         <pre className="suggestion-value"><SuggestedValue row={first} /></pre>
       )}
+      {first.action === 'resolve' && <p className="suggestion-reason">Removes the question: {first.current}</p>}
       <p className="suggestion-reason">{first.reason}</p>
       {state === 'stale' && <p className="suggestion-why">Out of date: {why}. It can no longer be applied.</p>}
       {state === 'locked' && <p className="suggestion-why">This story is locked, so this cannot be applied. Unlock the story first.</p>}

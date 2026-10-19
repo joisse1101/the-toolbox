@@ -162,6 +162,13 @@ test('write_review states the one-line AC rule in its error and its description'
     assert.match(desc, /MUST start with the label/);
     assert.match(desc, /label alone/);
     assert.match(desc, /unlock/);
+    assert.match(desc, /resolve, for a question the user has answered/);
+    assert.match(desc, /pair is its number/);
+    const noPair = await call(client, 'write_review', {
+      backlog: 'data.csv', items: [row({ field: 'Clarifications', action: 'resolve', pair: 1, suggested: 'Decided', area: 'Clarification' })],
+    });
+    assert.equal(noPair.isError, true);
+    assert.match(textOf(noPair), /has no questions/, 'the pair key reaches the validation');
   } finally {
     await client.close();
   }

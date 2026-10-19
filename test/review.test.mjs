@@ -507,6 +507,89 @@ test('clarification rows round trip through the review CSV and show in the Clari
   assert.deepEqual(o.sections.find((s) => s.area === 'Clarification').units.length, 1);
 });
 
+// resolve rows: a decision for Notes that also removes the question
+
+const withPairs = (pairs = [{ q: 'Who owns approvals?', a: '' }, { q: 'Is SSO needed?', a: 'Yes' }, { q: 'Which format?', a: '' }]) => {
+  const b = backlog();
+  return { ...b, stories: b.stories.map((s) => (s.code === 'IAM-0001' ? { ...s, clarifications: pairs, notes: 'Existing.' } : s)) };
+};
+const resolveRow = (over = {}) => finding({
+  field: 'Clarifications', action: 'resolve', pair: 1, suggested: 'Approvals are owned by Finance', area: 'Clarification', confidence: 'ready', ...over,
+});
+
+test('resolve findings: valid rows pass; pair, labels, groups and free text are checked', () => {
+  const b = withPairs();
+  assert.deepEqual(validateFindings([resolveRow(), resolveRow({ pair: 'Q2', suggested: 'SSO is needed' }), resolveRow({ pair: '3', suggested: 'CSV' })], b), []);
+  assert.match(validateFindings([resolveRow({ pair: undefined })], b)[0], /names the question by its number in "pair"/);
+  assert.match(validateFindings([resolveRow({ pair: 4 })], b)[0], /no question 4 \(it has 3\)/);
+  assert.match(validateFindings([resolveRow({ pair: 0 })], b)[0], /no question 0/);
+  assert.match(validateFindings([resolveRow({ suggested: 'A1: Finance' })], b)[0], /without a "Q<n>:" or "A<n>:" label/);
+  assert.match(validateFindings([resolveRow({ group: 'g' })], b)[0], /takes no Group/);
+  assert.match(validateFindings([resolveRow({ pair: 1, storyId: 'IAM-0002' })], b)[0], /has no questions/);
+  const raw = { ...b, stories: b.stories.map((s) => (s.code === 'IAM-0001' ? { ...s, rawClarifications: 'Ask Sam' } : s)) };
+  assert.match(validateFindings([resolveRow()], raw)[0], /free text, so a question cannot be resolved/);
+});
+
+test('resolve: fillCurrent stores the question of the pair, the filled and the open one alike', () => {
+  const b = withPairs();
+  const rows = fillCurrent([resolveRow(), resolveRow({ pair: 2, suggested: 'SSO is needed' })], b);
+  assert.deepEqual(rows.map((r) => r.current), ['Who owns approvals?', 'Is SSO needed?']);
+  assert.equal('pair' in rows[0], false, 'pair is not part of the stored row');
+});
+
+test('resolve: Apply adds the note on a new line and removes the question; the input is not changed', () => {
+  const b = withPairs();
+  const [row] = fillCurrent([resolveRow()], b);
+  assert.equal(suggestionState(row, b.stories).state, 'open');
+  const out = applySuggestions(b.stories, [row], b.headers);
+  const story = out.stories.find((s) => s.code === 'IAM-0001');
+  assert.equal(story.notes, 'Existing.\nApprovals are owned by Finance');
+  assert.deepEqual(story.clarifications.map((p) => p.q), ['Is SSO needed?', 'Which format?']);
+  assert.equal(b.stories[0].clarifications.length, 3, 'input is not mutated');
+  assert.equal(b.stories[0].notes, 'Existing.');
+  assert.equal(suggestionState(row, out.stories).state, 'stale');
+  const noNotes = b.stories.map((s) => (s.code === 'IAM-0001' ? { ...s, notes: '' } : s));
+  assert.equal(applySuggestions(noNotes, [row], b.headers).stories.find((s) => s.code === 'IAM-0001').notes, 'Approvals are owned by Finance');
+});
+
+test('resolve: rows of one story apply in any order because the pair is found by its text', () => {
+  const b = withPairs();
+  const rows = fillCurrent([resolveRow(), resolveRow({ pair: 3, suggested: 'CSV only' })], b);
+  for (const order of [rows, [...rows].reverse()]) {
+    let stories = b.stories;
+    for (const row of order) {
+      assert.equal(suggestionState(row, stories).state, 'open');
+      stories = applySuggestions(stories, [row], b.headers).stories;
+    }
+    const story = stories.find((s) => s.code === 'IAM-0001');
+    assert.deepEqual(story.clarifications.map((p) => p.q), ['Is SSO needed?']);
+    assert.equal(story.notes.split('\n').length, 3);
+  }
+});
+
+test('resolve: stale when the question is gone, repeated, or the note is already in Notes; locked and free text too', () => {
+  const b = withPairs();
+  const [row] = fillCurrent([resolveRow()], b);
+  const set = (patch) => b.stories.map((s) => (s.code === 'IAM-0001' ? { ...s, ...patch } : s));
+  assert.match(suggestionState(row, set({ clarifications: [] })).why, /edited or removed/);
+  assert.match(suggestionState(row, set({ clarifications: [{ q: 'who OWNS approvals?', a: '' }, { q: 'Who owns approvals?', a: '' }] })).why, /same text/);
+  assert.match(suggestionState(row, set({ notes: 'x\napprovals are owned by finance' })).why, /Notes already contain/);
+  assert.equal(suggestionState(row, set({ rawClarifications: 'Ask Sam' })).state, 'stale');
+  assert.equal(suggestionState(row, set({ locked: true })).state, 'locked');
+  assert.match(applySuggestions(set({ locked: true }), [row], b.headers).error, /locked/);
+});
+
+test('resolve: Accept all applies it, rows round trip through the CSV, and the Clarification section lists it', () => {
+  const b = withPairs();
+  const rows = fillCurrent([resolveRow({ reason: 'Matters, "a lot"' })], b);
+  const back = parseReview(serializeReview(rows));
+  assert.deepEqual(back.rows, rows);
+  const result = acceptAll(b.stories, unitsOf(back.rows), b.headers);
+  assert.equal(result.applied.length, 1);
+  assert.equal(result.stories.find((s) => s.code === 'IAM-0001').clarifications.length, 2);
+  assert.equal(reviewOverview(back.rows, b.stories).sections.find((s) => s.area === 'Clarification').units.length, 1);
+});
+
 test('criterionNumberOf places a replace or remove row on the criterion its Current text names, only', () => {
   const story = backlog().stories.find((s) => s.code === 'IAM-0001');
   const unit = (over, group = '') => ({ group, rows: [finding({
