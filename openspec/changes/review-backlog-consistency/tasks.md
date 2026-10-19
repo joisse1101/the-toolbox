@@ -22,5 +22,5 @@
 
 ## 6. Docs and specs
 
-- [ ] 6.1 Update the review-backlog paragraph of `CLAUDE.md` (sectioned reader, `core/backlog-checks.js`, the lexicon/proposals inputs, the `Consistency` Area, `resolve`). Verify the paragraph names the new module and the reader sections.
-- [ ] 6.2 Run `openspec validate review-backlog-consistency --strict` and `npm test`; verify both pass.
+- [x] 6.1 Update the review-backlog paragraph of `CLAUDE.md` (sectioned reader, `core/backlog-checks.js`, the lexicon/proposals inputs, the `Consistency` Area, `resolve`). Verify the paragraph names the new module and the reader sections.
+- [x] 6.2 Run `openspec validate review-backlog-consistency --strict` and `npm test`; verify both pass.
