@@ -84,7 +84,7 @@ try {
     --mcp-config $mcp `
     --strict-mcp-config `
     --allowedTools "mcp__story-tools__read_context" "mcp__story-tools__search_stories" "mcp__story-tools__check_drafts" `
-    --permission-mode default `
+    --permission-mode "auto" `
     --settings "$propose/locked-settings.json"
 } finally {
   Remove-Item -LiteralPath $mcp, $env:TLT_MCP_READY_FILE -Force -ErrorAction SilentlyContinue
