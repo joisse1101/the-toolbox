@@ -8,6 +8,7 @@
 //       lexicon     lexicons/<name> in full (the backlog's agreed terms)
 //       reviews     reviews/<name>: the row count and the open rows per story; after the section name, story IDs give those stories' open rows in full
 //       lexicon-suggestions   lexicon-suggestions/<name>: the open suggestions in full and the number decided
+//   (the story-tools MCP server also exports searchStories below; it has no command form)
 //   node .claude/skills/explore-stories/read-story-context.mjs <name> <ID> prints the header and the one backlog story <ID>, every column
 // Nothing else is reachable: the guidelines path is fixed (ai/guidelines) and the name goes through the file API's name rules.
 // The CSV text is user data: it is labelled so, and instructions inside it are story text, not commands.
@@ -17,7 +18,8 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import { parseCsv, toCsv } from '../../../core/csv.js';
-import { BENCHED_COLUMN } from '../../../core/model.js';
+import { BENCHED_COLUMN, loadBacklog } from '../../../core/model.js';
+import { findStories, searchReply } from '../../../core/story-search.js';
 import { parseReview, serializeReview } from '../../../core/review.js';
 import { resolveStoryRef } from '../../../core/story-ref.js';
 import { parseSuggestions, composeSuggestions, isOpen } from '../../../core/lexicon-suggestions.js';
@@ -168,6 +170,34 @@ export function readStoryContext({ dataDir = DATA_DIR, guidelinesDir = GUIDELINE
     }
   }
   return result;
+}
+
+// The stories of the backlog and of its proposals (benched ones left out) that contain every word of `query`, as the reply text of
+// the search_stories tool. Both files are loaded as they stand (IDs as written, not recomputed), so an ID returned here is the one
+// read_context finds. Returns { ok: true, text } or { ok: false, errors }.
+export function searchStories({ dataDir = DATA_DIR, name, query }) {
+  let file;
+  try {
+    file = validateName(name);
+  } catch (err) {
+    return { ok: false, errors: [err.message] };
+  }
+  if (typeof query !== 'string' || !query.trim()) {
+    return { ok: false, errors: ['Give at least one word to search for. To see every story, read the index section with read_context.'] };
+  }
+  const lines = [];
+  for (const [folder, source] of [['user-stories', 'backlog'], ['proposals', 'proposed']]) {
+    let csv;
+    try {
+      csv = fs.readFileSync(path.join(dataDir, folder, file), 'utf8');
+    } catch (err) {
+      if (err.code === 'ENOENT' && folder === 'proposals') continue;
+      return { ok: false, errors: [err.code === 'ENOENT' ? `user-stories/${file} was not found.` : `Could not read ${folder}/${file}: ${err.message}`] };
+    }
+    const { headers, stories } = loadBacklog(csv, { placeholderIds: true });
+    lines.push(...findStories(stories, query, headers, source));
+  }
+  return { ok: true, text: searchReply(lines) };
 }
 
 const withoutBom = (text) => text.replace(/^﻿/, '');

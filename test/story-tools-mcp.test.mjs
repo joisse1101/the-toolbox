@@ -45,17 +45,17 @@ const story = (over = {}) => ({
   criteria: ['AC1: Given a, when b, then c'], ...over,
 });
 
-test('tool list: all six by default, read_context only with --read-only', async () => {
+test('tool list: all seven by default, read_context and search_stories with --read-only', async () => {
   const root = temp();
   const full = await connect(root);
   const readOnly = await connect(root, ['--read-only']);
   try {
     const all = (await full.listTools()).tools;
-    assert.deepEqual(all.map((t) => t.name).sort(), ['check_drafts', 'read_context', 'suggest_lexicon_change', 'write_lexicon', 'write_proposals', 'write_review']);
-    const readers = ['read_context', 'check_drafts'];
+    assert.deepEqual(all.map((t) => t.name).sort(), ['check_drafts', 'read_context', 'search_stories', 'suggest_lexicon_change', 'write_lexicon', 'write_proposals', 'write_review']);
+    const readers = ['read_context', 'search_stories', 'check_drafts'];
     for (const t of all.filter((x) => readers.includes(x.name))) assert.equal(t.annotations.readOnlyHint, true, `${t.name} is read-only`);
     for (const t of all.filter((x) => !readers.includes(x.name))) assert.ok(!t.annotations?.readOnlyHint, `${t.name} is not read-only`);
-    assert.deepEqual((await readOnly.listTools()).tools.map((t) => t.name), ['read_context']);
+    assert.deepEqual((await readOnly.listTools()).tools.map((t) => t.name), ['read_context', 'search_stories']);
   } finally {
     await full.close();
     await readOnly.close();
@@ -417,5 +417,33 @@ test('the descriptions state the Title rule', async () => {
     assert.match(tools.check_drafts, /Titles are checked/);
   } finally {
     await client.close();
+  }
+});
+
+test('search_stories: finds backlog and proposed stories, no match is not an error, a blank query is, and it works with --read-only', async () => {
+  const root = temp();
+  fs.mkdirSync(path.join(root, 'proposals'));
+  fs.writeFileSync(path.join(root, 'proposals', 'data.csv'), 'ID,Epic,Feature,Title,Benched\r\nNEW-1,Identity & Access Management,Auth,Reset password for SSO,\r\nNEW-2,Identity & Access Management,Auth,Parked sso idea,Yes\r\n');
+  const full = await connect(root);
+  const readOnly = await connect(root, ['--read-only']);
+  try {
+    for (const client of [full, readOnly]) {
+      const found = await call(client, 'search_stories', { backlog: 'data.csv', query: 'sso' });
+      assert.ok(!found.isError);
+      assert.equal(textOf(found), '2 stories match (ID | Title | Epic > Feature | source):\nIAM-0002 | SSO Login | Identity & Access Management > SSO | backlog\nNEW-1 | Reset password for SSO | Identity & Access Management > Auth | proposed');
+    }
+    const none = await call(full, 'search_stories', { backlog: 'data.csv', query: 'zebra' });
+    assert.ok(!none.isError);
+    assert.equal(textOf(none), 'No story matches.');
+    const blank = await call(full, 'search_stories', { backlog: 'data.csv', query: '   ' });
+    assert.equal(blank.isError, true);
+    assert.match(textOf(blank), /index section/);
+    assert.equal((await call(full, 'search_stories', { backlog: 'missing.csv', query: 'sso' })).isError, true);
+    const desc = (await full.listTools()).tools.find((t) => t.name === 'search_stories').description;
+    assert.match(desc, /read_context using its storyId and the Title/);
+    assert.match(desc, /'proposals' section/);
+  } finally {
+    await full.close();
+    await readOnly.close();
   }
 });

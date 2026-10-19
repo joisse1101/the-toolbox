@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { serializeReview } from '../core/review.js';
 import { composeSuggestions, emptySuggestions } from '../core/lexicon-suggestions.js';
-import { readStoryContext, formatSection, formatMenu, formatStory, SECTIONS, backlogIndex, listBacklogs } from '../.claude/skills/explore-stories/read-story-context.mjs';
+import { readStoryContext, formatSection, formatMenu, formatStory, SECTIONS, backlogIndex, listBacklogs, searchStories } from '../.claude/skills/explore-stories/read-story-context.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -379,4 +379,35 @@ test('storyIds as { id, title } pairs: checked, every mismatch reported, plain I
   assert.match(bad.errors[1], /^storyIds\[2\]: IAM-0002 is now "Logout"/);
   assert.match(readWith(root, { section: 'reviews', storyIds: ['IAM-0001'], requireTitles: true }).errors[0], /storyIds\[1\]: IAM-0001 needs/);
   assert.equal(readWith(root, { section: 'reviews', storyIds: ['IAM-0001'] }).ok, true);
+});
+
+const SEARCH_BACKLOG = 'ID,Epic,Feature,Title,User Acceptance Criteria\r\nIAM-0001,Reporting,Export,Export report,"AC1: Given a, when csv, then b"\r\nIAM-0002,Reporting,Export,Print report,\r\n';
+const searchRoot = () => {
+  const root = temp();
+  fs.writeFileSync(path.join(root, 'user-stories', 'data.csv'), SEARCH_BACKLOG);
+  return root;
+};
+
+test('search: a backlog story and a proposed story are found in one call, each with its source', () => {
+  const root = searchRoot();
+  fs.mkdirSync(path.join(root, 'proposals'));
+  fs.writeFileSync(path.join(root, 'proposals', 'data.csv'), 'ID,Epic,Feature,Title,Notes,Benched\r\nNEW-3,Reporting,Export,Schedule CSV export,,\r\nNEW-4,Reporting,Export,Parked csv idea,,Yes\r\n');
+  const r = searchStories({ dataDir: root, name: 'data.csv', query: 'CSV' });
+  assert.equal(r.ok, true);
+  assert.equal(r.text, '2 stories match (ID | Title | Epic > Feature | source):\nIAM-0001 | Export report | Reporting > Export | backlog\nNEW-3 | Schedule CSV export | Reporting > Export | proposed');
+});
+
+test('search: no proposals file is fine, no match is not an error', () => {
+  const root = searchRoot();
+  assert.equal(searchStories({ dataDir: root, name: 'data.csv', query: 'csv' }).ok, true);
+  assert.deepEqual(searchStories({ dataDir: root, name: 'data.csv', query: 'zebra' }), { ok: true, text: 'No story matches.' });
+});
+
+test('search: a blank query points to the index, an unknown backlog and a bad name are errors', () => {
+  const root = searchRoot();
+  const blank = searchStories({ dataDir: root, name: 'data.csv', query: '   ' });
+  assert.equal(blank.ok, false);
+  assert.match(blank.errors[0], /index section/);
+  assert.match(searchStories({ dataDir: root, name: 'missing.csv', query: 'csv' }).errors[0], /user-stories\/missing\.csv was not found/);
+  assert.equal(searchStories({ dataDir: root, name: '../x.csv', query: 'csv' }).ok, false);
 });
