@@ -26,7 +26,7 @@ The repository SHALL contain `.claude/skills/propose-stories/write-proposal.mjs`
 - **THEN** it is rejected and nothing is written
 
 ### Requirement: Input format and validation
-Each item in the input list SHALL be either a new story or a patch. An item without an `id` key is a **new story** and SHALL give Epic, Feature, Title, User Story (the full "As a …, I want …, so that …" text), Sprint points, Depends On (a list), User Acceptance Criteria (a list of `AC<n>: Given …, when …, then …` lines) and optionally Notes. An item with an `id` key is a **patch** (see "Patching proposals"). Priority SHALL NOT be accepted. The writer SHALL reject a new story that: lacks Epic, Feature or Title; has a User Story that does not follow the format; has Sprint points other than 1, 2, 3, 5, 8 or 13; has no acceptance criteria or one that does not follow Given-When-Then; contains line breaks in a single-line field; or has unknown keys. Valid Depends On entries are the ID of a story in the backlog, a `NEW-<k>` naming another new story of the same input, and `proposed:NEW-<n>` naming a story already in the proposals file; any other entry, a story depending on itself, and a dependency cycle SHALL be rejected.
+Each item in the input list SHALL be either a new story or a patch. An item without an `id` key is a **new story** and SHALL give Epic, Feature, Title, User Story (the full "As a …, I want …, so that …" text), Sprint points, Depends On (a list), User Acceptance Criteria (a list of `AC<n>: Given …, when …, then …` lines) and optionally Notes. An item with an `id` key is a **patch** (see "Patching proposals"). Priority SHALL NOT be accepted. The writer SHALL reject a new story that: lacks Epic, Feature or Title; has a User Story that does not follow the format; has Sprint points other than 1, 2, 3, 5, 8 or 13; has no acceptance criteria or one that does not follow Given-When-Then; contains line breaks in a single-line field (every field except Notes); or has unknown keys. Notes MAY span several lines; line endings SHALL be stored as `\n` and leading and trailing blank space removed. Valid Depends On entries are the ID of a story in the backlog, a `NEW-<k>` naming another new story of the same input, and `proposed:NEW-<n>` naming a story already in the proposals file; any other entry, a story depending on itself, and a dependency cycle SHALL be rejected.
 
 #### Scenario: Over the size limit
 - **WHEN** a story has Sprint points 21
@@ -47,6 +47,14 @@ Each item in the input list SHALL be either a new story or a patch. An item with
 #### Scenario: Priority refused
 - **WHEN** a story includes a Priority
 - **THEN** it is rejected
+
+#### Scenario: Multi-line Notes
+- **WHEN** a new story or a patch gives Notes with two lines
+- **THEN** it is accepted and stored with both lines
+
+#### Scenario: Other fields stay one line
+- **WHEN** a Title or a clarification question contains a line break
+- **THEN** the item is rejected
 
 ### Requirement: Placeholder IDs and add-or-patch writes
 The writer SHALL give each new story a placeholder ID `NEW-<n>` using the portal's rule: the numbers start one above the highest `NEW-<n>` found in the proposals file and in the `Depends On` column of the backlog, and rise by one per new story that is added, in input order. A run SHALL add new stories after the existing rows and MAY patch existing proposals in place; it SHALL NOT remove any proposal, reorder rows, or change the header, a row's unknown columns or any story the input does not name. A new story that repeats a story already in the proposals file is not added (see "Repeated new stories are skipped"). If the proposals file does not exist it SHALL be created with the backlog's columns. The success message SHALL list the IDs assigned to new stories, the IDs patched and the new stories skipped with the ID they matched.
@@ -187,3 +195,22 @@ When the writer is called through the `story-tools` server, a patch SHALL carry 
 #### Scenario: Script from the command line
 - **WHEN** the script is run with a bare ID in Depends On and no `storyTitle` on a patch
 - **THEN** the input is accepted exactly as before
+
+### Requirement: Patch resolves clarifications
+A patch's `clarifications` key MAY carry `resolve`, a list of `{ n, note }`. For each item the writer SHALL append `note` to the story's Notes on a new line (as the whole Notes when it is empty) and remove pair `n`, the later pairs being renumbered by position. `n` SHALL name an existing pair as stored before the patch; the pair's answer MAY be empty or filled. `note` SHALL be non-empty text and MAY have several lines. The same `n` SHALL NOT appear twice in `resolve`, and `resolve` SHALL NOT name a pair that `answer` also names. When the patch also gives `notes`, the resolve notes are appended to that value. `add` is applied after `resolve`. The result is validated as the merged story, the call is all-or-nothing, and a benched story or a Clarifications cell that is free text is refused.
+
+#### Scenario: Resolve a pair
+- **WHEN** a patch resolves pair 2 of `NEW-4` with the note "Approvals are owned by Finance"
+- **THEN** Notes ends with that line, pair 2 is gone and the former pair 3 is now pair 2
+
+#### Scenario: Resolve an open pair
+- **WHEN** the resolved pair has an empty answer
+- **THEN** it is resolved the same way
+
+#### Scenario: Unknown pair or empty note
+- **WHEN** `n` names a pair that does not exist, or `note` is empty
+- **THEN** nothing is written and the problem names the pair
+
+#### Scenario: Several resolves
+- **WHEN** a patch resolves pairs 1 and 3
+- **THEN** both notes are appended in the order given and pairs 1 and 3 are removed
