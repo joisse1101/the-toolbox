@@ -114,3 +114,4 @@ Every story is checked against these six principles.
 - Never invent an answer. Record an answer only when the user states it.
 - Ask the user for such unknowns while the story is being discussed, not only when it is written down.
 - Notes hold facts and decisions; Clarifications hold what is still unknown.
+- When the user answers a question while the story is being shaped, resolve it: the answer goes into Notes as a decision, and the question is removed from Clarifications. Write the decision so it reads on its own (for example "Approvals are owned by Finance"); leave out the question's wording when the answer already carries it. Resolve only an answer the user stated, and never remove a question without recording its decision in Notes.
