@@ -10,6 +10,7 @@
 # Starts in /explore-stories (discussion only) with both already filled in; when you are happy with the drafts, run
 # /propose-stories in the same session (it asks yes/no first), or /story:propose to write the drafts straight away. Both write
 # new stories to the proposals and changes to backlog stories as suggestions in the story editor.
+# /story:re-read re-reads the files after you changed them yourself; /story:review audits what is under discussion and lists what is left.
 # Tools are limited to the story-tools MCP server (read_context, write_proposals, write_lexicon, write_review), Skill and
 # AskUserQuestion: no Bash. The reader is pre-approved. The writers are not: Claude Code asks you before every write, on top
 # of the skill's yes/no question (--permission-mode default keeps that prompt on, whatever mode your settings use).
