@@ -199,6 +199,49 @@ test('Depends On add and remove, and a cycle is refused', () => {
   assert.equal(bad.stories, undefined);
 });
 
+// IAM-0003 lists a missing code, itself, a proposed story and a real one.
+const DANGLING_CSV = CSV.replace('SSO Login,"As a user, I want SSO, so that no credentials",55,,,,', 'SSO Login,"As a user, I want SSO, so that no credentials",55,,IAM-0099;IAM-0003;NEW-4;IAM-0001,,');
+const danglingBacklog = () => loadBacklog(DANGLING_CSV);
+const removeRow = (suggested, over = {}) => finding({ storyId: 'IAM-0003', field: 'Depends On', action: 'remove', suggested, storyTitle: 'SSO Login', area: 'INVEST', ...over });
+
+test('a Depends On remove is accepted for an entry no story holds, itself or a proposed story', () => {
+  const b = danglingBacklog();
+  for (const entry of ['IAM-0099', 'IAM-0003', 'NEW-4']) assert.deepEqual(validateFindings([removeRow(entry)], b), [], entry);
+  assert.ok(validateFindings([removeRow('IAM-0098')], b).some((e) => e.includes('does not depend on IAM-0098')));
+  // add keeps its checks
+  const add = (suggested) => removeRow(suggested, { action: 'add' });
+  for (const entry of ['IAM-0099', 'IAM-0003', 'NEW-4']) assert.ok(validateFindings([add(entry)], b).length, entry);
+});
+
+test('a Depends On remove names the Title only when a story holds the code', () => {
+  const b = danglingBacklog();
+  const opts = { requireTitles: true };
+  assert.deepEqual(validateFindings([removeRow('IAM-0099'), removeRow('IAM-0003'), removeRow('NEW-4')], b, opts), []);
+  assert.ok(validateFindings([removeRow('IAM-0001')], b, opts).some((e) => e.includes('targetTitle')));
+  assert.deepEqual(validateFindings([removeRow('IAM-0001', { targetTitle: 'Login' })], b, opts), []);
+  assert.ok(validateFindings([removeRow('IAM-0001', { targetTitle: 'Logout' })], b, opts).length);
+});
+
+test('applying a Depends On remove drops only the entry, held by a story or not', () => {
+  const b = danglingBacklog();
+  const apply = (entry) => applySuggestions(b.stories, rowsFor([removeRow(entry)], b), b.headers);
+  const deps = (r) => r.stories.find((s) => s.code === 'IAM-0003').dependsOn;
+  assert.deepEqual(deps(apply('IAM-0099')), ['IAM-0003', 'NEW-4', 'IAM-0001']);
+  assert.deepEqual(deps(apply('IAM-0003')), ['IAM-0099', 'NEW-4', 'IAM-0001']);
+  assert.deepEqual(deps(apply('NEW-4')), ['IAM-0099', 'IAM-0003', 'IAM-0001']);
+  assert.deepEqual(deps(apply('IAM-0001')), ['IAM-0099', 'IAM-0003', 'NEW-4']);
+});
+
+test('a Depends On remove stays open while the entry is listed and is stale once it is gone', () => {
+  const b = danglingBacklog();
+  const [row] = rowsFor([removeRow('IAM-0099')], b);
+  assert.equal(suggestionState(row, b.stories).state, 'open');
+  const edited = b.stories.map((s) => (s.code === 'IAM-0003' ? { ...s, dependsOn: s.dependsOn.filter((c) => c !== 'IAM-0099') } : s));
+  assert.equal(suggestionState(row, edited).state, 'stale');
+  // an unrelated renumber leaves the row as written
+  assert.equal(retargetRows([row], new Map([['IAM-0001', 'B-0001']]))[0].suggested, 'IAM-0099');
+});
+
 test('changing the Epic renumbers and links follow the story', () => {
   const b = backlog();
   const rows = rowsFor([finding({ storyId: 'IAM-0001', field: 'Epic', suggested: 'Billing' })], b);

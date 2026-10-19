@@ -271,7 +271,14 @@ export function validateFindings(findings, backlog, { existingRows = [], require
       } else if (r.field === 'Depends On') {
         const target = r.suggested;
         const inGroup = r.group && newIds.get(r.group)?.has(target);
-        if (target === r.storyId) bad('a story cannot depend on itself.');
+        if (r.action === 'remove') {
+          // A remove deletes an entry the story lists, whether or not a story holds it (a missing code, itself, a NEW-<n>).
+          if (story && !story.dependsOn.includes(target)) bad(`${r.storyId} does not depend on ${target}.`);
+          else if (byCode.has(target) && target !== r.storyId) {
+            const named = resolveStoryRef(refs, { id: target, title: r.targetTitle }, { required: requireTitles, key: 'targetTitle' });
+            if (!named.ok) bad(`Suggested: ${named.message}`);
+          }
+        } else if (target === r.storyId) bad('a story cannot depend on itself.');
         else if (NEW_ID.test(target)) {
           if (!inGroup) bad(`${target} is not a new story in group "${r.group}".`);
         } else {
@@ -279,7 +286,6 @@ export function validateFindings(findings, backlog, { existingRows = [], require
           if (!named.ok) bad(`Suggested: ${named.message}`);
           else if (!byCode.has(target)) bad(`${target} is not a story in the backlog.`);
         }
-        if (r.action === 'remove' && story && !story.dependsOn.includes(target)) bad(`${r.storyId} does not depend on ${target}.`);
       }
     }
   });
@@ -637,6 +643,11 @@ export function applySuggestions(stories, rows, headers) {
   // Existing codes may have changed in the renumber above, so look targets up by story id captured before.
   for (const l of resolved) {
     const fromCode = codeOf(l.from);
+    if (l.action === 'remove' && !l.targetId) {
+      // No story holds the entry (a missing code or a NEW-<n>): remove the text the story lists.
+      next = next.map((s) => (s.id === l.from ? { ...s, dependsOn: s.dependsOn.filter((c) => c !== l.target), ambiguous: s.ambiguous.filter((c) => c !== l.target) } : s));
+      continue;
+    }
     const toCode = codeOf(l.targetId);
     if (!fromCode || !toCode) return { error: 'Cannot apply: a dependency needs both stories to have an ID (set their Epic).' };
     if (l.action === 'add') {
