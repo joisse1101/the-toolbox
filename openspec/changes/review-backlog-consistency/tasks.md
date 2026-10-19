@@ -4,7 +4,7 @@
 
 ## 2. Mechanical checks (core)
 
-- [ ] 2.1 Create `core/backlog-checks.js` with `backlogChecks({ stories, lexicon, proposals })`, reusing `backlogProblems`, `storyIssues` (Priority dropped) and `lexiconProblems`, and adding: duplicate Epic/Feature/Title, overlap with a non-benched proposal, whole-word Avoid-word use in Title/User Story/criteria, and an answered but unresolved Clarifications pair. Locked stories are marked `locked`. Verify with `test/backlog-checks.test.mjs` covering each scenario of `backlog-consistency-checks` (dangling dependency, duplicate of a proposed story, benched proposal ignored, avoided word incl. "stable" not matching "table", locked context only, missing lexicon, answered pair, clean backlog); `npm test` passes.
+- [x] 2.1 Create `core/backlog-checks.js` with `backlogChecks({ stories, lexicon, proposals })`, reusing `backlogProblems`, `storyIssues` (Priority dropped) and `lexiconProblems`, and adding: duplicate Epic/Feature/Title, overlap with a non-benched proposal, whole-word Avoid-word use in Title/User Story/criteria, and an answered but unresolved Clarifications pair. Locked stories are marked `locked`. Verify with `test/backlog-checks.test.mjs` covering each scenario of `backlog-consistency-checks` (dangling dependency, duplicate of a proposed story, benched proposal ignored, avoided word incl. "stable" not matching "table", locked context only, missing lexicon, answered pair, clean backlog); `npm test` passes.
 
 ## 3. Consistency Area
 
