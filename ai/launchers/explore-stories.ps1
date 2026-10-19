@@ -1,6 +1,6 @@
 # Starts an interactive Claude session for the explore-stories skill, limited to the story-tools reader.
 # Usage: .\ai\launchers\explore-stories.ps1 [backlog file name]   (without a name, Claude lists the backlogs and asks)
-# Tools are limited to the story-tools MCP server in --read-only mode (read_context only), Skill and AskUserQuestion: no Bash.
+# Tools are limited to the story-tools MCP server in --read-only mode (read_context and search_stories only), Skill and AskUserQuestion: no Bash.
 # The session cannot write any file. --permission-mode default keeps the prompts on, whatever mode your settings use.
 param([string]$Backlog = '')
 
@@ -18,7 +18,7 @@ try {
     --tools "Skill,AskUserQuestion" `
     --mcp-config $mcp `
     --strict-mcp-config `
-    --allowedTools "mcp__story-tools__read_context" `
+    --allowedTools "mcp__story-tools__read_context" "mcp__story-tools__search_stories" `
     --permission-mode default `
     --settings "$skill/locked-settings.json"
 } finally {

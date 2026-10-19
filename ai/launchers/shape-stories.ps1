@@ -11,8 +11,8 @@
 # /propose-stories in the same session (it asks yes/no first), or /story:propose to write the drafts straight away. Both write
 # new stories to the proposals and changes to backlog stories as suggestions in the story editor.
 # /story:re-read re-reads the files after you changed them yourself; /story:review audits what is under discussion and lists what is left.
-# Tools are limited to the story-tools MCP server (read_context, write_proposals, write_lexicon, write_review), Skill and
-# AskUserQuestion: no Bash. The reader is pre-approved. The writers are not: Claude Code asks you before every write, on top
+# Tools are limited to the story-tools MCP server (read_context, search_stories, check_drafts, write_proposals, write_lexicon, suggest_lexicon_change, write_review), Skill and
+# AskUserQuestion: no Bash. The readers are pre-approved. The writers are not: Claude Code asks you before every write, on top
 # of the skill's yes/no question (--permission-mode default keeps that prompt on, whatever mode your settings use).
 param(
   [string]$Backlog = '',
@@ -83,7 +83,7 @@ try {
     --tools "Skill,AskUserQuestion" `
     --mcp-config $mcp `
     --strict-mcp-config `
-    --allowedTools "mcp__story-tools__read_context" "mcp__story-tools__check_drafts" `
+    --allowedTools "mcp__story-tools__read_context" "mcp__story-tools__search_stories" "mcp__story-tools__check_drafts" `
     --permission-mode default `
     --settings "$propose/locked-settings.json"
 } finally {

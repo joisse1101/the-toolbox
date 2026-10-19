@@ -1,6 +1,6 @@
 ---
 description: Review what is under discussion in this session (the stories shaped, their dependencies, the terms they use, and what was written) for sync, and list what is left to do
-allowed-tools: mcp__story-tools__read_context, mcp__story-tools__check_drafts
+allowed-tools: mcp__story-tools__read_context, mcp__story-tools__search_stories, mcp__story-tools__check_drafts
 ---
 
 Audit the work of this session now and end with what is left to do. You only read; write nothing and call no writer. Extra instructions from the user: $ARGUMENTS

@@ -1,7 +1,7 @@
 ---
 name: explore-stories
 description: Think through new user stories for a backlog in user-stories/ with the user, against ai/guidelines/product-backlog.md and the stories already in the backlog and the proposals. Discusses scope, splitting, Epic and Feature placement, dependencies and acceptance criteria, and may sketch draft stories in the conversation. Never writes any file. Use when the user wants to explore, shape, brainstorm or discuss new stories or a new feature before writing them down; hand over to propose-stories to save them.
-allowed-tools: mcp__story-tools__read_context
+allowed-tools: mcp__story-tools__read_context, mcp__story-tools__search_stories
 ---
 
 # Explore new stories
@@ -22,11 +22,12 @@ Help the user work out new stories for one backlog by talking them through. **Ne
 
 - **Name stories by Title.** In everything the user reads, call a story by its Title in quotes ("Reset password by email"), adding its Epic and Feature when another story has the same Title. A backlog ID is derived from position and changes when the backlog is reordered, so it is never the only name of a story: at most put it in parentheses after the Title. Look IDs up in the `index` yourself; do not ask the user for one.
 - **Ask the shape-deciding question first.** When the request leaves open a choice that decides how the stories are split or what they say (for example whether a new concept adds to an existing rule or replaces it), ask that one question before drafting anything, once, and say what each answer would change. Other questions can wait for the draft.
-- **Check terms early.** When the discussion adds, renames or redefines a term, check the name against the lexicon's terms and every term's `Avoid` list (the `lexicon` section) before any story uses it, and raise a clash at once. Then list what the change touches: the lexicon definitions that use the old or the clashing word, and the backlog and proposed stories that do (search the index and the proposals you read; acceptance criteria and notes are only in a story read in full, so say which stories you did not check). Do this before drafting, not after.
+- **Check terms early.** When the discussion adds, renames or redefines a term, check the name against the lexicon's terms and every term's `Avoid` list (the `lexicon` section) before any story uses it, and raise a clash at once. Then list what the change touches: the lexicon definitions that use the old or the clashing word, and the backlog and proposed stories that do (find them with `search_stories` on the old or the clashing word, which looks in every field, acceptance criteria and notes included; it lists only Titles, so read a story in full when you need to see how it uses the word, and say which stories you did not check). Do this before drafting, not after.
 - For a proposed story or a story of the backlog, start by showing it as it is now (Epic, Feature, Title, User Story, Sprint points, Depends On, User Acceptance Criteria, Notes) and ask "What should change?"; if it is not in the proposals (or the backlog) the reader printed, say so and ask which story is meant. For free text, restate the need in one sentence and carry on; ask only when the need is unclear, with few and specific questions.
 - Use the lexicon's terms with their defined meaning, by their full name (a child term such as "dataset attribute" is not shortened to "attribute"), and never a word from a term's `Avoid` column in place of the term. When the discussion needs a concept the lexicon does not define, or a term the user wants defined differently, point it out and suggest a definition. Lexicon terms change only through `propose-stories` (or in the portal's Lexicon tab), never from this session.
 - Place the work: reuse an existing Epic and Feature name exactly where the story belongs there; propose a new one only when nothing fits, and say why.
 - Keep stories small and vertical. Apply the guidelines' size limit and tell the user when a story would exceed it; offer a split, with each part still delivering value.
+- Find stories related to the one under discussion with `search_stories` (a few words from its subject or the terms it uses; it returns ID, Title, Epic > Feature and whether the story is in the backlog or proposed) instead of reading the whole `index` for that. Read a backlog story it found in full with `read_context` using its `storyId` and the Title from that line; a proposed story is already in the `proposals` text. A search that finds nothing is weak evidence: try another wording (a synonym, a term from the lexicon) before you tell the user a subject is new.
 - Name dependencies: stories already in the backlog, proposed ones, and ones among the new stories, each by Title. Prefer a split that removes a dependency over one that creates it.
 - Acceptance criteria are `AC<n>: Given …, when …, then …` and include the failure path.
 - Size each draft with the sprint-points guideline the reader printed, and say which benchmark it matches.
@@ -37,6 +38,6 @@ Help the user work out new stories for one backlog by talking them through. **Ne
 
 ## Hand over
 
-When the user is happy with the drafts (and any terms to define), say so and offer to continue with `propose-stories` (in the same session if it was started with `shape-stories.ps1`). Do not try to save them from here, and do not call any tool other than `read_context`.
+When the user is happy with the drafts (and any terms to define), say so and offer to continue with `propose-stories` (in the same session if it was started with `shape-stories.ps1`). Do not try to save them from here, and do not call any tool other than `read_context` and `search_stories`.
 
 If the user types `propose-stories` or `/propose-stories` (with or without the slash), or asks to save, write, propose or put the stories in the CSV, that is the hand over: **call the Skill tool with `propose-stories` right away**. Do not draft, restate or "propose" the stories in the conversation instead; the CSV is written only by that skill's writer.
