@@ -13,7 +13,7 @@
 ## 4. Sectioned reader
 
 - [x] 4.1 Rework `read-backlog.mjs`: no section prints the scope line and a menu with sizes (including `epic-<n>` per Epic in `groupByEpic` order); sections `guidelines`, `sizing`, `lexicon`, `proposals` (benched count noted), `checks` (scope line plus the report, one line per problem) and `epic-<n>` (header row plus that Epic's rows, locked included); unknown section or Epic number is an error listing valid ones; section names are matched against a fixed list, never used as a path; missing lexicon or proposals file reads as empty. Verify with `test/read-backlog.test.mjs` for the menu, one Epic, unknown section, `..`/separator rejection and the no-argument backlog list; `npm test` passes.
-- [ ] 4.2 Update `guard-bash.mjs` to allow `read-backlog.mjs <file> [section]` where section matches `[a-z]+(-\d+)?`, nothing else. Verify with `test/guard-bash.test.mjs` cases for an allowed section, a section with a path, `;`, `$(...)` and a third argument (all denied).
+- [x] 4.2 Update `guard-bash.mjs` to allow `read-backlog.mjs <file> [section]` where section matches `[a-z]+(-\d+)?`, nothing else. Verify with `test/guard-bash.test.mjs` cases for an allowed section, a section with a path, `;`, `$(...)` and a third argument (all denied).
 
 ## 5. Skill
 

@@ -6,8 +6,11 @@ import fs from 'node:fs';
 
 const SCRIPT = /^node \.claude\/skills\/review-backlog\/(read-backlog|write-review)\.mjs(?: ([^\s;&|<>`$()\\'"*?{}!#~]+))?/;
 
+// The section after the backlog name: a lowercase word with an optional -<number> (epic-2). No path, no flag.
+const SECTION = /^ [a-z]+(?:-\d+)?$/;
+
 const ALLOWED = [
-  'node .claude/skills/review-backlog/read-backlog.mjs [file]',
+  'node .claude/skills/review-backlog/read-backlog.mjs [file [section]]',
   "node .claude/skills/review-backlog/write-review.mjs <file> <<'JSON' ... JSON",
   "node .claude/skills/review-backlog/write-review.mjs <file> --append <<'JSON' ... JSON",
 ];
@@ -28,7 +31,9 @@ export function check(command) {
     if (rest.indexOf('JSON') !== rest.length - 1) return deny('Nothing may follow the closing JSON line.');
     return null;
   }
-  if (m[2]?.startsWith('-') || tail !== '' || rest.length) return deny('read-backlog.mjs takes at most one file name and no other shell syntax.');
+  if (m[2]?.startsWith('-') || rest.length || (tail !== '' && !(m[2] && SECTION.test(tail)))) {
+    return deny('read-backlog.mjs takes a file name, then optionally a section such as checks or epic-2, and no other shell syntax.');
+  }
   return null;
 }
 
