@@ -6,10 +6,10 @@
 
 ## 2. Skill and tool text
 
-- [ ] 2.1 Update `.claude/skills/review-backlog/SKILL.md`: one rule for every `dependency` kind (does not exist, itself, still proposed, cycle) that is a `remove` row on `Depends On`, Area `INVEST`; drop the Clarifications workaround; the Reason says what the link was probably meant to be, or for a `NEW-<n>` that it returns by hand on acceptance. Verify by reading the file against every scenario of the `backlog-review-skill` delta and with `grep` showing no remaining text that says a dependency link "cannot be removed". Keep the file's CRLF line endings.
-- [ ] 2.2 Check the `write_review` description in `ai/mcp/story-tools.mjs` ("Depends On: add or remove, suggested is one story ID"): change it so a `remove` may name an entry no story holds and needs `targetTitle` only when a story holds the code. Verify with `test/story-tools-mcp.test.mjs`.
+- [x] 2.1 Update `.claude/skills/review-backlog/SKILL.md`: one rule for every `dependency` kind (does not exist, itself, still proposed, cycle) that is a `remove` row on `Depends On`, Area `INVEST`; drop the Clarifications workaround; the Reason says what the link was probably meant to be, or for a `NEW-<n>` that it returns by hand on acceptance. Verify by reading the file against every scenario of the `backlog-review-skill` delta and with `grep` showing no remaining text that says a dependency link "cannot be removed". Keep the file's CRLF line endings.
+- [x] 2.2 Check the `write_review` description in `ai/mcp/story-tools.mjs` ("Depends On: add or remove, suggested is one story ID"): change it so a `remove` may name an entry no story holds and needs `targetTitle` only when a story holds the code. Verify with `test/story-tools-mcp.test.mjs`.
 
 ## 3. Docs and specs
 
-- [ ] 3.1 Update the review-backlog paragraph of `CLAUDE.md`: replace the sentence that a missing, self or still-proposed `Depends On` link cannot be removed through a review row with the new rule (a `remove` row deletes the listed entry; only a story-holding code needs `targetTitle`). Verify with `grep` that the old sentence is gone.
+- [x] 3.1 Update the review-backlog paragraph of `CLAUDE.md`: replace the sentence that a missing, self or still-proposed `Depends On` link cannot be removed through a review row with the new rule (a `remove` row deletes the listed entry; only a story-holding code needs `targetTitle`). Verify with `grep` that the old sentence is gone.
 - [ ] 3.2 Run `openspec validate remove-missing-dependency-links --strict` and `npm test`; verify both pass.
