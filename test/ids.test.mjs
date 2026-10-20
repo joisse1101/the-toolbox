@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { parseCsv } from '../core/csv.js';
 import { loadBacklog, serializeBacklog, newStory, storyIssues, COLUMNS } from '../core/model.js';
 import {
-  epicPrefix, renumber, moveStory, moveGroup, gatherFeatures, recodedBetween, commitEpic, commitEpics, removeStory, removeStories, lockStories, unlockStories, dependentsOf, wouldCycle, dependencyChoices, backlogProblems,
+  epicPrefix, renumber, moveStory, moveGroup, gatherFeatures, recodedBetween, commitEpic, commitEpics, removeStory, removeStories, lockStories, unlockStories, groupLockState, dependentsOf, wouldCycle, dependencyChoices, backlogProblems,
 } from '../core/ids.js';
 
 let n = 0;
@@ -303,6 +303,19 @@ test('lockStories / unlockStories: skip stories without an ID', () => {
   const open = unlockStories(locked.stories, new Set([x.id, y.id]));
   assert.deepEqual(open.stories.map((s) => s.locked), [false, false]);
   assert.equal(open.skipped, 0);
+});
+
+test('groupLockState: all, some or none of the stories are locked', () => {
+  const [x, y, z] = renumber([st(IAM), st(IAM), st('')]);
+  assert.equal(groupLockState([]), 'none');
+  assert.equal(groupLockState([x, y]), 'none');
+  const one = lockStories([x, y], new Set([x.id])).stories;
+  assert.equal(groupLockState(one), 'some');
+  const both = lockStories([x, y], new Set([x.id, y.id])).stories;
+  assert.equal(groupLockState(both), 'all');
+  // a story without an ID cannot be locked, so its group never reads 'all'
+  const withBlank = lockStories([x, y, z], new Set([x.id, y.id, z.id])).stories;
+  assert.equal(groupLockState(withBlank), 'some');
 });
 
 const ft = (epic, feature, extra = {}) => st(epic, { feature, ...extra });

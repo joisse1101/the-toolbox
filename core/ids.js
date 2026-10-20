@@ -283,7 +283,15 @@ function setLocked(stories, ids, locked) {
 export const lockStories = (stories, ids) => setLocked(stories, ids, true);
 export const unlockStories = (stories, ids) => setLocked(stories, ids, false);
 
-export const dependentsOf = (stories, code) => (code ? stories.filter((s) => s.dependsOn.includes(code)) : []);
+// How much of a group is locked: 'all', 'some' or 'none'. Every listed story counts, so a group holding a story
+// without an ID (which cannot be locked) is never 'all' and its lock button keeps offering Lock.
+export function groupLockState(stories) {
+  const locked = stories.filter((s) => s.locked).length;
+  if (!locked) return 'none';
+  return locked === stories.length ? 'all' : 'some';
+}
+
+export const dependentsOf =(stories, code) => (code ? stories.filter((s) => s.dependsOn.includes(code)) : []);
 
 function reaches(stories, from, to) {
   const byCode = new Map(stories.filter((s) => s.code).map((s) => [s.code, s]));
