@@ -15,7 +15,6 @@
 
 - [x] 3.1 Change `StoryList.jsx` to import the key builders from `core/collapse.js` and to use a `collapse` prop when given, keeping its local set otherwise (Proposed tab unchanged)
 - [x] 3.2 Show the "Collapse/Expand epics" and "Collapse/Expand features" buttons in the panel header when `collapse` is given, with labels from `anyOpen`
-- [ ] 3.3 Style the buttons in `tool.css` using the existing variables, and check the panel at phone width
 
 ## 4. Reveal rule in `App.jsx`
 
@@ -26,5 +25,5 @@
 ## 5. Verify and document
 
 - [x] 5.1 Run `npm test` and `npm run build`
-- [ ] 5.2 Check in the app: each spec scenario (bulk toggles, levels independent, reload, add story, accept, form edit, delete a feature, outside edit then refresh, file switch, Proposed tab unchanged)
+- [x] 5.2 Check in the app: each spec scenario (bulk toggles, levels independent, reload, add story, accept, form edit, delete a feature, outside edit then refresh, file switch, Proposed tab unchanged)
 - [x] 5.3 Add a line to `CLAUDE.md` for `useCollapsed.js`, `core/collapse.js` and the `tlt.collapsed.<backlog file>` key
