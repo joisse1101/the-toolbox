@@ -68,9 +68,11 @@
 .bulk-bar > strong { align-self: center; }
 .stories-search { align-items: end; margin-bottom: 10px; }
 .table-wrap { overflow-x: auto; }
-.stories-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.stories-table th, .stories-table td { padding: 4px 8px; text-align: left; border-bottom: 1px solid var(--border); }
-.stories-table th { font-size: 12px; color: var(--muted); font-weight: 600; }
+.stories-table { table-layout: fixed; width: 100%; border-collapse: collapse; font-size: 13px; } /* widths come from the <col>s, so a dragged column changes only itself */
+.stories-table th, .stories-table td { padding: 4px 8px; text-align: left; border-bottom: 1px solid var(--border); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stories-table th { position: relative; font-size: 12px; color: var(--muted); font-weight: 600; }
+.stories-table .link-btn { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.column-handle { position: absolute; top: 0; right: 0; bottom: 0; width: 6px; }
 .stories-table .check { width: 28px; }
 .stories-table .num { text-align: right; }
 .stories-table td.num { font-variant-numeric: tabular-nums; }
