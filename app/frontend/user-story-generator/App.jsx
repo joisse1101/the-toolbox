@@ -359,7 +359,7 @@ export default function App() {
         {review.exists && (
           <ReviewTab
             rows={review.rows} stories={stories} hidden={!current || view !== 'review'}
-            onOpen={openInEditor} onApply={applyUnit} onDismiss={dismissUnit} onUnlock={unlockUnit} onAcceptAll={acceptUnits}
+            onOpen={openInEditor} onApply={applyUnit} onDismiss={dismissUnit} onUnlock={unlockUnit} onAcceptAll={acceptUnits} onClear={review.clear}
           />
         )}
 

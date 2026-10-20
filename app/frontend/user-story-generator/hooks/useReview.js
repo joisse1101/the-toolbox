@@ -117,6 +117,18 @@ export function useReview(current) {
     m.timer = setTimeout(flush, SAVE_DEBOUNCE_MS);
   }, [m, setAll, flush]);
 
+  // Delete every row, open, applied and dismissed alike, and save the empty file.
+  const clear = useCallback(() => {
+    if (!m.name) return;
+    setAll([]);
+    m.dirty = true;
+    m.dirtyName = m.name;
+    setNotice(null);
+    clearTimeout(m.timer);
+    clearTimeout(m.retry);
+    m.timer = setTimeout(flush, SAVE_DEBOUNCE_MS);
+  }, [m, setAll, flush]);
+
   // Stories were renumbered (recoded: old code -> new code): open rows follow their story and the file is saved.
   const retarget = useCallback((recoded) => {
     if (!m.name) return;
@@ -136,7 +148,7 @@ export function useReview(current) {
   }, [m]);
 
   return useMemo(
-    () => ({ rows, exists, message, notice, notify: setNotice, decide, retarget, settle, reload: load }),
-    [rows, exists, message, notice, decide, retarget, settle, load],
+    () => ({ rows, exists, message, notice, notify: setNotice, decide, clear, retarget, settle, reload: load }),
+    [rows, exists, message, notice, decide, clear, retarget, settle, load],
   );
 }
