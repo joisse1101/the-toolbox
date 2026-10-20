@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { childrenOf } from '../../../../core/lexicon.js';
 import { FIELD_LABELS, impactOf, isOpen, staleReason } from '../../../../core/lexicon-suggestions.js';
 import { wordDiff } from '../../../../core/word-diff.js';
+import ResizeHandle from './ResizeHandle.jsx';
+import useListWidth from '../hooks/useListWidth.js';
 
 const blankDraft = { name: '', partOf: '', definition: '', avoid: '', notes: '' };
 const toDraft = (t) => ({ name: t.name, partOf: t.partOf, definition: t.definition, avoid: t.avoid.join('; '), notes: t.notes });
@@ -33,6 +35,7 @@ const matches = (t, q) => [t.name, t.definition, t.notes, ...t.avoid].some((text
 export default function LexiconTab({ hidden, lexicon, selected, error, message, suggestions, suggestionsMessage, onApplySuggestion, onDismissSuggestion, onSelect, onSave, onRemove, onClearError }) {
   const [query, setQuery] = useState('');
   const [adding, setAdding] = useState(false);
+  const list = useListWidth('lexicon');
   const q = query.trim().toLowerCase();
   const rows = useMemo(() => inTreeOrder(lexicon.terms), [lexicon.terms]);
   const shown = q ? rows.filter((r) => matches(r.term, q)) : rows;
@@ -47,7 +50,7 @@ export default function LexiconTab({ hidden, lexicon, selected, error, message, 
   };
 
   return (
-    <div id="lexiconView" className="editor" role="tabpanel" aria-labelledby="tabLexicon" hidden={hidden}>
+    <div id="lexiconView" className="editor" style={list.style} role="tabpanel" aria-labelledby="tabLexicon" hidden={hidden}>
       {!hidden && (
         <>
           <div className="card story-list-panel">
@@ -95,6 +98,7 @@ export default function LexiconTab({ hidden, lexicon, selected, error, message, 
           </div>
         </>
       )}
+      <ResizeHandle className="list-divider" {...list.handleProps} />
     </div>
   );
 }

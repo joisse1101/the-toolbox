@@ -10,8 +10,14 @@
 .file-bar button.icon-only svg { height: 1lh; width: 1lh; } /* one text line tall, so the button matches its text neighbours */
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
-.editor { display: grid; grid-template-columns: 260px 1fr; gap: 12px; align-items: start; }
-@media (max-width: 800px) { .editor { grid-template-columns: 1fr; } }
+.editor { position: relative; display: grid; grid-template-columns: var(--list-width, 260px) minmax(0, 1fr); gap: 12px; align-items: start; }
+@media (max-width: 800px) { .editor { grid-template-columns: 1fr; } .list-divider { display: none; } }
+
+/* Drag handles: the list divider sits in the 12px gap beside the list; column handles sit on the right edge of a header. */
+.resize-handle { touch-action: none; cursor: col-resize; }
+.resize-handle:hover, .resize-handle:focus-visible, .resize-handle:active { background: var(--accent); }
+.list-divider { position: absolute; top: 0; bottom: 0; left: calc(var(--list-width, 260px) + 2px); width: 8px; border-radius: 4px; opacity: 0.5; }
+.list-divider:hover, .list-divider:focus-visible, .list-divider:active { opacity: 1; }
 
 /* The list stays in view while the story form scrolls; the list itself scrolls inside the panel. */
 .story-list-panel { position: sticky; top: 12px; display: flex; flex-direction: column; --above-list: 230px; max-height: calc(100vh - var(--above-list) - 12px); }

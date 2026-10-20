@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { backlogProblems } from '../../../../core/ids.js';
 import StoryList from './StoryList.jsx';
 import StoryForm from './StoryForm.jsx';
+import ResizeHandle from './ResizeHandle.jsx';
+import useListWidth from '../hooks/useListWidth.js';
 
 // The Proposed tab: the Editor's story list and form on the proposals file, plus Accept selected / Accept all / Delete selected.
 // The list and form are mounted only while the tab is shown, because the form finds its fields by DOM id and the
@@ -26,6 +28,7 @@ export default function ProposedTab({
     return next;
   });
   const [focusRequest, setFocusRequest] = useState(null);
+  const list = useListWidth('proposed');
   const all = useMemo(() => [...backlogStories, ...proposed], [backlogStories, proposed]);
   // Warnings are computed over both lists so a link to a backlog story is not "missing"; only proposed stories are shown.
   const problems = useMemo(() => {
@@ -60,7 +63,7 @@ export default function ProposedTab({
           {!proposed.length && (
             <p className="card muted">No proposed stories. Use Add story to draft one, or the explore and propose skills.</p>
           )}
-          <div className="editor">
+          <div className="editor" style={list.style}>
             <StoryList
               heading="Proposed stories" stories={proposed} problems={problems} selectedId={selectedId}
               checked={ticked} onToggle={toggle}
@@ -73,6 +76,7 @@ export default function ProposedTab({
                 onBench={(id, on) => onEdit(id, (d) => { d.benched = on; })}
               />
             )}
+            <ResizeHandle className="list-divider" {...list.handleProps} />
           </div>
         </>
       )}

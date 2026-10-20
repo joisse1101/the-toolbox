@@ -19,6 +19,8 @@ import ProposedTab from './components/ProposedTab.jsx';
 import { openRows } from '../../../core/lexicon-suggestions.js';
 import LexiconTab from './components/LexiconTab.jsx';
 import BackupsTab from './components/BackupsTab.jsx';
+import ResizeHandle from './components/ResizeHandle.jsx';
+import useListWidth from './hooks/useListWidth.js';
 
 const STATUS_TEXT = { saved: 'Saved', saving: 'Saving…', failed: 'Save failed', idle: 'No file' };
 
@@ -95,6 +97,7 @@ export default function App() {
 
   // The lexicon of the open backlog (lexicons/<same name>.md); the tab is always there, the file may not be.
   const lexicon = useLexicon(current);
+  const editorList = useListWidth('editor');
   const refreshLexicon = lexicon.actions.refreshFromDisk;
   const lexiconSuggestions = useLexiconSuggestions(current);
   const reloadLexiconSuggestions = lexiconSuggestions.reload;
@@ -292,7 +295,7 @@ export default function App() {
           )}
         </div>
 
-        <div id="editor" className="editor" role="tabpanel" aria-labelledby="tabEditor" hidden={!current || view !== 'editor'}>
+        <div id="editor" className="editor" style={editorList.style} role="tabpanel" aria-labelledby="tabEditor" hidden={!current || view !== 'editor'}>
           {inEditor && (
             <>
               <StoryList stories={stories} problems={problems} suggestionCounts={suggestionCounts} selectedId={selectedId} onSelect={actions.selectStory} onAdd={addStory} onMove={moveStory} onMoveGroup={moveGroup} onRenumber={renumberDisplayed} renumberDisabled={renumberDisabled} />
@@ -305,6 +308,7 @@ export default function App() {
               )}
             </>
           )}
+          <ResizeHandle className="list-divider" {...editorList.handleProps} />
         </div>
 
         <ProposedTab
