@@ -318,7 +318,7 @@ export default function App() {
         <div id="editor" className="editor" style={editorList.style} role="tabpanel" aria-labelledby="tabEditor" hidden={!current || view !== 'editor'}>
           {inEditor && (
             <>
-              <StoryList stories={stories} problems={problems} suggestionCounts={suggestionCounts} selectedId={selectedId} onSelect={actions.selectStory} onAdd={addStory} onMove={moveStory} onMoveGroup={moveGroup} onRenumber={renumberDisplayed} renumberDisabled={renumberDisabled} collapse={collapse} />
+              <StoryList stories={stories} problems={problems} suggestionCounts={suggestionCounts} selectedId={selectedId} onSelect={actions.selectStory} onAdd={addStory} onMove={moveStory} onMoveGroup={moveGroup} onLockGroup={actions.lockGroup} onRenumber={renumberDisplayed} renumberDisabled={renumberDisabled} collapse={collapse} />
               {selected && (
                 <StoryForm
                   story={selected} stories={stories} problems={problems} suggestions={selectedUnits} focusRequest={focusRequest}

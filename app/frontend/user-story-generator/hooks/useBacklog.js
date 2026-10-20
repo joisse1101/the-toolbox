@@ -368,6 +368,16 @@ This cannot be undone.`)) return null;
       },
       lockStory: (id, on) => dispatch({ type: 'lock', ids: new Set([id]), on }),
 
+      // Lock or unlock every story of a group (an epic's or a feature's). Stories without an ID cannot be locked: they
+      // are skipped and the message says how many. Resolves { skipped }.
+      lockGroup(groupStories, on) {
+        const ids = new Set(groupStories.map((s) => s.id));
+        const { skipped } = (on ? lockStories : unlockStories)(stateRef.current.backlog.stories, ids);
+        dispatch({ type: 'lock', ids, on });
+        setMessage(skipped ? `${skipped} skipped (no ID)` : null);
+        return { skipped };
+      },
+
       // Resolves { ok: true } or { error } (the edit is not made on error).
       applySuggestions(rows) {
         const { backlog } = stateRef.current;
