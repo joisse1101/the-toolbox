@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { groupByEpic, storyIssues, storyLabel } from '../../../../core/model.js';
 import { openCount } from '../../../../core/story-text.js';
+import { anyOpen, epicKey, featureKey } from '../../../../core/collapse.js';
 import { issueClass, rowTooltip } from './issues.js';
 
 // Drag a story to reorder it inside its epic, or onto another epic's group to move it there. Dropping on the
@@ -10,20 +11,22 @@ import { issueClass, rowTooltip } from './issues.js';
 // { epic, feature }, `groupDrop` = { beforeKey } (the epic or feature it lands before, null = last). Only group
 // boundaries accept a drop: the upper half of a head, or the lower half of the last visible row of a group, which
 // stands for "before the next group". A feature can only land among the features of its own epic.
-export default function StoryList({ stories, problems, suggestionCounts = new Map(), selectedId, onSelect, onAdd, onMove, onMoveGroup, onRenumber, renumberDisabled, heading = 'Stories', checked, onToggle }) {
+// With `collapse` ({ closed, toggleKey, toggleLevel }, from useCollapsed) the folded groups live outside the list and the
+// panel offers buttons to fold every epic or every feature; without it the list keeps its own folds, forgotten on reload.
+export default function StoryList({ stories, problems, suggestionCounts = new Map(), selectedId, onSelect, onAdd, onMove, onMoveGroup, onRenumber, renumberDisabled, heading = 'Stories', checked, onToggle, collapse }) {
   const [drag, setDrag] = useState(null);
   const [drop, setDrop] = useState(null);
   const [groupDrag, setGroupDrag] = useState(null);
   const [groupDrop, setGroupDrop] = useState(null);
-  const [closed, setClosed] = useState(() => new Set()); // collapsed accordion keys; everything starts open
+  const [localClosed, setLocalClosed] = useState(() => new Set()); // collapsed accordion keys; everything starts open
 
-  const epicKey = (g) => `e:${g.epic}`;
-  const featureKey = (g, f) => `f:${g.epic}\n${f.feature}`;
-  const toggle = (key) => setClosed((prev) => {
+  const closed = collapse ? collapse.closed : localClosed;
+  const toggle = collapse ? collapse.toggleKey : (key) => setLocalClosed((prev) => {
     const next = new Set(prev);
     if (!next.delete(key)) next.add(key);
     return next;
   });
+  const epicGroups = groupByEpic(stories);
   const toggleKey = (e, key) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
@@ -94,11 +97,23 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
 
   return (
     <aside className="card story-list-panel">
-      <h2>{heading}</h2>
+      {collapse ? (
+        <div className="story-list-head">
+          <h2>{heading}</h2>
+          <div className="group-toggles">
+            {['epic', 'feature'].map((level) => (
+              <button
+                key={level} type="button" id={`${level}TogglesBtn`} disabled={!epicGroups.length}
+                onClick={() => collapse.toggleLevel(level)}
+              >{`${anyOpen(closed, epicGroups, level) ? 'Collapse' : 'Expand'} ${level}s`}</button>
+            ))}
+          </div>
+        </div>
+      ) : <h2>{heading}</h2>}
       <ul id="storyList" className="story-list" onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) { setDrop(null); setGroupDrop(null); } }}>
-        {groupByEpic(stories).flatMap((group, gi, groups) => {
+        {epicGroups.flatMap((group, gi, groups) => {
           const nextEpic = groups[gi + 1]?.epic ?? null;
-          const epicClosed = closed.has(epicKey(group));
+          const epicClosed = closed.has(epicKey(group.epic));
           const epicCtx = { epic: group.epic, head: 'epic', epicAfter: epicClosed ? nextEpic : undefined };
           return [
           <li
@@ -107,7 +122,7 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
             role="button" tabIndex={0} aria-expanded={!epicClosed}
             draggable={Boolean(onMoveGroup && group.epic)}
             onDragStart={(e) => startGroupDrag(e, { epic: group.epic })} onDragEnd={end}
-            onClick={() => toggle(epicKey(group))} onKeyDown={(e) => toggleKey(e, epicKey(group))}
+            onClick={() => toggle(epicKey(group.epic))} onKeyDown={(e) => toggleKey(e, epicKey(group.epic))}
             onDragOver={(e) => (groupDrag ? groupOver(e, epicCtx) : over(e, group, group.stories[0]?.id ?? null))} onDrop={dropHere}
           >
             {`${epicClosed ? '▸' : '▾'} ${group.label} (${group.stories.length})`}
@@ -115,7 +130,7 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
           ...(epicClosed ? [] : group.features.flatMap((fg, fi) => {
             const nextFeature = group.features[fi + 1]?.feature ?? null;
             const lastFeature = fi === group.features.length - 1;
-            const featureClosed = closed.has(featureKey(group, fg));
+            const featureClosed = closed.has(featureKey(group.epic, fg.feature));
             const headCtx = { epic: group.epic, head: 'feature', feature: fg.feature, featureAfter: featureClosed ? nextFeature : undefined, epicAfter: featureClosed && lastFeature ? nextEpic : undefined };
             return [
             <li
@@ -124,7 +139,7 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
               role="button" tabIndex={0} aria-expanded={!featureClosed}
               draggable={Boolean(onMoveGroup && group.epic)}
               onDragStart={(e) => startGroupDrag(e, { epic: group.epic, feature: fg.feature })} onDragEnd={end}
-              onClick={() => toggle(featureKey(group, fg))} onKeyDown={(e) => toggleKey(e, featureKey(group, fg))}
+              onClick={() => toggle(featureKey(group.epic, fg.feature))} onKeyDown={(e) => toggleKey(e, featureKey(group.epic, fg.feature))}
               onDragOver={(e) => (groupDrag ? groupOver(e, headCtx) : over(e, group, fg.stories[0]?.id ?? null))} onDrop={dropHere}
             >
               {`${featureClosed ? '▸' : '▾'} ${fg.label} (${fg.stories.length})`}

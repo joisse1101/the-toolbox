@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { backlogProblems, gatherFeatures } from '../../../core/ids.js';
+import { groupByEpic } from '../../../core/model.js';
 import { unitsOf, unitStoryCode, openCounts, orphanUnits, reviewOverview, openUnitsFor, acceptAll as acceptReviewUnits, acceptSummaryText } from '../../../core/review.js';
 import { useBacklog } from './hooks/useBacklog.js';
 import { useReview } from './hooks/useReview.js';
@@ -21,6 +22,7 @@ import LexiconTab from './components/LexiconTab.jsx';
 import BackupsTab from './components/BackupsTab.jsx';
 import ResizeHandle from './components/ResizeHandle.jsx';
 import useListWidth from './hooks/useListWidth.js';
+import useCollapsed from './hooks/useCollapsed.js';
 
 const STATUS_TEXT = { saved: 'Saved', saving: 'Saving…', failed: 'Save failed', idle: 'No file' };
 
@@ -50,6 +52,22 @@ export default function App() {
   const stories = backlog?.stories ?? [];
   const problems = useMemo(() => backlogProblems(stories), [stories]);
   const renumberDisabled = useMemo(() => gatherFeatures(stories) === stories, [stories]); // nothing to put in order
+
+  // Folded epics and features of the story list, remembered per backlog file. A story that turns up inside a folded group
+  // (added, accepted from Proposed, or given another Epic or Feature in the form) opens just its feature and that feature's epic.
+  const groups = useMemo(() => groupByEpic(stories), [stories]);
+  const collapse = useCollapsed(current, groups, backlog !== null);
+  const reveal = collapse.reveal;
+  const selectedEpic = String(selected?.epic ?? '').trim();
+  const selectedFeature = String(selected?.feature ?? '').trim();
+  const lastSelected = useRef(null);
+  useEffect(() => {
+    const now = selected ? { file: current, id: selected.id, epic: selectedEpic, feature: selectedFeature } : null;
+    const before = lastSelected.current;
+    lastSelected.current = now;
+    const sameStory = now && before && before.file === now.file && before.id === now.id;
+    if (sameStory && (before.epic !== now.epic || before.feature !== now.feature)) reveal(now.epic, now.feature);
+  }, [current, selected?.id, selectedEpic, selectedFeature, reveal]);
 
   // Review suggestions for the open backlog (reviews/<same name>), shown next to the fields they concern.
   const review = useReview(current);
@@ -111,6 +129,7 @@ export default function App() {
     if (result.error) return setProposedNotice({ kind: 'error', text: result.error });
     actions.replaceStories(result.backlog);
     proposals.actions.replaceStories(result.proposals);
+    result.accepted.forEach((story) => reveal(story.epic, story.feature));
     const names = result.accepted.map((s) => s.code).join(', ');
     setProposedNotice({ kind: 'ok', text: `Accepted ${result.accepted.length === 1 ? '1 story' : `${result.accepted.length} stories`} into the backlog: ${names}.` });
   };
@@ -195,6 +214,7 @@ export default function App() {
 
   const addStory = () => {
     actions.addStory();
+    reveal('', ''); // the new story has no Epic or Feature yet
     requestFocus();
   };
 
@@ -298,7 +318,7 @@ export default function App() {
         <div id="editor" className="editor" style={editorList.style} role="tabpanel" aria-labelledby="tabEditor" hidden={!current || view !== 'editor'}>
           {inEditor && (
             <>
-              <StoryList stories={stories} problems={problems} suggestionCounts={suggestionCounts} selectedId={selectedId} onSelect={actions.selectStory} onAdd={addStory} onMove={moveStory} onMoveGroup={moveGroup} onRenumber={renumberDisplayed} renumberDisabled={renumberDisabled} />
+              <StoryList stories={stories} problems={problems} suggestionCounts={suggestionCounts} selectedId={selectedId} onSelect={actions.selectStory} onAdd={addStory} onMove={moveStory} onMoveGroup={moveGroup} onRenumber={renumberDisplayed} renumberDisabled={renumberDisabled} collapse={collapse} />
               {selected && (
                 <StoryForm
                   story={selected} stories={stories} problems={problems} suggestions={selectedUnits} focusRequest={focusRequest}
