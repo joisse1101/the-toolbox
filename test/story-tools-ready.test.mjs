@@ -109,6 +109,12 @@ test('the story launchers are wired to the hook: settings name an existing scrip
   const commands = settings.hooks.UserPromptSubmit.flatMap((g) => g.hooks.map((h) => h.command));
   assert.deepEqual(commands, ['node ai/mcp/wait-for-story-tools.mjs']);
   assert.ok(fs.existsSync(HOOK));
+  // Both sessions guard Read and Grep with the same hook.
+  for (const skill of ['explore-stories', 'propose-stories']) {
+    const s = JSON.parse(fs.readFileSync(path.join(ROOT, `.claude/skills/${skill}/locked-settings.json`), 'utf8'));
+    assert.deepEqual(s.hooks.PreToolUse.map((g) => [g.matcher, g.hooks.map((h) => h.command)]), [['Read|Grep', ['node ai/mcp/guard-read.mjs']]], skill);
+  }
+  assert.ok(fs.existsSync(path.join(ROOT, 'ai/mcp/guard-read.mjs')));
 
   const config = fs.readFileSync(path.join(ROOT, 'ai/launchers/story-tools-config.ps1'), 'utf8');
   assert.match(config, /function New-StoryToolsConfig/);
@@ -120,5 +126,10 @@ test('the story launchers are wired to the hook: settings name an existing scrip
     assert.match(launcher, /New-StoryToolsConfig \$root/, `${name} writes the MCP config`);
     assert.match(launcher, /--strict-mcp-config/, `${name} uses only that config`);
     assert.match(launcher, /locked-settings\.json/, `${name} loads the settings that carry the hook`);
+    assert.match(launcher, /--tools "Skill,AskUserQuestion,Read,Grep"/, `${name} gives the session Read and Grep`);
+    // The user sees the two files and presses Enter before Claude starts; the guard is checked first and the variable is cleared after.
+    const at = (s) => launcher.indexOf(s);
+    assert.ok(at('Confirm-ReadLimit') > 0 && at('Confirm-ReadLimit') < at('Test-ReadGuard') && at('Test-ReadGuard') < at('claude '), `${name} confirms, tests the guard, then starts Claude`);
+    assert.match(launcher, /Remove-Item Env:\\TLT_READ_ALLOW/, `${name} clears TLT_READ_ALLOW`);
   }
 });

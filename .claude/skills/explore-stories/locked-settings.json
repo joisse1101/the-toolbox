@@ -6,7 +6,23 @@
   "hooks": {
     "UserPromptSubmit": [
       {
-        "hooks": [{ "type": "command", "command": "node ai/mcp/wait-for-story-tools.mjs" }]
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ai/mcp/wait-for-story-tools.mjs"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Read|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ai/mcp/guard-read.mjs"
+          }
+        ]
       }
     ]
   }

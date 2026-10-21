@@ -30,7 +30,8 @@ const isMain = process.argv[1] && process.argv[1].endsWith('guard-read.mjs');
 if (isMain) {
   let input = {};
   try {
-    input = JSON.parse(fs.readFileSync(0, 'utf8'));
+    // A launcher that pipes the input from Windows PowerShell puts a BOM in front of it.
+    input = JSON.parse(fs.readFileSync(0, 'utf8').replace(/^﻿/, ''));
   } catch {
     // fall through: no tool name means deny
   }

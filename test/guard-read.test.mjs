@@ -85,6 +85,7 @@ test('as a process: allow is silent, deny is a PreToolUse deny, bad input and no
   assert.equal(run(JSON.stringify({ tool_name: 'Read', tool_input: { file_path: LEXICON } }), env).stdout, '');
   const denied = JSON.parse(run(JSON.stringify({ tool_name: 'Read', tool_input: { file_path: path.join(DATA, 'backups', 'x') } }), env).stdout);
   assert.equal(denied.hookSpecificOutput.permissionDecision, 'deny');
+  assert.equal(run(`﻿${JSON.stringify({ tool_name: 'Read', tool_input: { file_path: LEXICON } })}`, env).stdout, '', 'a BOM before the JSON is tolerated');
   assert.equal(JSON.parse(run('not json', env).stdout).hookSpecificOutput.permissionDecision, 'deny');
   assert.equal(JSON.parse(run(JSON.stringify({ tool_name: 'Read', tool_input: { file_path: LEXICON } }), {}).stdout).hookSpecificOutput.permissionDecision, 'deny');
 });
