@@ -73,7 +73,11 @@ test('the propose skill and command check before asking, read every write back a
   assert.match(text, /\*\*Check the drafts first\.\*\* Before you show anything for confirmation, call `check_drafts`/);
   assert.ok(text.indexOf('Check the drafts first') < text.indexOf('Ask one direct yes/no question'), 'the check comes before the question');
   assert.match(text, /## Verify every write/);
-  for (const reader of ['proposals', 'lexicon', 'reviews', 'lexicon-suggestions']) assert.match(text.split('## Verify every write')[1].split('## Report')[0], new RegExp(`section \`${reader}\``));
+  const verify = text.split('## Verify every write')[1].split('## Report')[0];
+  for (const reader of ['reviews', 'lexicon-suggestions']) assert.match(verify, new RegExp(`section \`${reader}\``));
+  // The proposals and the lexicon are files now: read back with Grep (or Read), not a read_context section.
+  for (const file of ['proposals', 'lexicon']) assert.match(verify, new RegExp(`\\| \`write_${file === 'proposals' ? 'proposals' : 'lexicon'}\` \\| the ${file} file, with \`Grep\``));
+  assert.doesNotMatch(verify, /section `(proposals|lexicon)`/);
   assert.match(text, /only on the strength of a read made in the current turn/);
   assert.match(text, /send again \*\*only the missing part\*\*/);
   assert.match(text, /If the second read-back still does not match, stop and tell the user/);
@@ -81,7 +85,7 @@ test('the propose skill and command check before asking, read every write back a
   assert.doesNotMatch(text, /Run each call \*\*once\*\*/);
   assert.doesNotMatch(text, /new stories are added again|new stories would be added twice/);
   assert.match(command, /`check_drafts`/);
-  assert.match(command, /read that file back with `read_context` in the same turn/);
+  assert.match(command, /read that file back in the same turn \(`read_context` for the review and the lexicon suggestions, `Read` or `Grep` for the proposals and the lexicon\)/);
   assert.match(command, /send again only the missing part/);
   assert.doesNotMatch(command, /run each call once/);
 });
@@ -138,7 +142,10 @@ test('both skills use the lexicon terms and flag gaps, and explore cannot write 
 test('propose-stories says to re-read first, to show old and new values, to prefer a patch and to size by the guideline', () => {
   const text = skill('propose-stories');
   assert.match(text, /At the start of every use, \*\*even if `explore-stories` already read the context/);
-  for (const section of ['guidelines', 'index', 'proposals', 'lexicon']) assert.match(text, new RegExp(`\`${section}\``), section);
+  for (const section of ['guidelines', 'index']) assert.match(text, new RegExp(`\`${section}\``), section);
+  // The proposals and the lexicon are files read with Read and Grep; benched proposed stories are ignored, not filtered out by the reader.
+  assert.match(text, /The proposals and the lexicon are not sections: they are files/);
+  assert.match(text, /\*\*Ignore every proposed story whose `Benched` column is `Yes`\*\*/);
   assert.match(text, /old value/);
   assert.match(text, /Prefer a patch to a second story/);
   assert.match(text, /sprint-points-guideline\.md/);
@@ -159,6 +166,10 @@ test('explore-stories asks only for what is missing and opens a proposed story o
   assert.match(text, /Ask neither question/);
   assert.match(text, /start by showing it as it is now.*"What should change\?"/);
   assert.doesNotMatch(text, /decided first/);
+  // The lexicon and proposals are read as files; benched proposed stories are ignored by instruction.
+  assert.match(text, /The proposals and the lexicon are not sections: they are files you read with `Read` and `Grep`/);
+  assert.match(text, /\*\*Ignore every proposed story whose `Benched` column is `Yes`\*\*/);
+  assert.doesNotMatch(text, /`proposals` text|the `lexicon` section/);
 });
 
 test('the skills carry the process rules: shape question, term check, numbering, one complete text', () => {
