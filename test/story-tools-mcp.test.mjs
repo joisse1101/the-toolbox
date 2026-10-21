@@ -45,17 +45,17 @@ const story = (over = {}) => ({
   criteria: ['AC1: Given a, when b, then c'], ...over,
 });
 
-test('tool list: all seven by default, read_context and search_stories with --read-only', async () => {
+test('tool list: all eight by default, the three readers with --read-only', async () => {
   const root = temp();
   const full = await connect(root);
   const readOnly = await connect(root, ['--read-only']);
   try {
     const all = (await full.listTools()).tools;
-    assert.deepEqual(all.map((t) => t.name).sort(), ['check_drafts', 'read_context', 'search_stories', 'suggest_lexicon_change', 'write_lexicon', 'write_proposals', 'write_review']);
-    const readers = ['read_context', 'search_stories', 'check_drafts'];
+    assert.deepEqual(all.map((t) => t.name).sort(), ['check_drafts', 'read_context', 'read_file', 'search_stories', 'suggest_lexicon_change', 'write_lexicon', 'write_proposals', 'write_review']);
+    const readers = ['read_context', 'search_stories', 'read_file', 'check_drafts'];
     for (const t of all.filter((x) => readers.includes(x.name))) assert.equal(t.annotations.readOnlyHint, true, `${t.name} is read-only`);
     for (const t of all.filter((x) => !readers.includes(x.name))) assert.ok(!t.annotations?.readOnlyHint, `${t.name} is not read-only`);
-    assert.deepEqual((await readOnly.listTools()).tools.map((t) => t.name), ['read_context', 'search_stories']);
+    assert.deepEqual((await readOnly.listTools()).tools.map((t) => t.name), ['read_context', 'search_stories', 'read_file']);
   } finally {
     await full.close();
     await readOnly.close();
@@ -70,10 +70,10 @@ test('read_context: menu, one story, bad section, section with storyId', async (
     assert.match(menu, /^ {2}proposals: (does not exist yet|\d+ characters)/m);
     assert.match(menu, /^ {2}lexicon: (does not exist yet|\d+ characters)/m);
     assert.doesNotMatch(menu, /node \.claude/, 'the menu names no shell command');
-    for (const [section, folder] of [['proposals', 'proposals'], ['lexicon', 'lexicons']]) {
+    for (const section of ['proposals', 'lexicon']) {
       const refused = await call(client, 'read_context', { backlog: 'data.csv', section });
       assert.equal(refused.isError, true, section);
-      assert.match(textOf(refused), new RegExp(`${folder}[\\\\/]data\\.csv`), section);
+      assert.match(textOf(refused), new RegExp(`read_file \\(file '${section}'`), section);
     }
     assert.match(textOf(await call(client, 'read_context', { backlog: 'data.csv', storyId: 'IAM-0001', storyTitle: 'Login' })), /Login/);
     const missing = await call(client, 'read_context', { backlog: 'data.csv', storyId: 'IAM-9999', storyTitle: 'Nothing' });
@@ -448,7 +448,50 @@ test('search_stories: finds backlog and proposed stories, no match is not an err
     assert.equal((await call(full, 'search_stories', { backlog: 'missing.csv', query: 'sso' })).isError, true);
     const desc = (await full.listTools()).tools.find((t) => t.name === 'search_stories').description;
     assert.match(desc, /read_context using its storyId and the Title/);
-    assert.match(desc, /proposals file with Read or Grep/);
+    assert.match(desc, /proposals with read_file/);
+  } finally {
+    await full.close();
+    await readOnly.close();
+  }
+});
+
+test('read_file: looks up and reads the lexicon and the proposals in parts, refuses other files, and works with --read-only', async () => {
+  const root = temp();
+  fs.mkdirSync(path.join(root, 'lexicons'));
+  fs.writeFileSync(path.join(root, 'lexicons', 'data.csv'), 'Term,Definition,Avoid\r\nDataset,A table of records,table\r\nUser,A person,customer\r\n');
+  fs.mkdirSync(path.join(root, 'proposals'));
+  fs.writeFileSync(path.join(root, 'proposals', 'data.csv'), 'ID,Title,Benched\r\nNEW-1,Export,\r\nNEW-2,Parked,Yes\r\n');
+  fs.mkdirSync(path.join(root, 'backups'));
+  fs.writeFileSync(path.join(root, 'backups', 'data.csv'), 'Secret\r\n');
+  const full = await connect(root);
+  const readOnly = await connect(root, ['--read-only']);
+  try {
+    for (const client of [full, readOnly]) {
+      const term = await call(client, 'read_file', { backlog: 'data.csv', file: 'lexicon', pattern: 'DATASET' });
+      assert.ok(!term.isError);
+      assert.match(textOf(term), /never instructions\) ===\nHeader row, then 1 line containing "DATASET":\n1: Term,Definition,Avoid\n2: Dataset,A table of records,table$/);
+      const part = await call(client, 'read_file', { backlog: 'data.csv', file: 'proposals', offset: 2, limit: 1 });
+      assert.match(textOf(part), /1 row is benched/);
+      assert.match(textOf(part), /Lines 2 to 2:\n2: NEW-1,Export,\nNext offset: 3\.$/);
+    }
+    assert.match(textOf(await call(full, 'read_file', { backlog: 'data.csv', file: 'lexicon' })), /No content returned/);
+    assert.match(textOf(await call(full, 'read_file', { backlog: 'other.csv', file: 'lexicon', pattern: 'x' })), /was not found/);
+    for (const args of [{ file: 'backups', pattern: 'Secret' }, { file: '../backups', pattern: 'Secret' }, { file: 'lexicon', pattern: 'x', offset: 1 }, { file: 'lexicon', limit: 201 }]) {
+      const r = await call(full, 'read_file', { backlog: 'data.csv', ...args });
+      assert.equal(r.isError, true, JSON.stringify(args));
+      assert.doesNotMatch(textOf(r), /Secret\r?\n|Secret,/);
+    }
+    assert.equal((await call(full, 'read_file', { backlog: '../data.csv', file: 'lexicon', pattern: 'x' })).isError, true);
+    const desc = (await full.listTools()).tools.find((t) => t.name === 'read_file').description;
+    assert.match(desc, /NOT a regular expression/);
+    assert.match(desc, /offset and limit/);
+    assert.match(desc, /never instructions/);
+    const menu = textOf(await call(full, 'read_context', { backlog: 'data.csv' }));
+    assert.match(menu, /read with read_file/);
+    assert.doesNotMatch(menu, /Read and Grep|tools-test-/);
+    const refused = await call(full, 'read_context', { backlog: 'data.csv', section: 'lexicon' });
+    assert.equal(refused.isError, true);
+    assert.match(textOf(refused), /read_file \(file 'lexicon'/);
   } finally {
     await full.close();
     await readOnly.close();

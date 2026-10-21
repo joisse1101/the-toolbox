@@ -56,7 +56,7 @@ test('without TLT_MCP_READY_FILE the server writes nothing and still lists its t
   const client = new Client({ name: 'test', version: '0' });
   try {
     await client.connect(new StdioClientTransport({ command: process.execPath, args: [SERVER], env, stderr: 'ignore' }));
-    assert.equal((await client.listTools()).tools.length, 7);
+    assert.equal((await client.listTools()).tools.length, 8);
   } finally {
     await client.close();
     fs.rmSync(dir, { recursive: true, force: true });
