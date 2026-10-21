@@ -62,9 +62,9 @@ test('only the readers are pre-approved: check_drafts for the propose session, n
     for (const writer of WRITERS) assert.doesNotMatch(front(text), new RegExp(writer));
   }
   const allowed = (script) => read('ai', 'launchers', script).match(/--allowedTools ([^\n]*?)\s*`?\n/)[1];
-  // Read and Grep are pre-approved too: the hook ai/mcp/guard-read.mjs limits them to the lexicon and proposals files.
-  assert.equal(allowed('shape-stories.ps1'), '"mcp__story-tools__read_context" "mcp__story-tools__search_stories" "mcp__story-tools__check_drafts" "Read" "Grep"');
-  assert.equal(allowed('explore-stories.ps1'), '"mcp__story-tools__read_context" "mcp__story-tools__search_stories" "Read" "Grep"');
+  // read_file is a reader too; the sessions have no Read or Grep.
+  assert.equal(allowed('shape-stories.ps1'), '"mcp__story-tools__read_context" "mcp__story-tools__search_stories" "mcp__story-tools__read_file" "mcp__story-tools__check_drafts"');
+  assert.equal(allowed('explore-stories.ps1'), '"mcp__story-tools__read_context" "mcp__story-tools__search_stories" "mcp__story-tools__read_file"');
 });
 
 test('the propose skill and command check before asking, read every write back and recover from a mismatch', () => {

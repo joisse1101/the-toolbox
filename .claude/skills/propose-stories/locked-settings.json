@@ -13,17 +13,6 @@
           }
         ]
       }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "Read|Grep",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node ai/mcp/guard-read.mjs"
-          }
-        ]
-      }
     ]
   }
 }

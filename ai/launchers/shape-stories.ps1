@@ -11,9 +11,9 @@
 # /propose-stories in the same session (it asks yes/no first), or /story:propose to write the drafts straight away. Both write
 # new stories to the proposals and changes to backlog stories as suggestions in the story editor.
 # /story:re-read re-reads the files after you changed them yourself; /story:review audits what is under discussion and lists what is left.
-# Tools are limited to the story-tools MCP server (read_context, search_stories, check_drafts, write_proposals, write_lexicon, suggest_lexicon_change, write_review), Skill,
-# AskUserQuestion, Read and Grep: no Bash. Read and Grep may open only the backlog's lexicon and proposals files (the hook ai/mcp/guard-read.mjs
-# refuses everything else); the script prints those two paths and waits for Enter before it starts Claude. The readers are pre-approved. The writers are not: Claude Code asks you before every write, on top
+# Tools are limited to the story-tools MCP server (read_context, search_stories, read_file, check_drafts, write_proposals, write_lexicon, suggest_lexicon_change, write_review), Skill
+# and AskUserQuestion: no Bash, Read or Grep. The lexicon and proposals files are read with read_file, which opens only those two files of the backlog.
+# The readers are pre-approved. The writers are not: Claude Code asks you before every write, on top
 # of the skill's yes/no question (--permission-mode default keeps that prompt on, whatever mode your settings use).
 param(
   [string]$Backlog = '',
@@ -66,23 +66,17 @@ if ($Story -match '^NEW-\d+$') {
 $prompt = "/explore-stories $file $Story"
 if ($PSVersionTable.PSVersion.Major -lt 7) { $prompt = $prompt.Replace('"', '\"') }
 
-$readFiles = Get-ReadFiles $dataDir $file
-if (-not (Confirm-ReadLimit $readFiles 'Skill, AskUserQuestion, Read, Grep, story-tools (read_context, search_stories, check_drafts, write_proposals, write_lexicon, suggest_lexicon_change, write_review)')) { Stop-Launcher 'Cancelled; nothing was started.' }
-if (-not (Test-ReadGuard $readFiles)) { Stop-Launcher 'The read guard (ai/mcp/guard-read.mjs) did not behave as expected; nothing was started.' }
-$readNote = "The backlog's lexicon file is $($readFiles.Lexicon) and its proposals file is $($readFiles.Proposals). Read them only with Read and Grep (Grep for a term, Read with offset and limit for a part); no other file can be read."
 
 $mcp = New-StoryToolsConfig $root
 
 try {
   claude $prompt `
-    --tools "Skill,AskUserQuestion,Read,Grep" `
+    --tools "Skill,AskUserQuestion" `
     --mcp-config $mcp `
     --strict-mcp-config `
-    --allowedTools "mcp__story-tools__read_context" "mcp__story-tools__search_stories" "mcp__story-tools__check_drafts" "Read" "Grep" `
-    --append-system-prompt $readNote `
+    --allowedTools "mcp__story-tools__read_context" "mcp__story-tools__search_stories" "mcp__story-tools__read_file" "mcp__story-tools__check_drafts" `
     --permission-mode "auto" `
     --settings "$propose/locked-settings.json"
 } finally {
   Remove-Item -LiteralPath $mcp, $env:TLT_MCP_READY_FILE -Force -ErrorAction SilentlyContinue
-  Remove-Item Env:\TLT_READ_ALLOW -ErrorAction SilentlyContinue
 }
