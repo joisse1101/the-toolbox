@@ -10,7 +10,7 @@ const root = fs.mkdtempSync(path.join(os.tmpdir(), 'server-log-test-'));
 process.env.TLT_DATA_DIR = root;
 const { server } = createRequire(import.meta.url)('../app/backend/server.cjs');
 
-const HEADERS = { 'X-Requested-With': 'team-lead-tools', 'Content-Type': 'application/json' };
+const HEADERS = { 'X-Requested-With': 'the-toolbox', 'Content-Type': 'application/json' };
 const logLines = () => fs.readFileSync(path.join(root, 'logs', 'writes.jsonl'), 'utf8').trimEnd().split('\n').map((l) => JSON.parse(l));
 
 test("the portal's create, save and rename are logged; the log is not reachable through the file API", async (t) => {

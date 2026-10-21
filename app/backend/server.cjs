@@ -347,7 +347,7 @@ async function compareBackups(name, a, b) {
 // /api/backup/<file> (POST makes a backup, GET lists them) and /api/backup/<file>/diff?a=&b=
 async function handleBackup(req, res, segments) {
   const [, , fileRaw, sub, ...rest] = segments;
-  if (req.method !== 'GET' && req.headers['x-requested-with'] !== 'team-lead-tools') {
+  if (req.method !== 'GET' && req.headers['x-requested-with'] !== 'the-toolbox') {
     throw new HttpError(403, 'Missing X-Requested-With header', 'forbidden');
   }
   if (fileRaw === undefined || rest.length || (sub !== undefined && sub !== 'diff')) {
@@ -379,7 +379,7 @@ async function handleApi(req, res, segments) {
   const folder = Object.prototype.hasOwnProperty.call(STORES, storeId) ? STORES[storeId] : null;
   if (!folder) throw new HttpError(404, 'Unknown store', 'not-found');
 
-  if (req.method !== 'GET' && req.headers['x-requested-with'] !== 'team-lead-tools') {
+  if (req.method !== 'GET' && req.headers['x-requested-with'] !== 'the-toolbox') {
     throw new HttpError(403, 'Missing X-Requested-With header', 'forbidden');
   }
   if (rest.length) throw new HttpError(404, 'Not found', 'not-found');

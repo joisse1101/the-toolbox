@@ -12,7 +12,7 @@ export class FileApiError extends Error {
 }
 
 async function call(method, url, { json, text } = {}) {
-  const headers = { 'X-Requested-With': 'team-lead-tools' };
+  const headers = { 'X-Requested-With': 'the-toolbox' };
   let body;
   if (json !== undefined) {
     headers['Content-Type'] = 'application/json';
