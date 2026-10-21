@@ -66,8 +66,15 @@ test('read_context: menu, one story, bad section, section with storyId', async (
   const client = await connect(temp());
   try {
     const menu = textOf(await call(client, 'read_context', { backlog: 'data.csv' }));
-    for (const s of ['guidelines', 'index', 'proposals', 'lexicon', 'reviews', 'lexicon-suggestions']) assert.match(menu, new RegExp(`${s}: \\d+ characters`));
+    for (const s of ['guidelines', 'index', 'reviews', 'lexicon-suggestions']) assert.match(menu, new RegExp(`${s}: \\d+ characters`));
+    assert.match(menu, /^ {2}proposals: (does not exist yet|\d+ characters)/m);
+    assert.match(menu, /^ {2}lexicon: (does not exist yet|\d+ characters)/m);
     assert.doesNotMatch(menu, /node \.claude/, 'the menu names no shell command');
+    for (const [section, folder] of [['proposals', 'proposals'], ['lexicon', 'lexicons']]) {
+      const refused = await call(client, 'read_context', { backlog: 'data.csv', section });
+      assert.equal(refused.isError, true, section);
+      assert.match(textOf(refused), new RegExp(`${folder}[\\\\/]data\\.csv`), section);
+    }
     assert.match(textOf(await call(client, 'read_context', { backlog: 'data.csv', storyId: 'IAM-0001', storyTitle: 'Login' })), /Login/);
     const missing = await call(client, 'read_context', { backlog: 'data.csv', storyId: 'IAM-9999', storyTitle: 'Nothing' });
     assert.equal(missing.isError, true);
@@ -441,7 +448,7 @@ test('search_stories: finds backlog and proposed stories, no match is not an err
     assert.equal((await call(full, 'search_stories', { backlog: 'missing.csv', query: 'sso' })).isError, true);
     const desc = (await full.listTools()).tools.find((t) => t.name === 'search_stories').description;
     assert.match(desc, /read_context using its storyId and the Title/);
-    assert.match(desc, /'proposals' section/);
+    assert.match(desc, /proposals file with Read or Grep/);
   } finally {
     await full.close();
     await readOnly.close();
