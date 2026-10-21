@@ -47,7 +47,7 @@ test('the new-stories example passes the writer\'s validation', () => {
 test('explore-stories names no writer and neither skill copies the guidelines\' definitions', () => {
   const explore = skill('explore-stories');
   assert.doesNotMatch(explore, /write_proposals/);
-  assert.match(explore.split('---')[1], /allowed-tools: mcp__story-tools__read_context, mcp__story-tools__search_stories\n$/);
+  assert.match(explore.split('---')[1], /allowed-tools: mcp__story-tools__read_context, mcp__story-tools__search_stories, mcp__story-tools__read_file\n$/);
   for (const text of [explore, skill('propose-stories')]) {
     assert.match(text, /guidelines\/product-backlog\.md/);
     assert.doesNotMatch(text, /INVEST (stands|means)|Independent, Negotiable/i);
@@ -58,7 +58,7 @@ test('only the readers are pre-approved: check_drafts for the propose session, n
   const WRITERS = ['write_proposals', 'write_lexicon', 'write_review', 'suggest_lexicon_change'];
   const front = (text) => text.split('---')[1];
   for (const text of [skill('propose-stories'), read('.claude', 'commands', 'story', 'propose.md')]) {
-    assert.match(front(text), /allowed-tools: mcp__story-tools__read_context, mcp__story-tools__search_stories, mcp__story-tools__check_drafts\n$/);
+    assert.match(front(text), /allowed-tools: mcp__story-tools__read_context, mcp__story-tools__search_stories, mcp__story-tools__read_file, mcp__story-tools__check_drafts\n$/);
     for (const writer of WRITERS) assert.doesNotMatch(front(text), new RegExp(writer));
   }
   const allowed = (script) => read('ai', 'launchers', script).match(/--allowedTools ([^\n]*?)\s*`?\n/)[1];
@@ -75,8 +75,8 @@ test('the propose skill and command check before asking, read every write back a
   assert.match(text, /## Verify every write/);
   const verify = text.split('## Verify every write')[1].split('## Report')[0];
   for (const reader of ['reviews', 'lexicon-suggestions']) assert.match(verify, new RegExp(`section \`${reader}\``));
-  // The proposals and the lexicon are files now: read back with Grep (or Read), not a read_context section.
-  for (const file of ['proposals', 'lexicon']) assert.match(verify, new RegExp(`\\| \`write_${file === 'proposals' ? 'proposals' : 'lexicon'}\` \\| the ${file} file, with \`Grep\``));
+  // The proposals and the lexicon are files now: read back with read_file, not a read_context section.
+  for (const file of ['proposals', 'lexicon']) assert.match(verify, new RegExp(`\\| \`write_${file === 'proposals' ? 'proposals' : 'lexicon'}\` \\| the ${file}, with \`read_file\``));
   assert.doesNotMatch(verify, /section `(proposals|lexicon)`/);
   assert.match(text, /only on the strength of a read made in the current turn/);
   assert.match(text, /send again \*\*only the missing part\*\*/);
@@ -85,7 +85,7 @@ test('the propose skill and command check before asking, read every write back a
   assert.doesNotMatch(text, /Run each call \*\*once\*\*/);
   assert.doesNotMatch(text, /new stories are added again|new stories would be added twice/);
   assert.match(command, /`check_drafts`/);
-  assert.match(command, /read that file back in the same turn \(`read_context` for the review and the lexicon suggestions, `Read` or `Grep` for the proposals and the lexicon\)/);
+  assert.match(command, /read that file back in the same turn \(`read_context` for the review and the lexicon suggestions, `read_file` for the proposals and the lexicon\)/);
   assert.match(command, /send again only the missing part/);
   assert.doesNotMatch(command, /run each call once/);
 });
@@ -143,7 +143,7 @@ test('propose-stories says to re-read first, to show old and new values, to pref
   const text = skill('propose-stories');
   assert.match(text, /At the start of every use, \*\*even if `explore-stories` already read the context/);
   for (const section of ['guidelines', 'index']) assert.match(text, new RegExp(`\`${section}\``), section);
-  // The proposals and the lexicon are files read with Read and Grep; benched proposed stories are ignored, not filtered out by the reader.
+  // The proposals and the lexicon are files read with read_file; benched proposed stories are ignored, not filtered out by the reader.
   assert.match(text, /The proposals and the lexicon are not sections: they are files/);
   assert.match(text, /\*\*Ignore every proposed story whose `Benched` column is `Yes`\*\*/);
   assert.match(text, /old value/);
@@ -166,8 +166,8 @@ test('explore-stories asks only for what is missing and opens a proposed story o
   assert.match(text, /Ask neither question/);
   assert.match(text, /start by showing it as it is now.*"What should change\?"/);
   assert.doesNotMatch(text, /decided first/);
-  // The lexicon and proposals are read as files; benched proposed stories are ignored by instruction.
-  assert.match(text, /The proposals and the lexicon are not sections: they are files you read with `Read` and `Grep`/);
+  // The lexicon and proposals are read with read_file; benched proposed stories are ignored by instruction.
+  assert.match(text, /The proposals and the lexicon are not sections: they are files you read with `read_file`/);
   assert.match(text, /\*\*Ignore every proposed story whose `Benched` column is `Yes`\*\*/);
   assert.doesNotMatch(text, /`proposals` text|the `lexicon` section/);
 });
