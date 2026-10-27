@@ -8,7 +8,7 @@ const path = require('path');
 const os = require('os');
 const { spawn } = require('child_process');
 const { HttpError, validateName } = require('../../logic/storage/file-name.cjs');
-const { DATA_DIR } = require('../../logic/storage/paths.cjs');
+const { ROOT, DATA_DIR } = require('../../logic/storage/paths.cjs');
 const { backupFolderName, isBackupFolderName, backupFiles } = require('./backup.cjs');
 const { logWrite } = require('../../logic/storage/write-log.cjs');
 
@@ -496,6 +496,9 @@ if (require.main === module) {
   server.listen(PORT, HOST, () => {
     console.log(`Team lead tools running at http://localhost:${PORT}/`);
     if (!fs.existsSync(DIST_DIR)) console.log('The app has not been built yet. Run `npm run build` first.');
+    if (!process.env.TLT_DATA_DIR && !fs.existsSync(DATA_DIR) && fs.existsSync(path.join(ROOT, 'data'))) {
+      console.log('Your data is still in data/. The data folder is now planner/data/: move it with `Move-Item data planner/data`.');
+    }
   });
 }
 

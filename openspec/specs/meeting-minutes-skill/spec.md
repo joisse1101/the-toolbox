@@ -1,6 +1,6 @@
 ## Purpose
 
-Defines how the meeting-minutes skill turns pasted notes into minutes in the fixed template, and the only way it saves them: a script that writes to `data/meetings/`, never overwriting unless a refinement names the file.
+Defines how the meeting-minutes skill turns pasted notes into minutes in the fixed template, and the only way it saves them: a script that writes to `planner/data/meetings/`, never overwriting unless a refinement names the file.
 
 ## Requirements
 
@@ -48,11 +48,11 @@ The skill SHALL save the minutes only after the user confirms the minutes shown 
 - **THEN** the skill shows the updated minutes and nothing is written
 
 ### Requirement: Writer script
-The repository SHALL contain `.claude/skills/meeting-minutes/write-minutes.mjs`, run as `node .claude/skills/meeting-minutes/write-minutes.mjs "<title>" <YYYY-MM-DD>` with the minutes markdown on standard input. It SHALL write only inside `data/meetings/` (created if missing), SHALL accept no output path, and SHALL write the file as a whole or not at all. The file name SHALL be `<slug>_<YYYY-MM-DD>.md`, where the slug is the title in lowercase kebab-case (letters and digits joined by single hyphens) and the date is the meeting date. It SHALL refuse, writing nothing, a title with no letter or digit in it, a date that is not a real `YYYY-MM-DD` date, and empty input.
+The repository SHALL contain `.claude/skills/meeting-minutes/write-minutes.mjs`, run as `node .claude/skills/meeting-minutes/write-minutes.mjs "<title>" <YYYY-MM-DD>` with the minutes markdown on standard input. It SHALL write only inside `planner/data/meetings/` (created if missing), SHALL accept no output path, and SHALL write the file as a whole or not at all. The file name SHALL be `<slug>_<YYYY-MM-DD>.md`, where the slug is the title in lowercase kebab-case (letters and digits joined by single hyphens) and the date is the meeting date. It SHALL refuse, writing nothing, a title with no letter or digit in it, a date that is not a real `YYYY-MM-DD` date, and empty input.
 
 #### Scenario: First minutes for a meeting
 - **WHEN** the title is "Sprint Planning" and the date is 2026-10-14
-- **THEN** `data/meetings/sprint-planning_2026-10-14.md` is written and its name is printed
+- **THEN** `planner/data/meetings/sprint-planning_2026-10-14.md` is written and its name is printed
 
 #### Scenario: Bad date
 - **WHEN** the date is 2026-02-30
@@ -70,7 +70,7 @@ The writer SHALL never overwrite or remove an existing file when run without `--
 - **THEN** the new minutes are `sprint-planning_2026-10-14_2.md` and the other two are unchanged
 
 ### Requirement: Refinement replaces a named file
-When the user says the notes refine minutes already saved, the skill SHALL run the writer with `--replace <file name>`, naming the file written earlier in the session or the one the user names. The writer SHALL replace that file only if it is a file of the form above directly inside `data/meetings/` and it exists; otherwise it SHALL write nothing and say why. `--replace` SHALL NOT create a new file.
+When the user says the notes refine minutes already saved, the skill SHALL run the writer with `--replace <file name>`, naming the file written earlier in the session or the one the user names. The writer SHALL replace that file only if it is a file of the form above directly inside `planner/data/meetings/` and it exists; otherwise it SHALL write nothing and say why. `--replace` SHALL NOT create a new file.
 
 #### Scenario: Refine this session's minutes
 - **WHEN** the user adds a forgotten action item after the skill saved `sprint-planning_2026-10-14.md` and says it refines that meeting
@@ -81,7 +81,7 @@ When the user says the notes refine minutes already saved, the skill SHALL run t
 - **THEN** nothing is written and the message says the file was not accepted or not found
 
 ### Requirement: Private, outside the CSV stores
-Minutes SHALL live only in `data/meetings/`, which is git-ignored with the rest of `data/` and moves with `TLT_DATA_DIR`. The folder SHALL NOT be a store of the file API, so the server and the portal cannot list, read or write it.
+Minutes SHALL live only in `planner/data/meetings/`, which is git-ignored with the rest of `data/` and moves with `TLT_DATA_DIR`. The folder SHALL NOT be a store of the file API, so the server and the portal cannot list, read or write it.
 
 #### Scenario: File API
 - **WHEN** a client requests a store named `meetings` from the file API

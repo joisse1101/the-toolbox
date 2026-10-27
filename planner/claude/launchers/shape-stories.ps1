@@ -1,11 +1,11 @@
 # Starts an interactive Claude session that explores new stories and then proposes them, in one conversation.
 # Usage: .\ai\launchers\shape-stories.ps1 [backlog] [story]
-#   backlog  a backlog in data/user-stories/, with or without .csv (data-portal or data-portal.csv)
+#   backlog  a backlog in planner/data/user-stories/, with or without .csv (data-portal or data-portal.csv)
 #   story    ONE argument: a proposed story of that backlog (NEW-57), a story already in the backlog (IAM-0004) or free text
 #            ("a new keyboard"; quote it when it has spaces)
 # Whatever is missing, this script asks for (a numbered list of the backlogs, then the story), so Claude does not have to.
-# It refuses an unknown backlog, an empty story, a NEW-<n> that is not in data/proposals/<backlog>.csv and a backlog ID
-# (letters, a dash, digits) that is not in data/user-stories/<backlog>.csv before Claude starts.
+# It refuses an unknown backlog, an empty story, a NEW-<n> that is not in planner/data/proposals/<backlog>.csv and a backlog ID
+# (letters, a dash, digits) that is not in planner/data/user-stories/<backlog>.csv before Claude starts.
 # A NEW-<n> or backlog ID goes into the opening prompt with the story's Title (NEW-57 titled "Reset password"); free text as typed.
 # Starts in /explore-stories (discussion only) with both already filled in; when you are happy with the drafts, run
 # /propose-stories in the same session (it asks yes/no first), or /story:propose to write the drafts straight away. Both write
@@ -27,7 +27,7 @@ $root = Split-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) -Pare
 Set-Location $root
 $propose = '.claude/skills/propose-stories'
 . (Join-Path $PSScriptRoot 'story-tools-config.ps1')
-$dataDir = if ($env:TLT_DATA_DIR) { $env:TLT_DATA_DIR } else { Join-Path $root 'data' }
+$dataDir = if ($env:TLT_DATA_DIR) { $env:TLT_DATA_DIR } else { Join-Path $root 'planner/data' }
 
 function Stop-Launcher([string]$Message) {
   Write-Host $Message -ForegroundColor Red
@@ -53,12 +53,12 @@ if ($Story -match '^NEW-\d+$') {
   $proposals = Join-Path (Join-Path $dataDir 'proposals') $file
   $known = @()
   if (Test-Path -LiteralPath $proposals) { $known = @(Import-Csv -LiteralPath $proposals -Encoding UTF8 | Where-Object { $_.ID -eq $Story }) }
-  if (-not $known.Count) { Stop-Launcher "$Story is not in data/proposals/$file." }
+  if (-not $known.Count) { Stop-Launcher "$Story is not in planner/data/proposals/$file." }
   $Story = Add-Title $Story $known[0]
 } elseif ($Story -match '^[A-Za-z]+-\d+$') {
   $Story = $Story.ToUpper()
   $known = @(Import-Csv -LiteralPath (Join-Path (Join-Path $dataDir 'user-stories') $file) -Encoding UTF8 | Where-Object { $_.ID -eq $Story })
-  if (-not $known.Count) { Stop-Launcher "$Story is not in data/user-stories/$file." }
+  if (-not $known.Count) { Stop-Launcher "$Story is not in planner/data/user-stories/$file." }
   $Story = Add-Title $Story $known[0]
 }
 

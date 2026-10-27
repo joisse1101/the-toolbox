@@ -1,6 +1,6 @@
 ---
 name: meeting-minutes
-description: Turn meeting notes the user pastes into the session into minutes in the fixed template (header, attendees, agenda, who-said-what discussion, action items table, next meeting), ask the user for anything the notes do not say, show the minutes, and after the user confirms save them as data/meetings/<title>_<date>.md. Never invents names, dates or attributions. Use when the user pastes notes and wants minutes, or wants to refine minutes saved earlier.
+description: Turn meeting notes the user pastes into the session into minutes in the fixed template (header, attendees, agenda, who-said-what discussion, action items table, next meeting), ask the user for anything the notes do not say, show the minutes, and after the user confirms save them as planner/data/meetings/<title>_<date>.md. Never invents names, dates or attributions. Use when the user pastes notes and wants minutes, or wants to refine minutes saved earlier.
 allowed-tools: Bash(node .claude/skills/meeting-minutes/write-minutes.mjs:*)
 ---
 
@@ -30,7 +30,7 @@ Turn pasted notes into minutes that follow `.claude/skills/meeting-minutes/templ
 
    `node .claude/skills/meeting-minutes/write-minutes.mjs "<title>" <YYYY-MM-DD> <<'MINUTES'`
 
-   It writes `data/meetings/<title>_<date>.md`, adds `_1`, `_2`, ... when that name is taken, and prints the name it used. Report that name. Do not write the file any other way: `data/` is not readable or editable by the other tools.
+   It writes `planner/data/meetings/<title>_<date>.md`, adds `_1`, `_2`, ... when that name is taken, and prints the name it used. Report that name. Do not write the file any other way: `data/` is not readable or editable by the other tools.
 3. If the writer refuses (bad title or date, empty input), fix the cause and run it again; if it writes nothing, say so.
 
 ## Refinement

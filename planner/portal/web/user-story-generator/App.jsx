@@ -294,7 +294,7 @@ export default function App() {
         )}
 
         <p id="emptyPrompt" className="card muted" hidden={!!current}>
-          There are no backlogs in <code>data/user-stories/</code> yet. Click <strong>New</strong> to create one.
+          There are no backlogs in <code>planner/data/user-stories/</code> yet. Click <strong>New</strong> to create one.
         </p>
 
         <div id="tabs" className="tabs" role="tablist" aria-label="Views" hidden={!current}>

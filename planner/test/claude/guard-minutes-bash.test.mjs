@@ -17,7 +17,7 @@ test('the two documented forms are allowed', () => {
 test('anything else is denied', () => {
   for (const c of [
     undefined,
-    'cat data/meetings/x.md',
+    'cat planner/data/meetings/x.md',
     `${W} "Title" 2026-10-17`,
     `${W} Title 2026-10-17 ${body}`,
     `${W} "$(whoami)" 2026-10-17 ${body}`,
@@ -29,7 +29,7 @@ test('anything else is denied', () => {
     `${W} --replace ../x.md ${body}`,
     `${W} --replace x.md extra ${body}`,
     `${W} "Title" 2026-10-17 <<MINUTES\n# Minutes\nMINUTES`,
-    `${W} --template > data/x.md`,
+    `${W} --template > planner/data/x.md`,
     `${W} --template && rm -rf data`,
     `${W} --template\nrm -rf data`,
   ]) assert.notEqual(check(c), null, String(c));

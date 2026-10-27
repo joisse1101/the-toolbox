@@ -2,7 +2,7 @@
 # Usage: .\ai\launchers\meeting-minutes.ps1 ["notes"]
 #   notes  the meeting notes as ONE argument (quote it). Without it, this script asks: paste the notes, then type END on a line of its own.
 # Tools are limited to Bash (guarded: only write-minutes.mjs, see locked-settings.json), Skill and AskUserQuestion.
-# The session cannot read or edit any file; it can only save minutes to data/meetings/ through the writer.
+# The session cannot read or edit any file; it can only save minutes to planner/data/meetings/ through the writer.
 # The writer is not pre-approved by this script: Claude Code asks you before every save, on top of the skill's own confirmation.
 param([string]$Notes = '')
 

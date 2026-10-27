@@ -231,7 +231,7 @@ A writer's reply says what it did; it does not prove the file still holds it. Af
 
 - Say a thing is **written** only when its read-back matches, and only on the strength of a read made in the current turn. Never repeat an earlier statement that something was written, from a previous turn or an earlier use of this skill, without reading the file again: when the user asks what is written, read the files and answer from that.
 - When a read-back does not match, say so plainly: what you sent, what the file holds and what is missing. Then send again **only the missing part**: for `write_proposals` the same batch (the stories that are in the file are skipped, the missing ones are added), for `write_lexicon` only the missing terms, for `write_review` only the missing rows (it appends, so never send a row that is in the file). Read back again after the second call.
-- If the second read-back still does not match, stop and tell the user. The file is being changed by something else; the portal's autosave from a stale tab is one possibility, and the write log in `data/logs/writes.jsonl` names the writer of the latest change to each file.
+- If the second read-back still does not match, stop and tell the user. The file is being changed by something else; the portal's autosave from a stale tab is one possibility, and the write log in `planner/data/logs/writes.jsonl` names the writer of the latest change to each file.
 
 ## Report
 

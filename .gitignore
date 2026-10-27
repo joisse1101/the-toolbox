@@ -1,4 +1,4 @@
-data/*
+planner/data/*
 node_modules/
 planner/portal/dist/
 
