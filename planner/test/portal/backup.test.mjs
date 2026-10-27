@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 
-const { backupFolderName, isBackupFolderName, backupFiles } = createRequire(import.meta.url)('../../logic/backup.cjs');
+const { backupFolderName, isBackupFolderName, backupFiles } = createRequire(import.meta.url)('../../portal/server/backup.cjs');
 
 test('backupFolderName uses local time and zero-pads every part', () => {
   assert.equal(backupFolderName(new Date(2026, 0, 5, 3, 4, 9)), '2026-01-05_030409');

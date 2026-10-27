@@ -5,8 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { serializeReview } from '../../logic/review.js';
-import { composeSuggestions, emptySuggestions } from '../../logic/lexicon-suggestions.js';
+import { serializeReview } from '../../logic/review/review.js';
+import { composeSuggestions, emptySuggestions } from '../../logic/lexicon/lexicon-suggestions.js';
 import { readStoryContext, formatSection, formatMenu, formatStory, fileLines, SECTIONS, backlogIndex, listBacklogs, searchStories, readFile } from '../../../.claude/skills/explore-stories/read-story-context.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');

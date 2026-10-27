@@ -9,7 +9,7 @@
 // suggestion (counted in `skipped`).
 // Pure: no file access.
 
-import { parseCsv, toCsv } from './csv.js';
+import { parseCsv, toCsv } from '../backlog/csv.js';
 import { childrenOf, findTerm, deleteTerm, saveTerm } from './lexicon.js';
 
 export const COLUMNS = ['Term', 'Action', 'New name', 'Add to Avoid', 'Reason', 'Status', 'Edit'];

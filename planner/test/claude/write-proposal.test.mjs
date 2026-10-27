@@ -6,7 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { writeProposal, checkProposal, missingAfterWrite } from '../../../.claude/skills/propose-stories/write-proposal.mjs';
-import { loadBacklog, serializeBacklog, proposalHeaders } from '../../logic/model.js';
+import { loadBacklog, serializeBacklog, proposalHeaders } from '../../logic/backlog/model.js';
 
 const SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../.claude/skills/propose-stories/write-proposal.mjs');
 

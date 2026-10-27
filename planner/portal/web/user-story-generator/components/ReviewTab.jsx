@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
-import { reviewOverview, unitStoryCode } from '../../../../logic/review.js';
+import { reviewOverview, unitStoryCode } from '../../../../logic/review/review.js';
 import { Suggestion } from './Suggestions.jsx';
-import { storyLabel } from '../../../../logic/model.js';
+import { storyLabel } from '../../../../logic/backlog/model.js';
 
 // Every suggestion of the review in one place: open ones grouped by Area, out-of-date ones (Dismiss only) last.
 export default function ReviewTab({ rows, stories, hidden, onOpen, onApply, onDismiss, onUnlock, onAcceptAll, onClear }) {

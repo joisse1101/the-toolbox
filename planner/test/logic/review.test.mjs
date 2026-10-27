@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { loadBacklog } from '../../logic/model.js';
+import { loadBacklog } from '../../logic/backlog/model.js';
 import {
   parseReview, serializeReview, validateFindings, fillCurrent, mergeStatus, suggestionState, applySuggestions,
   unitsOf, unitState, acceptAll, acceptSummaryText, criterionNumberOf, displayRow, openCounts, openUnitsFor, retargetRows, reviewOverview, REVIEW_COLUMNS,
-} from '../../logic/review.js';
+} from '../../logic/review/review.js';
 
 const CSV =
   'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes\r\n' +

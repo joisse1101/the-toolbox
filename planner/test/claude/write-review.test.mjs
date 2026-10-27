@@ -6,7 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { writeReview, checkReview } from '../../../.claude/skills/review-backlog/write-review.mjs';
-import { parseReview, serializeReview } from '../../logic/review.js';
+import { parseReview, serializeReview } from '../../logic/review/review.js';
 
 const SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../.claude/skills/review-backlog/write-review.mjs');
 

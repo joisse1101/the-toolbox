@@ -4,9 +4,9 @@
 // A problem about a lexicon term has `term` instead of `storyId` and `title`. Locked stories are checked too, and marked
 // `locked`, because the review uses them as context but does not review them. Priority is never checked.
 
-import { backlogProblems } from './ids.js';
-import { POINTS, SPLIT_ABOVE, storyIssues } from './model.js';
-import { lexiconProblems } from './lexicon.js';
+import { backlogProblems } from '../../../planner/logic/backlog/ids.js';
+import { POINTS, SPLIT_ABOVE, storyIssues } from '../../../planner/logic/backlog/model.js';
+import { lexiconProblems } from '../../../planner/logic/lexicon/lexicon.js';
 
 const norm = (s) => String(s ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
 const same = (s) => `${norm(s.epic)} | ${norm(s.feature)} | ${norm(s.title)}`;

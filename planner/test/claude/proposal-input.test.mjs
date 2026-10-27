@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildProposals } from '../../logic/proposal-input.js';
-import { loadBacklog, serializeBacklog, criteriaCellText, storyCellText, proposalHeaders } from '../../logic/model.js';
+import { buildProposals } from '../../../.claude/skills/propose-stories/proposal-input.js';
+import { loadBacklog, serializeBacklog, criteriaCellText, storyCellText, proposalHeaders } from '../../logic/backlog/model.js';
 
 const HEAD = 'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes,Team\r\n';
 const BACKLOG =

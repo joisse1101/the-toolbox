@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { reducer } from '../../portal/web/user-story-generator/hooks/useLexicon.js';
-import { parseLexicon } from '../../logic/lexicon.js';
+import { parseLexicon } from '../../logic/lexicon/lexicon.js';
 
 const FILE = ['Term,Part of,Definition', 'Dataset,,A table.', 'Dataset attribute,Dataset,A column.', 'User,,A person.', ''].join('\r\n');
 

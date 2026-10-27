@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createFileStore } from '../../shared/files.js';
-import { composeSuggestions, emptySuggestions, parseSuggestions } from '../../../../logic/lexicon-suggestions.js';
+import { composeSuggestions, emptySuggestions, parseSuggestions } from '../../../../logic/lexicon/lexicon-suggestions.js';
 
 const store = createFileStore('lexicon-suggestions');
 const SAVE_DEBOUNCE_MS = 400;

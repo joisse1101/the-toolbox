@@ -1,6 +1,6 @@
 // Which Epic and Feature groups of the story list are folded: pure, so the portal's hook and the tests share the rules.
 // A group is named by its Epic (and Feature) name, never by a story ID (IDs shift on renumber), and the set holds the
-// *closed* keys, so a group the set has never seen is open. `groups` is the result of `groupByEpic` (planner/logic/model.js).
+// *closed* keys, so a group the set has never seen is open. `groups` is the result of `groupByEpic` (planner/logic/backlog/model.js).
 
 export const LEVELS = ['epic', 'feature'];
 

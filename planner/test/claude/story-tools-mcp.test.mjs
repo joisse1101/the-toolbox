@@ -8,7 +8,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { writeReview } from '../../../.claude/skills/review-backlog/write-review.mjs';
 import { writeProposal } from '../../../.claude/skills/propose-stories/write-proposal.mjs';
-import { ACTIONS, AREAS, CONFIDENCES, FIELDS } from '../../logic/review.js';
+import { ACTIONS, AREAS, CONFIDENCES, FIELDS } from '../../logic/review/review.js';
 
 const SERVER = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../claude/mcp/story-tools.mjs');
 

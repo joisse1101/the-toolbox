@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { clampWidth, fitWidths, makeRoom, parseStoredWidth } from '../../logic/panel-size.js';
+import { clampWidth, fitWidths, makeRoom, parseStoredWidth } from '../../portal/web/lib/panel-size.js';
 
 const limits = { min: 180, max: 600, fallback: 260 };
 

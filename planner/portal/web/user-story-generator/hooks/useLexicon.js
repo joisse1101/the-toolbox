@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { createFileStore } from '../../shared/files.js';
-import { composeLexicon, deleteTerm, emptyLexicon, findTerm, parseLexicon, saveTerm } from '../../../../logic/lexicon.js';
-import { applySuggestion } from '../../../../logic/lexicon-suggestions.js';
+import { composeLexicon, deleteTerm, emptyLexicon, findTerm, parseLexicon, saveTerm } from '../../../../logic/lexicon/lexicon.js';
+import { applySuggestion } from '../../../../logic/lexicon/lexicon-suggestions.js';
 import { useAutosave } from './useAutosave.js';
 
 const lexiconStore = createFileStore('lexicons');

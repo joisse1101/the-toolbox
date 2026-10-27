@@ -12,13 +12,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
-import { loadBacklog, serializeBacklog, proposalHeaders } from '../../../planner/logic/model.js';
-import { buildProposals } from '../../../planner/logic/proposal-input.js';
+import { loadBacklog, serializeBacklog, proposalHeaders } from '../../../planner/logic/backlog/model.js';
+import { buildProposals } from './proposal-input.js';
 import { describeParseError, writeAtomic } from '../_shared/write-atomic.mjs';
 
 const require = createRequire(import.meta.url);
-const { validateName } = require('../../../planner/logic/file-name.cjs'); // same name rules as the file API
-const { DATA_DIR } = require('../../../planner/logic/paths.cjs');
+const { validateName } = require('../../../planner/logic/storage/file-name.cjs'); // same name rules as the file API
+const { DATA_DIR } = require('../../../planner/logic/storage/paths.cjs');
 
 // Reads the backlog and the proposals and validates the input against them. Returns { ok: true, file, backlog,
 // proposals, built } (built: the buildProposals result) or { ok: false, errors }. Writes nothing.

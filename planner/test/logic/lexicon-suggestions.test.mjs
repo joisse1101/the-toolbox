@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseLexicon, findTerm, saveTerm } from '../../logic/lexicon.js';
+import { parseLexicon, findTerm, saveTerm } from '../../logic/lexicon/lexicon.js';
 import {
   applySuggestion, composeSuggestions, emptySuggestions, impactOf, openRows, parseSuggestions, staleReason, validateItems,
-} from '../../logic/lexicon-suggestions.js';
+} from '../../logic/lexicon/lexicon-suggestions.js';
 
 const LEXICON = parseLexicon(
   'Term,Part of,Definition,Avoid,Notes\r\n' +

@@ -3,11 +3,11 @@
 // exist yet). The rules for the story text come from planner/guidelines/product-backlog.md; this only checks that the
 // cells will be stored in the formats the portal reads.
 
-import { newStory } from './model.js';
-import { nextPlaceholder } from './proposals.js';
-import { backlogProblems } from './ids.js';
-import { resolveStoryRef } from './story-ref.js';
-import { parseStory, roleIsBlank, parseCriteria, composeStory, composeCriteria } from './story-text.js';
+import { newStory } from '../../../planner/logic/backlog/model.js';
+import { nextPlaceholder } from '../../../planner/logic/backlog/proposals.js';
+import { backlogProblems } from '../../../planner/logic/backlog/ids.js';
+import { resolveStoryRef } from '../../../planner/logic/backlog/story-ref.js';
+import { parseStory, roleIsBlank, parseCriteria, composeStory, composeCriteria } from '../../../planner/logic/backlog/story-text.js';
 
 // A Depends On entry is an ID, or { id, title } (the Title of the backlog or proposed story it names); null when it is neither.
 const depEntry = (d) => {

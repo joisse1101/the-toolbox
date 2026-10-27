@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { childrenOf } from '../../../../logic/lexicon.js';
-import { FIELD_LABELS, impactOf, isOpen, staleReason } from '../../../../logic/lexicon-suggestions.js';
-import { wordDiff } from '../../../../logic/word-diff.js';
+import { childrenOf } from '../../../../logic/lexicon/lexicon.js';
+import { FIELD_LABELS, impactOf, isOpen, staleReason } from '../../../../logic/lexicon/lexicon-suggestions.js';
+import { wordDiff } from '../../lib/word-diff.js';
 import ResizeHandle from './ResizeHandle.jsx';
 import useListWidth from '../hooks/useListWidth.js';
 

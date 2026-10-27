@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { storyIssues, storyLabel } from '../../../../logic/model.js';
-import { wouldCycle } from '../../../../logic/ids.js';
+import { storyIssues, storyLabel } from '../../../../logic/backlog/model.js';
+import { wouldCycle } from '../../../../logic/backlog/ids.js';
 import { layoutGraph, groupStories, relatedIds, fitView, zoomAt, panBy, toGraphPoint } from '../graph.js';
 import { issueClass, rowTooltip } from './issues.js';
 

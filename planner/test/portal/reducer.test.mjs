@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { reducer } from '../../portal/web/user-story-generator/hooks/useBacklog.js';
-import { loadBacklog, applyBulk } from '../../logic/model.js';
+import { loadBacklog, applyBulk } from '../../logic/backlog/model.js';
 
 const FILE = 'Epic,Title,Depends On\r\nBilling,A,\r\nBilling,B,\r\nOnboarding,C,\r\n';
 

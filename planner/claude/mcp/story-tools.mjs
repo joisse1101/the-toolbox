@@ -18,7 +18,7 @@ import { writeProposal, checkProposal, skippedText, foundText } from '../../../.
 import { writeLexicon, checkLexicon } from '../../../.claude/skills/propose-stories/write-lexicon.mjs';
 import { suggestLexicon } from '../../../.claude/skills/propose-stories/suggest-lexicon.mjs';
 import { writeReview, checkReview } from '../../../.claude/skills/review-backlog/write-review.mjs';
-import { ACTIONS, AREAS, CONFIDENCES, FIELDS } from '../../logic/review.js';
+import { ACTIONS, AREAS, CONFIDENCES, FIELDS } from '../../logic/review/review.js';
 
 const backlog = z.string().min(1).describe('Backlog file name in user-stories/, e.g. data-portal.csv');
 const idPattern = z.string().regex(/^[A-Za-z0-9-]+$/);

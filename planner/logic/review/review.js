@@ -2,11 +2,11 @@
 // decides whether a suggestion is still current and applies it to the stories (used by the portal).
 // No DOM and no file access. One row = one field edit; rows that share a Group are applied together.
 
-import { parseCsv, toCsv } from './csv.js';
-import { parseStory, roleIsBlank, parseCriteria } from './story-text.js';
-import { POINTS, newStory, storyCellText, emptyCriterion } from './model.js';
-import { renumber, commitEpics, wouldCycle } from './ids.js';
-import { resolveStoryRef } from './story-ref.js';
+import { parseCsv, toCsv } from '../backlog/csv.js';
+import { parseStory, roleIsBlank, parseCriteria } from '../backlog/story-text.js';
+import { POINTS, newStory, storyCellText, emptyCriterion } from '../backlog/model.js';
+import { renumber, commitEpics, wouldCycle } from '../backlog/ids.js';
+import { resolveStoryRef } from '../backlog/story-ref.js';
 
 export const REVIEW_COLUMNS = [
   'Story ID', 'Field', 'Action', 'Current', 'Suggested', 'Reason', 'Area', 'Confidence', 'Group', 'Status',

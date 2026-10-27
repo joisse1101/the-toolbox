@@ -18,16 +18,16 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
-import { parseCsv, toCsv } from '../../../planner/logic/csv.js';
-import { BENCHED_COLUMN, loadBacklog } from '../../../planner/logic/model.js';
-import { findStories, searchReply } from '../../../planner/logic/story-search.js';
-import { parseReview, serializeReview } from '../../../planner/logic/review.js';
-import { resolveStoryRef } from '../../../planner/logic/story-ref.js';
-import { parseSuggestions, composeSuggestions, isOpen } from '../../../planner/logic/lexicon-suggestions.js';
+import { parseCsv, toCsv } from '../../../planner/logic/backlog/csv.js';
+import { BENCHED_COLUMN, loadBacklog } from '../../../planner/logic/backlog/model.js';
+import { findStories, searchReply } from '../../../planner/logic/backlog/story-search.js';
+import { parseReview, serializeReview } from '../../../planner/logic/review/review.js';
+import { resolveStoryRef } from '../../../planner/logic/backlog/story-ref.js';
+import { parseSuggestions, composeSuggestions, isOpen } from '../../../planner/logic/lexicon/lexicon-suggestions.js';
 
 const require = createRequire(import.meta.url);
-const { validateName } = require('../../../planner/logic/file-name.cjs');
-const { DATA_DIR } = require('../../../planner/logic/paths.cjs');
+const { validateName } = require('../../../planner/logic/storage/file-name.cjs');
+const { DATA_DIR } = require('../../../planner/logic/storage/paths.cjs');
 const { GUIDELINES_DIR } = require('../_shared/paths.cjs');
 
 export const SECTIONS = ['guidelines', 'index', 'reviews', 'lexicon-suggestions'];

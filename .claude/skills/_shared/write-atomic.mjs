@@ -5,7 +5,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const { logWrite } = require('../../../planner/logic/write-log.cjs');
+const { logWrite } = require('../../../planner/logic/storage/write-log.cjs');
 
 // A JSON.parse failure message plus line, column and a short excerpt, so a missing comma can be found.
 export function describeParseError(err, text, what = 'stories') {

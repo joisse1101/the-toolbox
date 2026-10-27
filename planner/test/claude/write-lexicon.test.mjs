@@ -6,7 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { writeLexicon, checkLexicon } from '../../../.claude/skills/propose-stories/write-lexicon.mjs';
-import { parseLexicon } from '../../logic/lexicon.js';
+import { parseLexicon } from '../../logic/lexicon/lexicon.js';
 
 const SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../.claude/skills/propose-stories/write-lexicon.mjs');
 const BACKLOG = 'Epic,Title\r\nIdentity,Login\r\n';

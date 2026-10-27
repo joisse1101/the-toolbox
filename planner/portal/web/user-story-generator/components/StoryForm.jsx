@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import {
   POINTS, SPLIT_ABOVE, PRIORITIES, emptyCriterion, storyCellText, criteriaCellText, storyIssues, storyLabel,
-} from '../../../../logic/model.js';
-import { openCount, emptyClarification } from '../../../../logic/story-text.js';
-import { dependencyChoices, dependentsOf } from '../../../../logic/ids.js';
-import { criterionNumberOf } from '../../../../logic/review.js';
+} from '../../../../logic/backlog/model.js';
+import { openCount, emptyClarification } from '../../../../logic/backlog/story-text.js';
+import { dependencyChoices, dependentsOf } from '../../../../logic/backlog/ids.js';
+import { criterionNumberOf } from '../../../../logic/review/review.js';
 import { issueClass } from './issues.js';
 import Info from './Info.jsx';
 import SuggestionList, { Suggestion } from './Suggestions.jsx';

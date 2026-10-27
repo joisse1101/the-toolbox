@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { loadBacklog } from '../../logic/model.js';
-import { NONE, filterOptions, filterStories, sortStories } from '../../logic/story-table.js';
+import { loadBacklog } from '../../logic/backlog/model.js';
+import { NONE, filterOptions, filterStories, sortStories } from '../../portal/web/lib/story-table.js';
 
 const CSV = [
   'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On',

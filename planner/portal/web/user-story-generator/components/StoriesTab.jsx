@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { fitWidths, makeRoom } from '../../../../logic/panel-size.js';
-import { PRIORITIES, displayOrder, storyIssues, storyLabel } from '../../../../logic/model.js';
-import { matchesQuery } from '../../../../logic/story-search.js';
-import { filterOptions, filterStories, sortStories } from '../../../../logic/story-table.js';
+import { fitWidths, makeRoom } from '../../lib/panel-size.js';
+import { PRIORITIES, displayOrder, storyIssues, storyLabel } from '../../../../logic/backlog/model.js';
+import { matchesQuery } from '../../../../logic/backlog/story-search.js';
+import { filterOptions, filterStories, sortStories } from '../../lib/story-table.js';
 import { issueClass, rowTooltip } from './issues.js';
 import ResizeHandle from './ResizeHandle.jsx';
 import usePanelSizes from '../hooks/usePanelSizes.js';

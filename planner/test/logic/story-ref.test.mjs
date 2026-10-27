@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveStoryRef, sameTitle } from '../../logic/story-ref.js';
+import { resolveStoryRef, sameTitle } from '../../logic/backlog/story-ref.js';
 
 const stories = [
   { code: 'IAM-0004', title: 'Export audit log', epic: 'Identity', feature: 'Audit' },

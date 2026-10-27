@@ -7,10 +7,10 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { spawn } = require('child_process');
-const { HttpError, validateName } = require('../../logic/file-name.cjs');
-const { DATA_DIR } = require('../../logic/paths.cjs');
-const { backupFolderName, isBackupFolderName, backupFiles } = require('../../logic/backup.cjs');
-const { logWrite } = require('../../logic/write-log.cjs');
+const { HttpError, validateName } = require('../../logic/storage/file-name.cjs');
+const { DATA_DIR } = require('../../logic/storage/paths.cjs');
+const { backupFolderName, isBackupFolderName, backupFiles } = require('./backup.cjs');
+const { logWrite } = require('../../logic/storage/write-log.cjs');
 
 const HOST = '127.0.0.1';
 const PORT = Number(process.env.PORT) || 3000;
@@ -183,9 +183,9 @@ const GIT_COLORS = {
   'color.diff.newMovedAlternativeDimmed': 'cyan',
 };
 
-let flattenModule; // planner/logic/flatten.js is ESM; load it once, from this CommonJS file
+let flattenModule; // planner/portal/server/flatten.js is ESM; load it once, from this CommonJS file
 function loadFlatten() {
-  flattenModule = flattenModule || import('../../logic/flatten.js');
+  flattenModule = flattenModule || import('./flatten.js');
   return flattenModule;
 }
 

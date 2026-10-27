@@ -3,11 +3,11 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildProposals } from '../../logic/proposal-input.js';
-import { loadBacklog } from '../../logic/model.js';
-import { validateFindings } from '../../logic/review.js';
-import { applyTermItems, parseLexicon } from '../../logic/lexicon.js';
-import { emptySuggestions, validateItems } from '../../logic/lexicon-suggestions.js';
+import { buildProposals } from '../../../.claude/skills/propose-stories/proposal-input.js';
+import { loadBacklog } from '../../logic/backlog/model.js';
+import { validateFindings } from '../../logic/review/review.js';
+import { applyTermItems, parseLexicon } from '../../logic/lexicon/lexicon.js';
+import { emptySuggestions, validateItems } from '../../logic/lexicon/lexicon-suggestions.js';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const read = (...parts) => fs.readFileSync(path.join(REPO, ...parts), 'utf8').replace(/\r\n/g, '\n');

@@ -1,5 +1,5 @@
-import { unitState, displayRow } from '../../../../logic/review.js';
-import { wordDiff } from '../../../../logic/word-diff.js';
+import { unitState, displayRow } from '../../../../logic/review/review.js';
+import { wordDiff } from '../../lib/word-diff.js';
 
 // An append adds to the field the row names (Notes text, or a Clarifications question).
 const VERB = { replace: 'Suggested', add: 'Add', remove: 'Remove', append: 'Add', resolve: 'Resolve', 'add-story': 'New story', unlock: 'Unlock' };

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { flattenCsv } from '../../logic/flatten.js';
+import { flattenCsv } from '../../portal/server/flatten.js';
 
 test('one Header: value line per non-empty cell, one block per row', () => {
   const out = flattenCsv('ID,Epic,Priority\r\nA-1,Alpha,High\r\nA-2,Alpha,\r\n');

@@ -1,7 +1,7 @@
 // Turns a CSV into text with one field per line, so a line diff of two versions shows a changed field as one
 // changed line under its column name. Used only to compare backups; the output is never parsed back.
 
-import { parseCsv } from './csv.js';
+import { parseCsv } from '../../logic/backlog/csv.js';
 
 // Constant, not a row number: inserting a row must not change the lines of the rows after it.
 const SEPARATOR = '----';

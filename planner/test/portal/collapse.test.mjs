@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { groupByEpic } from '../../logic/model.js';
-import { allKeys, anyOpen, epicKey, featureKey, levelKeys, parseClosed, pruneClosed, reveal, serializeClosed, toggleLevel } from '../../logic/collapse.js';
+import { groupByEpic } from '../../logic/backlog/model.js';
+import { allKeys, anyOpen, epicKey, featureKey, levelKeys, parseClosed, pruneClosed, reveal, serializeClosed, toggleLevel } from '../../portal/web/lib/collapse.js';
 
 const story = (epic, feature) => ({ epic, feature });
 const groups = groupByEpic([

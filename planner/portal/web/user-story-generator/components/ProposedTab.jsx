@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { backlogProblems } from '../../../../logic/ids.js';
+import { backlogProblems } from '../../../../logic/backlog/ids.js';
 import StoryList from './StoryList.jsx';
 import StoryForm from './StoryForm.jsx';
 import ResizeHandle from './ResizeHandle.jsx';

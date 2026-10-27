@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { serializeBacklog } from '../../../../logic/model.js';
+import { serializeBacklog } from '../../../../logic/backlog/model.js';
 
 const SAVE_DEBOUNCE_MS = 600;
 

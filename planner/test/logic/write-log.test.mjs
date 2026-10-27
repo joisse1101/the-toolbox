@@ -6,7 +6,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const { logWrite, LOG_FILE } = require('../../logic/write-log.cjs');
+const { logWrite, LOG_FILE } = require('../../logic/storage/write-log.cjs');
 
 const temp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'write-log-test-'));
 const lines = (root) => fs.readFileSync(path.join(root, 'logs', LOG_FILE), 'utf8').trimEnd().split('\n').map((l) => JSON.parse(l));

@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseCsv } from '../../logic/csv.js';
-import { loadBacklog, serializeBacklog, newStory, storyIssues, COLUMNS } from '../../logic/model.js';
+import { parseCsv } from '../../logic/backlog/csv.js';
+import { loadBacklog, serializeBacklog, newStory, storyIssues, COLUMNS } from '../../logic/backlog/model.js';
 import {
   epicPrefix, renumber, moveStory, moveGroup, gatherFeatures, recodedBetween, commitEpic, commitEpics, removeStory, removeStories, lockStories, unlockStories, groupLockState, dependentsOf, wouldCycle, dependencyChoices, backlogProblems,
-} from '../../logic/ids.js';
+} from '../../logic/backlog/ids.js';
 
 let n = 0;
 // A committed story, as if loaded.

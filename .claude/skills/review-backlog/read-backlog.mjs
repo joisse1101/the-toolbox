@@ -11,13 +11,13 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 
-import { loadBacklog, groupByEpic, serializeBacklog } from '../../../planner/logic/model.js';
-import { parseLexicon } from '../../../planner/logic/lexicon.js';
-import { backlogChecks } from '../../../planner/logic/backlog-checks.js';
+import { loadBacklog, groupByEpic, serializeBacklog } from '../../../planner/logic/backlog/model.js';
+import { parseLexicon } from '../../../planner/logic/lexicon/lexicon.js';
+import { backlogChecks } from './backlog-checks.js';
 
 const require = createRequire(import.meta.url);
-const { validateName } = require('../../../planner/logic/file-name.cjs');
-const { DATA_DIR } = require('../../../planner/logic/paths.cjs');
+const { validateName } = require('../../../planner/logic/storage/file-name.cjs');
+const { DATA_DIR } = require('../../../planner/logic/storage/paths.cjs');
 const { GUIDELINES_DIR } = require('../_shared/paths.cjs');
 
 export function listBacklogs({ dataDir = DATA_DIR } = {}) {

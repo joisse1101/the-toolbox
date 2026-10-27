@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { composeStory, parseStory, roleIsBlank, composeCriteria, parseCriteria } from '../../logic/story-text.js';
+import { composeStory, parseStory, roleIsBlank, composeCriteria, parseCriteria } from '../../logic/backlog/story-text.js';
 
 test('story round trip', () => {
   const f = { asA: 'a team lead', iWant: 'to export a backlog', soThat: 'I can share it' };
@@ -60,7 +60,7 @@ test('criteria: missing keyword fails, empty ok, blank criteria skipped', () => 
   assert.equal(composeCriteria([{ given: '', when: '', then: '' }]), '');
 });
 
-import { composeClarifications, parseClarifications, openCount } from '../../logic/story-text.js';
+import { composeClarifications, parseClarifications, openCount } from '../../logic/backlog/story-text.js';
 
 test('clarifications round trip with an open pair', () => {
   const text = 'Q1: Which export format?\nA1: CSV only\nQ2: Who owns the schema?\nA2:';

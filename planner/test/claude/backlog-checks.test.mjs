@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { loadBacklog } from '../../logic/model.js';
-import { parseLexicon } from '../../logic/lexicon.js';
-import { backlogChecks } from '../../logic/backlog-checks.js';
+import { loadBacklog } from '../../logic/backlog/model.js';
+import { parseLexicon } from '../../logic/lexicon/lexicon.js';
+import { backlogChecks } from '../../../.claude/skills/review-backlog/backlog-checks.js';
 
 const HEAD = 'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes,Locked,Clarifications';
 const US = 'As a user, I want to do it, so that it is done';

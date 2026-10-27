@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { wordDiff } from '../../logic/word-diff.js';
+import { wordDiff } from '../../portal/web/lib/word-diff.js';
 
 const kinds = (parts) => parts.map((p) => [p.text.trim(), p.kind]);
 const rejoin = (parts) => parts.filter((p) => p.kind !== 'removed').map((p) => p.text).join('');

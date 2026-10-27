@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseCsv } from '../../logic/csv.js';
+import { parseCsv } from '../../logic/backlog/csv.js';
 import {
   loadBacklog, serializeBacklog, newStory, newBacklogText, shouldSplit, storyIssues, storyLabel, COLUMNS,
   groupByEpic, displayOrder, applyBulk,
-} from '../../logic/model.js';
+} from '../../logic/backlog/model.js';
 
 const SAMPLE =
   '﻿Jira Key,Title,Sprint points,Epic,User Story,Feature,User Acceptance Criteria,Priority,Notes\r\n' +
@@ -258,7 +258,7 @@ test('applyBulk: an Epic change skips locked stories but Priority and Feature st
 });
 
 test('Benched: only a proposals file has the column, and it round-trips', async () => {
-  const { loadBacklog, serializeBacklog, proposalHeaders } = await import('../../logic/model.js');
+  const { loadBacklog, serializeBacklog, proposalHeaders } = await import('../../logic/backlog/model.js');
   assert.ok(!loadBacklog('ID,Epic\r\n').headers.includes('Benched'));
   const loaded = loadBacklog('ID,Epic,Benched\r\nNEW-1,IAM,Yes\r\nNEW-2,IAM,\r\n', { placeholderIds: true });
   assert.deepEqual(loaded.stories.map((s) => s.benched), [true, false]);

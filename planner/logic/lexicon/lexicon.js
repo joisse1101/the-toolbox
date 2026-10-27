@@ -5,7 +5,7 @@
 // A lexicon is { headers, hasBom, terms: [{ name, partOf, definition, avoid: [], notes, cells: [] }] }.
 // Names compare ignoring case and surrounding spaces. Pure: no file access.
 
-import { parseCsv, toCsv } from './csv.js';
+import { parseCsv, toCsv } from '../backlog/csv.js';
 
 export const COLUMNS = ['Term', 'Part of', 'Definition', 'Avoid', 'Notes'];
 const TERM_KEYS = ['term', 'definition', 'avoid', 'notes', 'partOf'];
@@ -157,7 +157,7 @@ export function deleteTerm(lexicon, name) {
 }
 
 // The writer's input: a list of { term, definition, avoid?, notes?, partOf? }. Every item adds a term and needs a
-// definition; a term that already exists is refused (a change to it is a suggestion, see planner/logic/lexicon-suggestions.js).
+// definition; a term that already exists is refused (a change to it is a suggestion, see planner/logic/lexicon/lexicon-suggestions.js).
 // Everything is checked on the lexicon as it will be, so a parent added earlier in the list is fine. Returns
 // { ok, lexicon, added } or { ok: false, errors }, each error naming its item (1-based).
 export function applyTermItems(lexicon, items) {

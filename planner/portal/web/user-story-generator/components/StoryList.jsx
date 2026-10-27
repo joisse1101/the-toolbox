@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { groupByEpic, storyIssues, storyLabel } from '../../../../logic/model.js';
-import { openCount } from '../../../../logic/story-text.js';
-import { anyOpen, epicKey, featureKey } from '../../../../logic/collapse.js';
-import { groupLockState } from '../../../../logic/ids.js';
+import { groupByEpic, storyIssues, storyLabel } from '../../../../logic/backlog/model.js';
+import { openCount } from '../../../../logic/backlog/story-text.js';
+import { anyOpen, epicKey, featureKey } from '../../lib/collapse.js';
+import { groupLockState } from '../../../../logic/backlog/ids.js';
 import { issueClass, rowTooltip } from './issues.js';
 
 const LOCK_MARK = { all: '🔒', some: '◐', none: '🔓' };

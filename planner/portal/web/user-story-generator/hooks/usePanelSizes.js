@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { clampWidth, parseStoredWidth } from '../../../../logic/panel-size.js';
+import { clampWidth, parseStoredWidth } from '../../lib/panel-size.js';
 
 // The browser store can be missing or throw (private window, blocked site data): the width then lasts until the page closes.
 const readStored = (name) => {
