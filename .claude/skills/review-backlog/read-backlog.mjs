@@ -18,7 +18,7 @@ import { backlogChecks } from '../../../planner/logic/backlog-checks.js';
 const require = createRequire(import.meta.url);
 const { validateName } = require('../../../planner/logic/file-name.cjs');
 const { DATA_DIR } = require('../../../planner/logic/paths.cjs');
-const { GUIDELINES_DIR } = require('../../../planner/claude/lib/paths.cjs');
+const { GUIDELINES_DIR } = require('../_shared/paths.cjs');
 
 export function listBacklogs({ dataDir = DATA_DIR } = {}) {
   return fs.readdirSync(path.join(dataDir, 'user-stories')).filter((f) => /\.csv$/i.test(f)).sort();

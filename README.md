@@ -10,11 +10,12 @@ Small local tools for a team lead. Each tool is a React page (built with Vite) t
 | `planner/portal/server/` | `server.cjs`: serves `planner/portal/dist/` and the CSV file API. |
 | `planner/logic/` | Pure logic with no UI or server: CSV parsing, the story model, IDs, reviews, proposals, the lexicon. Used by the frontend and by the skill scripts. |
 | `data/` | Your private data (git-ignored): `user-stories/`, `reviews/`, `proposals/`, `lexicons/`, `lexicon-suggestions/`, `backups/`, `logs/` (`writes.jsonl`, one line per save by the portal or a writer, no contents: it shows who wrote a file last). Set `TLT_DATA_DIR` to keep it somewhere else, for example outside the repo. |
-| `ai/` | What the AI works from: `guidelines/` (backlog standards, point sizing) and `launchers/` (the `.ps1` session starters). |
-| `.claude/skills/` | The skills and their scripts (must stay here for Claude Code to find them). |
+| `planner/guidelines/` | Backlog standards and point sizing, read by the skills and shown in the portal. |
+| `planner/claude/` | The Claude side that is not a skill: `mcp/` (the `story-tools` MCP server) and `launchers/` (the `.ps1` session starters). Both call the skills. |
+| `.claude/skills/` | The skills, each with its `SKILL.md`, scripts, locked settings and command guard, plus `_shared/` (helpers the skill scripts share). Must stay here for Claude Code to find them. |
 | `openspec/` | Specs and change history (must stay at the root for the OpenSpec CLI). |
 | `toolkit/` | Reusable Claude skills, slash commands and rules, with an installer. Separate from the portal: it shares no code with it. How to install and use it: [`toolkit/README.md`](toolkit/README.md). |
-| `test/` | Tests for `planner/logic/` and the skill scripts. |
+| `planner/test/` | Tests, in `logic/`, `portal/` and `claude/`. |
 
 ## Run
 

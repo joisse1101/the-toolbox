@@ -28,7 +28,7 @@ import { parseSuggestions, composeSuggestions, isOpen } from '../../../planner/l
 const require = createRequire(import.meta.url);
 const { validateName } = require('../../../planner/logic/file-name.cjs');
 const { DATA_DIR } = require('../../../planner/logic/paths.cjs');
-const { GUIDELINES_DIR } = require('../../../planner/claude/lib/paths.cjs');
+const { GUIDELINES_DIR } = require('../_shared/paths.cjs');
 
 export const SECTIONS = ['guidelines', 'index', 'reviews', 'lexicon-suggestions'];
 // Read as files, not as sections: the store folder of each.

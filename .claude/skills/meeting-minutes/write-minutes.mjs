@@ -10,7 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
-import { writeAtomic } from '../propose-stories/write-proposal.mjs';
+import { writeAtomic } from '../_shared/write-atomic.mjs';
 
 const require = createRequire(import.meta.url);
 const { DATA_DIR } = require('../../../planner/logic/paths.cjs');

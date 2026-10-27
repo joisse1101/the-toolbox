@@ -15,22 +15,11 @@ import { loadBacklog } from '../../../planner/logic/model.js';
 import {
   parseReview, serializeReview, validateFindings, fillCurrent, mergeStatus,
 } from '../../../planner/logic/review.js';
+import { describeParseError as describeJsonError, writeAtomic } from '../_shared/write-atomic.mjs';
 
 const require = createRequire(import.meta.url);
 const { validateName } = require('../../../planner/logic/file-name.cjs'); // same name rules as the file API
 const { DATA_DIR } = require('../../../planner/logic/paths.cjs');
-const { logWrite } = require('../../../planner/logic/write-log.cjs');
-
-// A JSON.parse failure message plus line, column and a short excerpt, so a missing comma can be found.
-function describeParseError(err, text) {
-  const message = err.message.replace(/\s*\(line \d+ column \d+\)/, ''); // the position is reported below
-  const at = /position (\d+)/.exec(message);
-  if (!at) return `The findings on stdin are not valid JSON: ${message}`;
-  const pos = Math.min(Number(at[1]), text.length);
-  const lines = text.slice(0, pos).split('\n');
-  const excerpt = text.slice(Math.max(0, pos - 30), pos + 30).replace(/\s+/g, ' ');
-  return `The findings on stdin are not valid JSON: ${message} (line ${lines.length}, column ${lines[lines.length - 1].length + 1}, near "${excerpt}")`;
-}
 
 // Rows already decided by the user, keyed like mergeStatus does; later lists win.
 function mergeDecided(...lists) {
@@ -50,21 +39,6 @@ function readRows(filePath) {
     return { ok: true, rows: [] };
   }
   return parseReview(text);
-}
-
-// Write beside the target, then rename over it, so a failure never leaves a partly written file. A .tmp file is
-// not listed by the file API. Returns an error message, or null.
-function writeAtomic(dir, file, text, writer) {
-  const tmp = path.join(dir, `${file}.${process.pid}.tmp`);
-  try {
-    fs.writeFileSync(tmp, text, 'utf8');
-    fs.renameSync(tmp, path.join(dir, file));
-  } catch (err) {
-    fs.rmSync(tmp, { force: true });
-    return `Could not write reviews/${file}: ${err.message} (is it open in Excel?)`;
-  }
-  logWrite({ writer, store: 'reviews', file, text, dataDir: path.dirname(dir) });
-  return null;
 }
 
 // Reads the backlog and the review and validates the findings against them. Returns { ok: true, file, batch, rows,
@@ -94,7 +68,7 @@ function prepare({ dataDir, name, input, append, requireTitles }) {
   try {
     findings = JSON.parse(input);
   } catch (err) {
-    return { ok: false, errors: [describeParseError(err, input)] };
+    return { ok: false, errors: [describeJsonError(err, input, 'findings')] };
   }
   const old = readRows(path.join(reviewDir, file));
   const earlier = readRows(path.join(reviewDir, `${file}.decided`));

@@ -8,7 +8,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { emptyLexicon, parseLexicon } from '../../../planner/logic/lexicon.js';
 import { composeSuggestions, emptySuggestions, FIELD_LABELS, impactOf, parseSuggestions, validateItems } from '../../../planner/logic/lexicon-suggestions.js';
-import { writeAtomic } from './write-proposal.mjs';
+import { writeAtomic } from '../_shared/write-atomic.mjs';
 
 const require = createRequire(import.meta.url);
 const { validateName } = require('../../../planner/logic/file-name.cjs'); // same name rules as the file API

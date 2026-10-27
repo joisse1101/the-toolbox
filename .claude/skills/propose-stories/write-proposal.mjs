@@ -14,38 +14,11 @@ import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import { loadBacklog, serializeBacklog, proposalHeaders } from '../../../planner/logic/model.js';
 import { buildProposals } from '../../../planner/logic/proposal-input.js';
+import { describeParseError, writeAtomic } from '../_shared/write-atomic.mjs';
 
 const require = createRequire(import.meta.url);
 const { validateName } = require('../../../planner/logic/file-name.cjs'); // same name rules as the file API
 const { DATA_DIR } = require('../../../planner/logic/paths.cjs');
-const { logWrite } = require('../../../planner/logic/write-log.cjs');
-
-// A JSON.parse failure message plus line, column and a short excerpt, so a missing comma can be found.
-export function describeParseError(err, text, what = 'stories') {
-  const message = err.message.replace(/\s*\(line \d+ column \d+\)/, ''); // the position is reported below
-  const at = /position (\d+)/.exec(message);
-  if (!at) return `The ${what} on stdin are not valid JSON: ${message}`;
-  const pos = Math.min(Number(at[1]), text.length);
-  const lines = text.slice(0, pos).split('\n');
-  const excerpt = text.slice(Math.max(0, pos - 30), pos + 30).replace(/\s+/g, ' ');
-  return `The ${what} on stdin are not valid JSON: ${message} (line ${lines.length}, column ${lines[lines.length - 1].length + 1}, near "${excerpt}")`;
-}
-
-// Write beside the target, then rename over it, so a failure never leaves a partly written file. A .tmp file is
-// not listed by the file API. `writer` (the tool's name) is recorded in the write log when given. Returns an error
-// message, or null.
-export function writeAtomic(dir, file, text, writer) {
-  const tmp = path.join(dir, `${file}.${process.pid}.tmp`);
-  try {
-    fs.writeFileSync(tmp, text, 'utf8');
-    fs.renameSync(tmp, path.join(dir, file));
-  } catch (err) {
-    fs.rmSync(tmp, { force: true });
-    return `Could not write ${path.basename(dir)}/${file}: ${err.message} (is it open in Excel?)`;
-  }
-  if (writer) logWrite({ writer, store: path.basename(dir), file, text, dataDir: path.dirname(dir) });
-  return null;
-}
 
 // Reads the backlog and the proposals and validates the input against them. Returns { ok: true, file, backlog,
 // proposals, built } (built: the buildProposals result) or { ok: false, errors }. Writes nothing.
