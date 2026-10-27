@@ -31,6 +31,8 @@ Local tools for a team lead's admin work (so far the backlog portal and its skil
 - **`data/`** (git-ignored, private): `user-stories/`, `reviews/`, `proposals/`, `lexicons/`, `lexicon-suggestions/`, `backups/`, `meetings/` and `logs/` (the last three are not stores; `logs/writes.jsonl` is the write log). Store names in code, skills and specs (`user-stories/`, `reviews/`, `proposals/`, `lexicons/`, `lexicon-suggestions/`) are relative to this folder.
 - **`ai/`**: `guidelines/` (`product-backlog.md`, `sprint-points-guideline.md`), `launchers/` (the `.ps1` session starters) and `mcp/` (the `story-tools` MCP server for the story sessions; it imports the skill scripts' exported functions and `core/`). `.claude/skills/` and `openspec/` stay at the repo root because Claude Code and the OpenSpec CLI look for them there.
 
+**`toolkit/`** is a fifth, standalone zone: reusable Claude Code skills (`skills/`), slash commands (`commands/`: `jois`, `opsx`), rules (`rules/`) and a PowerShell installer (`install/Install-Toolkit.ps1`) that copies them into `~/.claude` or a project. It depends on nothing above and nothing depends on it; it has its own tests (`cd toolkit; python check_toolkit.py; python -m pytest`, needs Python and pytest), separate from `npm test`. Its own `openspec/` documents it. Install and usage instructions are in `toolkit/README.md`; read that rather than restating it here.
+
 Adding a new tool: see the "Add a new tool" steps in `README.md` (new `app/frontend/<tool>/` dir, add to vite inputs, register data folder in `STORES`, link from `app/frontend/main.jsx`).
 
 ## Workflow
