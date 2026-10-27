@@ -261,7 +261,7 @@ export default function App() {
     <>
       <main className="page">
         <header className="top">
-          <h1><a href="/" className="home" title="All tools">&larr;</a> User story generator</h1>
+          <h1><a href="/" className="home" title="All tools">&larr;</a> Backlog portal</h1>
           <div className="top-right">
             <Info id="shortcuts" buttonId="shortcutsBtn" buttonClass="shortcuts-btn" label="Keyboard shortcuts" icon={KEYBOARD_ICON} popoverId="shortcutsText" popoverClass="right">
               <dl className="shortcut-list">

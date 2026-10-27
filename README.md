@@ -33,7 +33,7 @@ You can still run the pieces yourself: `npm run build`, `node planner/portal/ser
 
 | Tool | Page | Data |
 | --- | --- | --- |
-| User story generator | `/user-story-generator/` | `planner/data/user-stories/*.csv` |
+| Backlog portal | `/backlog-portal/` | `planner/data/user-stories/*.csv` |
 
 The `/review-backlog` skill writes its suggestions to `planner/data/reviews/<backlog>.csv` (second store, `reviews`), only through `.claude/skills/review-backlog/write-review.mjs`. The story form shows them next to the field they concern, with Apply and Dismiss. Open questions are suggested as `Clarifications` rows; Apply adds them as unanswered questions. A review run without `--append` replaces the whole review, these rows included.
 
@@ -64,7 +64,7 @@ npm test
 
 ## Add a new tool
 
-1. Create `planner/portal/web/<tool-name>/` with an `index.html` (a `#root` div and a `main.jsx` script, like `planner/portal/web/user-story-generator/index.html`) and a `main.jsx` that imports `../shared/style.css`. Import `files.js` from `../shared/` and any pure logic from `planner/logic/` (`csv.js`, `story-text.js`). Add the page to `build.rollupOptions.input` in `planner/portal/web/vite.config.mjs`.
+1. Create `planner/portal/web/<tool-name>/` with an `index.html` (a `#root` div and a `main.jsx` script, like `planner/portal/web/backlog-portal/index.html`) and a `main.jsx` that imports `../shared/style.css`. Import `files.js` from `../shared/` and any pure logic from `planner/logic/` (`csv.js`, `story-text.js`). Add the page to `build.rollupOptions.input` in `planner/portal/web/vite.config.mjs`.
 2. Register a data folder (for example `data/my-data/`) in `STORES` at the top of `planner/portal/server/server.cjs`:
    ```js
    const STORES = {

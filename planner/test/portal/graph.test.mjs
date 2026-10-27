@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { layoutGraph, relatedIds, fitView, zoomAt, panBy, toGraphPoint, MIN_ZOOM, MAX_ZOOM } from '../../portal/web/user-story-generator/graph.js';
+import { layoutGraph, relatedIds, fitView, zoomAt, panBy, toGraphPoint, MIN_ZOOM, MAX_ZOOM } from '../../portal/web/backlog-portal/graph.js';
 
 let n = 0;
 const story = (code, dependsOn = []) => ({ id: ++n, code, dependsOn });

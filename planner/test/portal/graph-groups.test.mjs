@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { groupStories, layoutGraph } from '../../portal/web/user-story-generator/graph.js';
+import { groupStories, layoutGraph } from '../../portal/web/backlog-portal/graph.js';
 
 let n = 0;
 const story = (epic, feature, code, dependsOn = []) => ({ id: ++n, epic, feature, code, dependsOn });

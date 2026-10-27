@@ -8,9 +8,9 @@ function Launcher() {
       <p className="muted">Local tools that keep their data as plain files in this repo.</p>
       <ul className="tool-list">
         <li>
-          <a href="/user-story-generator/">
+          <a href="/backlog-portal/">
             <div className="card">
-              <strong>User story generator</strong>
+              <strong>Backlog portal</strong>
               Write user stories with acceptance criteria and keep them as CSV backlogs in <code>planner/data/user-stories/</code>.
             </div>
           </a>

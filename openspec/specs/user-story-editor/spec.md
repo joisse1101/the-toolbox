@@ -375,7 +375,7 @@ The tool SHALL classify each story. A story is **incomplete** (red) when any of 
 - **THEN** the row and the form have no indicator
 
 ### Requirement: Full-width generator layout
-The user story generator page SHALL use the full width of the browser window, with only a small side margin, instead of a narrow centred column. The story list SHALL have a narrow width, 260px unless the user has resized it (see "Resizable list panel"), and the story form SHALL take the remaining width. The layout SHALL remain usable on narrow windows.
+The backlog portal page SHALL use the full width of the browser window, with only a small side margin, instead of a narrow centred column. The story list SHALL have a narrow width, 260px unless the user has resized it (see "Resizable list panel"), and the story form SHALL take the remaining width. The layout SHALL remain usable on narrow windows.
 
 #### Scenario: Wide window
 - **WHEN** the window is 1920px wide and the user has not resized the list

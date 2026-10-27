@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { diffLines } from '../../portal/web/user-story-generator/diff-lines.js';
+import { diffLines } from '../../portal/web/backlog-portal/diff-lines.js';
 
 test('plain text becomes uncolored lines', () => {
   assert.deepEqual(diffLines('a\nb\n'), [[{ text: 'a', kind: null }], [{ text: 'b', kind: null }]]);

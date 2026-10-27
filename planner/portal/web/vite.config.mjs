@@ -13,7 +13,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: resolve(import.meta.dirname, 'index.html'),
-        'user-story-generator': resolve(import.meta.dirname, 'user-story-generator/index.html'),
+        'backlog-portal': resolve(import.meta.dirname, 'backlog-portal/index.html'),
       },
     },
   },
