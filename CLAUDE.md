@@ -10,7 +10,7 @@ npm start            # unified: build if needed + server + open browser (-- --de
 npm run build        # vite build -> planner/portal/dist/ (required after any change to planner/portal/web/ or planner/logic/ before the server shows it)
 node planner/portal/server/server.cjs   # serves planner/portal/dist/ + CSV API on 127.0.0.1:3000 (PORT env to change; PLANNER_DATA_DIR moves the data folder)
 npm run dev          # Vite dev server with HMR; proxies /api to the backend, so run both
-npm test             # node --test planner/test/*/*.test.mjs
+npm test             # node --test planner/test/*.test.mjs planner/test/*/*.test.mjs
 node --test planner/test/logic/ids.test.mjs                  # single test file
 node --test --test-name-pattern="renumber" planner/test/logic/ids.test.mjs   # single test by name
 ```

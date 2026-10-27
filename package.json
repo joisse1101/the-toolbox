@@ -6,7 +6,7 @@
     "dev": "vite --config planner/portal/web/vite.config.mjs",
     "build": "vite build --config planner/portal/web/vite.config.mjs",
     "start": "node planner/portal/start.mjs --build",
-    "test": "node --test planner/test/*/*.test.mjs"
+    "test": "node --test planner/test/*.test.mjs planner/test/*/*.test.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.1",
