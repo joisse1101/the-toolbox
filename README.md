@@ -13,6 +13,7 @@ Small local tools for a team lead. Each tool is a React page (built with Vite) t
 | `ai/` | What the AI works from: `guidelines/` (backlog standards, point sizing) and `launchers/` (the `.ps1` session starters). |
 | `.claude/skills/` | The skills and their scripts (must stay here for Claude Code to find them). |
 | `openspec/` | Specs and change history (must stay at the root for the OpenSpec CLI). |
+| `toolkit/` | Reusable Claude skills, slash commands and rules, with an installer. Separate from the portal: it shares no code with it. How to install and use it: [`toolkit/README.md`](toolkit/README.md). |
 | `test/` | Tests for `core/` and the skill scripts. |
 
 ## Run
