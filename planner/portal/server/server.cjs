@@ -503,7 +503,7 @@ const server = http.createServer(async (req, res) => {
 
 if (require.main === module) {
   server.listen(PORT, HOST, () => {
-    console.log(`Team lead tools running at http://localhost:${PORT}/`);
+    console.log(`Backlog planner running at http://localhost:${PORT}/`);
     if (!fs.existsSync(DIST_DIR)) console.log('The app has not been built yet. Run `npm run build` first.');
     const hint = legacyDataHint();
     if (hint) console.log(hint);

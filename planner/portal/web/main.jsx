@@ -4,7 +4,7 @@ import './shared/style.css';
 function Launcher() {
   return (
     <main className="page">
-      <h1>Team lead tools</h1>
+      <h1>Backlog planner</h1>
       <p className="muted">Local tools that keep their data as plain files in this repo.</p>
       <ul className="tool-list">
         <li>

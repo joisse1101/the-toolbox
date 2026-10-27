@@ -1,6 +1,9 @@
-# Team lead tools
+# the-toolbox
 
-Small local tools for a team lead. Each tool is a React page (built with Vite) that keeps its data as plain CSV files in `data/`. The local server itself uses Node built-ins only.
+Two separate things live here.
+
+- **`planner/`** is the backlog planner, for this repo only. Claude skills draft, review and propose user stories; the portal (a React page built with Vite) shows and edits the results as plain CSV files in `planner/data/`. The two meet only in those files. The local server uses Node built-ins only.
+- **`toolkit/`** is a set of Claude skills, commands and rules you install globally and use anywhere. It shares nothing with `planner/`: see [`toolkit/README.md`](toolkit/README.md).
 
 ## Layout
 
@@ -8,8 +11,8 @@ Small local tools for a team lead. Each tool is a React page (built with Vite) t
 | --- | --- |
 | `planner/portal/web/` | The React pages and the Vite config. Builds into `planner/portal/dist/`. |
 | `planner/portal/server/` | `server.cjs`: serves `planner/portal/dist/` and the CSV file API. |
-| `planner/logic/` | Pure logic with no UI or server: CSV parsing, the story model, IDs, reviews, proposals, the lexicon. Used by the frontend and by the skill scripts. |
-| `data/` | Your private data (git-ignored): `backlogs/`, `reviews/`, `proposals/`, `lexicons/`, `lexicon-suggestions/`, `backups/`, `logs/` (`writes.jsonl`, one line per save by the portal or a writer, no contents: it shows who wrote a file last). Set `PLANNER_DATA_DIR` to keep it somewhere else, for example outside the repo. |
+| `planner/logic/` | Pure logic with no UI or server, by domain: CSV parsing, the story model, IDs, reviews, proposals, the lexicon, storage paths. Used by the portal and by the skill scripts. |
+| `planner/data/` | Your private data (git-ignored): `backlogs/`, `reviews/`, `proposals/`, `lexicons/`, `lexicon-suggestions/`, `backups/`, `logs/` (`writes.jsonl`, one line per save by the portal or a writer, no contents: it shows who wrote a file last). Also `meetings/` (saved minutes). Set `PLANNER_DATA_DIR` to keep it somewhere else, for example outside the repo. Coming from an older layout? Move `data/` to `planner/data/` and rename its `user-stories` folder to `backlogs`; the server and launchers print the commands. |
 | `planner/guidelines/` | Backlog standards and point sizing, read by the skills and shown in the portal. |
 | `planner/claude/` | The Claude side that is not a skill: `mcp/` (the `backlog-tools` MCP server) and `launchers/` (the `.ps1` session starters). Both call the skills. |
 | `.claude/skills/` | The skills, each with its `SKILL.md`, scripts, locked settings and command guard, plus `_shared/` (helpers the skill scripts share). Must stay here for Claude Code to find them. |
@@ -65,7 +68,7 @@ npm test
 ## Add a new tool
 
 1. Create `planner/portal/web/<tool-name>/` with an `index.html` (a `#root` div and a `main.jsx` script, like `planner/portal/web/backlog-portal/index.html`) and a `main.jsx` that imports `../shared/style.css`. Import `files.js` from `../shared/` and any pure logic from `planner/logic/` (`csv.js`, `story-text.js`). Add the page to `build.rollupOptions.input` in `planner/portal/web/vite.config.mjs`.
-2. Register a data folder (for example `data/my-data/`) in `STORES` at the top of `planner/portal/server/server.cjs`:
+2. Register a data folder (for example `planner/data/my-data/`) in `STORES` at the top of `planner/portal/server/server.cjs`:
    ```js
    const STORES = {
      'backlogs': path.join(DATA_DIR, 'backlogs'),
