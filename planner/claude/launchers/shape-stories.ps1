@@ -11,7 +11,7 @@
 # /propose-stories in the same session (it asks yes/no first), or /story:propose to write the drafts straight away. Both write
 # new stories to the proposals and changes to backlog stories as suggestions in the story editor.
 # /story:re-read re-reads the files after you changed them yourself; /story:review audits what is under discussion and lists what is left.
-# Tools are limited to the story-tools MCP server (read_context, search_stories, read_file, check_drafts, write_proposals, write_lexicon, suggest_lexicon_change, write_review), Skill
+# Tools are limited to the backlog-tools MCP server (read_context, search_stories, read_file, check_drafts, write_proposals, write_lexicon, suggest_lexicon_change, write_review), Skill
 # and AskUserQuestion: no Bash, Read or Grep. The lexicon and proposals files are read with read_file, which opens only those two files of the backlog.
 # The readers are pre-approved. The writers are not: Claude Code asks you before every write, on top
 # of the skill's yes/no question (--permission-mode default keeps that prompt on, whatever mode your settings use).
@@ -26,7 +26,7 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) -Parent
 Set-Location $root
 $propose = '.claude/skills/propose-stories'
-. (Join-Path $PSScriptRoot 'story-tools-config.ps1')
+. (Join-Path $PSScriptRoot 'backlog-tools-config.ps1')
 $dataDir = if ($env:PLANNER_DATA_DIR) { $env:PLANNER_DATA_DIR } elseif ($env:TLT_DATA_DIR) { Write-Host "TLT_DATA_DIR is now PLANNER_DATA_DIR; the old name still works for now." -ForegroundColor Yellow; $env:TLT_DATA_DIR } else { Join-Path $root 'planner/data' }
 
 function Stop-Launcher([string]$Message) {
@@ -67,14 +67,14 @@ $prompt = "/explore-stories $file $Story"
 if ($PSVersionTable.PSVersion.Major -lt 7) { $prompt = $prompt.Replace('"', '\"') }
 
 
-$mcp = New-StoryToolsConfig $root
+$mcp = New-BacklogToolsConfig $root
 
 try {
   claude $prompt `
     --tools "Skill,AskUserQuestion" `
     --mcp-config $mcp `
     --strict-mcp-config `
-    --allowedTools "mcp__story-tools__read_context" "mcp__story-tools__search_stories" "mcp__story-tools__read_file" "mcp__story-tools__check_drafts" `
+    --allowedTools "mcp__backlog-tools__read_context" "mcp__backlog-tools__search_stories" "mcp__backlog-tools__read_file" "mcp__backlog-tools__check_drafts" `
     --permission-mode "auto" `
     --settings "$propose/locked-settings.json"
 } finally {

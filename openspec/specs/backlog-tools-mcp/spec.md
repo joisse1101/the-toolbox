@@ -1,4 +1,4 @@
-# story-tools-mcp Specification
+# backlog-tools-mcp Specification
 
 ## Purpose
 
@@ -7,7 +7,7 @@ Gives the shape-stories sessions typed tools (an stdio MCP server) to read the b
 ## Requirements
 
 ### Requirement: Story tools MCP server
-The repository SHALL contain a stdio MCP server, `planner/claude/mcp/story-tools.mjs`, started as `node planner/claude/mcp/story-tools.mjs [--read-only]`. It SHALL expose typed tools, each with a description and a JSON input schema, and each calling the same exported function as the matching script: `read_context` (`readStoryContext`), `search_stories`, `read_file`, `check_drafts` (the validation step of the writers), `write_proposals` (`writeProposal`), `write_lexicon` (`writeLexicon`) and `write_review` (`writeReview`). With `--read-only` it SHALL expose `read_context`, `search_stories` and `read_file` only. The scripts SHALL remain runnable from the command line and SHALL produce the results they did before. The server SHALL write nothing but through those functions, so every rule of the writers (atomic write, all-or-nothing validation, fixed target folders) applies unchanged.
+The repository SHALL contain a stdio MCP server, `planner/claude/mcp/backlog-tools.mjs`, started as `node planner/claude/mcp/backlog-tools.mjs [--read-only]`. It SHALL expose typed tools, each with a description and a JSON input schema, and each calling the same exported function as the matching script: `read_context` (`readStoryContext`), `search_stories`, `read_file`, `check_drafts` (the validation step of the writers), `write_proposals` (`writeProposal`), `write_lexicon` (`writeLexicon`) and `write_review` (`writeReview`). With `--read-only` it SHALL expose `read_context`, `search_stories` and `read_file` only. The scripts SHALL remain runnable from the command line and SHALL produce the results they did before. The server SHALL write nothing but through those functions, so every rule of the writers (atomic write, all-or-nothing validation, fixed target folders) applies unchanged.
 
 #### Scenario: Same result as the script
 - **WHEN** `write_lexicon` is called with the input the script accepts
@@ -97,7 +97,7 @@ Each tool's description and input schema SHALL state what an agent needs to call
 - **THEN** the call is an error naming the parameter
 
 ### Requirement: Existing stories are named with their Title
-Every `story-tools` input that names a story that already exists SHALL carry that story's current Title next to its ID, and the tool SHALL check the pair before it reads or writes anything for that story. The inputs are: `read_context` `storyId` (with `storyTitle`), each entry of `storyIds` (an object `{id, title}`), `write_review` rows (`storyTitle`, and `targetTitle` on a `Depends On` row for the story named in `suggested`), `write_proposals` patches (`storyTitle`, the proposal's current Title; `title` stays the field to change) and each `dependsOn` entry that names a story of the backlog or a `proposed:` story (an object `{id, title}`). A `NEW-<k>` entry that points to another new story of the same `write_proposals` call SHALL stay a bare string. The Title SHALL be compared ignoring case and surrounding spaces, as for repeated new stories. A call that names an existing story by ID alone SHALL be refused, writing nothing, with a message that says to add the Title and how. `check_drafts` SHALL apply the same check and report the same problems. The tool descriptions SHALL state this rule.
+Every `backlog-tools` input that names a story that already exists SHALL carry that story's current Title next to its ID, and the tool SHALL check the pair before it reads or writes anything for that story. The inputs are: `read_context` `storyId` (with `storyTitle`), each entry of `storyIds` (an object `{id, title}`), `write_review` rows (`storyTitle`, and `targetTitle` on a `Depends On` row for the story named in `suggested`), `write_proposals` patches (`storyTitle`, the proposal's current Title; `title` stays the field to change) and each `dependsOn` entry that names a story of the backlog or a `proposed:` story (an object `{id, title}`). A `NEW-<k>` entry that points to another new story of the same `write_proposals` call SHALL stay a bare string. The Title SHALL be compared ignoring case and surrounding spaces, as for repeated new stories. A call that names an existing story by ID alone SHALL be refused, writing nothing, with a message that says to add the Title and how. `check_drafts` SHALL apply the same check and report the same problems. The tool descriptions SHALL state this rule.
 
 #### Scenario: Matching pair
 - **WHEN** `read_context` is called with `storyId` `IAM-0004` and `storyTitle` `Reset password by email`, and `IAM-0004` has that Title

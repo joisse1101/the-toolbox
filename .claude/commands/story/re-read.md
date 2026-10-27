@@ -1,6 +1,6 @@
 ---
 description: Re-read the backlog, proposals, lexicon and the stories under discussion after you changed them outside the session, say what changed, and carry on
-allowed-tools: mcp__story-tools__read_context, mcp__story-tools__search_stories, mcp__story-tools__read_file
+allowed-tools: mcp__backlog-tools__read_context, mcp__backlog-tools__search_stories, mcp__backlog-tools__read_file
 ---
 
 I changed files outside this session (in the portal or in a spreadsheet). Refresh what you know before continuing. You only read; write nothing and call no writer.

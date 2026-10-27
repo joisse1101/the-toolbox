@@ -1,4 +1,4 @@
-// How the propose-stories skill suggests renaming, deleting or editing (definition, avoid, notes, part of) a lexicon term (used by the story-tools MCP server's
+// How the propose-stories skill suggests renaming, deleting or editing (definition, avoid, notes, part of) a lexicon term (used by the backlog-tools MCP server's
 // suggest_lexicon_change; there is no command line form). Reads backlogs/<name> (it must exist) and lexicons/<name>,
 // appends open rows to lexicon-suggestions/<name> and never touches the lexicon: the user applies a suggestion in the
 // portal's Lexicon tab. The rules are planner/logic/lexicon/lexicon-suggestions.js's; one invalid item means nothing is written.

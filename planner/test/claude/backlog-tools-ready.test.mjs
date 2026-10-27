@@ -9,8 +9,8 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const SERVER = path.join(ROOT, 'planner/claude/mcp/story-tools.mjs');
-const HOOK = path.join(ROOT, 'planner/claude/mcp/wait-for-story-tools.mjs');
+const SERVER = path.join(ROOT, 'planner/claude/mcp/backlog-tools.mjs');
+const HOOK = path.join(ROOT, 'planner/claude/mcp/wait-for-backlog-tools.mjs');
 
 function temp() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tools-ready-'));
@@ -32,7 +32,7 @@ function runHook(env) {
 
 test('the ready file appears only once the tool list has been sent, not at the handshake', async () => {
   const dir = temp();
-  const readyFile = path.join(dir, 'story-tools.ready');
+  const readyFile = path.join(dir, 'backlog-tools.ready');
   const client = new Client({ name: 'test', version: '0' });
   try {
     await client.connect(new StdioClientTransport({
@@ -65,7 +65,7 @@ test('without PLANNER_MCP_READY_FILE the server writes nothing and still lists i
 
 test('the hook holds the prompt while the server is starting and releases it after the tools are listed', async () => {
   const dir = temp();
-  const readyFile = path.join(dir, 'story-tools.ready');
+  const readyFile = path.join(dir, 'backlog-tools.ready');
   const env = { PLANNER_DATA_DIR: dir, PLANNER_MCP_READY_FILE: readyFile };
   let released = false;
   const hook = runHook({ ...env, PLANNER_MCP_WAIT_MS: '20000' }).then((r) => { released = true; return r; });
@@ -107,7 +107,7 @@ test('the hook tells Claude when the server never connects, and does nothing out
 test('the story launchers are wired to the hook: settings name an existing script, and each launcher builds the config it relies on', () => {
   const settings = JSON.parse(fs.readFileSync(path.join(ROOT, '.claude/skills/propose-stories/locked-settings.json'), 'utf8'));
   const commands = settings.hooks.UserPromptSubmit.flatMap((g) => g.hooks.map((h) => h.command));
-  assert.deepEqual(commands, ['node planner/claude/mcp/wait-for-story-tools.mjs']);
+  assert.deepEqual(commands, ['node planner/claude/mcp/wait-for-backlog-tools.mjs']);
   assert.ok(fs.existsSync(HOOK));
   // The sessions read the two files with read_file, so no hook guards Read and Grep any more.
   for (const skill of ['explore-stories', 'propose-stories']) {
@@ -116,14 +116,14 @@ test('the story launchers are wired to the hook: settings name an existing scrip
   }
   assert.ok(!fs.existsSync(path.join(ROOT, 'planner/claude/mcp/guard-read.mjs')));
 
-  const config = fs.readFileSync(path.join(ROOT, 'planner/claude/launchers/story-tools-config.ps1'), 'utf8');
-  assert.match(config, /function New-StoryToolsConfig/);
-  assert.match(config, /planner\/claude\/mcp\/story-tools\.mjs/);
+  const config = fs.readFileSync(path.join(ROOT, 'planner/claude/launchers/backlog-tools-config.ps1'), 'utf8');
+  assert.match(config, /function New-BacklogToolsConfig/);
+  assert.match(config, /planner\/claude\/mcp\/backlog-tools\.mjs/);
   assert.match(config, /PLANNER_MCP_READY_FILE/);
   for (const name of ['shape-stories.ps1', 'explore-stories.ps1']) {
     const launcher = fs.readFileSync(path.join(ROOT, 'planner/claude/launchers', name), 'utf8');
-    assert.match(launcher, /story-tools-config\.ps1/, `${name} loads the config helper`);
-    assert.match(launcher, /New-StoryToolsConfig \$root/, `${name} writes the MCP config`);
+    assert.match(launcher, /backlog-tools-config\.ps1/, `${name} loads the config helper`);
+    assert.match(launcher, /New-BacklogToolsConfig \$root/, `${name} writes the MCP config`);
     assert.match(launcher, /--strict-mcp-config/, `${name} uses only that config`);
     assert.match(launcher, /locked-settings\.json/, `${name} loads the settings that carry the hook`);
     assert.match(launcher, /--tools "Skill,AskUserQuestion" `/, `${name} gives the session neither Read nor Grep`);

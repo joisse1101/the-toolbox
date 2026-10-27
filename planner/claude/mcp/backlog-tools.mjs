@@ -1,6 +1,6 @@
 // stdio MCP server for the story sessions (explore-stories, propose-stories). Usage:
-//   node planner/claude/mcp/story-tools.mjs              read_context, search_stories, read_file, check_drafts, write_proposals, write_lexicon, suggest_lexicon_change, write_review
-//   node planner/claude/mcp/story-tools.mjs --read-only  read_context, search_stories and read_file only
+//   node planner/claude/mcp/backlog-tools.mjs              read_context, search_stories, read_file, check_drafts, write_proposals, write_lexicon, suggest_lexicon_change, write_review
+//   node planner/claude/mcp/backlog-tools.mjs --read-only  read_context, search_stories and read_file only
 // The tools call the same exported functions as the CLI scripts (read-story-context.mjs, write-proposal.mjs, write-lexicon.mjs,
 // write-review.mjs), so the validation and the error text are the scripts'. stdout carries the protocol: log to stderr only.
 // With PLANNER_MCP_READY_FILE set it writes that file once it has sent the client its tool list.
@@ -170,7 +170,7 @@ export function writeReviewTool(args) {
 }
 
 export function createServer({ readOnly = false } = {}) {
-  const server = new McpServer({ name: 'story-tools', version: '1.0.0' });
+  const server = new McpServer({ name: 'backlog-tools', version: '1.0.0' });
   server.registerTool('read_context', {
     description: DESCRIPTIONS.read_context,
     inputSchema: {
@@ -219,11 +219,11 @@ const isMain = process.argv[1] && import.meta.url === pathToFileURL(path.resolve
 if (isMain) {
   const flags = process.argv.slice(2);
   if (flags.some((f) => f !== '--read-only')) {
-    console.error('Usage: node planner/claude/mcp/story-tools.mjs [--read-only]');
+    console.error('Usage: node planner/claude/mcp/backlog-tools.mjs [--read-only]');
     process.exit(2);
   }
   const server = createServer({ readOnly: flags.includes('--read-only') });
-  // The launcher's hook (wait-for-story-tools.mjs) holds the first prompt until this file exists. "Initialized" is too early: Claude
+  // The launcher's hook (wait-for-backlog-tools.mjs) holds the first prompt until this file exists. "Initialized" is too early: Claude
   // Code lists the tools after it, and a prompt sent in between sees the server as still connecting. So the file is written once
   // the tools/list reply has gone out.
   const transport = new StdioServerTransport();
@@ -235,5 +235,5 @@ if (isMain) {
     };
   }
   await server.connect(transport);
-  console.error('story-tools MCP server ready');
+  console.error('backlog-tools MCP server ready');
 }

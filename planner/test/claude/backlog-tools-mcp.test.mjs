@@ -10,7 +10,7 @@ import { writeReview } from '../../../.claude/skills/review-backlog/write-review
 import { writeProposal } from '../../../.claude/skills/propose-stories/write-proposal.mjs';
 import { ACTIONS, AREAS, CONFIDENCES, FIELDS } from '../../logic/review/review.js';
 
-const SERVER = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../claude/mcp/story-tools.mjs');
+const SERVER = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../claude/mcp/backlog-tools.mjs');
 
 const CSV =
   'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes\r\n' +

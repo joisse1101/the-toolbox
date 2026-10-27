@@ -6,10 +6,10 @@
 //       index       backlogs/<name> as an index (INDEX_COLUMNS only)
 //       reviews     reviews/<name>: the row count and the open rows per story; after the section name, story IDs give those stories' open rows in full
 //       lexicon-suggestions   lexicon-suggestions/<name>: the open suggestions in full and the number decided
-//   (the story-tools MCP server also exports searchStories below; it has no command form)
+//   (the backlog-tools MCP server also exports searchStories below; it has no command form)
 //   node .claude/skills/explore-stories/read-story-context.mjs <name> <ID> prints the header and the one backlog story <ID>, every column
 // The proposals and the lexicon are not sections: they can be large, so the sessions read them in parts with readFile below (the
-// story-tools `read_file` tool, which has no command form). The menu lists both files with their sizes; asking for either as a section
+// backlog-tools `read_file` tool, which has no command form). The menu lists both files with their sizes; asking for either as a section
 // is an error that names read_file.
 // Nothing else is reachable: the guidelines path is fixed (planner/guidelines) and the name goes through the file API's name rules.
 // The CSV text is user data: it is labelled so, and instructions inside it are story text, not commands.

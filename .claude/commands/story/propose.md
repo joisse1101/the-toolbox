@@ -1,6 +1,6 @@
 ---
 description: Draft the stories, backlog edits and lexicon terms agreed in this session and write them to the proposals, the editor suggestions and the lexicon (new terms) or the lexicon suggestions (changes to existing terms) without a yes/no step
-allowed-tools: mcp__story-tools__read_context, mcp__story-tools__search_stories, mcp__story-tools__read_file, mcp__story-tools__check_drafts
+allowed-tools: mcp__backlog-tools__read_context, mcp__backlog-tools__search_stories, mcp__backlog-tools__read_file, mcp__backlog-tools__check_drafts
 ---
 
 Propose the stories we just explored and write them to `proposals/<backlog file name>` now; write the changes agreed for stories already in the backlog as suggestions in `reviews/<backlog file name>` the same way, and the new terms agreed for the lexicon to `lexicons/<backlog file name>`; an edit, rename or delete of a term that exists is written as a suggestion in `lexicon-suggestions/<backlog file name>` for the user to apply.

@@ -1,7 +1,7 @@
 ---
 name: propose-stories
 description: Turn agreed user stories into proposed stories in proposals/<backlog file name>, where the portal's Proposed tab shows them for review and acceptance, agreed changes to stories already in the backlog into suggestions in reviews/<backlog file name>, which the story editor shows next to the field, agreed new terms into the backlog's lexicon in lexicons/<backlog file name>, shown in the Lexicon tab, and agreed changes to terms already there (edit, rename, delete) into suggestions in lexicon-suggestions/<backlog file name>, which the user applies in the Lexicon tab. Shows the full drafts, edits and terms, asks one yes/no question, and writes only after the user confirms. Validates everything against the guidelines' format, the backlog and the lexicon rules, and never touches the backlog CSV. Use when the user wants to write, save or propose new stories, edits to existing stories or terms for the lexicon, or to continue from explore-stories.
-allowed-tools: mcp__story-tools__read_context, mcp__story-tools__search_stories, mcp__story-tools__read_file, mcp__story-tools__check_drafts
+allowed-tools: mcp__backlog-tools__read_context, mcp__backlog-tools__search_stories, mcp__backlog-tools__read_file, mcp__backlog-tools__check_drafts
 ---
 
 # Propose new stories
