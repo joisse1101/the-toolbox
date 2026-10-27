@@ -5,9 +5,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 
-// The server reads TLT_DATA_DIR when it is loaded, so the folder is set before it is required.
+// The server reads PLANNER_DATA_DIR when it is loaded, so the folder is set before it is required.
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'server-log-test-'));
-process.env.TLT_DATA_DIR = root;
+process.env.PLANNER_DATA_DIR = root;
 const { server } = createRequire(import.meta.url)('../../portal/server/server.cjs');
 
 const HEADERS = { 'X-Requested-With': 'the-toolbox', 'Content-Type': 'application/json' };

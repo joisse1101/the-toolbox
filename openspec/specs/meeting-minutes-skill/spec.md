@@ -81,7 +81,7 @@ When the user says the notes refine minutes already saved, the skill SHALL run t
 - **THEN** nothing is written and the message says the file was not accepted or not found
 
 ### Requirement: Private, outside the CSV stores
-Minutes SHALL live only in `planner/data/meetings/`, which is git-ignored with the rest of `data/` and moves with `TLT_DATA_DIR`. The folder SHALL NOT be a store of the file API, so the server and the portal cannot list, read or write it.
+Minutes SHALL live only in `planner/data/meetings/`, which is git-ignored with the rest of `data/` and moves with `PLANNER_DATA_DIR`. The folder SHALL NOT be a store of the file API, so the server and the portal cannot list, read or write it.
 
 #### Scenario: File API
 - **WHEN** a client requests a store named `meetings` from the file API

@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
+import { spawnSync } from 'node:child_process';
 
 const { legacyDataHint } = createRequire(import.meta.url)('../../logic/storage/paths.cjs');
 
@@ -33,4 +34,16 @@ test('legacyDataHint: a user-stories folder beside no backlogs folder is renamed
   assert.match(legacyDataHint({ root, dataDir, custom: true }), /Rename-Item .*user-stories.* backlogs/);
   fs.mkdirSync(path.join(dataDir, 'backlogs'));
   assert.equal(legacyDataHint({ root, dataDir, custom: true }), null);
+});
+
+test('PLANNER_DATA_DIR sets the data folder; the old TLT_DATA_DIR still does, with a warning', () => {
+  const dataDir = (env) => spawnSync(process.execPath, ['-e', "console.log(require(process.argv[1]).DATA_DIR)", path.resolve('planner/logic/storage/paths.cjs')], {
+    encoding: 'utf8', env: { ...process.env, PLANNER_DATA_DIR: '', TLT_DATA_DIR: '', ...env },
+  });
+  const current = dataDir({ PLANNER_DATA_DIR: path.resolve('x-new') });
+  assert.equal(current.stdout.trim(), path.resolve('x-new'));
+  assert.equal(current.stderr, '');
+  const old = dataDir({ TLT_DATA_DIR: path.resolve('x-old') });
+  assert.equal(old.stdout.trim(), path.resolve('x-old'));
+  assert.match(old.stderr, /TLT_DATA_DIR is now PLANNER_DATA_DIR/);
 });

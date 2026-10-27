@@ -55,7 +55,7 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
   const table = useRef(null);
   const wrap = useRef(null);
   const [available, setAvailable] = useState(Infinity); // width the columns can share; unknown (or the tab hidden) = no limit
-  const columns = usePanelSizes('tlt.colWidth', COLUMN_DEFAULTS, COLUMN_LIMITS);
+  const columns = usePanelSizes('planner.colWidth', COLUMN_DEFAULTS, COLUMN_LIMITS);
   // Stored widths scaled down when they do not fit the container, so the table does not scroll sideways (unless even the
   // minimum widths do not fit). The stored widths stay as the user set them and apply again in a wider window.
   const shown = useMemo(() => {

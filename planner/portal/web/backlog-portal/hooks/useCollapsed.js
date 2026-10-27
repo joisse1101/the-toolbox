@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { parseClosed, pruneClosed, reveal as revealGroup, serializeClosed, toggleLevel as toggleGroupLevel } from '../../lib/collapse.js';
 
-const storageKey = (file) => `tlt.collapsed.${file}`;
+const storageKey = (file) => `planner.collapsed.${file}`;
 
 // The browser store can be missing or throw (private window, blocked site data): the folds then last until the page closes.
 const readStored = (name) => {
@@ -19,7 +19,7 @@ const writeStored = (name, value) => {
   }
 };
 
-// The folded Epic and Feature groups of the story list for backlog `file`, kept in the browser under `tlt.collapsed.<file>`
+// The folded Epic and Feature groups of the story list for backlog `file`, kept in the browser under `planner.collapsed.<file>`
 // (see planner/portal/web/lib/collapse.js for what a key is). `groups` is `groupByEpic(stories)`; `ready` is true once a backlog is loaded, and only
 // then are the keys of groups that have left the backlog forgotten. `toggleKey` folds one group, `toggleLevel` every group of a
 // level ('epic' or 'feature'), `reveal` opens one Feature and its Epic.

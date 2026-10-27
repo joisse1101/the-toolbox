@@ -9,7 +9,7 @@ Small local tools for a team lead. Each tool is a React page (built with Vite) t
 | `planner/portal/web/` | The React pages and the Vite config. Builds into `planner/portal/dist/`. |
 | `planner/portal/server/` | `server.cjs`: serves `planner/portal/dist/` and the CSV file API. |
 | `planner/logic/` | Pure logic with no UI or server: CSV parsing, the story model, IDs, reviews, proposals, the lexicon. Used by the frontend and by the skill scripts. |
-| `data/` | Your private data (git-ignored): `backlogs/`, `reviews/`, `proposals/`, `lexicons/`, `lexicon-suggestions/`, `backups/`, `logs/` (`writes.jsonl`, one line per save by the portal or a writer, no contents: it shows who wrote a file last). Set `TLT_DATA_DIR` to keep it somewhere else, for example outside the repo. |
+| `data/` | Your private data (git-ignored): `backlogs/`, `reviews/`, `proposals/`, `lexicons/`, `lexicon-suggestions/`, `backups/`, `logs/` (`writes.jsonl`, one line per save by the portal or a writer, no contents: it shows who wrote a file last). Set `PLANNER_DATA_DIR` to keep it somewhere else, for example outside the repo. |
 | `planner/guidelines/` | Backlog standards and point sizing, read by the skills and shown in the portal. |
 | `planner/claude/` | The Claude side that is not a skill: `mcp/` (the `story-tools` MCP server) and `launchers/` (the `.ps1` session starters). Both call the skills. |
 | `.claude/skills/` | The skills, each with its `SKILL.md`, scripts, locked settings and command guard, plus `_shared/` (helpers the skill scripts share). Must stay here for Claude Code to find them. |
@@ -25,7 +25,7 @@ npm start        # builds if needed, runs the server, opens http://localhost:300
 npm start -- --dev   # server + Vite dev server with hot reload (http://localhost:5173/)
 ```
 
-Options after `--`: `--build` forces a rebuild, `--no-open` skips opening the browser. Set `PORT` to use another port and `TLT_DATA_DIR` to keep the data elsewhere. The server listens on `127.0.0.1` only. Stop everything with Ctrl+C.
+Options after `--`: `--build` forces a rebuild, `--no-open` skips opening the browser. Set `PORT` to use another port and `PLANNER_DATA_DIR` to keep the data elsewhere. The server listens on `127.0.0.1` only. Stop everything with Ctrl+C.
 
 You can still run the pieces yourself: `npm run build`, `node planner/portal/server/server.cjs`, `npm run dev` (needs the server running; it proxies `/api`).
 

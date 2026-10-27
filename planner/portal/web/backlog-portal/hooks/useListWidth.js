@@ -11,7 +11,7 @@ const DEFAULTS = {
 
 // The width of a tab's list panel: `style` goes on the tab's `.editor` element, `handleProps` on its ResizeHandle.
 export default function useListWidth(tab) {
-  const { widths, setWidth, commit, reset } = usePanelSizes('tlt.listWidth', DEFAULTS[tab], LIST_WIDTH);
+  const { widths, setWidth, commit, reset } = usePanelSizes('planner.listWidth', DEFAULTS[tab], LIST_WIDTH);
   const width = widths[tab];
   return {
     style: { '--list-width': `${width}px` },

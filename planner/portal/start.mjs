@@ -3,7 +3,7 @@
 //   --dev      runs the server plus the Vite dev server (hot reload) and opens the Vite page
 //   --build    forces a rebuild first
 //   --no-open  does not open the browser
-// PORT and TLT_DATA_DIR are passed through to the server. Ctrl+C stops everything.
+// PORT and PLANNER_DATA_DIR are passed through to the server. Ctrl+C stops everything.
 
 import fs from 'node:fs';
 import path from 'node:path';

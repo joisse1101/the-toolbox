@@ -27,7 +27,7 @@ $root = Split-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) -Pare
 Set-Location $root
 $propose = '.claude/skills/propose-stories'
 . (Join-Path $PSScriptRoot 'story-tools-config.ps1')
-$dataDir = if ($env:TLT_DATA_DIR) { $env:TLT_DATA_DIR } else { Join-Path $root 'planner/data' }
+$dataDir = if ($env:PLANNER_DATA_DIR) { $env:PLANNER_DATA_DIR } elseif ($env:TLT_DATA_DIR) { Write-Host "TLT_DATA_DIR is now PLANNER_DATA_DIR; the old name still works for now." -ForegroundColor Yellow; $env:TLT_DATA_DIR } else { Join-Path $root 'planner/data' }
 
 function Stop-Launcher([string]$Message) {
   Write-Host $Message -ForegroundColor Red
@@ -78,5 +78,5 @@ try {
     --permission-mode "auto" `
     --settings "$propose/locked-settings.json"
 } finally {
-  Remove-Item -LiteralPath $mcp, $env:TLT_MCP_READY_FILE -Force -ErrorAction SilentlyContinue
+  Remove-Item -LiteralPath $mcp, $env:PLANNER_MCP_READY_FILE -Force -ErrorAction SilentlyContinue
 }

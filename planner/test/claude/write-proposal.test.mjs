@@ -118,10 +118,10 @@ test('a dependency on an earlier proposal needs proposed:, and a failed run keep
 });
 
 test('CLI: prints the IDs on success; exits 1 with "Nothing was written" on invalid input; extra arguments exit 2', () => {
-  // The real script, pointed at a temp data folder through TLT_DATA_DIR.
+  // The real script, pointed at a temp data folder through PLANNER_DATA_DIR.
   const root = temp();
   const cli = (args, input) => spawnSync(process.execPath, [SCRIPT, ...args], {
-    input: JSON.stringify(input), encoding: 'utf8', env: { ...process.env, TLT_DATA_DIR: root },
+    input: JSON.stringify(input), encoding: 'utf8', env: { ...process.env, PLANNER_DATA_DIR: root },
   });
 
   const ok = cli(['data.csv'], [story()]);
@@ -189,7 +189,7 @@ test('a rejected patch writes nothing, and a patch against a missing file create
 test('CLI: reports patched IDs, with and without added ones', () => {
   const root = temp();
   const cli = (input) => spawnSync(process.execPath, [SCRIPT, 'data.csv'], {
-    input: JSON.stringify(input), encoding: 'utf8', env: { ...process.env, TLT_DATA_DIR: root },
+    input: JSON.stringify(input), encoding: 'utf8', env: { ...process.env, PLANNER_DATA_DIR: root },
   });
   cli([story()]);
   const patched = cli([{ id: 'NEW-1', points: 5 }]);
@@ -379,7 +379,7 @@ test('a batch sent again after one story went missing adds only the missing one'
 test('CLI: --check prints what would happen and writes nothing; a repeat is reported as skipped', () => {
   const root = temp();
   const cli = (args, input) => spawnSync(process.execPath, [SCRIPT, ...args], {
-    input: JSON.stringify(input), encoding: 'utf8', env: { ...process.env, TLT_DATA_DIR: root },
+    input: JSON.stringify(input), encoding: 'utf8', env: { ...process.env, PLANNER_DATA_DIR: root },
   });
   const checked = cli(['data.csv', '--check'], [story()]);
   assert.equal(checked.status, 0, checked.stderr);
@@ -431,7 +431,7 @@ test('a write that does not stick fails naming the missing story, and is not rep
 test('CLI and message: the IDs read back are listed', () => {
   const root = temp();
   const out = spawnSync(process.execPath, [SCRIPT, 'data.csv'], {
-    input: JSON.stringify([story(), story({ title: 'Two' })]), encoding: 'utf8', env: { ...process.env, TLT_DATA_DIR: root },
+    input: JSON.stringify([story(), story({ title: 'Two' })]), encoding: 'utf8', env: { ...process.env, PLANNER_DATA_DIR: root },
   });
   assert.match(out.stdout, /2 in the file now\. On disk: NEW-1, NEW-2\./);
 });

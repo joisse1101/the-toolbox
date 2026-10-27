@@ -27,7 +27,7 @@ function temp() {
 async function connect(root, args = []) {
   const client = new Client({ name: 'test', version: '0' });
   await client.connect(new StdioClientTransport({
-    command: process.execPath, args: [SERVER, ...args], env: { ...process.env, TLT_DATA_DIR: root }, stderr: 'ignore',
+    command: process.execPath, args: [SERVER, ...args], env: { ...process.env, PLANNER_DATA_DIR: root }, stderr: 'ignore',
   }));
   return client;
 }

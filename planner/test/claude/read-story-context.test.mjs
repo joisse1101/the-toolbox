@@ -315,7 +315,7 @@ test('lexicon-suggestions: the open suggestions in full, the number decided, a n
 
 test('CLI: --section reviews takes story IDs, and IDs with another section are refused', () => {
   const root = withReview(ROWS);
-  const run = (...args) => spawnSync(process.execPath, ['.claude/skills/explore-stories/read-story-context.mjs', ...args], { cwd: REPO, encoding: 'utf8', env: { ...process.env, TLT_DATA_DIR: root } });
+  const run = (...args) => spawnSync(process.execPath, ['.claude/skills/explore-stories/read-story-context.mjs', ...args], { cwd: REPO, encoding: 'utf8', env: { ...process.env, PLANNER_DATA_DIR: root } });
   const out = run('data.csv', '--section', 'reviews', 'IAM-0002');
   assert.equal(out.status, 0, out.stderr);
   assert.match(out.stdout, /open rows of IAM-0002/);

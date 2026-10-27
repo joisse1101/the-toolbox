@@ -36,7 +36,7 @@ test('the ready file appears only once the tool list has been sent, not at the h
   const client = new Client({ name: 'test', version: '0' });
   try {
     await client.connect(new StdioClientTransport({
-      command: process.execPath, args: [SERVER], env: { ...process.env, TLT_DATA_DIR: dir, TLT_MCP_READY_FILE: readyFile }, stderr: 'ignore',
+      command: process.execPath, args: [SERVER], env: { ...process.env, PLANNER_DATA_DIR: dir, PLANNER_MCP_READY_FILE: readyFile }, stderr: 'ignore',
     }));
     // connect() has completed the initialize handshake: a prompt released now would still find no tools.
     await new Promise((r) => setTimeout(r, 600));
@@ -49,10 +49,10 @@ test('the ready file appears only once the tool list has been sent, not at the h
   }
 });
 
-test('without TLT_MCP_READY_FILE the server writes nothing and still lists its tools', async () => {
+test('without PLANNER_MCP_READY_FILE the server writes nothing and still lists its tools', async () => {
   const dir = temp();
-  const env = { ...process.env, TLT_DATA_DIR: dir };
-  delete env.TLT_MCP_READY_FILE;
+  const env = { ...process.env, PLANNER_DATA_DIR: dir };
+  delete env.PLANNER_MCP_READY_FILE;
   const client = new Client({ name: 'test', version: '0' });
   try {
     await client.connect(new StdioClientTransport({ command: process.execPath, args: [SERVER], env, stderr: 'ignore' }));
@@ -66,9 +66,9 @@ test('without TLT_MCP_READY_FILE the server writes nothing and still lists its t
 test('the hook holds the prompt while the server is starting and releases it after the tools are listed', async () => {
   const dir = temp();
   const readyFile = path.join(dir, 'story-tools.ready');
-  const env = { TLT_DATA_DIR: dir, TLT_MCP_READY_FILE: readyFile };
+  const env = { PLANNER_DATA_DIR: dir, PLANNER_MCP_READY_FILE: readyFile };
   let released = false;
-  const hook = runHook({ ...env, TLT_MCP_WAIT_MS: '20000' }).then((r) => { released = true; return r; });
+  const hook = runHook({ ...env, PLANNER_MCP_WAIT_MS: '20000' }).then((r) => { released = true; return r; });
   const client = new Client({ name: 'test', version: '0' });
   try {
     await client.connect(new StdioClientTransport({ command: process.execPath, args: [SERVER], env: { ...process.env, ...env }, stderr: 'ignore' }));
@@ -87,11 +87,11 @@ test('the hook holds the prompt while the server is starting and releases it aft
 test('the hook tells Claude when the server never connects, and does nothing outside a launcher session', async () => {
   const dir = temp();
   try {
-    const late = await runHook({ TLT_MCP_READY_FILE: path.join(dir, 'never.ready'), TLT_MCP_WAIT_MS: '300' });
+    const late = await runHook({ PLANNER_MCP_READY_FILE: path.join(dir, 'never.ready'), PLANNER_MCP_WAIT_MS: '300' });
     assert.equal(late.code, 0);
     assert.match(late.out, /did not finish connecting/);
     const env = { ...process.env };
-    delete env.TLT_MCP_READY_FILE;
+    delete env.PLANNER_MCP_READY_FILE;
     const plain = await new Promise((resolve) => {
       const child = spawn(process.execPath, [HOOK], { env, stdio: ['ignore', 'pipe', 'inherit'] });
       let out = '';
@@ -119,7 +119,7 @@ test('the story launchers are wired to the hook: settings name an existing scrip
   const config = fs.readFileSync(path.join(ROOT, 'planner/claude/launchers/story-tools-config.ps1'), 'utf8');
   assert.match(config, /function New-StoryToolsConfig/);
   assert.match(config, /planner\/claude\/mcp\/story-tools\.mjs/);
-  assert.match(config, /TLT_MCP_READY_FILE/);
+  assert.match(config, /PLANNER_MCP_READY_FILE/);
   for (const name of ['shape-stories.ps1', 'explore-stories.ps1']) {
     const launcher = fs.readFileSync(path.join(ROOT, 'planner/claude/launchers', name), 'utf8');
     assert.match(launcher, /story-tools-config\.ps1/, `${name} loads the config helper`);
@@ -127,7 +127,7 @@ test('the story launchers are wired to the hook: settings name an existing scrip
     assert.match(launcher, /--strict-mcp-config/, `${name} uses only that config`);
     assert.match(launcher, /locked-settings\.json/, `${name} loads the settings that carry the hook`);
     assert.match(launcher, /--tools "Skill,AskUserQuestion" `/, `${name} gives the session neither Read nor Grep`);
-    assert.doesNotMatch(launcher, /guard-read|TLT_READ_ALLOW|Confirm-ReadLimit|Test-ReadGuard|Get-ReadFiles|append-system-prompt/, `${name} has no read gate left`);
+    assert.doesNotMatch(launcher, /guard-read|Confirm-ReadLimit|Test-ReadGuard|Get-ReadFiles|append-system-prompt/, `${name} has no read gate left`);
   }
-  assert.doesNotMatch(config, /TLT_READ_ALLOW|Confirm-ReadLimit|Test-ReadGuard|Get-ReadFiles/);
+  assert.doesNotMatch(config, /Confirm-ReadLimit|Test-ReadGuard|Get-ReadFiles/);
 });

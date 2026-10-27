@@ -3,7 +3,7 @@
 //   node planner/claude/mcp/story-tools.mjs --read-only  read_context, search_stories and read_file only
 // The tools call the same exported functions as the CLI scripts (read-story-context.mjs, write-proposal.mjs, write-lexicon.mjs,
 // write-review.mjs), so the validation and the error text are the scripts'. stdout carries the protocol: log to stderr only.
-// With TLT_MCP_READY_FILE set it writes that file once it has sent the client its tool list.
+// With PLANNER_MCP_READY_FILE set it writes that file once it has sent the client its tool list.
 // Permissions are not decided here: the launcher pre-approves read_context, search_stories, read_file and check_drafts (--allowedTools; none
 // writes), so Claude Code asks before a writer.
 
@@ -227,11 +227,11 @@ if (isMain) {
   // Code lists the tools after it, and a prompt sent in between sees the server as still connecting. So the file is written once
   // the tools/list reply has gone out.
   const transport = new StdioServerTransport();
-  if (process.env.TLT_MCP_READY_FILE) {
+  if (process.env.PLANNER_MCP_READY_FILE) {
     const send = transport.send.bind(transport);
     transport.send = async (message) => {
       await send(message);
-      if (Array.isArray(message.result?.tools)) fs.writeFileSync(process.env.TLT_MCP_READY_FILE, 'ready');
+      if (Array.isArray(message.result?.tools)) fs.writeFileSync(process.env.PLANNER_MCP_READY_FILE, 'ready');
     };
   }
   await server.connect(transport);

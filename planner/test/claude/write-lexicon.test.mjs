@@ -114,7 +114,7 @@ test('invalid JSON is reported with a position and writes nothing', () => {
 
 test('the script reports what it did, and a refused run exits 1', () => {
   const root = temp();
-  const env = { ...process.env, TLT_DATA_DIR: root };
+  const env = { ...process.env, PLANNER_DATA_DIR: root };
   const ok = spawnSync('node', [SCRIPT, 'data.csv'], { input: '[{"term":"User","definition":"A person."}]', env, encoding: 'utf8' });
   assert.equal(ok.status, 0);
   assert.match(ok.stdout, /^Added 1 term to lexicons\/data\.csv \(User\); 1 in the lexicon now\./);
