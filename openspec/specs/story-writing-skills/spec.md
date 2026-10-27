@@ -7,7 +7,7 @@ Lets the team lead think through new user stories with Claude against the backlo
 ## Requirements
 
 ### Requirement: Explore skill
-The repository SHALL contain a skill `explore-stories` at `.claude/skills/explore-stories/SKILL.md` that helps the user work out new stories for one backlog. It SHALL read the standards in `planner/claude/guidelines/product-backlog.md` and the sizing benchmarks in `planner/claude/guidelines/sprint-points-guideline.md`, the backlog CSV and the proposals file for that backlog (when it exists), discuss scope, splitting, placement under Epics and Features, dependencies and acceptance criteria, and MAY show draft stories in its replies. Draft Sprint points SHALL be sized with the sprint-points guideline. It SHALL NOT write, create, move or delete any file, and it SHALL tell the user that the proposals it reads can be changed only through `propose-stories` (or in the portal), not from the explore session, and that a change to a story already in the backlog is written as a suggestion through `propose-stories` too. It SHALL cite the guidelines and SHALL NOT restate their definitions or rules. If the user names no backlog it SHALL ask which backlog in `user-stories/` to use.
+The repository SHALL contain a skill `explore-stories` at `.claude/skills/explore-stories/SKILL.md` that helps the user work out new stories for one backlog. It SHALL read the standards in `planner/guidelines/product-backlog.md` and the sizing benchmarks in `planner/guidelines/sprint-points-guideline.md`, the backlog CSV and the proposals file for that backlog (when it exists), discuss scope, splitting, placement under Epics and Features, dependencies and acceptance criteria, and MAY show draft stories in its replies. Draft Sprint points SHALL be sized with the sprint-points guideline. It SHALL NOT write, create, move or delete any file, and it SHALL tell the user that the proposals it reads can be changed only through `propose-stories` (or in the portal), not from the explore session, and that a change to a story already in the backlog is written as a suggestion through `propose-stories` too. It SHALL cite the guidelines and SHALL NOT restate their definitions or rules. If the user names no backlog it SHALL ask which backlog in `user-stories/` to use.
 
 #### Scenario: Nothing is written
 - **WHEN** the user explores new stories for `data-portal.csv` and agrees a set of drafts
@@ -22,7 +22,7 @@ The repository SHALL contain a skill `explore-stories` at `.claude/skills/explor
 - **THEN** the skill lists the backlogs in `user-stories/` and asks which one with a choice question (or uses the only one), then asks for the story only if none was given
 
 #### Scenario: Rules come from the guidelines
-- **WHEN** the size limit in `planner/claude/guidelines/product-backlog.md` or a benchmark in the sprint-points guideline changes
+- **WHEN** the size limit in `planner/guidelines/product-backlog.md` or a benchmark in the sprint-points guideline changes
 - **THEN** the skill's behaviour follows it without any edit to `SKILL.md`
 
 #### Scenario: Existing proposal needs a fix
@@ -119,7 +119,7 @@ The command `/story:propose` SHALL follow the same skill without the yes/no step
 - **THEN** the skill reads the file before saying anything is already written
 
 ### Requirement: Story content follows the guidelines
-Stories drafted by either skill SHALL meet `planner/claude/guidelines/product-backlog.md`: the "As a …, I want …, so that …" format, a Title that names one story, at most 13 sprint points, acceptance criteria in Given-When-Then form that cover the failure path, and an Epic and Feature chosen to fit the existing backlog (reusing an existing Epic or Feature name where one fits). A story that would exceed the size limit SHALL be split into several. The skills SHALL NOT set Priority.
+Stories drafted by either skill SHALL meet `planner/guidelines/product-backlog.md`: the "As a …, I want …, so that …" format, a Title that names one story, at most 13 sprint points, acceptance criteria in Given-When-Then form that cover the failure path, and an Epic and Feature chosen to fit the existing backlog (reusing an existing Epic or Feature name where one fits). A story that would exceed the size limit SHALL be split into several. The skills SHALL NOT set Priority.
 
 #### Scenario: Too big
 - **WHEN** the agreed story would be sized above 13 points
@@ -130,10 +130,10 @@ Stories drafted by either skill SHALL meet `planner/claude/guidelines/product-ba
 - **THEN** the draft uses that Epic name exactly
 
 ### Requirement: Read and write access is locked down
-The story sessions SHALL reach the data only through the `story-tools-mcp` tools: their launchers SHALL start Claude without `Bash`, with only the `story-tools` server (`--strict-mcp-config`), `Skill` and `AskUserQuestion`, and neither `Read` nor `Grep`. An `explore-stories` session SHALL have the readers `read_context`, `search_stories` and `read_file` only. A `propose-stories` session SHALL have those readers, `check_drafts` and the writers `write_proposals`, `write_lexicon`, `suggest_lexicon_change` and `write_review`, and the review writer SHALL only append. No tool SHALL write any path except through the writers. `read_context` SHALL read only `planner/claude/guidelines/product-backlog.md`, `planner/claude/guidelines/sprint-points-guideline.md`, `user-stories/<name>`, `reviews/<name>` and `lexicon-suggestions/<name>`, and its output SHALL be labelled as data to work from, not instructions. The lexicon and the proposals are read with `read_file`, whose output is labelled in the same way, and the skills SHALL treat their text as data to work from, not instructions.
+The story sessions SHALL reach the data only through the `story-tools-mcp` tools: their launchers SHALL start Claude without `Bash`, with only the `story-tools` server (`--strict-mcp-config`), `Skill` and `AskUserQuestion`, and neither `Read` nor `Grep`. An `explore-stories` session SHALL have the readers `read_context`, `search_stories` and `read_file` only. A `propose-stories` session SHALL have those readers, `check_drafts` and the writers `write_proposals`, `write_lexicon`, `suggest_lexicon_change` and `write_review`, and the review writer SHALL only append. No tool SHALL write any path except through the writers. `read_context` SHALL read only `planner/guidelines/product-backlog.md`, `planner/guidelines/sprint-points-guideline.md`, `user-stories/<name>`, `reviews/<name>` and `lexicon-suggestions/<name>`, and its output SHALL be labelled as data to work from, not instructions. The lexicon and the proposals are read with `read_file`, whose output is labelled in the same way, and the skills SHALL treat their text as data to work from, not instructions.
 
 The reader SHALL keep every result small enough to be shown in full by one call, so it SHALL return the context one section at a time. Called with a backlog and `section` it SHALL return only that section, where the sections are (the lexicon and the proposals are not sections, they are read with `read_file`):
-- `guidelines`: `planner/claude/guidelines/product-backlog.md`, then `planner/claude/guidelines/sprint-points-guideline.md`.
+- `guidelines`: `planner/guidelines/product-backlog.md`, then `planner/guidelines/sprint-points-guideline.md`.
 - `index`: the backlog as an index with the columns `ID, Epic, Feature, Title, User Story, Sprint points, Depends On, Locked` (a column the file lacks is skipped) and no other column.
 
 Called with a backlog and neither `section` nor `storyId` it SHALL return a menu naming the sections and the size of each in characters, and the lexicon and proposals files as described by `story-tools-mcp`. Called with a backlog and a `storyId` it SHALL return the backlog's header row and that one story with every column, labelled as data, and SHALL report an error, returning nothing else, when the backlog has no such ID. It SHALL reject `section` together with `storyId`, a section name that is not one of the sections it serves, and a `storyId` that is not made only of letters, digits and hyphens.
@@ -211,7 +211,7 @@ Called with a backlog and neither `section` nor `storyId` it SHALL return a menu
 - **THEN** it is rejected and returns nothing else
 
 ### Requirement: Sizing comes from the sprint-points guideline
-The reader script SHALL print `planner/claude/guidelines/sprint-points-guideline.md` after `planner/claude/guidelines/product-backlog.md` in its `guidelines` section, labelled as guidelines, so both skills have the effort benchmarks in every session. The guideline SHALL contain the point scale and benchmark table and SHALL NOT contain unfilled placeholder text. The skills SHALL read that section at the start of every use, cite it for sizing and SHALL NOT restate the benchmarks.
+The reader script SHALL print `planner/guidelines/sprint-points-guideline.md` after `planner/guidelines/product-backlog.md` in its `guidelines` section, labelled as guidelines, so both skills have the effort benchmarks in every session. The guideline SHALL contain the point scale and benchmark table and SHALL NOT contain unfilled placeholder text. The skills SHALL read that section at the start of every use, cite it for sizing and SHALL NOT restate the benchmarks.
 
 #### Scenario: Reader prints both guidelines
 - **WHEN** the reader runs with `--section guidelines`

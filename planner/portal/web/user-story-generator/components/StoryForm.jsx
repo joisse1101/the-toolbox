@@ -8,7 +8,7 @@ import { criterionNumberOf } from '../../../../logic/review.js';
 import { issueClass } from './issues.js';
 import Info from './Info.jsx';
 import SuggestionList, { Suggestion } from './Suggestions.jsx';
-import guideline from '../../../../claude/guidelines/sprint-points-guideline.md?raw';
+import guideline from '../../../../guidelines/sprint-points-guideline.md?raw';
 
 const $ = (id) => document.getElementById(id);
 

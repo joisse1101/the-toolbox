@@ -1,6 +1,6 @@
 ---
 name: review-backlog
-description: Review a user-story backlog CSV from user-stories/ against planner/claude/guidelines/product-backlog.md (Epic > Feature > Story hierarchy, INVEST, acceptance-criteria quality and edge cases) and across stories, the backlog's lexicon and its proposals (duplicates, overlaps, contradictions, role and term drift), and report findings with suggested fixes, also written as a review CSV the portal can apply. Never edits the backlog CSV. Use when the user asks to review, audit, sanity-check, consistency-check or "INVEST-check" a backlog or its stories.
+description: Review a user-story backlog CSV from user-stories/ against planner/guidelines/product-backlog.md (Epic > Feature > Story hierarchy, INVEST, acceptance-criteria quality and edge cases) and across stories, the backlog's lexicon and its proposals (duplicates, overlaps, contradictions, role and term drift), and report findings with suggested fixes, also written as a review CSV the portal can apply. Never edits the backlog CSV. Use when the user asks to review, audit, sanity-check, consistency-check or "INVEST-check" a backlog or its stories.
 allowed-tools: Bash(node .claude/skills/review-backlog/read-backlog.mjs:*), Bash(node .claude/skills/review-backlog/write-review.mjs:*)
 ---
 
@@ -15,8 +15,8 @@ Review one backlog CSV, write the suggestions to a review CSV and write a report
    - `checks`: the mechanical problems found without judgement (see "Start from the checks").
    - `lexicon`: the backlog's defined terms (`Term, Part of, Definition, Avoid, Notes`; `Avoid` is a `;`-separated list of words stories must not use). It says "no lexicon file" when there is none.
    - `proposals`: the stories proposed but not yet in the backlog (IDs `NEW-<n>`; benched ones are left out and counted).
-   - `sizing`: `planner/claude/guidelines/sprint-points-guideline.md`, to judge whether a story's points fit.
-   - `guidelines`: `planner/claude/guidelines/product-backlog.md`, the rules for each level. Do not restate or replace them from memory.
+   - `sizing`: `planner/guidelines/sprint-points-guideline.md`, to judge whether a story's points fit.
+   - `guidelines`: `planner/guidelines/product-backlog.md`, the rules for each level. Do not restate or replace them from memory.
    - every `epic-<n>` in the menu, each one, in turn (see "Review Epic by Epic"). Do not skip an Epic.
 3. The scope line reads `N of M stories submitted for review, K locked (reference only)`. It is left out when the CSV cannot be read; then treat every story as submitted. An `epic-<n>` section is the CSV header row and that Epic's stories. Columns: `ID, Epic, Feature, Title, User Story, Sprint points, Priority, Depends On, User Acceptance Criteria, Notes, Locked, Clarifications`.
    - `Title` is the title of the user story. `Feature` is the functional component the story belongs to.
@@ -36,7 +36,7 @@ If you have a **strong objection** to a locked story (for example it is far over
 
 ## What to check
 
-Every standard (definitions, the size limit, what Independent means, acceptance-criteria rules) is in `planner/claude/guidelines/product-backlog.md`, read with the `guidelines` section. Apply it as written; this section only says what to look at and how to treat it.
+Every standard (definitions, the size limit, what Independent means, acceptance-criteria rules) is in `planner/guidelines/product-backlog.md`, read with the `guidelines` section. Apply it as written; this section only says what to look at and how to treat it.
 
 ### 1. Hierarchy (Epic > Feature > Story)
 
@@ -60,7 +60,7 @@ Check each story's criteria against the guidelines' acceptance-criteria rules. R
 
 For a vague criterion, suggest a measurable wording but say the user must confirm the threshold.
 
-Then check the criteria against the **edge-case checklist** in `planner/claude/guidelines/product-backlog.md` (section 7), skipping every item it says does not apply to the story. Classify a missing case as the guidelines say: a case the story's Title and "I want" already imply is an `add` row on `User Acceptance Criteria` (Area `Acceptance criteria`); a case that needs a decision, or would add a capability, user group, permission or rule the story does not imply, is a Clarifications `append` row (Area `Clarification`), never a criterion.
+Then check the criteria against the **edge-case checklist** in `planner/guidelines/product-backlog.md` (section 7), skipping every item it says does not apply to the story. Classify a missing case as the guidelines say: a case the story's Title and "I want" already imply is an `add` row on `User Acceptance Criteria` (Area `Acceptance criteria`); a case that needs a decision, or would add a capability, user group, permission or rule the story does not imply, is a Clarifications `append` row (Area `Clarification`), never a criterion.
 
 ### 4. Consistency (across stories, the lexicon and the proposals)
 

@@ -36,7 +36,7 @@ function needsBuild() {
   const built = path.join(ROOT, 'planner', 'portal', 'dist', 'index.html');
   if (!fs.existsSync(built)) return true;
   const builtAt = fs.statSync(built).mtimeMs;
-  return ['planner/portal/web', 'planner/logic', 'planner/claude/guidelines'].some((d) => newestMtime(path.join(ROOT, d)) > builtAt);
+  return ['planner/portal/web', 'planner/logic', 'planner/guidelines'].some((d) => newestMtime(path.join(ROOT, d)) > builtAt);
 }
 
 if (!dev && (args.has('--build') || needsBuild())) {
