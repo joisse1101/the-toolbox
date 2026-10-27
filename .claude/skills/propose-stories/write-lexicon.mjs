@@ -3,19 +3,19 @@
 // Reads user-stories/<name> (it must exist) and lexicons/<name>, applies the input and writes lexicons/<name>. The input
 // is a JSON list of { term, definition, avoid?, notes?, partOf? }: every item ADDS a term (and needs a definition); a term
 // that is already there is refused, because a change to it is a suggestion (suggest-lexicon.mjs). The rules are those
-// of the portal's Lexicon tab (core/lexicon.js), checked on the lexicon as it will be; one invalid item means nothing is
+// of the portal's Lexicon tab (planner/logic/lexicon.js), checked on the lexicon as it will be; one invalid item means nothing is
 // written. There is no output path argument: the target is fixed, user-stories/ is only checked, and no term is changed or removed.
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
-import { applyTermItems, composeLexicon, emptyLexicon, parseLexicon } from '../../../core/lexicon.js';
+import { applyTermItems, composeLexicon, emptyLexicon, parseLexicon } from '../../../planner/logic/lexicon.js';
 import { describeParseError, writeAtomic } from './write-proposal.mjs';
 
 const require = createRequire(import.meta.url);
-const { validateName } = require('../../../core/file-name.cjs'); // same name rules as the file API
-const { DATA_DIR } = require('../../../core/paths.cjs');
+const { validateName } = require('../../../planner/logic/file-name.cjs'); // same name rules as the file API
+const { DATA_DIR } = require('../../../planner/logic/paths.cjs');
 
 // Reads the backlog and the lexicon and validates the input against them. Returns { ok: true, file, result } (result: the
 // applyTermItems result, with the lexicon as it will be) or { ok: false, errors }. Writes nothing.

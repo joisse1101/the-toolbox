@@ -11,15 +11,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
-import { loadBacklog } from '../../../core/model.js';
+import { loadBacklog } from '../../../planner/logic/model.js';
 import {
   parseReview, serializeReview, validateFindings, fillCurrent, mergeStatus,
-} from '../../../core/review.js';
+} from '../../../planner/logic/review.js';
 
 const require = createRequire(import.meta.url);
-const { validateName } = require('../../../core/file-name.cjs'); // same name rules as the file API
-const { DATA_DIR } = require('../../../core/paths.cjs');
-const { logWrite } = require('../../../core/write-log.cjs');
+const { validateName } = require('../../../planner/logic/file-name.cjs'); // same name rules as the file API
+const { DATA_DIR } = require('../../../planner/logic/paths.cjs');
+const { logWrite } = require('../../../planner/logic/write-log.cjs');
 
 // A JSON.parse failure message plus line, column and a short excerpt, so a missing comma can be found.
 function describeParseError(err, text) {

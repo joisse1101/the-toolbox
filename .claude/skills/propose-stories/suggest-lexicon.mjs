@@ -1,18 +1,18 @@
 // How the propose-stories skill suggests renaming, deleting or editing (definition, avoid, notes, part of) a lexicon term (used by the story-tools MCP server's
 // suggest_lexicon_change; there is no command line form). Reads user-stories/<name> (it must exist) and lexicons/<name>,
 // appends open rows to lexicon-suggestions/<name> and never touches the lexicon: the user applies a suggestion in the
-// portal's Lexicon tab. The rules are core/lexicon-suggestions.js's; one invalid item means nothing is written.
+// portal's Lexicon tab. The rules are planner/logic/lexicon-suggestions.js's; one invalid item means nothing is written.
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-import { emptyLexicon, parseLexicon } from '../../../core/lexicon.js';
-import { composeSuggestions, emptySuggestions, FIELD_LABELS, impactOf, parseSuggestions, validateItems } from '../../../core/lexicon-suggestions.js';
+import { emptyLexicon, parseLexicon } from '../../../planner/logic/lexicon.js';
+import { composeSuggestions, emptySuggestions, FIELD_LABELS, impactOf, parseSuggestions, validateItems } from '../../../planner/logic/lexicon-suggestions.js';
 import { writeAtomic } from './write-proposal.mjs';
 
 const require = createRequire(import.meta.url);
-const { validateName } = require('../../../core/file-name.cjs'); // same name rules as the file API
-const { DATA_DIR } = require('../../../core/paths.cjs');
+const { validateName } = require('../../../planner/logic/file-name.cjs'); // same name rules as the file API
+const { DATA_DIR } = require('../../../planner/logic/paths.cjs');
 
 const readIfThere = (dir, file, parse, empty) => {
   try {

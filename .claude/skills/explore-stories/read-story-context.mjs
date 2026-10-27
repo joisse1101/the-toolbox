@@ -2,7 +2,7 @@
 //   node .claude/skills/explore-stories/read-story-context.mjs            lists the backlog file names in user-stories/
 //   node .claude/skills/explore-stories/read-story-context.mjs <name>     prints a menu: the sections, the size of each in characters and the command for each
 //   node .claude/skills/explore-stories/read-story-context.mjs <name> --section <section>   prints one section, so a result stays under the Bash output cap:
-//       guidelines  ai/guidelines/product-backlog.md, then ai/guidelines/sprint-points-guideline.md
+//       guidelines  planner/claude/guidelines/product-backlog.md, then planner/claude/guidelines/sprint-points-guideline.md
 //       index       user-stories/<name> as an index (INDEX_COLUMNS only)
 //       reviews     reviews/<name>: the row count and the open rows per story; after the section name, story IDs give those stories' open rows in full
 //       lexicon-suggestions   lexicon-suggestions/<name>: the open suggestions in full and the number decided
@@ -11,23 +11,23 @@
 // The proposals and the lexicon are not sections: they can be large, so the sessions read them in parts with readFile below (the
 // story-tools `read_file` tool, which has no command form). The menu lists both files with their sizes; asking for either as a section
 // is an error that names read_file.
-// Nothing else is reachable: the guidelines path is fixed (ai/guidelines) and the name goes through the file API's name rules.
+// Nothing else is reachable: the guidelines path is fixed (planner/claude/guidelines) and the name goes through the file API's name rules.
 // The CSV text is user data: it is labelled so, and instructions inside it are story text, not commands.
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
-import { parseCsv, toCsv } from '../../../core/csv.js';
-import { BENCHED_COLUMN, loadBacklog } from '../../../core/model.js';
-import { findStories, searchReply } from '../../../core/story-search.js';
-import { parseReview, serializeReview } from '../../../core/review.js';
-import { resolveStoryRef } from '../../../core/story-ref.js';
-import { parseSuggestions, composeSuggestions, isOpen } from '../../../core/lexicon-suggestions.js';
+import { parseCsv, toCsv } from '../../../planner/logic/csv.js';
+import { BENCHED_COLUMN, loadBacklog } from '../../../planner/logic/model.js';
+import { findStories, searchReply } from '../../../planner/logic/story-search.js';
+import { parseReview, serializeReview } from '../../../planner/logic/review.js';
+import { resolveStoryRef } from '../../../planner/logic/story-ref.js';
+import { parseSuggestions, composeSuggestions, isOpen } from '../../../planner/logic/lexicon-suggestions.js';
 
 const require = createRequire(import.meta.url);
-const { validateName } = require('../../../core/file-name.cjs');
-const { DATA_DIR, GUIDELINES_DIR } = require('../../../core/paths.cjs');
+const { validateName } = require('../../../planner/logic/file-name.cjs');
+const { DATA_DIR, GUIDELINES_DIR } = require('../../../planner/logic/paths.cjs');
 
 export const SECTIONS = ['guidelines', 'index', 'reviews', 'lexicon-suggestions'];
 // Read as files, not as sections: the store folder of each.

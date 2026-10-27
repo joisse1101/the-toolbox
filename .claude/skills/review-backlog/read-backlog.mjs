@@ -11,13 +11,13 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 
-import { loadBacklog, groupByEpic, serializeBacklog } from '../../../core/model.js';
-import { parseLexicon } from '../../../core/lexicon.js';
-import { backlogChecks } from '../../../core/backlog-checks.js';
+import { loadBacklog, groupByEpic, serializeBacklog } from '../../../planner/logic/model.js';
+import { parseLexicon } from '../../../planner/logic/lexicon.js';
+import { backlogChecks } from '../../../planner/logic/backlog-checks.js';
 
 const require = createRequire(import.meta.url);
-const { validateName } = require('../../../core/file-name.cjs');
-const { DATA_DIR, GUIDELINES_DIR } = require('../../../core/paths.cjs');
+const { validateName } = require('../../../planner/logic/file-name.cjs');
+const { DATA_DIR, GUIDELINES_DIR } = require('../../../planner/logic/paths.cjs');
 
 export function listBacklogs({ dataDir = DATA_DIR } = {}) {
   return fs.readdirSync(path.join(dataDir, 'user-stories')).filter((f) => /\.csv$/i.test(f)).sort();
