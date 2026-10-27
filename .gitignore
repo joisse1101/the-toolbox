@@ -1,6 +1,6 @@
-data/*
+planner/data/*
 node_modules/
-app/dist/
+planner/portal/dist/
 
 __pycache__/
 .pytest_cache/

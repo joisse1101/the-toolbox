@@ -7,7 +7,7 @@ Holds stories that are proposed but not yet in the backlog, in a separate `propo
 ## Requirements
 
 ### Requirement: Proposals store
-The system SHALL keep proposed stories in a `proposals` folder, one CSV file per backlog with the same file name as the backlog (for example `proposals/data-portal.csv` for `user-stories/data-portal.csv`). The folder SHALL be a registered data folder of the CSV file store, so the existing access rules apply (only `.csv` files directly inside the folder). A proposals file SHALL have the same columns as a backlog CSV, SHALL be opened by Excel as UTF-8, and its content SHALL be git-ignored. The file need not exist: a backlog without one has no proposed stories, and the file SHALL be created when the first proposed story is added.
+The system SHALL keep proposed stories in a `proposals` folder, one CSV file per backlog with the same file name as the backlog (for example `proposals/data-portal.csv` for `backlogs/data-portal.csv`). The folder SHALL be a registered data folder of the CSV file store, so the existing access rules apply (only `.csv` files directly inside the folder). A proposals file SHALL have the same columns as a backlog CSV, SHALL be opened by Excel as UTF-8, and its content SHALL be git-ignored. The file need not exist: a backlog without one has no proposed stories, and the file SHALL be created when the first proposed story is added.
 
 #### Scenario: Same name as the backlog
 - **WHEN** the backlog `data-portal.csv` is open and `proposals/data-portal.csv` exists

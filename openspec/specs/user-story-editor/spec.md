@@ -1,18 +1,18 @@
 ## Purpose
 
-Lets a team lead write and maintain user stories in a browser form, with each backlog stored as a CSV file in the `user-stories` folder that can also be opened directly in Excel.
+Lets a team lead write and maintain user stories in a browser form, with each backlog stored as a CSV file in the `backlogs` folder that can also be opened directly in Excel.
 
 ## Requirements
 
 ### Requirement: Backlog file dropdown
-The tool SHALL show a dropdown of the CSV files in `user-stories/` and load the chosen file's stories into the editor. It SHALL re-read the file from disk each time it is selected and when the browser tab regains focus.
+The tool SHALL show a dropdown of the CSV files in `backlogs/` and load the chosen file's stories into the editor. It SHALL re-read the file from disk each time it is selected and when the browser tab regains focus.
 
 #### Scenario: Files listed on load
-- **WHEN** the tool opens and `user-stories/` contains `a.csv` and `b.csv`
+- **WHEN** the tool opens and `backlogs/` contains `a.csv` and `b.csv`
 - **THEN** the dropdown lists both and one is selected and loaded
 
 #### Scenario: No files yet
-- **WHEN** `user-stories/` contains no CSV files
+- **WHEN** `backlogs/` contains no CSV files
 - **THEN** the dropdown is empty and the editor prompts the user to create a new backlog
 
 #### Scenario: File changed outside the tool
@@ -265,11 +265,11 @@ The tool SHALL let the user rename the selected backlog file. The dropdown SHALL
 - **THEN** the tool shows the reason and keeps the old name
 
 ### Requirement: Open folder
-The tool SHALL provide an action that opens the `user-stories` folder in File Explorer.
+The tool SHALL provide an action that opens the `backlogs` folder in File Explorer.
 
 #### Scenario: Open folder
 - **WHEN** the user clicks "Open folder"
-- **THEN** File Explorer opens at `user-stories/`
+- **THEN** File Explorer opens at `backlogs/`
 
 ### Requirement: Auto-save
 The tool SHALL save the current backlog to its CSV file automatically shortly after the user stops editing, with no Save button. It SHALL show a visible save status (saved, saving, or failed).
@@ -375,7 +375,7 @@ The tool SHALL classify each story. A story is **incomplete** (red) when any of 
 - **THEN** the row and the form have no indicator
 
 ### Requirement: Full-width generator layout
-The user story generator page SHALL use the full width of the browser window, with only a small side margin, instead of a narrow centred column. The story list SHALL have a narrow width, 260px unless the user has resized it (see "Resizable list panel"), and the story form SHALL take the remaining width. The layout SHALL remain usable on narrow windows.
+The backlog portal page SHALL use the full width of the browser window, with only a small side margin, instead of a narrow centred column. The story list SHALL have a narrow width, 260px unless the user has resized it (see "Resizable list panel"), and the story form SHALL take the remaining width. The layout SHALL remain usable on narrow windows.
 
 #### Scenario: Wide window
 - **WHEN** the window is 1920px wide and the user has not resized the list

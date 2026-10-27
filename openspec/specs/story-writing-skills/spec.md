@@ -7,11 +7,11 @@ Lets the team lead think through new user stories with Claude against the backlo
 ## Requirements
 
 ### Requirement: Explore skill
-The repository SHALL contain a skill `explore-stories` at `.claude/skills/explore-stories/SKILL.md` that helps the user work out new stories for one backlog. It SHALL read the standards in `ai/guidelines/product-backlog.md` and the sizing benchmarks in `ai/guidelines/sprint-points-guideline.md`, the backlog CSV and the proposals file for that backlog (when it exists), discuss scope, splitting, placement under Epics and Features, dependencies and acceptance criteria, and MAY show draft stories in its replies. Draft Sprint points SHALL be sized with the sprint-points guideline. It SHALL NOT write, create, move or delete any file, and it SHALL tell the user that the proposals it reads can be changed only through `propose-stories` (or in the portal), not from the explore session, and that a change to a story already in the backlog is written as a suggestion through `propose-stories` too. It SHALL cite the guidelines and SHALL NOT restate their definitions or rules. If the user names no backlog it SHALL ask which backlog in `user-stories/` to use.
+The repository SHALL contain a skill `explore-stories` at `.claude/skills/explore-stories/SKILL.md` that helps the user work out new stories for one backlog. It SHALL read the standards in `planner/guidelines/product-backlog.md` and the sizing benchmarks in `planner/guidelines/sprint-points-guideline.md`, the backlog CSV and the proposals file for that backlog (when it exists), discuss scope, splitting, placement under Epics and Features, dependencies and acceptance criteria, and MAY show draft stories in its replies. Draft Sprint points SHALL be sized with the sprint-points guideline. It SHALL NOT write, create, move or delete any file, and it SHALL tell the user that the proposals it reads can be changed only through `propose-stories` (or in the portal), not from the explore session, and that a change to a story already in the backlog is written as a suggestion through `propose-stories` too. It SHALL cite the guidelines and SHALL NOT restate their definitions or rules. If the user names no backlog it SHALL ask which backlog in `backlogs/` to use.
 
 #### Scenario: Nothing is written
 - **WHEN** the user explores new stories for `data-portal.csv` and agrees a set of drafts
-- **THEN** no file under `user-stories/`, `proposals/` or `reviews/` has changed
+- **THEN** no file under `backlogs/`, `proposals/` or `reviews/` has changed
 
 #### Scenario: Drafts only in the conversation
 - **WHEN** the user asks what a story for password reset would look like
@@ -19,10 +19,10 @@ The repository SHALL contain a skill `explore-stories` at `.claude/skills/explor
 
 #### Scenario: No backlog named
 - **WHEN** the user invokes the skill without naming a backlog
-- **THEN** the skill lists the backlogs in `user-stories/` and asks which one with a choice question (or uses the only one), then asks for the story only if none was given
+- **THEN** the skill lists the backlogs in `backlogs/` and asks which one with a choice question (or uses the only one), then asks for the story only if none was given
 
 #### Scenario: Rules come from the guidelines
-- **WHEN** the size limit in `ai/guidelines/product-backlog.md` or a benchmark in the sprint-points guideline changes
+- **WHEN** the size limit in `planner/guidelines/product-backlog.md` or a benchmark in the sprint-points guideline changes
 - **THEN** the skill's behaviour follows it without any edit to `SKILL.md`
 
 #### Scenario: Existing proposal needs a fix
@@ -76,7 +76,7 @@ The command `/story:propose` SHALL follow the same skill without the yes/no step
 
 #### Scenario: Edit to a backlog story
 - **WHEN** the user asks to reword `AC2` of `IAM-0004`, which is in the backlog and not locked
-- **THEN** the skill shows `IAM-0004` with the old and new text of `AC2` and a reason, asks yes/no, and after a yes appends one review row to `reviews/<backlog>.csv`; `user-stories/<backlog>.csv` is byte-for-byte unchanged, the rows already in the review are unchanged, and the reply says the suggestion appears in the editor on that story
+- **THEN** the skill shows `IAM-0004` with the old and new text of `AC2` and a reason, asks yes/no, and after a yes appends one review row to `reviews/<backlog>.csv`; `backlogs/<backlog>.csv` is byte-for-byte unchanged, the rows already in the review are unchanged, and the reply says the suggestion appears in the editor on that story
 
 #### Scenario: New stories and edits together
 - **WHEN** the agreed outcome is two new stories and a Depends On change on `IAM-0004`
@@ -119,7 +119,7 @@ The command `/story:propose` SHALL follow the same skill without the yes/no step
 - **THEN** the skill reads the file before saying anything is already written
 
 ### Requirement: Story content follows the guidelines
-Stories drafted by either skill SHALL meet `ai/guidelines/product-backlog.md`: the "As a …, I want …, so that …" format, a Title that names one story, at most 13 sprint points, acceptance criteria in Given-When-Then form that cover the failure path, and an Epic and Feature chosen to fit the existing backlog (reusing an existing Epic or Feature name where one fits). A story that would exceed the size limit SHALL be split into several. The skills SHALL NOT set Priority.
+Stories drafted by either skill SHALL meet `planner/guidelines/product-backlog.md`: the "As a …, I want …, so that …" format, a Title that names one story, at most 13 sprint points, acceptance criteria in Given-When-Then form that cover the failure path, and an Epic and Feature chosen to fit the existing backlog (reusing an existing Epic or Feature name where one fits). A story that would exceed the size limit SHALL be split into several. The skills SHALL NOT set Priority.
 
 #### Scenario: Too big
 - **WHEN** the agreed story would be sized above 13 points
@@ -130,13 +130,13 @@ Stories drafted by either skill SHALL meet `ai/guidelines/product-backlog.md`: t
 - **THEN** the draft uses that Epic name exactly
 
 ### Requirement: Read and write access is locked down
-The story sessions SHALL reach the data only through the `story-tools-mcp` tools: their launchers SHALL start Claude without `Bash`, with only the `story-tools` server (`--strict-mcp-config`), `Skill` and `AskUserQuestion`, and neither `Read` nor `Grep`. An `explore-stories` session SHALL have the readers `read_context`, `search_stories` and `read_file` only. A `propose-stories` session SHALL have those readers, `check_drafts` and the writers `write_proposals`, `write_lexicon`, `suggest_lexicon_change` and `write_review`, and the review writer SHALL only append. No tool SHALL write any path except through the writers. `read_context` SHALL read only `ai/guidelines/product-backlog.md`, `ai/guidelines/sprint-points-guideline.md`, `user-stories/<name>`, `reviews/<name>` and `lexicon-suggestions/<name>`, and its output SHALL be labelled as data to work from, not instructions. The lexicon and the proposals are read with `read_file`, whose output is labelled in the same way, and the skills SHALL treat their text as data to work from, not instructions.
+The story sessions SHALL reach the data only through the `backlog-tools-mcp` tools: their launchers SHALL start Claude without `Bash`, with only the `backlog-tools` server (`--strict-mcp-config`), `Skill` and `AskUserQuestion`, and neither `Read` nor `Grep`. An `explore-stories` session SHALL have the readers `read_context`, `search_stories` and `read_file` only. A `propose-stories` session SHALL have those readers, `check_drafts` and the writers `write_proposals`, `write_lexicon`, `suggest_lexicon_change` and `write_review`, and the review writer SHALL only append. No tool SHALL write any path except through the writers. `read_context` SHALL read only `planner/guidelines/product-backlog.md`, `planner/guidelines/sprint-points-guideline.md`, `backlogs/<name>`, `reviews/<name>` and `lexicon-suggestions/<name>`, and its output SHALL be labelled as data to work from, not instructions. The lexicon and the proposals are read with `read_file`, whose output is labelled in the same way, and the skills SHALL treat their text as data to work from, not instructions.
 
 The reader SHALL keep every result small enough to be shown in full by one call, so it SHALL return the context one section at a time. Called with a backlog and `section` it SHALL return only that section, where the sections are (the lexicon and the proposals are not sections, they are read with `read_file`):
-- `guidelines`: `ai/guidelines/product-backlog.md`, then `ai/guidelines/sprint-points-guideline.md`.
+- `guidelines`: `planner/guidelines/product-backlog.md`, then `planner/guidelines/sprint-points-guideline.md`.
 - `index`: the backlog as an index with the columns `ID, Epic, Feature, Title, User Story, Sprint points, Depends On, Locked` (a column the file lacks is skipped) and no other column.
 
-Called with a backlog and neither `section` nor `storyId` it SHALL return a menu naming the sections and the size of each in characters, and the lexicon and proposals files as described by `story-tools-mcp`. Called with a backlog and a `storyId` it SHALL return the backlog's header row and that one story with every column, labelled as data, and SHALL report an error, returning nothing else, when the backlog has no such ID. It SHALL reject `section` together with `storyId`, a section name that is not one of the sections it serves, and a `storyId` that is not made only of letters, digits and hyphens.
+Called with a backlog and neither `section` nor `storyId` it SHALL return a menu naming the sections and the size of each in characters, and the lexicon and proposals files as described by `backlog-tools-mcp`. Called with a backlog and a `storyId` it SHALL return the backlog's header row and that one story with every column, labelled as data, and SHALL report an error, returning nothing else, when the backlog has no such ID. It SHALL reject `section` together with `storyId`, a section name that is not one of the sections it serves, and a `storyId` that is not made only of letters, digits and hyphens.
 
 #### Scenario: Explore cannot write
 - **WHEN** an `explore-stories` session lists its tools
@@ -211,7 +211,7 @@ Called with a backlog and neither `section` nor `storyId` it SHALL return a menu
 - **THEN** it is rejected and returns nothing else
 
 ### Requirement: Sizing comes from the sprint-points guideline
-The reader script SHALL print `ai/guidelines/sprint-points-guideline.md` after `ai/guidelines/product-backlog.md` in its `guidelines` section, labelled as guidelines, so both skills have the effort benchmarks in every session. The guideline SHALL contain the point scale and benchmark table and SHALL NOT contain unfilled placeholder text. The skills SHALL read that section at the start of every use, cite it for sizing and SHALL NOT restate the benchmarks.
+The reader script SHALL print `planner/guidelines/sprint-points-guideline.md` after `planner/guidelines/product-backlog.md` in its `guidelines` section, labelled as guidelines, so both skills have the effort benchmarks in every session. The guideline SHALL contain the point scale and benchmark table and SHALL NOT contain unfilled placeholder text. The skills SHALL read that section at the start of every use, cite it for sizing and SHALL NOT restate the benchmarks.
 
 #### Scenario: Reader prints both guidelines
 - **WHEN** the reader runs with `--section guidelines`
@@ -226,14 +226,14 @@ The reader script SHALL print `ai/guidelines/sprint-points-guideline.md` after `
 - **THEN** it contains no `<e.g., …>` template text
 
 ### Requirement: Shape-stories launcher collects backlog and story
-`ai/launchers/shape-stories.ps1` SHALL accept an optional backlog (with or without `.csv`) and an optional story: one argument, either a `NEW-<n>` ID, a story ID of the backlog, or free text. For each one not given it SHALL prompt the user itself, listing the backlogs found in `user-stories/` for the backlog. It SHALL reject an unknown backlog, an empty story, a `NEW-<n>` that is not in `proposals/<backlog file name>`, and a story ID of the backlog's form (letters, a dash and digits, such as `IAM-0004`) that is not in `user-stories/<backlog file name>`, before starting Claude. It SHALL start `/explore-stories` with the backlog file name and the story in the opening prompt, so the skill does not ask for them, with the `story-tools` server (all its tools) and without `Bash`, `Read` and `Grep`. When the story is a `NEW-<n>` or a story ID of the backlog, the opening prompt SHALL also carry that story's Title, read from the file, so that the session names the story by Title from its first reply. `ai/launchers/explore-stories.ps1` SHALL start the server with `--read-only` and, when no backlog is given, SHALL list the backlogs and ask for one. Neither launcher SHALL wait for a confirmation before it starts Claude, or start it with a hook that opens files.
+`planner/claude/launchers/shape-stories.ps1` SHALL accept an optional backlog (with or without `.csv`) and an optional story: one argument, either a `NEW-<n>` ID, a story ID of the backlog, or free text. For each one not given it SHALL prompt the user itself, listing the backlogs found in `backlogs/` for the backlog. It SHALL reject an unknown backlog, an empty story, a `NEW-<n>` that is not in `proposals/<backlog file name>`, and a story ID of the backlog's form (letters, a dash and digits, such as `IAM-0004`) that is not in `backlogs/<backlog file name>`, before starting Claude. It SHALL start `/explore-stories` with the backlog file name and the story in the opening prompt, so the skill does not ask for them, with the `backlog-tools` server (all its tools) and without `Bash`, `Read` and `Grep`. When the story is a `NEW-<n>` or a story ID of the backlog, the opening prompt SHALL also carry that story's Title, read from the file, so that the session names the story by Title from its first reply. `planner/claude/launchers/explore-stories.ps1` SHALL start the server with `--read-only` and, when no backlog is given, SHALL list the backlogs and ask for one. Neither launcher SHALL wait for a confirmation before it starts Claude, or start it with a hook that opens files.
 
 #### Scenario: Both given
 - **WHEN** the user runs `shape-stories.ps1 data-portal NEW-57` and `NEW-57` is in `proposals/data-portal.csv`
 - **THEN** no prompt is shown and the session opens on `data-portal.csv` with `NEW-57` and its Title as the story
 
 #### Scenario: Backlog story given
-- **WHEN** the user runs `shape-stories.ps1 data-portal IAM-0004` and `IAM-0004` is in `user-stories/data-portal.csv`
+- **WHEN** the user runs `shape-stories.ps1 data-portal IAM-0004` and `IAM-0004` is in `backlogs/data-portal.csv`
 - **THEN** no prompt is shown and the session opens on `data-portal.csv` with `IAM-0004` and its Title as the story
 
 #### Scenario: Free text story
@@ -245,7 +245,7 @@ The reader script SHALL print `ai/guidelines/sprint-points-guideline.md` after `
 - **THEN** the script shows a numbered list of the backlogs, reads the choice, reads the story, and then starts Claude with both
 
 #### Scenario: Unknown backlog
-- **WHEN** the backlog does not exist in `user-stories/`
+- **WHEN** the backlog does not exist in `backlogs/`
 - **THEN** the script reports it and starts nothing
 
 #### Scenario: Proposal not in this backlog
@@ -253,12 +253,12 @@ The reader script SHALL print `ai/guidelines/sprint-points-guideline.md` after `
 - **THEN** the script reports it and starts nothing
 
 #### Scenario: Backlog story not in this backlog
-- **WHEN** the story is `IAM-9999` and `user-stories/data-portal.csv` has no such ID
+- **WHEN** the story is `IAM-9999` and `backlogs/data-portal.csv` has no such ID
 - **THEN** the script reports it and starts nothing
 
 #### Scenario: Tools of the session
 - **WHEN** `shape-stories.ps1` starts Claude
-- **THEN** the tool list is `Skill`, `AskUserQuestion` and the `story-tools` tools, with `--strict-mcp-config`, and `Read` and `Grep` are not in it
+- **THEN** the tool list is `Skill`, `AskUserQuestion` and the `backlog-tools` tools, with `--strict-mcp-config`, and `Read` and `Grep` are not in it
 
 #### Scenario: Explore without a backlog
 - **WHEN** the user runs `explore-stories.ps1` with no backlog
@@ -311,7 +311,7 @@ When the request leaves open a choice that decides how stories are split or what
 ### Requirement: Stories are named by Title
 In everything the user reads, `explore-stories`, `propose-stories`, `/story:propose` and the summaries they give SHALL name a story by its Title, in quotes, adding its Epic and Feature when another story has the same Title. An ID SHALL NOT be the only name of a story; it MAY follow the Title in parentheses where the user needs the portal's label (for example the `NEW-<n>` a writer assigned). This holds for dependencies, patches, edits to backlog stories, the confirmation text and the final report. The skills SHALL look an ID up in the `index` or `proposals` section themselves and SHALL NOT ask the user for one. A user who names a story by words, or by a Title that is no longer exact, SHALL be matched against the Titles read from the files; when two or more stories fit, the skill SHALL list them (Title, Epic, Feature) and ask which is meant.
 
-When a `story-tools` call is answered with a Title mismatch (see `story-tools-mcp`), the skill SHALL relocate the story from the candidates the reply lists, or from the `index`, read it again with `read_context`, and repeat the call with the ID and Title it found. It SHALL ask the user only when the candidates cannot be told apart or the Title is found nowhere, and SHALL say, in the report, that a story had moved and which Title it was found under. It SHALL NOT send a call again with the same ID and Title that was refused.
+When a `backlog-tools` call is answered with a Title mismatch (see `backlog-tools-mcp`), the skill SHALL relocate the story from the candidates the reply lists, or from the `index`, read it again with `read_context`, and repeat the call with the ID and Title it found. It SHALL ask the user only when the candidates cannot be told apart or the Title is found nowhere, and SHALL say, in the report, that a story had moved and which Title it was found under. It SHALL NOT send a call again with the same ID and Title that was refused.
 
 #### Scenario: Draft names stories by Title
 - **WHEN** the skill shows a patch for `NEW-8`

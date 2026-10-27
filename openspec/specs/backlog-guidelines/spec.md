@@ -2,12 +2,12 @@
 
 ## Purpose
 
-Keeps the standards for a user-story backlog (Epic, Feature, User Story, acceptance criteria, size and INVEST) in one file, `ai/guidelines/product-backlog.md`, so that writing and reviewing stories apply the same rules.
+Keeps the standards for a user-story backlog (Epic, Feature, User Story, acceptance criteria, size and INVEST) in one file, `planner/guidelines/product-backlog.md`, so that writing and reviewing stories apply the same rules.
 
 ## Requirements
 
 ### Requirement: One source of backlog standards
-The repository SHALL hold the standards for a backlog in one file, `ai/guidelines/product-backlog.md`. It SHALL define what a valid Epic, Feature, User Story and acceptance criterion is, and it SHALL be written so that it can be used both to write stories and to review them. No other file SHALL restate those definitions or rules; other files (such as the review skill) SHALL cite the guidelines.
+The repository SHALL hold the standards for a backlog in one file, `planner/guidelines/product-backlog.md`. It SHALL define what a valid Epic, Feature, User Story and acceptance criterion is, and it SHALL be written so that it can be used both to write stories and to review them. No other file SHALL restate those definitions or rules; other files (such as the review skill) SHALL cite the guidelines.
 
 #### Scenario: Writing and reviewing use the same rules
 - **WHEN** a story is written against the guidelines and then reviewed
@@ -15,7 +15,7 @@ The repository SHALL hold the standards for a backlog in one file, `ai/guideline
 
 #### Scenario: A rule changes
 - **WHEN** a standard such as the size limit changes
-- **THEN** it is changed in `ai/guidelines/product-backlog.md` only
+- **THEN** it is changed in `planner/guidelines/product-backlog.md` only
 
 ### Requirement: Hierarchy definitions
 The guidelines SHALL define the hierarchy Epic > Feature > User Story > Acceptance criteria as follows, with an example for each level taken from this project's backlog.
@@ -34,7 +34,7 @@ The guidelines SHALL define the hierarchy Epic > Feature > User Story > Acceptan
 - **THEN** the guidelines give the test: a user would recognise it by name, it can be demonstrated end to end when its stories are done, and it has several stories
 
 ### Requirement: Story size and points
-The guidelines SHALL state that a story is at most 13 sprint points and that a story above 13 SHALL be split. They SHALL list the point scale 1, 2, 3, 5, 8, 13 and SHALL NOT size a story by days or by sprint length. They SHALL point to `ai/guidelines/sprint-points-guideline.md` (by a link that resolves from the guidelines file) for the effort benchmarks instead of copying them. The sprint-points guideline SHALL give an example for every size on the scale and SHALL NOT hold unfilled template text.
+The guidelines SHALL state that a story is at most 13 sprint points and that a story above 13 SHALL be split. They SHALL list the point scale 1, 2, 3, 5, 8, 13 and SHALL NOT size a story by days or by sprint length. They SHALL point to `planner/guidelines/sprint-points-guideline.md` (by a link that resolves from the guidelines file) for the effort benchmarks instead of copying them. The sprint-points guideline SHALL give an example for every size on the scale and SHALL NOT hold unfilled template text.
 
 #### Scenario: Thirteen is the limit
 - **WHEN** a story is sized at 13
@@ -46,7 +46,7 @@ The guidelines SHALL state that a story is at most 13 sprint points and that a s
 
 #### Scenario: Link resolves
 - **WHEN** a reader follows the link to the sprint-points guideline
-- **THEN** it opens `ai/guidelines/sprint-points-guideline.md`
+- **THEN** it opens `planner/guidelines/sprint-points-guideline.md`
 
 ### Requirement: INVEST meaning
 The guidelines SHALL define each INVEST principle for this project. **Independent** SHALL mean decoupled for planning and development: the story can be prioritised, estimated and built in any order using mocks, stubs or test doubles for upstream state. A real-world order (such as Login before Logout) SHALL NOT count as a dependency problem. A **hard block** (the story cannot be built or tested without another story's code) SHALL be a problem and a **mockable** link SHALL NOT.
@@ -56,7 +56,7 @@ The guidelines SHALL define each INVEST principle for this project. **Independen
 - **THEN** the guidelines treat this as mockable and not as a violation of Independent
 
 ### Requirement: Measurable pass marks for subjective qualities
-The guidelines SHALL say how to write an acceptance criterion for a quality that is subjective at first sight (such as "relevant", "readable" or "accurate"). The criterion SHALL carry a measurable bar: a fixed sample or set of cases, a threshold on a count or rate, and who or what judges the outcome. A criterion that leaves the judgment to whoever happens to review SHALL NOT count as objective. When the sample or threshold cannot be fixed yet, the story SHALL still state the criterion and name the missing value in Notes as "to be agreed", rather than drop the criterion or invent the value silently. The note SHALL live in `ai/guidelines/product-backlog.md` only; the skills SHALL cite it and SHALL NOT restate it.
+The guidelines SHALL say how to write an acceptance criterion for a quality that is subjective at first sight (such as "relevant", "readable" or "accurate"). The criterion SHALL carry a measurable bar: a fixed sample or set of cases, a threshold on a count or rate, and who or what judges the outcome. A criterion that leaves the judgment to whoever happens to review SHALL NOT count as objective. When the sample or threshold cannot be fixed yet, the story SHALL still state the criterion and name the missing value in Notes as "to be agreed", rather than drop the criterion or invent the value silently. The note SHALL live in `planner/guidelines/product-backlog.md` only; the skills SHALL cite it and SHALL NOT restate it.
 
 #### Scenario: Subjective quality made measurable
 - **WHEN** a story needs search results to be "relevant"
@@ -71,7 +71,7 @@ The guidelines SHALL say how to write an acceptance criterion for a quality that
 - **THEN** the guidelines treat it as not objective
 
 ### Requirement: Edge-case checklist
-The guidelines SHALL hold one checklist of edge cases to test a story's acceptance criteria against, as a section of `ai/guidelines/product-backlog.md`, so that writing and reviewing stories use the same list. The checklist SHALL cover at least: empty and boundary input, invalid input, not found, not allowed, a repeated action, an action cancelled or undone part-way, partial failure, and data volume. Each item SHALL say when it does not apply (for example, "a read-only story has no repeated-action case"). The guidelines SHALL say how to classify a missing case: a case the story's Title and "I want" already imply SHALL be written as an acceptance criterion; a case that needs a decision, or that would add a capability, user group, permission or rule the story does not imply, SHALL be recorded as a Clarifications question and SHALL NOT be written as a criterion. The skills SHALL cite the checklist and SHALL NOT restate it.
+The guidelines SHALL hold one checklist of edge cases to test a story's acceptance criteria against, as a section of `planner/guidelines/product-backlog.md`, so that writing and reviewing stories use the same list. The checklist SHALL cover at least: empty and boundary input, invalid input, not found, not allowed, a repeated action, an action cancelled or undone part-way, partial failure, and data volume. Each item SHALL say when it does not apply (for example, "a read-only story has no repeated-action case"). The guidelines SHALL say how to classify a missing case: a case the story's Title and "I want" already imply SHALL be written as an acceptance criterion; a case that needs a decision, or that would add a capability, user group, permission or rule the story does not imply, SHALL be recorded as a Clarifications question and SHALL NOT be written as a criterion. The skills SHALL cite the checklist and SHALL NOT restate it.
 
 #### Scenario: Implied case becomes a criterion
 - **WHEN** a "Delete a saved filter" story has no criterion for a filter that no longer exists
@@ -87,4 +87,4 @@ The guidelines SHALL hold one checklist of edge cases to test a story's acceptan
 
 #### Scenario: One list
 - **WHEN** the checklist changes
-- **THEN** it is changed in `ai/guidelines/product-backlog.md` only
+- **THEN** it is changed in `planner/guidelines/product-backlog.md` only

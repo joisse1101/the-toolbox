@@ -2,7 +2,7 @@
 //   node .claude/skills/meeting-minutes/write-minutes.mjs "<title>" <YYYY-MM-DD>     (minutes markdown on stdin)
 //   node .claude/skills/meeting-minutes/write-minutes.mjs --replace <file name>      (refined minutes on stdin)
 //   node .claude/skills/meeting-minutes/write-minutes.mjs --template                 (prints template.md; writes nothing)
-// Writes data/meetings/<slug>_<YYYY-MM-DD>.md, where the slug is the title in lowercase kebab-case. An existing file is
+// Writes planner/data/meetings/<slug>_<YYYY-MM-DD>.md, where the slug is the title in lowercase kebab-case. An existing file is
 // never overwritten: a taken name gets the next free _1, _2, ... after the date. --replace swaps the content of a file
 // that already exists (and only then). There is no output path argument: the folder is fixed and the name is built here.
 
@@ -10,10 +10,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
-import { writeAtomic } from '../propose-stories/write-proposal.mjs';
+import { writeAtomic } from '../_shared/write-atomic.mjs';
 
 const require = createRequire(import.meta.url);
-const { DATA_DIR } = require('../../../core/paths.cjs');
+const { DATA_DIR } = require('../../../planner/logic/storage/paths.cjs');
 
 const FILE_NAME = /^[a-z0-9]+(-[a-z0-9]+)*_\d{4}-\d{2}-\d{2}(_\d+)?\.md$/;
 
@@ -92,5 +92,5 @@ if (isMain) {
     for (const e of result.errors) console.error(`- ${e}`);
     process.exit(1);
   }
-  console.log(`${result.replaced ? 'Replaced' : 'Saved'} data/meetings/${result.file}`);
+  console.log(`${result.replaced ? 'Replaced' : 'Saved'} planner/data/meetings/${result.file}`);
 }

@@ -1,21 +1,24 @@
 {
   "permissions": {
     "deny": [
+      "Read(./planner/data/**)",
+      "Edit(./planner/data/**)",
       "Read(./data/**)",
       "Edit(./data/**)",
       "WebFetch(domain:localhost)",
       "WebFetch(domain:127.0.0.1)",
-      "Bash(cat data/*)",
-      "Bash(cat ./data/*)",
-      "Bash(type data/*)",
-      "Bash(head data/*)",
-      "Bash(tail data/*)",
-      "Bash(ls data*)",
-      "Bash(grep * data/*)",
-      "PowerShell(Get-Content data*)",
-      "PowerShell(Get-Content .\\data*)",
-      "PowerShell(type data*)",
-      "PowerShell(Get-ChildItem data*)"
+      "Bash(cat planner/data/*)",
+      "Bash(cat ./planner/data/*)",
+      "Bash(type planner/data/*)",
+      "Bash(head planner/data/*)",
+      "Bash(tail planner/data/*)",
+      "Bash(ls planner/data*)",
+      "Bash(grep * planner/data/*)",
+      "PowerShell(Get-Content planner/data*)",
+      "PowerShell(Get-Content planner\\data*)",
+      "PowerShell(Get-Content .\\planner\\data*)",
+      "PowerShell(type planner/data*)",
+      "PowerShell(Get-ChildItem planner/data*)"
     ]
   }
 }

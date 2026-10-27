@@ -1,5 +1,5 @@
 // The only way the review-backlog skill reads anything. Usage:
-//   node .claude/skills/review-backlog/read-backlog.mjs                    lists the backlog file names in user-stories/
+//   node .claude/skills/review-backlog/read-backlog.mjs                    lists the backlog file names in backlogs/
 //   node .claude/skills/review-backlog/read-backlog.mjs <name>             prints the scope line and a menu of the sections below
 //   node .claude/skills/review-backlog/read-backlog.mjs <name> <section>   prints one section
 // Sections: guidelines, sizing, lexicon, proposals, checks, and epic-<n> (the stories of the n-th Epic). The review is read
@@ -11,16 +11,17 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 
-import { loadBacklog, groupByEpic, serializeBacklog } from '../../../core/model.js';
-import { parseLexicon } from '../../../core/lexicon.js';
-import { backlogChecks } from '../../../core/backlog-checks.js';
+import { loadBacklog, groupByEpic, serializeBacklog } from '../../../planner/logic/backlog/model.js';
+import { parseLexicon } from '../../../planner/logic/lexicon/lexicon.js';
+import { backlogChecks } from './backlog-checks.js';
 
 const require = createRequire(import.meta.url);
-const { validateName } = require('../../../core/file-name.cjs');
-const { DATA_DIR, GUIDELINES_DIR } = require('../../../core/paths.cjs');
+const { validateName } = require('../../../planner/logic/storage/file-name.cjs');
+const { DATA_DIR } = require('../../../planner/logic/storage/paths.cjs');
+const { GUIDELINES_DIR } = require('../_shared/paths.cjs');
 
 export function listBacklogs({ dataDir = DATA_DIR } = {}) {
-  return fs.readdirSync(path.join(dataDir, 'user-stories')).filter((f) => /\.csv$/i.test(f)).sort();
+  return fs.readdirSync(path.join(dataDir, 'backlogs')).filter((f) => /\.csv$/i.test(f)).sort();
 }
 
 // How many stories are up for review: { total, locked, submitted }, or null when the CSV cannot be read as a backlog
@@ -45,7 +46,7 @@ export function readBacklog({ dataDir = DATA_DIR, guidelinesDir = GUIDELINES_DIR
   } catch (err) {
     return { ok: false, errors: [err.message] };
   }
-  const backlogDir = path.join(dataDir, 'user-stories');
+  const backlogDir = path.join(dataDir, 'backlogs');
   const backlogPath = path.join(backlogDir, file);
   if (path.dirname(backlogPath) !== backlogDir) return { ok: false, errors: ['File name is not allowed'] };
   try {
@@ -58,7 +59,7 @@ export function readBacklog({ dataDir = DATA_DIR, guidelinesDir = GUIDELINES_DIR
       csv,
     };
   } catch {
-    return { ok: false, errors: [`user-stories/${file} was not found.`] };
+    return { ok: false, errors: [`backlogs/${file} was not found.`] };
   }
 }
 

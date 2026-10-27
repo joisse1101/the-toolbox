@@ -7,7 +7,7 @@ Turns the findings of a backlog review into data the portal can use: a review CS
 ## Requirements
 
 ### Requirement: Review CSV
-A review of a backlog SHALL be stored as a CSV file in the `reviews` folder with the same file name as the backlog it reviews (for example `reviews/data-portal.csv` for `user-stories/data-portal.csv`). One row SHALL describe one field edit, or one suggestion to unlock a story, and SHALL have the columns `Story ID`, `Field`, `Action`, `Current`, `Suggested`, `Reason`, `Area`, `Confidence`, `Group` and `Status`.
+A review of a backlog SHALL be stored as a CSV file in the `reviews` folder with the same file name as the backlog it reviews (for example `reviews/data-portal.csv` for `backlogs/data-portal.csv`). One row SHALL describe one field edit, or one suggestion to unlock a story, and SHALL have the columns `Story ID`, `Field`, `Action`, `Current`, `Suggested`, `Reason`, `Area`, `Confidence`, `Group` and `Status`.
 
 - `Story ID` is the ID of the story the edit applies to, or `NEW-<n>` for a story to be created (see "Split suggestions").
 - `Field` is one of `Epic`, `Feature`, `Title`, `User Story`, `Sprint points`, `Depends On`, `User Acceptance Criteria`, `Notes`, and is empty on an `unlock` row. Priority is not a Field: reviews do not cover it.
@@ -72,10 +72,10 @@ Review files SHALL be written only by running the Node script `.claude/skills/re
 
 #### Scenario: Backlog untouched
 - **WHEN** a review is written for `data-portal.csv`
-- **THEN** `user-stories/data-portal.csv` is byte-for-byte unchanged and `reviews/data-portal.csv` exists
+- **THEN** `backlogs/data-portal.csv` is byte-for-byte unchanged and `reviews/data-portal.csv` exists
 
 #### Scenario: Bad file name
-- **WHEN** the script is run with a backlog name such as `..\x.csv` or one that does not exist in `user-stories/`
+- **WHEN** the script is run with a backlog name such as `..\x.csv` or one that does not exist in `backlogs/`
 - **THEN** it exits with an error and writes nothing
 
 #### Scenario: Append flag allowed
@@ -454,7 +454,7 @@ The backlog edits of one run and the `applied` status of the rows it applied SHA
 - **THEN** nothing is applied and the summary says so, with the reasons
 
 ### Requirement: Rows written through the tool name the story's Title
-When the review writer is called through the `story-tools` server, each row SHALL carry `storyTitle`, the story's current Title, and a `Depends On` row SHALL carry `targetTitle`, the Title of the story named in `suggested`. A `Depends On` `remove` row whose entry no story holds (a code that does not exist, the story itself or a `NEW-<n>`) has no story to name and SHALL NOT need `targetTitle`; when a story does hold the code, `targetTitle` is required and checked as for an `add` row. The pairs SHALL be checked against the backlog as the `story-tools-mcp` capability describes, and a mismatch SHALL be reported without writing any row. The Titles are used only for this check: they SHALL NOT be stored, the review file's columns SHALL NOT change, and the portal SHALL read and apply the rows as before. When the script is run from the command line these keys are optional, and a Title that is given is checked.
+When the review writer is called through the `backlog-tools` server, each row SHALL carry `storyTitle`, the story's current Title, and a `Depends On` row SHALL carry `targetTitle`, the Title of the story named in `suggested`. A `Depends On` `remove` row whose entry no story holds (a code that does not exist, the story itself or a `NEW-<n>`) has no story to name and SHALL NOT need `targetTitle`; when a story does hold the code, `targetTitle` is required and checked as for an `add` row. The pairs SHALL be checked against the backlog as the `backlog-tools-mcp` capability describes, and a mismatch SHALL be reported without writing any row. The Titles are used only for this check: they SHALL NOT be stored, the review file's columns SHALL NOT change, and the portal SHALL read and apply the rows as before. When the script is run from the command line these keys are optional, and a Title that is given is checked.
 
 #### Scenario: Row for a renumbered story
 - **WHEN** a row names `IAM-0004` with `storyTitle` `Reset password by email` and the backlog has since been renumbered so that `IAM-0004` is another story

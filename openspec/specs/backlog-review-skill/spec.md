@@ -2,15 +2,15 @@
 
 ## Purpose
 
-Lets the team lead review a user-story backlog CSV against the Epic > Feature > Story hierarchy, INVEST and acceptance-criteria standards in `ai/guidelines/product-backlog.md`, and get a written report of findings with suggested fixes.
+Lets the team lead review a user-story backlog CSV against the Epic > Feature > Story hierarchy, INVEST and acceptance-criteria standards in `planner/guidelines/product-backlog.md`, and get a written report of findings with suggested fixes.
 
 ## Requirements
 
 ### Requirement: Review skill in the repository
-The repository SHALL contain a review skill at `.claude/skills/review-backlog/SKILL.md` that reviews a backlog CSV from `user-stories/` against the standards in `ai/guidelines/product-backlog.md`. The skill SHALL take a backlog file as input and SHALL produce a written report. The skill SHALL NOT restate the guidelines' definitions or rules: it SHALL cite them and describe only how to review (what to report, how to classify it, how to write the findings). The skill SHALL NOT modify the backlog CSV or any file other than its review CSV: it reports findings and suggests fixes, and the user applies them. The only file it may write is `reviews/<backlog file name>`, and only through the script described by the `backlog-review-suggestions` capability. The skill SHALL NOT review Priority.
+The repository SHALL contain a review skill at `.claude/skills/review-backlog/SKILL.md` that reviews a backlog CSV from `backlogs/` against the standards in `planner/guidelines/product-backlog.md`. The skill SHALL take a backlog file as input and SHALL produce a written report. The skill SHALL NOT restate the guidelines' definitions or rules: it SHALL cite them and describe only how to review (what to report, how to classify it, how to write the findings). The skill SHALL NOT modify the backlog CSV or any file other than its review CSV: it reports findings and suggests fixes, and the user applies them. The only file it may write is `reviews/<backlog file name>`, and only through the script described by the `backlog-review-suggestions` capability. The skill SHALL NOT review Priority.
 
 #### Scenario: Report only
-- **WHEN** the skill reviews `user-stories/data-portal.csv`
+- **WHEN** the skill reviews `backlogs/data-portal.csv`
 - **THEN** it outputs a report, the backlog CSV file is byte-for-byte unchanged, and the only file written is `reviews/data-portal.csv`
 
 #### Scenario: Fixes are suggestions
@@ -19,14 +19,14 @@ The repository SHALL contain a review skill at `.claude/skills/review-backlog/SK
 
 #### Scenario: No file named
 - **WHEN** the user invokes the skill without naming a backlog
-- **THEN** the skill asks which backlog in `user-stories/` to review
+- **THEN** the skill asks which backlog in `backlogs/` to review
 
 #### Scenario: Priority is ignored
 - **WHEN** a story has no Priority
 - **THEN** the report and the review CSV do not mention Priority
 
 #### Scenario: Rules come from the guidelines
-- **WHEN** the size limit in `ai/guidelines/product-backlog.md` changes
+- **WHEN** the size limit in `planner/guidelines/product-backlog.md` changes
 - **THEN** the skill's behaviour follows the guidelines without any edit to `SKILL.md`
 
 ### Requirement: Hierarchy review
@@ -71,7 +71,7 @@ The skill SHALL review each story against INVEST: Independent, Negotiable, Valua
 - **THEN** the report does not flag it for size
 
 ### Requirement: Acceptance criteria review
-The skill SHALL review each story's acceptance criteria against the acceptance-criteria rules in `ai/guidelines/product-backlog.md`: each criterion SHALL be unambiguous, objective and testable as pass or fail, SHALL say what the system must do and not how to build it, and the criteria together SHALL cover the intent of the story's Title and "I want". It SHALL report vague wording (for example "fast" or "user friendly" with no measure), implementation detail, a criterion that cannot fail, and a story whose criteria leave an obvious case uncovered, such as a failure path. A suggested measurable wording for a vague criterion SHALL be marked as needing the user's confirmation of the threshold.
+The skill SHALL review each story's acceptance criteria against the acceptance-criteria rules in `planner/guidelines/product-backlog.md`: each criterion SHALL be unambiguous, objective and testable as pass or fail, SHALL say what the system must do and not how to build it, and the criteria together SHALL cover the intent of the story's Title and "I want". It SHALL report vague wording (for example "fast" or "user friendly" with no measure), implementation detail, a criterion that cannot fail, and a story whose criteria leave an obvious case uncovered, such as a failure path. A suggested measurable wording for a vague criterion SHALL be marked as needing the user's confirmation of the threshold.
 
 #### Scenario: Vague criterion
 - **WHEN** a criterion's Then says "the page loads quickly"
@@ -159,7 +159,7 @@ Besides the per-story review, the skill SHALL review the backlog as a whole and 
 - **THEN** the review writes no lexicon row and the report asks the user whether to define the term
 
 ### Requirement: Edge-case review
-For each submitted story the skill SHALL check its acceptance criteria against the edge-case checklist in `ai/guidelines/product-backlog.md` and SHALL NOT restate the checklist. A case the story's Title and "I want" already imply and the criteria leave out SHALL be written as an `add` row on User Acceptance Criteria. A case that would need a decision or new scope SHALL be written as a Clarifications `append` row, not as a criterion. The Area of the first SHALL be "Acceptance criteria" and of the second "Clarification". It SHALL NOT raise a case the checklist marks as not applicable to the story.
+For each submitted story the skill SHALL check its acceptance criteria against the edge-case checklist in `planner/guidelines/product-backlog.md` and SHALL NOT restate the checklist. A case the story's Title and "I want" already imply and the criteria leave out SHALL be written as an `add` row on User Acceptance Criteria. A case that would need a decision or new scope SHALL be written as a Clarifications `append` row, not as a criterion. The Area of the first SHALL be "Acceptance criteria" and of the second "Clarification". It SHALL NOT raise a case the checklist marks as not applicable to the story.
 
 #### Scenario: Implied case
 - **WHEN** a "Delete a saved filter" story has no criterion for a filter that no longer exists

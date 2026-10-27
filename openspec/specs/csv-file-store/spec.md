@@ -82,17 +82,17 @@ The system SHALL open the data folder in the operating system's file manager on 
 - **THEN** File Explorer opens showing the data folder
 
 ### Requirement: Back up a backlog
-The system SHALL, on request for a named backlog file, copy that backlog and its related files into a new timestamped folder `backups/<backlog name>/<YYYY-MM-DD_HHMMSS>/` inside the data folder, in local time. The folder SHALL hold the files under the same store folder names they have in the data folder: `user-stories/<name>`, and, when they exist, `reviews/<name>`, `proposals/<name>`, `lexicons/<name>` and `lexicon-suggestions/<name>`. The system SHALL NOT copy any other file, including the review's `.csv.decided` sidecar. The backlog file MUST exist; a missing review, proposals, lexicon or lexicon suggestions file SHALL be skipped without error. The response SHALL name the backup folder and list the files copied.
+The system SHALL, on request for a named backlog file, copy that backlog and its related files into a new timestamped folder `backups/<backlog name>/<YYYY-MM-DD_HHMMSS>/` inside the data folder, in local time. The folder SHALL hold the files under the same store folder names they have in the data folder: `backlogs/<name>`, and, when they exist, `reviews/<name>`, `proposals/<name>`, `lexicons/<name>` and `lexicon-suggestions/<name>`. The system SHALL NOT copy any other file, including the review's `.csv.decided` sidecar. The backlog file MUST exist; a missing review, proposals, lexicon or lexicon suggestions file SHALL be skipped without error. The response SHALL name the backup folder and list the files copied.
 
 The `backups` folder SHALL NOT be a registered store: the list, read, write, create and rename operations SHALL NOT reach it.
 
 #### Scenario: Backlog with a review and proposals
 - **WHEN** a client requests a backup of `sprint-12.csv` and the backlog, review, proposals, lexicon and lexicon suggestions files all exist
-- **THEN** a folder `backups/sprint-12.csv/<date>_<time>/` is created holding `user-stories/sprint-12.csv`, `reviews/sprint-12.csv`, `proposals/sprint-12.csv`, `lexicons/sprint-12.csv` and `lexicon-suggestions/sprint-12.csv`, and the originals are unchanged
+- **THEN** a folder `backups/sprint-12.csv/<date>_<time>/` is created holding `backlogs/sprint-12.csv`, `reviews/sprint-12.csv`, `proposals/sprint-12.csv`, `lexicons/sprint-12.csv` and `lexicon-suggestions/sprint-12.csv`, and the originals are unchanged
 
 #### Scenario: Backlog without a review or proposals
 - **WHEN** a client requests a backup of `sprint-12.csv` and only the backlog file exists
-- **THEN** the backup holds only `user-stories/sprint-12.csv` and the request succeeds
+- **THEN** the backup holds only `backlogs/sprint-12.csv` and the request succeeds
 
 #### Scenario: Decided sidecar is not copied
 - **WHEN** `reviews/sprint-12.csv.decided` exists next to the review file
@@ -134,7 +134,7 @@ The system SHALL list the backups of a named backlog, newest first, each with it
 - **THEN** it is not listed
 
 ### Requirement: Compare backups
-The system SHALL compare two states of a backlog on request, where each state is one of the backlog's backups or the current files, and return a text diff. For each of `user-stories`, `reviews`, `proposals`, `lexicons` and `lexicon-suggestions` that exists in at least one of the two states, the CSV SHALL be turned into text with one field per line, labelled with its column name and grouped in one block per row, with a multi-line cell kept together under its label; a missing file counts as empty. The system SHALL return the line diff of those texts, marking blocks that only moved as moved, or report that there are no differences. Comparing a state with itself SHALL be refused. The comparison SHALL NOT change any file in the data folder or in a backup.
+The system SHALL compare two states of a backlog on request, where each state is one of the backlog's backups or the current files, and return a text diff. For each of `backlogs`, `reviews`, `proposals`, `lexicons` and `lexicon-suggestions` that exists in at least one of the two states, the CSV SHALL be turned into text with one field per line, labelled with its column name and grouped in one block per row, with a multi-line cell kept together under its label; a missing file counts as empty. The system SHALL return the line diff of those texts, marking blocks that only moved as moved, or report that there are no differences. Comparing a state with itself SHALL be refused. The comparison SHALL NOT change any file in the data folder or in a backup.
 
 #### Scenario: A field was edited
 - **WHEN** a client compares two backups and only the Priority of one story differs
@@ -177,11 +177,11 @@ The system SHALL compare two states of a backlog on request, where each state is
 - **THEN** the system returns an error saying that git is needed for comparing backups, and backing up and listing still work
 
 ### Requirement: Writes are logged
-Every write to a registered data folder SHALL append one line of JSON to `data/logs/writes.jsonl` with the time, the writer (`portal` for the file API, or the name of the script or tool), the store, the file name, the byte size of the new content and a short hash of it. The log folder SHALL NOT be a registered store, so the file API cannot reach it. A failure to log SHALL be reported on standard error and SHALL NOT fail or undo the write. The log SHALL hold no file contents.
+Every write to a registered data folder SHALL append one line of JSON to `planner/data/logs/writes.jsonl` with the time, the writer (`portal` for the file API, or the name of the script or tool), the store, the file name, the byte size of the new content and a short hash of it. The log folder SHALL NOT be a registered store, so the file API cannot reach it. A failure to log SHALL be reported on standard error and SHALL NOT fail or undo the write. The log SHALL hold no file contents.
 
 #### Scenario: Portal save logged
 - **WHEN** the portal saves `proposals/data-portal.csv`
-- **THEN** `data/logs/writes.jsonl` gains a line naming writer `portal`, store `proposals`, that file, its size and hash
+- **THEN** `planner/data/logs/writes.jsonl` gains a line naming writer `portal`, store `proposals`, that file, its size and hash
 
 #### Scenario: Writer logged
 - **WHEN** `write_proposals` adds stories to `proposals/data-portal.csv`

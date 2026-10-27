@@ -7,14 +7,14 @@ Defines the only way the story skills write: a script that validates drafted sto
 ## Requirements
 
 ### Requirement: Writer script
-The repository SHALL contain `.claude/skills/propose-stories/write-proposal.mjs`, run as `node .claude/skills/propose-stories/write-proposal.mjs <backlog file name>` with the stories as a JSON array on standard input. It SHALL accept the file name only (validated by the file store's name rules) and no output path: the target is always `proposals/<backlog file name>`, and `user-stories/` is only read. It SHALL write nothing unless every story in the input is valid, and SHALL report all problems found in one run, naming each story by its position in the input. A failed run SHALL leave `proposals/` unchanged, and a successful write SHALL not leave a partly written file.
+The repository SHALL contain `.claude/skills/propose-stories/write-proposal.mjs`, run as `node .claude/skills/propose-stories/write-proposal.mjs <backlog file name>` with the stories as a JSON array on standard input. It SHALL accept the file name only (validated by the file store's name rules) and no output path: the target is always `proposals/<backlog file name>`, and `backlogs/` is only read. It SHALL write nothing unless every story in the input is valid, and SHALL report all problems found in one run, naming each story by its position in the input. A failed run SHALL leave `proposals/` unchanged, and a successful write SHALL not leave a partly written file.
 
 #### Scenario: Valid input
 - **WHEN** valid stories are sent for `data-portal.csv`
-- **THEN** they are added to `proposals/data-portal.csv` and `user-stories/data-portal.csv` is byte-for-byte unchanged
+- **THEN** they are added to `proposals/data-portal.csv` and `backlogs/data-portal.csv` is byte-for-byte unchanged
 
 #### Scenario: Unknown backlog
-- **WHEN** the file name does not exist in `user-stories/`
+- **WHEN** the file name does not exist in `backlogs/`
 - **THEN** nothing is written and the message says the backlog was not found
 
 #### Scenario: Several problems at once
@@ -178,7 +178,7 @@ The writer's validation SHALL be available as a check that takes the same input 
 - **THEN** it reports that they would be `NEW-5` to `NEW-7`, and the proposals file is unchanged
 
 ### Requirement: Patches and dependencies name the story's Title
-When the writer is called through the `story-tools` server, a patch SHALL carry `storyTitle`, the current Title of the proposal it changes, and an entry of Depends On that names a story of the backlog or `proposed:NEW-<n>` SHALL be an object `{id, title}`; the pair SHALL be checked as the `story-tools-mcp` capability describes, and a mismatch SHALL be reported without writing anything. The key `title` of a patch keeps its meaning (the new Title). A `NEW-<k>` entry inside the input stays a bare string. When the script is run from the command line these keys are optional: an entry given as a bare ID, or a patch without `storyTitle`, is accepted as before, and a Title that is given is checked. The check form of the writer SHALL report the same mismatches.
+When the writer is called through the `backlog-tools` server, a patch SHALL carry `storyTitle`, the current Title of the proposal it changes, and an entry of Depends On that names a story of the backlog or `proposed:NEW-<n>` SHALL be an object `{id, title}`; the pair SHALL be checked as the `backlog-tools-mcp` capability describes, and a mismatch SHALL be reported without writing anything. The key `title` of a patch keeps its meaning (the new Title). A `NEW-<k>` entry inside the input stays a bare string. When the script is run from the command line these keys are optional: an entry given as a bare ID, or a patch without `storyTitle`, is accepted as before, and a Title that is given is checked. The check form of the writer SHALL report the same mismatches.
 
 #### Scenario: Patch for a renamed proposal
 - **WHEN** a patch names `NEW-8` with `storyTitle` `Export audit log` and `NEW-8` has since been retitled `Export audit trail`

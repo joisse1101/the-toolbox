@@ -9,7 +9,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node ai/mcp/wait-for-story-tools.mjs"
+            "command": "node planner/claude/mcp/wait-for-backlog-tools.mjs"
           }
         ]
       }

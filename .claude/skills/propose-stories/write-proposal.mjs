@@ -1,9 +1,9 @@
 // The only way the propose-stories skill writes anything. Usage:
 //   node .claude/skills/propose-stories/write-proposal.mjs <backlog file name> [--check]   (stories as JSON on stdin)
-// Reads user-stories/<name>, validates the input against it and writes proposals/<name>. The input is a JSON list whose
+// Reads backlogs/<name>, validates the input against it and writes proposals/<name>. The input is a JSON list whose
 // items are either new stories (no "id"), which are ADDED with NEW-<n> IDs, or patches (an "id" such as NEW-8 plus
 // only the fields to change), which change that proposed story in place. One invalid item means nothing is written.
-// There is no output path argument: the target is fixed, and user-stories/ is only ever read. Rows the input does not
+// There is no output path argument: the target is fixed, and backlogs/ is only ever read. Rows the input does not
 // name are kept as they are (the user edits the proposals file in the portal) and nothing is removed. A new story that
 // repeats a stored proposal (same Epic, Feature and Title) is skipped, so running the same batch twice adds it once.
 // With --check the same validation runs and reports what would happen, and nothing is written.
@@ -12,40 +12,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
-import { loadBacklog, serializeBacklog, proposalHeaders } from '../../../core/model.js';
-import { buildProposals } from '../../../core/proposal-input.js';
+import { loadBacklog, serializeBacklog, proposalHeaders } from '../../../planner/logic/backlog/model.js';
+import { buildProposals } from './proposal-input.js';
+import { describeParseError, writeAtomic } from '../_shared/write-atomic.mjs';
 
 const require = createRequire(import.meta.url);
-const { validateName } = require('../../../core/file-name.cjs'); // same name rules as the file API
-const { DATA_DIR } = require('../../../core/paths.cjs');
-const { logWrite } = require('../../../core/write-log.cjs');
-
-// A JSON.parse failure message plus line, column and a short excerpt, so a missing comma can be found.
-export function describeParseError(err, text, what = 'stories') {
-  const message = err.message.replace(/\s*\(line \d+ column \d+\)/, ''); // the position is reported below
-  const at = /position (\d+)/.exec(message);
-  if (!at) return `The ${what} on stdin are not valid JSON: ${message}`;
-  const pos = Math.min(Number(at[1]), text.length);
-  const lines = text.slice(0, pos).split('\n');
-  const excerpt = text.slice(Math.max(0, pos - 30), pos + 30).replace(/\s+/g, ' ');
-  return `The ${what} on stdin are not valid JSON: ${message} (line ${lines.length}, column ${lines[lines.length - 1].length + 1}, near "${excerpt}")`;
-}
-
-// Write beside the target, then rename over it, so a failure never leaves a partly written file. A .tmp file is
-// not listed by the file API. `writer` (the tool's name) is recorded in the write log when given. Returns an error
-// message, or null.
-export function writeAtomic(dir, file, text, writer) {
-  const tmp = path.join(dir, `${file}.${process.pid}.tmp`);
-  try {
-    fs.writeFileSync(tmp, text, 'utf8');
-    fs.renameSync(tmp, path.join(dir, file));
-  } catch (err) {
-    fs.rmSync(tmp, { force: true });
-    return `Could not write ${path.basename(dir)}/${file}: ${err.message} (is it open in Excel?)`;
-  }
-  if (writer) logWrite({ writer, store: path.basename(dir), file, text, dataDir: path.dirname(dir) });
-  return null;
-}
+const { validateName } = require('../../../planner/logic/storage/file-name.cjs'); // same name rules as the file API
+const { DATA_DIR } = require('../../../planner/logic/storage/paths.cjs');
 
 // Reads the backlog and the proposals and validates the input against them. Returns { ok: true, file, backlog,
 // proposals, built } (built: the buildProposals result) or { ok: false, errors }. Writes nothing.
@@ -56,7 +29,7 @@ function prepare({ dataDir, name, input, requireTitles }) {
   } catch (err) {
     return { ok: false, errors: [err.message] };
   }
-  const backlogDir = path.join(dataDir, 'user-stories');
+  const backlogDir = path.join(dataDir, 'backlogs');
   const proposalDir = path.join(dataDir, 'proposals');
   const backlogPath = path.join(backlogDir, file);
   if (path.dirname(backlogPath) !== backlogDir) return { ok: false, errors: ['File name is not allowed'] };
@@ -65,7 +38,7 @@ function prepare({ dataDir, name, input, requireTitles }) {
   try {
     backlogText = fs.readFileSync(backlogPath, 'utf8');
   } catch {
-    return { ok: false, errors: [`user-stories/${file} was not found.`] };
+    return { ok: false, errors: [`backlogs/${file} was not found.`] };
   }
   const backlog = loadBacklog(backlogText);
 
