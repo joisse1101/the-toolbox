@@ -5,7 +5,7 @@ Gives each backlog one place to define the terms its stories use, so names and m
 ## Requirements
 
 ### Requirement: Lexicon file per backlog
-Each backlog SHALL have at most one lexicon, a CSV file in the data folder's `lexicons` folder with the same file name as the backlog (the lexicon of `user-stories/IAM.csv` is `lexicons/IAM.csv`). The file API SHALL expose it through a `lexicons` store like the other stores. The lexicon of one backlog SHALL NOT be visible in or affect another backlog. A backlog without a lexicon file SHALL work without error, and the file SHALL be created when the first term is saved.
+Each backlog SHALL have at most one lexicon, a CSV file in the data folder's `lexicons` folder with the same file name as the backlog (the lexicon of `backlogs/IAM.csv` is `lexicons/IAM.csv`). The file API SHALL expose it through a `lexicons` store like the other stores. The lexicon of one backlog SHALL NOT be visible in or affect another backlog. A backlog without a lexicon file SHALL work without error, and the file SHALL be created when the first term is saved.
 
 #### Scenario: Lexicon follows the backlog
 - **WHEN** the open backlog is `IAM.csv`

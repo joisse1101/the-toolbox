@@ -7,10 +7,10 @@ Lets the team lead review a user-story backlog CSV against the Epic > Feature > 
 ## Requirements
 
 ### Requirement: Review skill in the repository
-The repository SHALL contain a review skill at `.claude/skills/review-backlog/SKILL.md` that reviews a backlog CSV from `user-stories/` against the standards in `planner/guidelines/product-backlog.md`. The skill SHALL take a backlog file as input and SHALL produce a written report. The skill SHALL NOT restate the guidelines' definitions or rules: it SHALL cite them and describe only how to review (what to report, how to classify it, how to write the findings). The skill SHALL NOT modify the backlog CSV or any file other than its review CSV: it reports findings and suggests fixes, and the user applies them. The only file it may write is `reviews/<backlog file name>`, and only through the script described by the `backlog-review-suggestions` capability. The skill SHALL NOT review Priority.
+The repository SHALL contain a review skill at `.claude/skills/review-backlog/SKILL.md` that reviews a backlog CSV from `backlogs/` against the standards in `planner/guidelines/product-backlog.md`. The skill SHALL take a backlog file as input and SHALL produce a written report. The skill SHALL NOT restate the guidelines' definitions or rules: it SHALL cite them and describe only how to review (what to report, how to classify it, how to write the findings). The skill SHALL NOT modify the backlog CSV or any file other than its review CSV: it reports findings and suggests fixes, and the user applies them. The only file it may write is `reviews/<backlog file name>`, and only through the script described by the `backlog-review-suggestions` capability. The skill SHALL NOT review Priority.
 
 #### Scenario: Report only
-- **WHEN** the skill reviews `user-stories/data-portal.csv`
+- **WHEN** the skill reviews `backlogs/data-portal.csv`
 - **THEN** it outputs a report, the backlog CSV file is byte-for-byte unchanged, and the only file written is `reviews/data-portal.csv`
 
 #### Scenario: Fixes are suggestions
@@ -19,7 +19,7 @@ The repository SHALL contain a review skill at `.claude/skills/review-backlog/SK
 
 #### Scenario: No file named
 - **WHEN** the user invokes the skill without naming a backlog
-- **THEN** the skill asks which backlog in `user-stories/` to review
+- **THEN** the skill asks which backlog in `backlogs/` to review
 
 #### Scenario: Priority is ignored
 - **WHEN** a story has no Priority

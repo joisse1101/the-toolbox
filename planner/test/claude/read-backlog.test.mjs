@@ -9,8 +9,8 @@ const HEAD = 'ID,Epic,Feature,Title,Locked\r\n';
 
 function temp(csv) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'read-backlog-test-'));
-  fs.mkdirSync(path.join(root, 'user-stories'));
-  fs.writeFileSync(path.join(root, 'user-stories', 'data.csv'), csv);
+  fs.mkdirSync(path.join(root, 'backlogs'));
+  fs.writeFileSync(path.join(root, 'backlogs', 'data.csv'), csv);
   const guidelines = path.join(root, 'guidelines');
   fs.mkdirSync(guidelines);
   fs.writeFileSync(path.join(guidelines, 'product-backlog.md'), '# Guidelines');
@@ -104,7 +104,7 @@ test('an unknown section is an error listing the valid ones, and prints no file 
 });
 
 test('a section with a path separator or .. is rejected and reads nothing', () => {
-  for (const bad of ['../user-stories/data.csv', 'epic-1/..', '..', 'epic-3']) {
+  for (const bad of ['../backlogs/data.csv', 'epic-1/..', '..', 'epic-3']) {
     const r = section(full(), bad);
     assert.equal(r.ok, false, bad);
   }

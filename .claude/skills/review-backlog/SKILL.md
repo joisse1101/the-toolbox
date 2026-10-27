@@ -1,6 +1,6 @@
 ---
 name: review-backlog
-description: Review a user-story backlog CSV from user-stories/ against planner/guidelines/product-backlog.md (Epic > Feature > Story hierarchy, INVEST, acceptance-criteria quality and edge cases) and across stories, the backlog's lexicon and its proposals (duplicates, overlaps, contradictions, role and term drift), and report findings with suggested fixes, also written as a review CSV the portal can apply. Never edits the backlog CSV. Use when the user asks to review, audit, sanity-check, consistency-check or "INVEST-check" a backlog or its stories.
+description: Review a user-story backlog CSV from backlogs/ against planner/guidelines/product-backlog.md (Epic > Feature > Story hierarchy, INVEST, acceptance-criteria quality and edge cases) and across stories, the backlog's lexicon and its proposals (duplicates, overlaps, contradictions, role and term drift), and report findings with suggested fixes, also written as a review CSV the portal can apply. Never edits the backlog CSV. Use when the user asks to review, audit, sanity-check, consistency-check or "INVEST-check" a backlog or its stories.
 allowed-tools: Bash(node .claude/skills/review-backlog/read-backlog.mjs:*), Bash(node .claude/skills/review-backlog/write-review.mjs:*)
 ---
 

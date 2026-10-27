@@ -1,6 +1,6 @@
 ---
 name: explore-stories
-description: Think through new user stories for a backlog in user-stories/ with the user, against planner/guidelines/product-backlog.md and the stories already in the backlog and the proposals. Discusses scope, splitting, Epic and Feature placement, dependencies and acceptance criteria, and may sketch draft stories in the conversation. Never writes any file. Use when the user wants to explore, shape, brainstorm or discuss new stories or a new feature before writing them down; hand over to propose-stories to save them.
+description: Think through new user stories for a backlog in backlogs/ with the user, against planner/guidelines/product-backlog.md and the stories already in the backlog and the proposals. Discusses scope, splitting, Epic and Feature placement, dependencies and acceptance criteria, and may sketch draft stories in the conversation. Never writes any file. Use when the user wants to explore, shape, brainstorm or discuss new stories or a new feature before writing them down; hand over to propose-stories to save them.
 allowed-tools: mcp__story-tools__read_context, mcp__story-tools__search_stories, mcp__story-tools__read_file
 ---
 

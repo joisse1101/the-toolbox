@@ -1,9 +1,9 @@
 // The only way the propose-stories skill writes anything. Usage:
 //   node .claude/skills/propose-stories/write-proposal.mjs <backlog file name> [--check]   (stories as JSON on stdin)
-// Reads user-stories/<name>, validates the input against it and writes proposals/<name>. The input is a JSON list whose
+// Reads backlogs/<name>, validates the input against it and writes proposals/<name>. The input is a JSON list whose
 // items are either new stories (no "id"), which are ADDED with NEW-<n> IDs, or patches (an "id" such as NEW-8 plus
 // only the fields to change), which change that proposed story in place. One invalid item means nothing is written.
-// There is no output path argument: the target is fixed, and user-stories/ is only ever read. Rows the input does not
+// There is no output path argument: the target is fixed, and backlogs/ is only ever read. Rows the input does not
 // name are kept as they are (the user edits the proposals file in the portal) and nothing is removed. A new story that
 // repeats a stored proposal (same Epic, Feature and Title) is skipped, so running the same batch twice adds it once.
 // With --check the same validation runs and reports what would happen, and nothing is written.
@@ -29,7 +29,7 @@ function prepare({ dataDir, name, input, requireTitles }) {
   } catch (err) {
     return { ok: false, errors: [err.message] };
   }
-  const backlogDir = path.join(dataDir, 'user-stories');
+  const backlogDir = path.join(dataDir, 'backlogs');
   const proposalDir = path.join(dataDir, 'proposals');
   const backlogPath = path.join(backlogDir, file);
   if (path.dirname(backlogPath) !== backlogDir) return { ok: false, errors: ['File name is not allowed'] };
@@ -38,7 +38,7 @@ function prepare({ dataDir, name, input, requireTitles }) {
   try {
     backlogText = fs.readFileSync(backlogPath, 'utf8');
   } catch {
-    return { ok: false, errors: [`user-stories/${file} was not found.`] };
+    return { ok: false, errors: [`backlogs/${file} was not found.`] };
   }
   const backlog = loadBacklog(backlogText);
 

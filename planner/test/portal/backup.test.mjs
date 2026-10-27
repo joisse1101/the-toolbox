@@ -27,7 +27,7 @@ test('isBackupFolderName rejects paths and other text', () => {
 
 test('backupFiles lists the five stores for the name and never a sidecar', () => {
   assert.deepEqual(backupFiles('sprint-12.csv'), [
-    { store: 'user-stories', name: 'sprint-12.csv' },
+    { store: 'backlogs', name: 'sprint-12.csv' },
     { store: 'reviews', name: 'sprint-12.csv' },
     { store: 'proposals', name: 'sprint-12.csv' },
     { store: 'lexicons', name: 'sprint-12.csv' },

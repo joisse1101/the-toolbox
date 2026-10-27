@@ -132,7 +132,7 @@ An item with an `"id"` (`NEW-<n>`, a story that is in the proposals file) is a *
 
 ## Edit a backlog story
 
-A change to a story that is already in the backlog is written as a **review row**: a suggestion the story editor shows next to the field, with Apply and Dismiss. You never edit `user-stories/` (the app autosaves it). The rows go to `write_review`, which validates them against the backlog and fills `Current` itself. Its description holds the row keys, actions, fields, the Sprint points scale and the acceptance-criteria rules (one criterion per row, a replace starts with the label of the criterion it replaces, a remove takes the label alone): follow it. An example of one row:
+A change to a story that is already in the backlog is written as a **review row**: a suggestion the story editor shows next to the field, with Apply and Dismiss. You never edit `backlogs/` (the app autosaves it). The rows go to `write_review`, which validates them against the backlog and fills `Current` itself. Its description holds the row keys, actions, fields, the Sprint points scale and the acceptance-criteria rules (one criterion per row, a replace starts with the label of the criterion it replaces, a remove takes the label alone): follow it. An example of one row:
 
 ```json
 {

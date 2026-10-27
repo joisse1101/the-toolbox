@@ -42,7 +42,7 @@ Open questions SHALL NOT prevent editing, accepting a proposed story into the ba
 - **THEN** it is in the backlog with the same `Clarifications` text
 
 ### Requirement: Explore and propose draw out clarifications
-`explore-stories` and `propose-stories` SHALL aim at a best-effort complete story and SHALL NOT guess what the user has not decided. When a detail (technical detail, ownership, dependency, scope or edge case) cannot be settled in the conversation, they SHALL record it as a question in `Clarifications` instead of inventing an answer or leaving it only in Notes. While discussing, `explore-stories` SHALL ask the user for such unknowns, and an answer the user states SHALL be recorded as the answer to its question. The rule SHALL be written once in `planner/guidelines/product-backlog.md` and cited, not restated, by both skills. No skill SHALL write `user-stories/`.
+`explore-stories` and `propose-stories` SHALL aim at a best-effort complete story and SHALL NOT guess what the user has not decided. When a detail (technical detail, ownership, dependency, scope or edge case) cannot be settled in the conversation, they SHALL record it as a question in `Clarifications` instead of inventing an answer or leaving it only in Notes. While discussing, `explore-stories` SHALL ask the user for such unknowns, and an answer the user states SHALL be recorded as the answer to its question. The rule SHALL be written once in `planner/guidelines/product-backlog.md` and cited, not restated, by both skills. No skill SHALL write `backlogs/`.
 
 #### Scenario: Unknown becomes a question
 - **WHEN** the user cannot say who owns approvals while a story is being shaped

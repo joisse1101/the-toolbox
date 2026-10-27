@@ -11,7 +11,7 @@ function Launcher() {
           <a href="/backlog-portal/">
             <div className="card">
               <strong>Backlog portal</strong>
-              Write user stories with acceptance criteria and keep them as CSV backlogs in <code>planner/data/user-stories/</code>.
+              Write user stories with acceptance criteria and keep them as CSV backlogs in <code>planner/data/backlogs/</code>.
             </div>
           </a>
         </li>

@@ -1,6 +1,6 @@
 # Product backlog guidelines
 
-The standards for every backlog in `user-stories/`. They are used both to write stories and to review them, and this file is the only place the rules are defined. Other files (such as the review skill) cite it.
+The standards for every backlog in `backlogs/`. They are used both to write stories and to review them, and this file is the only place the rules are defined. Other files (such as the review skill) cite it.
 
 ```
 Epic -> Feature -> User Story -> Acceptance criteria

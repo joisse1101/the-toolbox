@@ -1,8 +1,8 @@
 // The only way the review-backlog skill writes anything. Usage:
 //   node .claude/skills/review-backlog/write-review.mjs <backlog file name>            (findings as JSON on stdin)
 //   node .claude/skills/review-backlog/write-review.mjs <backlog file name> --append   (add a batch to the review)
-// Reads user-stories/<name>, validates the findings against it and writes reviews/<name>. There is no output
-// path argument: the target is fixed, and user-stories/ is only ever read. Without --append the run replaces the
+// Reads backlogs/<name>, validates the findings against it and writes reviews/<name>. There is no output
+// path argument: the target is fixed, and backlogs/ is only ever read. Without --append the run replaces the
 // review; with it the batch is validated alone and its rows are added after the existing ones, so a long review
 // can be written as several small commands. Statuses the user already decided (applied/dismissed) are kept in
 // reviews/<name>.decided (not a .csv, so the file API never lists it) so later batches can restore them.
@@ -51,7 +51,7 @@ function prepare({ dataDir, name, input, append, requireTitles }) {
   } catch (err) {
     return { ok: false, errors: [err.message] };
   }
-  const backlogDir = path.join(dataDir, 'user-stories');
+  const backlogDir = path.join(dataDir, 'backlogs');
   const reviewDir = path.join(dataDir, 'reviews');
   const backlogPath = path.join(backlogDir, file);
   if (path.dirname(backlogPath) !== backlogDir) return { ok: false, errors: ['File name is not allowed'] };
@@ -60,7 +60,7 @@ function prepare({ dataDir, name, input, append, requireTitles }) {
   try {
     backlogText = fs.readFileSync(backlogPath, 'utf8');
   } catch {
-    return { ok: false, errors: [`user-stories/${file} was not found.`] };
+    return { ok: false, errors: [`backlogs/${file} was not found.`] };
   }
   const backlog = loadBacklog(backlogText);
 

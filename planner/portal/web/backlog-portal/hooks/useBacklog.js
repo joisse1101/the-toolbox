@@ -5,7 +5,7 @@ import { commitEpic, commitEpics, moveStory, moveGroup, gatherFeatures, recodedB
 import { applySuggestions, acceptAll } from '../../../../logic/review/review.js';
 import { useAutosave } from './useAutosave.js';
 
-const store = createFileStore('user-stories');
+const store = createFileStore('backlogs');
 const NEW_BACKLOG_NAME = 'new-backlog';
 
 const initial = {

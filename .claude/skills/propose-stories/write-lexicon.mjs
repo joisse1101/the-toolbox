@@ -1,10 +1,10 @@
 // The only way the propose-stories skill changes a lexicon. Usage:
 //   node .claude/skills/propose-stories/write-lexicon.mjs <backlog file name>   (terms as JSON on stdin)
-// Reads user-stories/<name> (it must exist) and lexicons/<name>, applies the input and writes lexicons/<name>. The input
+// Reads backlogs/<name> (it must exist) and lexicons/<name>, applies the input and writes lexicons/<name>. The input
 // is a JSON list of { term, definition, avoid?, notes?, partOf? }: every item ADDS a term (and needs a definition); a term
 // that is already there is refused, because a change to it is a suggestion (suggest-lexicon.mjs). The rules are those
 // of the portal's Lexicon tab (planner/logic/lexicon/lexicon.js), checked on the lexicon as it will be; one invalid item means nothing is
-// written. There is no output path argument: the target is fixed, user-stories/ is only checked, and no term is changed or removed.
+// written. There is no output path argument: the target is fixed, backlogs/ is only checked, and no term is changed or removed.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -26,11 +26,11 @@ function prepare({ dataDir, name, input }) {
   } catch (err) {
     return { ok: false, errors: [err.message] };
   }
-  const backlogDir = path.join(dataDir, 'user-stories');
+  const backlogDir = path.join(dataDir, 'backlogs');
   const lexiconDir = path.join(dataDir, 'lexicons');
   const backlogPath = path.join(backlogDir, file);
   if (path.dirname(backlogPath) !== backlogDir) return { ok: false, errors: ['File name is not allowed'] };
-  if (!fs.existsSync(backlogPath)) return { ok: false, errors: [`user-stories/${file} was not found.`] };
+  if (!fs.existsSync(backlogPath)) return { ok: false, errors: [`backlogs/${file} was not found.`] };
 
   let lexicon = emptyLexicon();
   try {

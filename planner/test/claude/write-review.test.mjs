@@ -17,8 +17,8 @@ const CSV =
 
 function temp() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'review-test-'));
-  fs.mkdirSync(path.join(root, 'user-stories'));
-  fs.writeFileSync(path.join(root, 'user-stories', 'data.csv'), CSV);
+  fs.mkdirSync(path.join(root, 'backlogs'));
+  fs.writeFileSync(path.join(root, 'backlogs', 'data.csv'), CSV);
   return root;
 }
 
@@ -31,10 +31,10 @@ const reviewPath = (root) => path.join(root, 'reviews', 'data.csv');
 
 test('valid input writes reviews/<name> and leaves the backlog untouched', () => {
   const root = temp();
-  const before = fs.readFileSync(path.join(root, 'user-stories', 'data.csv'));
+  const before = fs.readFileSync(path.join(root, 'backlogs', 'data.csv'));
   const r = run(root, [finding(), finding({ storyId: 'IAM-0002', field: 'Sprint points', suggested: '8', confidence: 'confirm' })]);
   assert.deepEqual([r.ok, r.count], [true, 2]);
-  assert.deepEqual(fs.readFileSync(path.join(root, 'user-stories', 'data.csv')), before);
+  assert.deepEqual(fs.readFileSync(path.join(root, 'backlogs', 'data.csv')), before);
   const rows = parseReview(fs.readFileSync(reviewPath(root), 'utf8')).rows;
   assert.equal(rows[0].current, 'Login');
   assert.equal(rows[1].current, '55');
@@ -150,10 +150,10 @@ test('three batches give all rows; an invalid middle batch keeps the first and t
 
 test('append creates the review when there is none and leaves the backlog alone', () => {
   const root = temp();
-  const before = fs.readFileSync(path.join(root, 'user-stories', 'data.csv'));
+  const before = fs.readFileSync(path.join(root, 'backlogs', 'data.csv'));
   const r = appendRun(root, [finding()]);
   assert.deepEqual([r.ok, r.added, r.count], [true, 1, 1]);
-  assert.deepEqual(fs.readFileSync(path.join(root, 'user-stories', 'data.csv')), before);
+  assert.deepEqual(fs.readFileSync(path.join(root, 'backlogs', 'data.csv')), before);
 });
 
 test('a Group already in the review is rejected on append and nothing changes', () => {
@@ -221,7 +221,7 @@ test('CLI: --append prints the batch size and the total; unknown arguments exit 
 function tempLocked() {
   const root = temp();
   const csv = CSV.replace(/\r\n/, ',Locked\r\n').replace(/,,,\r\n$/, ',,,,Yes\r\n');
-  fs.writeFileSync(path.join(root, 'user-stories', 'data.csv'), csv);
+  fs.writeFileSync(path.join(root, 'backlogs', 'data.csv'), csv);
   return root;
 }
 const unlock = (over = {}) => ({ storyId: 'IAM-0002', field: '', action: 'unlock', suggested: '', reason: 'Too big', area: 'INVEST', confidence: 'ready', group: '', ...over });
@@ -280,7 +280,7 @@ test('clarification rows are accepted, also with --append, and existing rows are
 
 test('a resolve row stores the question of its pair in Current and not the pair number', () => {
   const root = temp();
-  const p = path.join(root, 'user-stories', 'data.csv');
+  const p = path.join(root, 'backlogs', 'data.csv');
   fs.writeFileSync(p, CSV.replace('"AC1: Given a, when b, then c",', '"AC1: Given a, when b, then c",,,"Q1: Who owns approvals?\nA1:\nQ2: Which format?\nA2: CSV"').replace('Notes\r\n', 'Notes,Locked,Clarifications\r\n'));
   const resolve = (over = {}) => finding({ field: 'Clarifications', action: 'resolve', pair: 2, suggested: 'Format is CSV', area: 'Clarification', ...over });
   const r = run(root, [resolve()]);

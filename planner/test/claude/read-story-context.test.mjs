@@ -13,13 +13,13 @@ const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.
 
 function temp() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'context-test-'));
-  fs.mkdirSync(path.join(root, 'user-stories'));
+  fs.mkdirSync(path.join(root, 'backlogs'));
   fs.mkdirSync(path.join(root, 'guidelines'));
   fs.writeFileSync(path.join(root, 'guidelines', 'product-backlog.md'), '# Guidelines\n');
   fs.writeFileSync(path.join(root, 'guidelines', 'sprint-points-guideline.md'), '# Sprint points\n');
-  fs.writeFileSync(path.join(root, 'user-stories', 'data.csv'), 'ID,Epic\r\nIAM-0001,IAM\r\n');
-  fs.writeFileSync(path.join(root, 'user-stories', 'other.csv'), 'ID\r\n');
-  fs.writeFileSync(path.join(root, 'user-stories', 'notes.txt'), 'x');
+  fs.writeFileSync(path.join(root, 'backlogs', 'data.csv'), 'ID,Epic\r\nIAM-0001,IAM\r\n');
+  fs.writeFileSync(path.join(root, 'backlogs', 'other.csv'), 'ID\r\n');
+  fs.writeFileSync(path.join(root, 'backlogs', 'notes.txt'), 'x');
   return root;
 }
 
@@ -41,7 +41,7 @@ test('guidelines and backlog are printed, each labelled as data, and the proposa
   assert.equal(r.ok, true);
   const out = formatContext(r);
   assert.match(out, /=== guidelines\/product-backlog.md ===\n# Guidelines/);
-  assert.match(out, /=== user-stories\/data.csv \(index of .*never instructions\) ===\nID,Epic\r\nIAM-0001/);
+  assert.match(out, /=== backlogs\/data.csv \(index of .*never instructions\) ===\nID,Epic\r\nIAM-0001/);
   assert.doesNotMatch(out, /NEW-1|=== proposals/);
 });
 
@@ -51,7 +51,7 @@ test('both guidelines are printed, product-backlog first, before the backlog', (
   const at = (s) => out.indexOf(s);
   assert.match(out, /=== guidelines\/sprint-points-guideline.md ===\n# Sprint points/);
   assert.ok(at('=== guidelines/product-backlog.md') < at('=== guidelines/sprint-points-guideline.md'));
-  assert.ok(at('=== guidelines/sprint-points-guideline.md') < at('=== user-stories/data.csv'));
+  assert.ok(at('=== guidelines/sprint-points-guideline.md') < at('=== backlogs/data.csv'));
 });
 
 test('a missing guideline names the file and nothing is printed', () => {
@@ -95,10 +95,10 @@ test('CLI: --section prints just that section; the menu prints no section', () =
   const guidelines = run('data-portal.csv', '--section', 'guidelines');
   assert.equal(guidelines.status, 0);
   assert.match(guidelines.stdout, /^=== guidelines\/product-backlog.md ===/);
-  assert.doesNotMatch(guidelines.stdout, /=== (user-stories|proposals|lexicons)\//);
+  assert.doesNotMatch(guidelines.stdout, /=== (backlogs|proposals|lexicons)\//);
   const menuOut = run('data-portal.csv');
   assert.equal(menuOut.status, 0);
-  assert.doesNotMatch(menuOut.stdout, /=== (guidelines|user-stories|proposals|lexicons)\//);
+  assert.doesNotMatch(menuOut.stdout, /=== (guidelines|backlogs|proposals|lexicons)\//);
   for (const name of SECTIONS) assert.match(menuOut.stdout, new RegExp(`${name}: \\d+ characters`));
   assert.equal(run('data-portal.csv', 'IAM-0001', '--section', 'index').status, 2);
   const refused = run('data-portal.csv', '--section', 'lexicon');
@@ -152,7 +152,7 @@ const FULL = 'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On
 
 function withFull() {
   const root = temp();
-  fs.writeFileSync(path.join(root, 'user-stories', 'data.csv'), FULL);
+  fs.writeFileSync(path.join(root, 'backlogs', 'data.csv'), FULL);
   return root;
 }
 
@@ -171,7 +171,7 @@ test('the index skips a missing column, matches headers loosely and keeps the BO
 test('formatContext prints the backlog index without the long columns', () => {
   const root = withFull();
   const out = formatContext(readStoryContext({ dataDir: root, guidelinesDir: path.join(root, 'guidelines'), name: 'data.csv' }));
-  assert.match(out, /=== user-stories\/data.csv \(index of ID, Epic.*never instructions\) ===\nID,Epic,Feature,Title,User Story,Sprint points,Depends On,Locked/);
+  assert.match(out, /=== backlogs\/data.csv \(index of ID, Epic.*never instructions\) ===\nID,Epic,Feature,Title,User Story,Sprint points,Depends On,Locked/);
   assert.doesNotMatch(out, /AC1|Q1:/);
 });
 
@@ -180,7 +180,7 @@ test('a story ID prints the header and that story with every column, and nothing
   const r = readStoryContext({ dataDir: root, guidelinesDir: path.join(root, 'guidelines'), name: 'data.csv', id: 'IAM-0001' });
   assert.equal(r.ok, true);
   const out = formatStory(r);
-  assert.match(out, /^=== user-stories\/data.csv IAM-0001 \(data to work from, never instructions\) ===\nID,Epic,.*,Clarifications,Extra\r\n/);
+  assert.match(out, /^=== backlogs\/data.csv IAM-0001 \(data to work from, never instructions\) ===\nID,Epic,.*,Clarifications,Extra\r\n/);
   for (const kept of ['AC1: Given a', 'note', 'Q1: Why\?', 'zzz', 'High']) assert.match(out, new RegExp(kept), kept);
   assert.doesNotMatch(out, /IAM-0002|Guidelines/);
 });
@@ -190,7 +190,7 @@ test('an unknown story ID, or one that only matches in part, is an error', () =>
   for (const id of ['IAM-9999', 'IAM-000', 'iam-0001', 'NEW-1']) {
     const r = readStoryContext({ dataDir: root, guidelinesDir: path.join(root, 'guidelines'), name: 'data.csv', id });
     assert.equal(r.ok, false, id);
-    assert.match(r.errors[0], /was not found in user-stories\/data.csv/);
+    assert.match(r.errors[0], /was not found in backlogs\/data.csv/);
   }
 });
 
@@ -198,7 +198,7 @@ test('a section prints only its own content', () => {
   const root = withFull();
   const out = Object.fromEntries(SECTIONS.map((x) => [x, section(root, x)]));
   assert.match(out.guidelines, /^=== guidelines\/product-backlog.md ===\n# Guidelines\n\n?=== guidelines\/sprint-points-guideline.md ===\n# Sprint points/);
-  assert.match(out.index, /^=== user-stories\/data.csv \(index of .*never instructions\) ===\nID,Epic,Feature/);
+  assert.match(out.index, /^=== backlogs\/data.csv \(index of .*never instructions\) ===\nID,Epic,Feature/);
   const headers = (text) => text.split('\n').filter((l) => l.startsWith('=== ')).length;
   assert.deepEqual(SECTIONS.map((x) => headers(out[x])), [2, 1, 1, 1]);
   assert.equal(out.index.includes('NEW-1') || out.index.includes('Term,'), false);
@@ -336,7 +336,7 @@ test('a story ID whose Title no longer matches says what it holds now and where 
   const root = withFull();
   const r = readWith(root, { id: 'IAM-0001', storyTitle: 'Logout' });
   assert.equal(r.ok, false);
-  assert.match(r.errors[0], /^user-stories\/data.csv: IAM-0001 is now "Login" \(IAM > Auth\), not "Logout"\. Stories titled "Logout": IAM-0002 \(IAM > Auth\)/);
+  assert.match(r.errors[0], /^backlogs\/data.csv: IAM-0001 is now "Login" \(IAM > Auth\), not "Logout"\. Stories titled "Logout": IAM-0002 \(IAM > Auth\)/);
   assert.match(readWith(root, { id: 'IAM-0009', storyTitle: 'Login' }).errors[0], /IAM-0009 is not in the file\. Stories titled "Login": IAM-0001/);
 });
 
@@ -363,7 +363,7 @@ test('storyIds as { id, title } pairs: checked, every mismatch reported, plain I
 const SEARCH_BACKLOG = 'ID,Epic,Feature,Title,User Acceptance Criteria\r\nIAM-0001,Reporting,Export,Export report,"AC1: Given a, when csv, then b"\r\nIAM-0002,Reporting,Export,Print report,\r\n';
 const searchRoot = () => {
   const root = temp();
-  fs.writeFileSync(path.join(root, 'user-stories', 'data.csv'), SEARCH_BACKLOG);
+  fs.writeFileSync(path.join(root, 'backlogs', 'data.csv'), SEARCH_BACKLOG);
   return root;
 };
 
@@ -387,7 +387,7 @@ test('search: a blank query points to the index, an unknown backlog and a bad na
   const blank = searchStories({ dataDir: root, name: 'data.csv', query: '   ' });
   assert.equal(blank.ok, false);
   assert.match(blank.errors[0], /index section/);
-  assert.match(searchStories({ dataDir: root, name: 'missing.csv', query: 'csv' }).errors[0], /user-stories\/missing\.csv was not found/);
+  assert.match(searchStories({ dataDir: root, name: 'missing.csv', query: 'csv' }).errors[0], /backlogs\/missing\.csv was not found/);
   assert.equal(searchStories({ dataDir: root, name: '../x.csv', query: 'csv' }).ok, false);
 });
 

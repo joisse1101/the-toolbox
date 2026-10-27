@@ -14,7 +14,7 @@ const HOOK = path.join(ROOT, 'planner/claude/mcp/wait-for-story-tools.mjs');
 
 function temp() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tools-ready-'));
-  fs.mkdirSync(path.join(dir, 'user-stories'));
+  fs.mkdirSync(path.join(dir, 'backlogs'));
   return dir;
 }
 

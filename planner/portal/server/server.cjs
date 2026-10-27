@@ -8,7 +8,7 @@ const path = require('path');
 const os = require('os');
 const { spawn } = require('child_process');
 const { HttpError, validateName } = require('../../logic/storage/file-name.cjs');
-const { ROOT, DATA_DIR } = require('../../logic/storage/paths.cjs');
+const { DATA_DIR, legacyDataHint } = require('../../logic/storage/paths.cjs');
 const { backupFolderName, isBackupFolderName, backupFiles } = require('./backup.cjs');
 const { logWrite } = require('../../logic/storage/write-log.cjs');
 
@@ -20,7 +20,7 @@ const BACKUPS_DIR = path.join(DATA_DIR, 'backups'); // not a store: only the bac
 
 // Allow-list of data folders. Adding a tool's data folder is one line.
 const STORES = {
-  'user-stories': path.join(DATA_DIR, 'user-stories'),
+  'backlogs': path.join(DATA_DIR, 'backlogs'),
   reviews: path.join(DATA_DIR, 'reviews'), // review suggestions, written by the review-backlog skill's script
   proposals: path.join(DATA_DIR, 'proposals'), // proposed stories awaiting acceptance, one file per backlog
   lexicons: path.join(DATA_DIR, 'lexicons'), // defined terms, one file per backlog
@@ -210,9 +210,18 @@ function compareFolders(a, b) {
   return y.n - x.n;
 }
 
+// Backups made before the store was renamed hold the backlog under `user-stories`; they are still read.
+const LEGACY_BACKUP_DIRS = { backlogs: 'user-stories' };
+async function backupFile(name, folder, store) {
+  const file = path.join(BACKUPS_DIR, name, folder, store, name);
+  const legacy = LEGACY_BACKUP_DIRS[store];
+  if (legacy && !(await fileExists(file))) return path.join(BACKUPS_DIR, name, folder, legacy, name);
+  return file;
+}
+
 async function createBackup(name) {
   const source = (store) => resolveInStore(STORES[store], name);
-  if (!(await fileExists(source('user-stories')))) {
+  if (!(await fileExists(source('backlogs')))) {
     throw new HttpError(404, `${name} was not found`, 'not-found');
   }
   const parent = path.join(BACKUPS_DIR, name);
@@ -239,7 +248,7 @@ async function createBackup(name) {
         await fs.promises.copyFile(source(store), path.join(target, store, name), fs.constants.COPYFILE_EXCL);
         copied.push(`${store}/${name}`);
       } catch (err) {
-        if (err.code === 'ENOENT' && store !== 'user-stories') {
+        if (err.code === 'ENOENT' && store !== 'backlogs') {
           await fs.promises.rmdir(path.join(target, store)); // the review or proposals file does not exist yet
           continue;
         }
@@ -267,7 +276,7 @@ async function listBackups(name) {
     folders.map(async (folder) => {
       const files = [];
       for (const { store } of backupFiles(name)) {
-        if (await fileExists(path.join(BACKUPS_DIR, name, folder, store, name))) files.push(`${store}/${name}`);
+        if (await fileExists(await backupFile(name, folder, store))) files.push(`${store}/${name}`);
       }
       return { folder, files };
     }),
@@ -291,7 +300,7 @@ async function checkState(name, state) {
 async function flattenedState(name, state, flattenCsv) {
   const result = {};
   for (const { store } of backupFiles(name)) {
-    const file = state === CURRENT ? resolveInStore(STORES[store], name) : path.join(BACKUPS_DIR, name, state, store, name);
+    const file = state === CURRENT ? resolveInStore(STORES[store], name) : await backupFile(name, state, store);
     try {
       result[store] = flattenCsv(await fs.promises.readFile(file, 'utf8'));
     } catch (err) {
@@ -496,9 +505,8 @@ if (require.main === module) {
   server.listen(PORT, HOST, () => {
     console.log(`Team lead tools running at http://localhost:${PORT}/`);
     if (!fs.existsSync(DIST_DIR)) console.log('The app has not been built yet. Run `npm run build` first.');
-    if (!process.env.TLT_DATA_DIR && !fs.existsSync(DATA_DIR) && fs.existsSync(path.join(ROOT, 'data'))) {
-      console.log('Your data is still in data/. The data folder is now planner/data/: move it with `Move-Item data planner/data`.');
-    }
+    const hint = legacyDataHint();
+    if (hint) console.log(hint);
   });
 }
 

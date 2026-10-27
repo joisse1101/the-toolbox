@@ -38,7 +38,7 @@ test('denied commands, each with the allowed forms in the message', () => {
     ['third argument', `${R} data.csv checks epic-1`],
     ['chained', `${R} data.csv && cat x`],
     ['piped', `${R} data.csv | cat`],
-    ['other command', 'cat user-stories/data.csv'],
+    ['other command', 'cat backlogs/data.csv'],
     ['other script', 'node .claude/skills/review-backlog/evil.mjs'],
     ['no command', undefined],
   ];

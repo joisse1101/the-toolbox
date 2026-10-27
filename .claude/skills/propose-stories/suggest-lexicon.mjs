@@ -1,5 +1,5 @@
 // How the propose-stories skill suggests renaming, deleting or editing (definition, avoid, notes, part of) a lexicon term (used by the story-tools MCP server's
-// suggest_lexicon_change; there is no command line form). Reads user-stories/<name> (it must exist) and lexicons/<name>,
+// suggest_lexicon_change; there is no command line form). Reads backlogs/<name> (it must exist) and lexicons/<name>,
 // appends open rows to lexicon-suggestions/<name> and never touches the lexicon: the user applies a suggestion in the
 // portal's Lexicon tab. The rules are planner/logic/lexicon/lexicon-suggestions.js's; one invalid item means nothing is written.
 
@@ -47,10 +47,10 @@ export function suggestLexicon({ dataDir = DATA_DIR, name, items }) {
   } catch (err) {
     return { ok: false, errors: [err.message] };
   }
-  const backlogDir = path.join(dataDir, 'user-stories');
+  const backlogDir = path.join(dataDir, 'backlogs');
   const backlogPath = path.join(backlogDir, file);
   if (path.dirname(backlogPath) !== backlogDir) return { ok: false, errors: ['File name is not allowed'] };
-  if (!fs.existsSync(backlogPath)) return { ok: false, errors: [`user-stories/${file} was not found.`] };
+  if (!fs.existsSync(backlogPath)) return { ok: false, errors: [`backlogs/${file} was not found.`] };
 
   const lexicon = readIfThere(path.join(dataDir, 'lexicons'), file, parseLexicon, emptyLexicon);
   if (lexicon.error) return { ok: false, errors: [lexicon.error] };

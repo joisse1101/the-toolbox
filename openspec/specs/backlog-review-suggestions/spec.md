@@ -7,7 +7,7 @@ Turns the findings of a backlog review into data the portal can use: a review CS
 ## Requirements
 
 ### Requirement: Review CSV
-A review of a backlog SHALL be stored as a CSV file in the `reviews` folder with the same file name as the backlog it reviews (for example `reviews/data-portal.csv` for `user-stories/data-portal.csv`). One row SHALL describe one field edit, or one suggestion to unlock a story, and SHALL have the columns `Story ID`, `Field`, `Action`, `Current`, `Suggested`, `Reason`, `Area`, `Confidence`, `Group` and `Status`.
+A review of a backlog SHALL be stored as a CSV file in the `reviews` folder with the same file name as the backlog it reviews (for example `reviews/data-portal.csv` for `backlogs/data-portal.csv`). One row SHALL describe one field edit, or one suggestion to unlock a story, and SHALL have the columns `Story ID`, `Field`, `Action`, `Current`, `Suggested`, `Reason`, `Area`, `Confidence`, `Group` and `Status`.
 
 - `Story ID` is the ID of the story the edit applies to, or `NEW-<n>` for a story to be created (see "Split suggestions").
 - `Field` is one of `Epic`, `Feature`, `Title`, `User Story`, `Sprint points`, `Depends On`, `User Acceptance Criteria`, `Notes`, and is empty on an `unlock` row. Priority is not a Field: reviews do not cover it.
@@ -72,10 +72,10 @@ Review files SHALL be written only by running the Node script `.claude/skills/re
 
 #### Scenario: Backlog untouched
 - **WHEN** a review is written for `data-portal.csv`
-- **THEN** `user-stories/data-portal.csv` is byte-for-byte unchanged and `reviews/data-portal.csv` exists
+- **THEN** `backlogs/data-portal.csv` is byte-for-byte unchanged and `reviews/data-portal.csv` exists
 
 #### Scenario: Bad file name
-- **WHEN** the script is run with a backlog name such as `..\x.csv` or one that does not exist in `user-stories/`
+- **WHEN** the script is run with a backlog name such as `..\x.csv` or one that does not exist in `backlogs/`
 - **THEN** it exits with an error and writes nothing
 
 #### Scenario: Append flag allowed

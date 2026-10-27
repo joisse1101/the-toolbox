@@ -7,14 +7,14 @@ Defines the only way the story skills write: a script that validates drafted sto
 ## Requirements
 
 ### Requirement: Writer script
-The repository SHALL contain `.claude/skills/propose-stories/write-proposal.mjs`, run as `node .claude/skills/propose-stories/write-proposal.mjs <backlog file name>` with the stories as a JSON array on standard input. It SHALL accept the file name only (validated by the file store's name rules) and no output path: the target is always `proposals/<backlog file name>`, and `user-stories/` is only read. It SHALL write nothing unless every story in the input is valid, and SHALL report all problems found in one run, naming each story by its position in the input. A failed run SHALL leave `proposals/` unchanged, and a successful write SHALL not leave a partly written file.
+The repository SHALL contain `.claude/skills/propose-stories/write-proposal.mjs`, run as `node .claude/skills/propose-stories/write-proposal.mjs <backlog file name>` with the stories as a JSON array on standard input. It SHALL accept the file name only (validated by the file store's name rules) and no output path: the target is always `proposals/<backlog file name>`, and `backlogs/` is only read. It SHALL write nothing unless every story in the input is valid, and SHALL report all problems found in one run, naming each story by its position in the input. A failed run SHALL leave `proposals/` unchanged, and a successful write SHALL not leave a partly written file.
 
 #### Scenario: Valid input
 - **WHEN** valid stories are sent for `data-portal.csv`
-- **THEN** they are added to `proposals/data-portal.csv` and `user-stories/data-portal.csv` is byte-for-byte unchanged
+- **THEN** they are added to `proposals/data-portal.csv` and `backlogs/data-portal.csv` is byte-for-byte unchanged
 
 #### Scenario: Unknown backlog
-- **WHEN** the file name does not exist in `user-stories/`
+- **WHEN** the file name does not exist in `backlogs/`
 - **THEN** nothing is written and the message says the backlog was not found
 
 #### Scenario: Several problems at once

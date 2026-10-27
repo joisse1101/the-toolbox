@@ -16,8 +16,8 @@ const CSV =
 
 function temp() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'proposal-test-'));
-  fs.mkdirSync(path.join(root, 'user-stories'));
-  fs.writeFileSync(path.join(root, 'user-stories', 'data.csv'), CSV);
+  fs.mkdirSync(path.join(root, 'backlogs'));
+  fs.writeFileSync(path.join(root, 'backlogs', 'data.csv'), CSV);
   return root;
 }
 
@@ -37,10 +37,10 @@ const load = (root) => loadBacklog(fs.readFileSync(proposalPath(root), 'utf8'), 
 
 test('valid input creates proposals/<name> and leaves the backlog byte-for-byte unchanged', () => {
   const root = temp();
-  const before = fs.readFileSync(path.join(root, 'user-stories', 'data.csv'));
+  const before = fs.readFileSync(path.join(root, 'backlogs', 'data.csv'));
   const r = run(root, [story(), story({ title: 'Two', dependsOn: ['NEW-1', 'IAM-0001'] })]);
   assert.deepEqual([r.ok, r.ids, r.count], [true, ['NEW-1', 'NEW-2'], 2]);
-  assert.deepEqual(fs.readFileSync(path.join(root, 'user-stories', 'data.csv')), before);
+  assert.deepEqual(fs.readFileSync(path.join(root, 'backlogs', 'data.csv')), before);
   const p = load(root);
   assert.deepEqual(p.stories.map((s) => s.code), ['NEW-1', 'NEW-2']);
   assert.deepEqual(p.stories[1].dependsOn, ['NEW-1', 'IAM-0001']);

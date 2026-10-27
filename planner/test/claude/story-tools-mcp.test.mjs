@@ -19,8 +19,8 @@ const CSV =
 
 function temp() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tools-test-'));
-  fs.mkdirSync(path.join(root, 'user-stories'));
-  fs.writeFileSync(path.join(root, 'user-stories', 'data.csv'), CSV);
+  fs.mkdirSync(path.join(root, 'backlogs'));
+  fs.writeFileSync(path.join(root, 'backlogs', 'data.csv'), CSV);
   return root;
 }
 

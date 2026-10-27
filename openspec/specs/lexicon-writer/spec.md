@@ -5,14 +5,14 @@ Defines the only way the story skills change a lexicon: a script that validates 
 ## Requirements
 
 ### Requirement: Writer script
-The repository SHALL contain `.claude/skills/propose-stories/write-lexicon.mjs`, run as `node .claude/skills/propose-stories/write-lexicon.mjs <backlog file name>` with a JSON array of term items on standard input. It SHALL accept the backlog file name only (validated by the file store's name rules, and the backlog MUST exist in `user-stories/`) and no output path: the target is always `lexicons/<backlog file name>`. It SHALL write nothing unless every item is valid, SHALL report all problems found in one run naming each item by its position, and SHALL NOT leave a partly written file. It SHALL never remove a term and SHALL never write `user-stories/`, `proposals/` or `reviews/`.
+The repository SHALL contain `.claude/skills/propose-stories/write-lexicon.mjs`, run as `node .claude/skills/propose-stories/write-lexicon.mjs <backlog file name>` with a JSON array of term items on standard input. It SHALL accept the backlog file name only (validated by the file store's name rules, and the backlog MUST exist in `backlogs/`) and no output path: the target is always `lexicons/<backlog file name>`. It SHALL write nothing unless every item is valid, SHALL report all problems found in one run naming each item by its position, and SHALL NOT leave a partly written file. It SHALL never remove a term and SHALL never write `backlogs/`, `proposals/` or `reviews/`.
 
 #### Scenario: Valid input
 - **WHEN** valid terms are sent for `IAM.csv`
-- **THEN** they are in `lexicons/IAM.csv` and `user-stories/IAM.csv` is byte-for-byte unchanged
+- **THEN** they are in `lexicons/IAM.csv` and `backlogs/IAM.csv` is byte-for-byte unchanged
 
 #### Scenario: Unknown backlog
-- **WHEN** the backlog is not in `user-stories/`
+- **WHEN** the backlog is not in `backlogs/`
 - **THEN** nothing is written and the message says the backlog was not found
 
 #### Scenario: Several problems at once

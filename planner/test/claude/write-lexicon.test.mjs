@@ -13,8 +13,8 @@ const BACKLOG = 'Epic,Title\r\nIdentity,Login\r\n';
 
 function temp() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'lexicon-test-'));
-  fs.mkdirSync(path.join(root, 'user-stories'));
-  fs.writeFileSync(path.join(root, 'user-stories', 'data.csv'), BACKLOG);
+  fs.mkdirSync(path.join(root, 'backlogs'));
+  fs.writeFileSync(path.join(root, 'backlogs', 'data.csv'), BACKLOG);
   return root;
 }
 
@@ -28,12 +28,12 @@ const seed = (root, text) => {
 
 test('valid input creates lexicons/<name> and leaves the backlog byte-for-byte unchanged', () => {
   const root = temp();
-  const before = fs.readFileSync(path.join(root, 'user-stories', 'data.csv'));
+  const before = fs.readFileSync(path.join(root, 'backlogs', 'data.csv'));
   const result = run(root, [{ term: 'User', definition: 'A person with a login.', avoid: ['customer'] }]);
   assert.deepEqual([result.ok, result.added, result.count], [true, ['User'], 1]);
   assert.deepEqual(load(root).terms.map((t) => [t.name, t.avoid]), [['User', ['customer']]]);
   assert.ok(fs.readFileSync(lexiconPath(root), 'utf8').startsWith('﻿Term,Part of,Definition,Avoid,Notes\r\n'));
-  assert.deepEqual(fs.readFileSync(path.join(root, 'user-stories', 'data.csv')), before);
+  assert.deepEqual(fs.readFileSync(path.join(root, 'backlogs', 'data.csv')), before);
   assert.deepEqual(fs.readdirSync(path.join(root, 'lexicons')), ['data.csv'], 'no temp file is left');
 });
 
@@ -91,7 +91,7 @@ test('a backlog that does not exist is refused', () => {
   const root = temp();
   const result = run(root, [{ term: 'User', definition: 'x' }], 'missing.csv');
   assert.equal(result.ok, false);
-  assert.match(result.errors[0], /user-stories\/missing\.csv was not found/);
+  assert.match(result.errors[0], /backlogs\/missing\.csv was not found/);
   assert.equal(fs.existsSync(path.join(root, 'lexicons')), false);
 });
 

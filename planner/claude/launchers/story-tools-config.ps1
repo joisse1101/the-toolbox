@@ -15,10 +15,16 @@ function New-StoryToolsConfig([string]$Root, [switch]$ReadOnly) {
 }
 
 # The backlog file name for a launcher: the one given (with or without .csv, or its number in the list) or, when none is given, the
-# one the user picks from a numbered list of planner/data/user-stories/. Stops the launcher on an unknown backlog.
+# one the user picks from a numbered list of planner/data/backlogs/. Stops the launcher on an unknown backlog.
 function Select-Backlog([string]$DataDir, [string]$Backlog) {
-  $backlogs = @(Get-ChildItem -LiteralPath (Join-Path $DataDir 'user-stories') -Filter '*.csv' -File -ErrorAction SilentlyContinue | Sort-Object Name | ForEach-Object { $_.Name })
-  if (-not $backlogs.Count) { Write-Host 'There are no backlogs in planner/data/user-stories/.' -ForegroundColor Red; if (-not $env:TLT_DATA_DIR -and (Test-Path -LiteralPath (Join-Path (Split-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) -Parent) 'data'))) { Write-Host 'Your data is still in data/. The data folder is now planner/data/: move it with Move-Item data planner/data' -ForegroundColor Yellow }; exit 1 }
+  $backlogs = @(Get-ChildItem -LiteralPath (Join-Path $DataDir 'backlogs') -Filter '*.csv' -File -ErrorAction SilentlyContinue | Sort-Object Name | ForEach-Object { $_.Name })
+  if (-not $backlogs.Count) {
+    Write-Host 'There are no backlogs in planner/data/backlogs/.' -ForegroundColor Red
+    $paths = Join-Path (Split-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) -Parent) 'planner/logic/storage/paths.cjs'
+    $hint = & node -e "const h = require(process.argv[1]).legacyDataHint(); if (h) console.log(h)" $paths
+    if ($hint) { Write-Host $hint -ForegroundColor Yellow }
+    exit 1
+  }
   if (-not $Backlog.Trim()) {
     for ($i = 0; $i -lt $backlogs.Count; $i++) { Write-Host ("  {0}. {1}" -f ($i + 1), $backlogs[$i]) }
     $Backlog = Read-Host 'Which backlog? (number or name)'
@@ -27,6 +33,6 @@ function Select-Backlog([string]$DataDir, [string]$Backlog) {
   if ($Backlog -match '^\d+$' -and [int]$Backlog -ge 1 -and [int]$Backlog -le $backlogs.Count) { $Backlog = $backlogs[[int]$Backlog - 1] }
   if (-not $Backlog.EndsWith('.csv', [StringComparison]::OrdinalIgnoreCase)) { $Backlog = "$Backlog.csv" }
   $file = $backlogs | Where-Object { $_ -ieq $Backlog } | Select-Object -First 1
-  if (-not $file) { Write-Host "No backlog '$Backlog' in planner/data/user-stories/. Found: $($backlogs -join ', ')" -ForegroundColor Red; exit 1 }
+  if (-not $file) { Write-Host "No backlog '$Backlog' in planner/data/backlogs/. Found: $($backlogs -join ', ')" -ForegroundColor Red; exit 1 }
   return $file
 }
