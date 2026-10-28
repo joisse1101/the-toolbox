@@ -6,7 +6,7 @@ Prints a toolkit item's content hash and its metadata.version / metadata.last_up
 An item is a skill folder, a command namespace folder, or a single .md file (a rule, an agent or a
 command). The hash covers every file's relative path and content in a stable order, so two copies of
 an item have the same hash exactly when they are identical. Install-Toolkit.ps1 dot-sources this
-file for the same functions, so a hash recorded in a review matches the installer's view of the item.
+file for the same functions.
 
 Version and date come from the `metadata:` map in each .md file's frontmatter (the skill's SKILL.md,
 or every .md file of a command namespace). When several files differ, versions are listed

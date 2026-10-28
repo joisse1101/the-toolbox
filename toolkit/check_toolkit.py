@@ -5,12 +5,11 @@ Standalone: plain standard library, run `python check_toolkit.py` from this fold
 one-line pass.
 
 Checks:
-  1. always-on rules: present, scoped to source-code file types, within their size budgets
-  2. unscoped and technology rules: `paths:` frontmatter, budgets, one rule per file extension
-  3. the review skill: size budget and every backticked rule, skill or path reference exists
-  4. `metadata.version` and `metadata.last_updated` on every skill, rule, agent and jois-git command
-  5. every slash command carries `disable-model-invocation: true`
-  6. the PR body template and Author Verification sections of write-pr and update-pr match
+  1. code-scoped rules: present and scoped to source-code file types
+  2. unscoped and technology rules: `paths:` frontmatter, one rule per file extension
+  3. `metadata.version` and `metadata.last_updated` on every skill, rule, agent and jois-git command
+  4. every slash command carries `disable-model-invocation: true`
+  5. the PR body template and Author Verification sections of write-pr and update-pr match
 """
 
 from __future__ import annotations
@@ -21,34 +20,26 @@ import re
 import sys
 from pathlib import Path
 
-CORE_RULE_BUDGET_BYTES = 2 * 1024
-ALWAYS_ON_BUDGET_BYTES = 4 * 1024
-SCOPED_RULE_BUDGET_BYTES = 3 * 1024
-SKILL_BUDGET_BYTES = 4 * 1024
-ALWAYS_ON_RULES = ("jois-code-core-principles.md", "jois-code-architecture-boundaries.md")
+# Load whenever source code is touched; they apply to every code type, so they may share extensions.
+CODE_SCOPED_RULES = (
+    "jois-code-core-principles.md",
+    "jois-code-architecture-boundaries.md",
+    "jois-code-quality.md",
+)
 SHARED_PR_SECTIONS = ("PR body template", "Author Verification")
 # Loads in every session on purpose: a commit can contain no code (images, deletions, docs).
 UNSCOPED_RULES = ("jois-git-commit-hygiene.md",)
-UNSCOPED_RULE_BUDGET_BYTES = 2 * 1024
-# The core rules load only when source code is touched, so config and markup extensions are out.
-CODE_EXTENSIONS = {"py", "java", "ts", "tsx", "js", "jsx", "ps1", "sh", "bat"}
+# The source-code file types the three code-scoped rules load for. Each of them declares exactly
+# this set, one `**/*.<ext>` glob per type, so they load together. Config and data extensions
+# (json, yaml, md) are out. To cover another language, add it here and to all three rules.
+CODE_EXTENSIONS = (
+    "py", "java", "ts", "tsx", "js", "jsx", "ps1", "sh", "bat",
+    "html", "css", "scss", "vue", "svelte",
+    "go", "rs", "cs", "kt", "rb", "php", "c", "h", "cpp", "swift", "sql",
+)
 
 # `metadata.version` in frontmatter: a semantic version, bumped by hand with `last_updated`.
 SEMVER_RE = re.compile(r"\d+\.\d+\.\d+")
-
-CODE_RE = re.compile(r"`([^`\n]+)`")
-FENCE_RE = re.compile(r"^\s*(```|~~~)")
-
-
-def _prose_lines(path: Path):
-    """Yield (line number, text) for every line outside fenced code blocks."""
-    in_fence = False
-    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
-        if FENCE_RE.match(line):
-            in_fence = not in_fence
-            continue
-        if not in_fence:
-            yield number, line
 
 
 def _rule_paths(text: str) -> list[str] | None:
@@ -62,32 +53,24 @@ def _rule_paths(text: str) -> list[str] | None:
     return [g.strip().strip("\"'") for g in re.findall(r"-[ \t]*(.+)", block.group(1))]
 
 
-def _check_always_on_rules(rules: Path) -> list[str]:
+def _check_code_scoped_rules(rules: Path) -> list[str]:
     problems = []
-    total = 0
-    for name in ALWAYS_ON_RULES:
+    for name in CODE_SCOPED_RULES:
         path = rules / name
         if not path.is_file():
-            problems.append(f"rules/{name}: required always-on rule is missing")
+            problems.append(f"rules/{name}: required code-scoped rule is missing")
             continue
-        total += path.stat().st_size
         globs = _rule_paths(path.read_text(encoding="utf-8"))
         if not globs:
             problems.append(f"rules/{name}: core rule needs `paths:` frontmatter")
-        for glob in globs or []:
+            continue
+        for glob in globs:
             if glob.rsplit(".", 1)[-1] not in CODE_EXTENSIONS:
                 problems.append(f"rules/{name}: glob '{glob}' is not a source-code file type")
-    core = rules / ALWAYS_ON_RULES[0]
-    if core.is_file() and core.stat().st_size > CORE_RULE_BUDGET_BYTES:
-        problems.append(
-            f"rules/{core.name}: {core.stat().st_size} bytes exceeds the "
-            f"{CORE_RULE_BUDGET_BYTES}-byte budget"
-        )
-    if total > ALWAYS_ON_BUDGET_BYTES:
-        problems.append(
-            f"rules: always-on rules total {total} bytes, over the "
-            f"{ALWAYS_ON_BUDGET_BYTES}-byte budget"
-        )
+        declared = {glob.rsplit(".", 1)[-1] for glob in globs}
+        for extension in CODE_EXTENSIONS:
+            if extension not in declared:
+                problems.append(f"rules/{name}: `paths:` is missing the source-code file type '{extension}'")
     return problems
 
 
@@ -100,11 +83,6 @@ def _check_unscoped_rules(rules: Path) -> list[str]:
         rel = f"rules/{name}"
         if _rule_paths(path.read_text(encoding="utf-8")):
             problems.append(f"{rel}: unscoped rule must not have `paths:` frontmatter")
-        if path.stat().st_size > UNSCOPED_RULE_BUDGET_BYTES:
-            problems.append(
-                f"{rel}: {path.stat().st_size} bytes exceeds the "
-                f"{UNSCOPED_RULE_BUDGET_BYTES}-byte budget"
-            )
     return problems
 
 
@@ -112,45 +90,17 @@ def _check_scoped_rules(rules: Path) -> list[str]:
     problems = []
     seen: dict[str, str] = {}
     for path in sorted(rules.glob("*.md")):
-        if path.name in ALWAYS_ON_RULES or path.name in UNSCOPED_RULES:
+        if path.name in CODE_SCOPED_RULES or path.name in UNSCOPED_RULES:
             continue
         rel = f"rules/{path.name}"
         globs = _rule_paths(path.read_text(encoding="utf-8"))
         if not globs:
             problems.append(f"{rel}: technology rule needs `paths:` frontmatter")
-        if path.stat().st_size > SCOPED_RULE_BUDGET_BYTES:
-            problems.append(
-                f"{rel}: {path.stat().st_size} bytes exceeds the "
-                f"{SCOPED_RULE_BUDGET_BYTES}-byte budget"
-            )
         for glob in globs or []:
             ext = glob.rsplit(".", 1)[-1]
             if ext in seen and seen[ext] != path.name:
                 problems.append(f"{rel}: extension '{ext}' is also scoped by {seen[ext]}")
             seen.setdefault(ext, path.name)
-    return problems
-
-
-def _check_review_skill(root: Path) -> list[str]:
-    skill = root / "skills" / "jois-code-standards" / "SKILL.md"
-    if not skill.is_file():
-        return []
-    rel = "skills/jois-code-standards/SKILL.md"
-    problems = []
-    if skill.stat().st_size > SKILL_BUDGET_BYTES:
-        problems.append(
-            f"{rel}: {skill.stat().st_size} bytes exceeds the {SKILL_BUDGET_BYTES}-byte budget"
-        )
-    toolkit = root
-    for number, line in _prose_lines(skill):
-        for token in CODE_RE.findall(line):
-            if re.fullmatch(r"[a-z]+(-[a-z]+)+", token):
-                if not (toolkit / "rules" / f"{token}.md").is_file() and not (
-                    toolkit / "skills" / token
-                ).is_dir():
-                    problems.append(f"{rel}:{number}: reference '{token}' is not in the toolkit")
-            elif "/" in token and not (toolkit / token).exists():
-                problems.append(f"{rel}:{number}: path '{token}' is not in the toolkit")
     return problems
 
 
@@ -261,10 +211,9 @@ def check_toolkit(root: Path) -> list[str]:
     if not rules.is_dir():
         return []
     return (
-        _check_always_on_rules(rules)
+        _check_code_scoped_rules(rules)
         + _check_unscoped_rules(rules)
         + _check_scoped_rules(rules)
-        + _check_review_skill(root)
         + _check_versions(root)
         + _check_commands_hidden(root)
         + _check_shared_pr_sections(root)

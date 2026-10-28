@@ -1,6 +1,6 @@
 ---
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
   last_updated: "2026-10-28"
 paths:
   - "**/*.py"
@@ -12,6 +12,22 @@ paths:
   - "**/*.ps1"
   - "**/*.sh"
   - "**/*.bat"
+  - "**/*.html"
+  - "**/*.css"
+  - "**/*.scss"
+  - "**/*.vue"
+  - "**/*.svelte"
+  - "**/*.go"
+  - "**/*.rs"
+  - "**/*.cs"
+  - "**/*.kt"
+  - "**/*.rb"
+  - "**/*.php"
+  - "**/*.c"
+  - "**/*.h"
+  - "**/*.cpp"
+  - "**/*.swift"
+  - "**/*.sql"
 ---
 # Core principles
 
