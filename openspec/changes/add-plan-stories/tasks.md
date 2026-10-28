@@ -6,11 +6,11 @@
 
 ## 2. Pure logic (`planner/logic/diagrams/`)
 
-- [ ] 2.1 `limits.js`: read the limits and palette from the conventions' fenced block. Verify with a test that a changed value in the file changes the result.
-- [ ] 2.2 `source.js`: build `source.json`, hash a story, match stories by Title, heal a shifted ID, detect changed, missing and new stories. Verify with tests: renumber, ambiguous Title, reworded story, story added to a Feature.
-- [ ] 2.3 `checks.js`: the structural checks of the `diagram-conventions` spec. Verify with one failing test per scenario and one passing test on the mock.
-- [ ] 2.4 `repo-rules.js`: realpath confinement and the baseline plus user-glob exclusion decision. Verify with tests for `..`, a link out of the repo, a link to `.env`, a user glob, case differences and the baseline floor that `exclude` cannot remove.
-- [ ] 2.5 Update `planner/test/zones.test.mjs` for the new folders. Verify the zone test passes and fails when `logic/diagrams` imports the portal.
+- [x] 2.1 `limits.js`: read the limits and palette from the conventions' fenced block. Verify with a test that a changed value in the file changes the result.
+- [x] 2.2 `source.js`: build `source.json`, hash a story, match stories by Title, heal a shifted ID, detect changed, missing and new stories. Verify with tests: renumber, ambiguous Title, reworded story, story added to a Feature.
+- [x] 2.3 `checks.js`: the structural checks of the `diagram-conventions` spec. Verify with one failing test per scenario and one passing test on the mock.
+- [x] 2.4 `repo-rules.js`: realpath confinement and the baseline plus user-glob exclusion decision. Verify with tests for `..`, a link out of the repo, a link to `.env`, a user glob, case differences and the baseline floor that `exclude` cannot remove.
+- [x] 2.5 Update `planner/test/zones.test.mjs` for the new folders. Verify the zone test passes and fails when `logic/diagrams` imports the portal.
 
 ## 3. Skill scripts and `diagram-tools`
 
