@@ -4,7 +4,7 @@ Copies the toolkit's skills, slash commands and rules into an AI tool's folders 
 
 .DESCRIPTION
 Each folder under toolkit\skills\ is one skill. Each entry directly under toolkit\commands\ is one
-command item: a folder (a namespace such as opsx\, giving /opsx:apply) or a single .md file (giving
+command item: a folder (a namespace such as jois-git\, giving /jois-git:stage) or a single .md file (giving
 /name). Each .md file directly under toolkit\rules\ is one rule (optionally with paths: frontmatter
 limiting it to matching files). This script copies them - one named item, or all of them - into the
 tool's global folders (e.g. ~/.claude/skills, ~/.claude/commands and ~/.claude/rules) or into a
@@ -32,7 +32,7 @@ The project folder. Required with -Scope project.
 Name of one skill to act on. With -Skill, -Command and/or -Rule, only the named items are acted on.
 
 .PARAMETER Command
-Name of one command item to act on: a folder name (opsx) or a file name (review.md).
+Name of one command item to act on: a folder name (jois-git) or a file name (review.md).
 
 .PARAMETER Rule
 Name of one rule to act on: a file name (jois-code-java.md).
@@ -59,7 +59,7 @@ Show this help and exit (-h works too).
 Install every toolkit skill, command and rule globally.
 
 .EXAMPLE
-.\Install-Toolkit.ps1 -Scope project -Path C:\code\my-app -Skill jois-code-standards -Command opsx
+.\Install-Toolkit.ps1 -Scope project -Path C:\code\my-app -Skill jois-code-standards -Command jois-git
 Install one skill and one command namespace into a project.
 
 .EXAMPLE
