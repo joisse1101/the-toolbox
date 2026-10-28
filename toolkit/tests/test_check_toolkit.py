@@ -170,45 +170,44 @@ def test_top_level_version_is_rejected(tmp_path):
     )
 
 
-def test_version_is_required_on_skills_agents_and_jois_git_commands(tmp_path):
+def test_version_is_required_on_skills_agents_and_jois_commands(tmp_path):
     _toolkit_tree(tmp_path)
     _write(tmp_path, "skills/other/SKILL.md", "---\nname: other\n---\n")
     _write(tmp_path, "agents/code-reviewer.md", "---\nname: code-reviewer\n---\n")
     _write(tmp_path, "commands/jois-git/apply.md", "no frontmatter\n")
-    _write(tmp_path, "commands/opsx/apply.md", f"---\n{HIDDEN}\n---\ngenerated, not versioned by us\n")
+    _write(tmp_path, "commands/jois-init/opsx.md", f"---\n{HIDDEN}\n---\nbody\n")
     problems = _problems(tmp_path)
     for rel in (
         "skills/other/SKILL.md",
         "agents/code-reviewer.md",
         "commands/jois-git/apply.md",
+        "commands/jois-init/opsx.md",
     ):
         assert any(p.startswith(f"{rel}: missing `metadata.version`") for p in problems)
-    assert not any("opsx" in p for p in problems)
 
 
 def test_commands_must_be_hidden_from_the_session_listing(tmp_path):
     _toolkit_tree(tmp_path)
-    _write(tmp_path, "commands/opsx/apply.md", f"---\nname: a\n{HIDDEN}\n---\nbody\n")
-    _write(tmp_path, "commands/opsx/sync.md", "---\nname: s\n---\nbody\n")
+    _write(tmp_path, "commands/jois-init/opsx.md", f"---\nname: a\n{HIDDEN}\n{VERSION}\n---\nbody\n")
+    _write(tmp_path, "commands/jois-init/sync.md", "---\nname: s\n---\nbody\n")
     _write(
         tmp_path,
         "commands/jois-git/deep/stage.md",
         "---\nname: st\ndisable-model-invocation: false\n---\n",
     )
     problems = _problems(tmp_path)
-    assert any(p.startswith("commands/opsx/sync.md: missing `disable-model-invocation") for p in problems)
+    assert any(p.startswith("commands/jois-init/sync.md: missing `disable-model-invocation") for p in problems)
     assert any(p.startswith("commands/jois-git/deep/stage.md: missing `disable-model-invocation") for p in problems)
-    assert not any(p.startswith("commands/opsx/apply.md") for p in problems)
+    assert not any(p.startswith("commands/jois-init/opsx.md") for p in problems)
 
 
-def test_jois_commands_need_a_version_but_opsx_does_not(tmp_path):
+def test_jois_commands_with_a_version_pass(tmp_path):
     _toolkit_tree(tmp_path)
     _write(tmp_path, "commands/jois-git/unversioned.md", f"---\n{HIDDEN}\n---\nbody\n")
     _write(tmp_path, "commands/jois-git/stage.md", f"---\n{HIDDEN}\n{VERSION}\n---\nbody\n")
-    _write(tmp_path, "commands/opsx/apply.md", f"---\n{HIDDEN}\n---\nbody\n")
     problems = _problems(tmp_path)
     assert any(p.startswith("commands/jois-git/unversioned.md: missing `metadata.version`") for p in problems)
-    assert not any("jois-git/stage.md" in p or "opsx" in p for p in problems)
+    assert not any("jois-git/stage.md" in p for p in problems)
 
 
 def _pr_command(body):

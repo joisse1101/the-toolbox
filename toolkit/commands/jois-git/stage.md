@@ -8,10 +8,6 @@ metadata:
   last_updated: "2026-10-28"
 ---
 
-<!-- The pause below follows the commit block of the generated `commands/opsx/apply.md`, in a loop.
-Re-sync by hand if that block changes. This command has NO commit authority of its own:
-every commit waits for the user's confirmation word. -->
-
 Clear a messy working tree in clean single-concern commits, each confirmed by the user. This does
 not need an OpenSpec change. Follow the jois-git-commit-hygiene rule throughout.
 
