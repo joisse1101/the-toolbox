@@ -30,4 +30,4 @@
 
 - [x] 5.1 Update `CLAUDE.md` (architecture and workflow sections) and `README.md` for the new skill, launcher, server, `planner/data/diagrams/` and the git-ignore entry. Verify `planner/data/` stays ignored with `git check-ignore planner/data/diagrams/x/repo.json`.
 - [x] 5.2 Add the renderer note (set the VS Code PlantUML plugin to a local or self-hosted renderer) to the conventions document. Verify it is stated once there.
-- [ ] 5.3 Run `npm test` from `planner/` and `openspec validate add-plan-stories`. Verify both pass, then run one end-to-end session on the sample backlog with and without a fixture repo and check the slice renders in the plugin.
+- [x] 5.3 Run `npm test` from `planner/` and `openspec validate add-plan-stories`. Verify both pass, then run one end-to-end session on the sample backlog with and without a fixture repo and check the slice renders in the plugin.
