@@ -7,6 +7,6 @@
 
 ## 2. Verify and archive
 
-- [ ] 2.1 Reinstall into a temp project with `Install-Toolkit.ps1 -Scope project -Path <temp>` and verify `-List` shows every item `up to date` and the three rules carry the new `paths:`
-- [ ] 2.2 After reinstalling globally, open an `.html` or `.css` file in a new Claude Code session and verify `jois-code-quality` is loaded
-- [ ] 2.3 Run `openspec validate widen-code-scoped-rule-paths --strict`, check that no `wiki/` page needs an update (the repo has none), then archive the change
+- [x] 2.1 Reinstall into a temp project with `Install-Toolkit.ps1 -Scope project -Path <temp>` and verify `-List` shows every item `up to date` and the three rules carry the new `paths:`
+- [x] 2.2 After reinstalling globally, open an `.html` or `.css` file in a new Claude Code session and verify `jois-code-quality` is loaded
+- [x] 2.3 Run `openspec validate widen-code-scoped-rule-paths --strict`, check that no `wiki/` page needs an update (the repo has none), then archive the change

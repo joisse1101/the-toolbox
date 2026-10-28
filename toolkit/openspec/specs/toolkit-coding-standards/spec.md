@@ -149,7 +149,7 @@ The `opsx:apply` and `opsx:archive` commands SHALL define "ready to commit" as o
 - **THEN** the command SHALL end its turn without running `git commit`, and SHALL commit only after the current confirmation word or an AskUserQuestion "Yes, commit"
 
 ### Requirement: Core floor is code-scoped
-The jois-code-core-principles, jois-code-architecture-boundaries and jois-code-quality rules SHALL declare `paths:` frontmatter limited to source-code file types (`py`, `java`, `ts`, `tsx`, `js`, `jsx`, `ps1`, `sh`, `bat`), so they load when code is touched and not in sessions that never touch code, such as ticket or workflow work. No size limit SHALL apply to them: a rule is written in clear prose, not compressed to fit a byte count.
+The jois-code-core-principles, jois-code-architecture-boundaries and jois-code-quality rules SHALL declare `paths:` frontmatter limited to source-code file types: `py`, `java`, `ts`, `tsx`, `js`, `jsx`, `ps1`, `sh`, `bat`, `html`, `css`, `scss`, `vue`, `svelte`, `go`, `rs`, `cs`, `kt`, `rb`, `php`, `c`, `h`, `cpp`, `swift` and `sql`. They load when code of those types is touched and not in sessions that never touch code, such as ticket or workflow work. All three rules SHALL declare exactly the same set of file types, so they load together. No size limit SHALL apply to them: a rule is written in clear prose, not compressed to fit a byte count.
 
 #### Scenario: Core rules present
 - **WHEN** the docs check runs
@@ -162,6 +162,14 @@ The jois-code-core-principles, jois-code-architecture-boundaries and jois-code-q
 #### Scenario: Size is not checked
 - **WHEN** a rule file is large
 - **THEN** the docs check SHALL NOT fail because of its size
+
+#### Scenario: Web and other languages are covered
+- **WHEN** a session touches an `.html`, `.css`, `.go` or `.sql` file
+- **THEN** the three core rules SHALL be loaded, because those file types are in their scope
+
+#### Scenario: The three rules share one scope
+- **WHEN** one of the three rules lists a file type the others do not, or omits one they list
+- **THEN** the docs check SHALL fail and name the rule and the file type
 
 ### Requirement: Technology rules are scoped by file type
 Each technology rule SHALL declare `paths:` frontmatter matching only its own file types, so it loads when files of that type are in play and not otherwise: TypeScript/React for `ts`, `tsx`, `js`, `jsx`, `css` and `html`; Java for `java`; Python for `py`; configuration for `yml`, `yaml`, `json` and `toml`; scripts for `ps1`, `sh` and `bat`. The code-scoped core rules are exempt from the one-rule-per-extension check, since they apply to every code type.
