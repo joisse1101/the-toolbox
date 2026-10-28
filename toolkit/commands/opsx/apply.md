@@ -100,7 +100,7 @@ Implement tasks from an OpenSpec change.
 
    **Pause conditions:**
    - **Visual Verification:** If the task produces visually verifiable changes (e.g., UI components, styling, layouts), pause and instruct the user on *what* to verify and *how* to test or view it.
-   - **Pending Commits (HARD STOP — never commit in the same turn you stage):** Follow the commit-hygiene rule. Changes are ready to be committed when one concern is complete, not when the task list is done. Stage and present a commit after each concern, before starting a task that belongs to another concern. If the stage spans several concerns, unstage and present only the first, and offer the rest as following commits.
+   - **Pending Commits (HARD STOP — never commit in the same turn you stage):** Follow the jois-git-commit-hygiene rule. Changes are ready to be committed when one concern is complete, not when the task list is done. Stage and present a commit after each concern, before starting a task that belongs to another concern. If the stage spans several concerns, unstage and present only the first, and offer the rest as following commits.
      1. Stage the files of that concern by explicit path (`git add <path>`) and run `git diff --staged --stat`.
      2. Print, as plain text in your reply (not inside a question/prompt tool): the staged file summary and the proposed commit message.
      3. **End your turn there.** Do NOT call AskUserQuestion or any other tool, and do NOT run `git commit`. Say: "Staged. Reply with <word> to commit, or tell me what to change." Use a common word that differs from the word in your previous prompt.

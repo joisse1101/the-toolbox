@@ -15,7 +15,7 @@ entry there, not new code.
 A destination item that already exists and differs from the toolkit's copy is never overwritten
 silently: it is reported as "differs" and skipped unless -Force is given. "Differs" is decided by a
 hash over every file's relative path and content (computed by
-skills\coding-standards\scripts\Get-ItemHash.ps1). -List shows that state per item without changing
+skills\jois-code-standards\scripts\Get-ItemHash.ps1). -List shows that state per item without changing
 anything. -Uninstall removes only items that exist in the toolkit; anything else in the destination is
 left alone. Nothing outside the skills, commands and rules folders is touched (settings.json and hooks
 included).
@@ -35,7 +35,7 @@ Name of one skill to act on. With -Skill, -Command and/or -Rule, only the named 
 Name of one command item to act on: a folder name (opsx) or a file name (review.md).
 
 .PARAMETER Rule
-Name of one rule to act on: a file name (java.md).
+Name of one rule to act on: a file name (jois-code-java.md).
 
 .PARAMETER Target
 Which tool's entry in targets.json to use. Default 'claude-code'.
@@ -59,7 +59,7 @@ Show this help and exit (-h works too).
 Install every toolkit skill, command and rule globally.
 
 .EXAMPLE
-.\Install-Toolkit.ps1 -Scope project -Path C:\code\my-app -Skill coding-standards -Command opsx
+.\Install-Toolkit.ps1 -Scope project -Path C:\code\my-app -Skill jois-code-standards -Command opsx
 Install one skill and one command namespace into a project.
 
 .EXAMPLE
@@ -93,7 +93,7 @@ $toolkitRoot = Split-Path $PSScriptRoot -Parent
 
 # One hash and version reader, shared with the review skill so a hash recorded in a review is the
 # one this script computes for the same item.
-$hashHelper = Join-Path $toolkitRoot 'skills\coding-standards\scripts\Get-ItemHash.ps1'
+$hashHelper = Join-Path $toolkitRoot 'skills\jois-code-standards\scripts\Get-ItemHash.ps1'
 if (-not (Test-Path -LiteralPath $hashHelper)) { throw "Missing helper: $hashHelper" }
 . $hashHelper
 

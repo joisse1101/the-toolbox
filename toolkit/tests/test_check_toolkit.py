@@ -16,13 +16,13 @@ def _problems(root):
 
 
 def _toolkit_tree(root):
-    _write(root, "rules/core-principles.md", _scoped("py"))
-    _write(root, "rules/architecture-boundaries.md", _scoped("py"))
-    _write(root, "rules/java.md", f'---\n{VERSION}\npaths:\n  - "**/*.java"\n---\nJava\n')
+    _write(root, "rules/jois-code-core-principles.md", _scoped("py"))
+    _write(root, "rules/jois-code-architecture-boundaries.md", _scoped("py"))
+    _write(root, "rules/jois-code-java.md", f'---\n{VERSION}\npaths:\n  - "**/*.java"\n---\nJava\n')
     _write(
         root,
-        "skills/coding-standards/SKILL.md",
-        f"---\n{VERSION}\n---\nCheck against `core-principles` and `java`.\n",
+        "skills/jois-code-standards/SKILL.md",
+        f"---\n{VERSION}\n---\nCheck against `jois-code-core-principles` and `jois-code-java`.\n",
     )
 
 
@@ -37,26 +37,26 @@ def test_toolkit_tree_passes(tmp_path):
 
 def test_always_on_rule_budgets_and_paths(tmp_path):
     _toolkit_tree(tmp_path)
-    _write(tmp_path, "rules/core-principles.md", _scoped("py", 2100))
-    _write(tmp_path, "rules/architecture-boundaries.md", "x" * 2100)
+    _write(tmp_path, "rules/jois-code-core-principles.md", _scoped("py", 2100))
+    _write(tmp_path, "rules/jois-code-architecture-boundaries.md", "x" * 2100)
     problems = _problems(tmp_path)
-    assert any("core-principles.md" in p and "2048-byte" in p for p in problems)
-    assert any("architecture-boundaries.md" in p and "needs `paths:`" in p for p in problems)
+    assert any("jois-code-core-principles.md" in p and "2048-byte" in p for p in problems)
+    assert any("jois-code-architecture-boundaries.md" in p and "needs `paths:`" in p for p in problems)
     assert any("always-on rules total" in p for p in problems)
 
 
 def test_core_rule_paths_must_be_source_code(tmp_path):
     _toolkit_tree(tmp_path)
-    _write(tmp_path, "rules/core-principles.md", _scoped("json"))
-    assert "rules/core-principles.md: glob '**/*.json' is not a source-code file type" in _problems(
+    _write(tmp_path, "rules/jois-code-core-principles.md", _scoped("json"))
+    assert "rules/jois-code-core-principles.md: glob '**/*.json' is not a source-code file type" in _problems(
         tmp_path
     )
 
 
 def test_missing_always_on_rule(tmp_path):
     _toolkit_tree(tmp_path)
-    (tmp_path / "rules/core-principles.md").unlink()
-    assert "rules/core-principles.md: required always-on rule is missing" in _problems(
+    (tmp_path / "rules/jois-code-core-principles.md").unlink()
+    assert "rules/jois-code-core-principles.md: required always-on rule is missing" in _problems(
         tmp_path
     )
 
@@ -69,32 +69,32 @@ def test_scoped_rule_needs_paths_budget_and_unique_extensions(tmp_path):
     problems = _problems(tmp_path)
     assert "rules/noscope.md: technology rule needs `paths:` frontmatter" in problems
     assert any("big.md" in p and "3072-byte" in p for p in problems)
-    assert "rules/other.md: extension 'java' is also scoped by java.md" in problems
+    assert "rules/other.md: extension 'java' is also scoped by jois-code-java.md" in problems
 
 
 def test_unscoped_commit_rule_is_accepted_without_paths(tmp_path):
     _toolkit_tree(tmp_path)
-    _write(tmp_path, "rules/commit-hygiene.md", f"---\n{VERSION}\n---\n# Commit hygiene\n")
+    _write(tmp_path, "rules/jois-git-commit-hygiene.md", f"---\n{VERSION}\n---\n# Commit hygiene\n")
     assert _problems(tmp_path) == []
 
 
 def test_unscoped_commit_rule_budget_and_paths(tmp_path):
     _toolkit_tree(tmp_path)
-    _write(tmp_path, "rules/commit-hygiene.md", _scoped("py", 2100))
+    _write(tmp_path, "rules/jois-git-commit-hygiene.md", _scoped("py", 2100))
     problems = _problems(tmp_path)
-    assert "rules/commit-hygiene.md: unscoped rule must not have `paths:` frontmatter" in problems
-    assert any("commit-hygiene.md" in p and "2048-byte" in p for p in problems)
+    assert "rules/jois-git-commit-hygiene.md: unscoped rule must not have `paths:` frontmatter" in problems
+    assert any("jois-git-commit-hygiene.md" in p and "2048-byte" in p for p in problems)
 
 
 def test_skill_size_and_references(tmp_path):
     _toolkit_tree(tmp_path)
     _write(
         tmp_path,
-        "skills/coding-standards/SKILL.md",
+        "skills/jois-code-standards/SKILL.md",
         f"---\n{VERSION}\n---\nUse `frontend-patterns` and `rules/common/coding-style.md`.\n" + "x" * 6200,
     )
     problems = _problems(tmp_path)
-    assert any("6144-byte" in p for p in problems)
+    assert any("4096-byte" in p for p in problems)
     assert any("'frontend-patterns' is not in the toolkit" in p for p in problems)
     assert any("'rules/common/coding-style.md' is not in the toolkit" in p for p in problems)
 
@@ -142,17 +142,17 @@ def test_top_level_version_is_rejected(tmp_path):
     )
 
 
-def test_version_is_required_on_skills_agents_and_review_commands(tmp_path):
+def test_version_is_required_on_skills_agents_and_jois_git_commands(tmp_path):
     _toolkit_tree(tmp_path)
     _write(tmp_path, "skills/other/SKILL.md", "---\nname: other\n---\n")
     _write(tmp_path, "agents/code-reviewer.md", "---\nname: code-reviewer\n---\n")
-    _write(tmp_path, "commands/jois-review/apply.md", "no frontmatter\n")
+    _write(tmp_path, "commands/jois-git/apply.md", "no frontmatter\n")
     _write(tmp_path, "commands/opsx/apply.md", f"---\n{HIDDEN}\n---\ngenerated, not versioned by us\n")
     problems = _problems(tmp_path)
     for rel in (
         "skills/other/SKILL.md",
         "agents/code-reviewer.md",
-        "commands/jois-review/apply.md",
+        "commands/jois-git/apply.md",
     ):
         assert any(p.startswith(f"{rel}: missing `metadata.version`") for p in problems)
     assert not any("opsx" in p for p in problems)
@@ -164,23 +164,23 @@ def test_commands_must_be_hidden_from_the_session_listing(tmp_path):
     _write(tmp_path, "commands/opsx/sync.md", "---\nname: s\n---\nbody\n")
     _write(
         tmp_path,
-        "commands/jois/deep/stage.md",
+        "commands/jois-git/deep/stage.md",
         "---\nname: st\ndisable-model-invocation: false\n---\n",
     )
     problems = _problems(tmp_path)
     assert any(p.startswith("commands/opsx/sync.md: missing `disable-model-invocation") for p in problems)
-    assert any(p.startswith("commands/jois/deep/stage.md: missing `disable-model-invocation") for p in problems)
+    assert any(p.startswith("commands/jois-git/deep/stage.md: missing `disable-model-invocation") for p in problems)
     assert not any(p.startswith("commands/opsx/apply.md") for p in problems)
 
 
 def test_jois_commands_need_a_version_but_opsx_does_not(tmp_path):
     _toolkit_tree(tmp_path)
-    _write(tmp_path, "commands/jois/unversioned.md", f"---\n{HIDDEN}\n---\nbody\n")
-    _write(tmp_path, "commands/jois/stage.md", f"---\n{HIDDEN}\n{VERSION}\n---\nbody\n")
+    _write(tmp_path, "commands/jois-git/unversioned.md", f"---\n{HIDDEN}\n---\nbody\n")
+    _write(tmp_path, "commands/jois-git/stage.md", f"---\n{HIDDEN}\n{VERSION}\n---\nbody\n")
     _write(tmp_path, "commands/opsx/apply.md", f"---\n{HIDDEN}\n---\nbody\n")
     problems = _problems(tmp_path)
-    assert any(p.startswith("commands/jois/unversioned.md: missing `metadata.version`") for p in problems)
-    assert not any("jois/stage.md" in p or "opsx" in p for p in problems)
+    assert any(p.startswith("commands/jois-git/unversioned.md: missing `metadata.version`") for p in problems)
+    assert not any("jois-git/stage.md" in p or "opsx" in p for p in problems)
 
 
 def _pr_command(body):
@@ -192,8 +192,8 @@ def _pr_command(body):
 
 def test_shared_pr_sections_must_match_between_write_and_update_pr(tmp_path):
     _toolkit_tree(tmp_path)
-    _write(tmp_path, "commands/jois/write-pr.md", _pr_command("same"))
-    _write(tmp_path, "commands/jois/update-pr.md", _pr_command("changed"))
+    _write(tmp_path, "commands/jois-git/write-pr.md", _pr_command("same"))
+    _write(tmp_path, "commands/jois-git/update-pr.md", _pr_command("changed"))
     problems = _problems(tmp_path)
     assert any(
         "PR body template" in p and "write-pr.md" in p and "update-pr.md" in p for p in problems
@@ -203,12 +203,12 @@ def test_shared_pr_sections_must_match_between_write_and_update_pr(tmp_path):
 
 def test_identical_shared_pr_sections_pass(tmp_path):
     _toolkit_tree(tmp_path)
-    _write(tmp_path, "commands/jois/write-pr.md", _pr_command("same").replace("own steps", "a"))
-    _write(tmp_path, "commands/jois/update-pr.md", _pr_command("same").replace("own steps", "b"))
+    _write(tmp_path, "commands/jois-git/write-pr.md", _pr_command("same").replace("own steps", "a"))
+    _write(tmp_path, "commands/jois-git/update-pr.md", _pr_command("same").replace("own steps", "b"))
     assert _problems(tmp_path) == []
 
 
 def test_shared_pr_check_is_skipped_when_a_command_is_absent(tmp_path):
     _toolkit_tree(tmp_path)
-    _write(tmp_path, "commands/jois/write-pr.md", _pr_command("same"))
+    _write(tmp_path, "commands/jois-git/write-pr.md", _pr_command("same"))
     assert _problems(tmp_path) == []

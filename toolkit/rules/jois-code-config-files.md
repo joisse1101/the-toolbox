@@ -1,7 +1,7 @@
 ---
 metadata:
-  version: "1.0.0"
-  last_updated: "2026-10-14"
+  version: "1.1.0"
+  last_updated: "2026-10-28"
 paths:
   - "**/*.yml"
   - "**/*.yaml"
@@ -10,8 +10,8 @@ paths:
 ---
 # Config files
 
-Adds config hygiene to [core-principles](core-principles.md) and
-[architecture-boundaries](architecture-boundaries.md); it does not restate them.
+Adds config hygiene to [jois-code-core-principles](jois-code-core-principles.md) and
+[jois-code-architecture-boundaries](jois-code-architecture-boundaries.md); it does not restate them.
 
 - Never commit secrets (tokens, passwords, private keys). Reference them from the environment or a
   secret store, and commit an example file with placeholders instead.

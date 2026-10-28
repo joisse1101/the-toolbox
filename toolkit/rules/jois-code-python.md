@@ -1,13 +1,13 @@
 ---
 metadata:
-  version: "1.0.0"
-  last_updated: "2026-10-14"
+  version: "1.1.0"
+  last_updated: "2026-10-28"
 paths:
   - "**/*.py"
 ---
 # Python
 
-Adds Python mechanics to [core-principles](core-principles.md); it does not restate them.
+Adds Python mechanics to [jois-code-core-principles](jois-code-core-principles.md); it does not restate them.
 
 - Never use a bare `except:` or `except Exception: pass`. Catch the narrowest type, and use
   `raise ... from err` to keep the cause.
@@ -22,7 +22,7 @@ Adds Python mechanics to [core-principles](core-principles.md); it does not rest
 - Use parameterized queries only; never build SQL with f-strings or `%`.
 - Never use `assert` for runtime validation; it is removed under `-O`. Raise a real exception.
 - Web handlers stay thin, and the data layer imports no web-framework code (see
-  [architecture-boundaries](architecture-boundaries.md)).
+  [jois-code-architecture-boundaries](jois-code-architecture-boundaries.md)).
 - In tests, use pytest fixtures to isolate state (temp dirs, in-memory databases); never read or
   write the real home folder.
 

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines `/jois:stage`, the command that clears a messy working tree one concern at a time, each commit confirmed with a word.
+Defines `/jois-git:stage`, the command that clears a messy working tree one concern at a time, each commit confirmed with a word.
 
 ## Requirements
 

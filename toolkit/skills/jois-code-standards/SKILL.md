@@ -1,9 +1,9 @@
 ---
-name: coding-standards
+name: jois-code-standards
 description: Review checklist for code quality - code smells, naming, comments and test structure. Use when asked to review code, check a change for quality, or clean up a diff. Not needed while writing code; the always-on and per-language rules cover that.
 license: MIT
 metadata:
-  version: "1.2.0"
+  version: "1.3.0"
   last_updated: "2026-10-28"
 ---
 
@@ -11,7 +11,7 @@ metadata:
 
 A checklist for reviewing a change. Findings that break a rule (defects, security, structure) come
 first; style findings come last and are suggestions, not blockers. Principles and language mechanics
-live in the installed rules (`core-principles`, `architecture-boundaries` and the per-language
+live in the installed rules (`jois-code-core-principles`, `jois-code-architecture-boundaries` and the per-language
 rules); check against those rather than restating them here.
 
 ## Code smells

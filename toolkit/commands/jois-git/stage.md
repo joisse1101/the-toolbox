@@ -4,8 +4,8 @@ description: "Clear a messy working tree one concern at a time: stage, propose a
 allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(git add:*), Bash(git restore --staged:*), Bash(git apply --cached:*), Bash(git commit:*)
 disable-model-invocation: true
 metadata:
-  version: "1.0.1"
-  last_updated: "2026-10-27"
+  version: "1.1.0"
+  last_updated: "2026-10-28"
 ---
 
 <!-- The pause below follows the commit block of the generated `commands/opsx/apply.md`, in a loop.
@@ -13,7 +13,7 @@ Re-sync by hand if that block changes. This command has NO commit authority of i
 every commit waits for the user's confirmation word. -->
 
 Clear a messy working tree in clean single-concern commits, each confirmed by the user. This does
-not need an OpenSpec change. Follow the commit-hygiene rule throughout.
+not need an OpenSpec change. Follow the jois-git-commit-hygiene rule throughout.
 
 ## Limits
 

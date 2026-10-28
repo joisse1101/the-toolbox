@@ -1,13 +1,13 @@
 ---
 metadata:
-  version: "1.0.0"
-  last_updated: "2026-10-14"
+  version: "1.1.0"
+  last_updated: "2026-10-28"
 paths:
   - "**/*.java"
 ---
 # Java
 
-Adds Java mechanics to [core-principles](core-principles.md); it does not restate them.
+Adds Java mechanics to [jois-code-core-principles](jois-code-core-principles.md); it does not restate them.
 
 - Never catch `Exception` or `Throwable` broadly, and never leave a catch block empty. Catch the
   narrowest type that can be handled; otherwise wrap in a domain exception and keep the cause.
@@ -21,7 +21,7 @@ Adds Java mechanics to [core-principles](core-principles.md); it does not restat
 - Inject dependencies through the constructor. Never use field injection, static mutable state or
   a service locator.
 - Keep controllers thin: no business logic or persistence code in them. Domain and repository
-  classes never import web-layer types (see [architecture-boundaries](architecture-boundaries.md)).
+  classes never import web-layer types (see [jois-code-architecture-boundaries](jois-code-architecture-boundaries.md)).
 - Use parameterized queries only; never build SQL or other queries by string concatenation.
 - Never compare strings or boxed values with `==`; use `equals`, and override `hashCode` with it.
 - In tests, inject a clock and a random source instead of reading the system's.

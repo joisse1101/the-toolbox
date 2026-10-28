@@ -11,15 +11,15 @@ hooks:
           command: >-
             powershell -NoProfile -Command "if ([Console]::In.ReadToEnd() -match 'gh\s+(pr\s+(merge|.*--auto)|api\b.*merge)') { [Console]::Error.WriteLine('update-pr never merges: the user runs gh pr merge'); exit 2 }"
 metadata:
-  version: "1.0.0"
-  last_updated: "2026-10-19"
+  version: "1.1.0"
+  last_updated: "2026-10-28"
 ---
 
 # Update PR
 
 Bring the open PR of this branch up to date. Up to three things can apply, in this order: a restack,
 a push, a refreshed title and body. The PR body rules are in the sections at the end: PR body
-template and Author Verification. They are the same text as in `/jois:write-pr`; read "group" there
+template and Author Verification. They are the same text as in `/jois-git:write-pr`; read "group" there
 as this one PR and `gh pr create` as `gh pr edit`.
 
 ## Never
@@ -37,12 +37,12 @@ as this one PR and `gh pr create` as `gh pr edit`.
 
 1. **Check.** `git branch --show-current` and the default branch from `gh repo view --json
    defaultBranchRef -q .defaultBranchRef.name`. On the default branch, stop: there is no PR to update,
-   use `/jois:write-pr`. Find the PR with `gh pr list --head <branch> --state open --json
+   use `/jois-git:write-pr`. Find the PR with `gh pr list --head <branch> --state open --json
    number,baseRefName,url`. If there is none, run `gh pr list --head <branch> --state closed --json
    number,baseRefName,mergedAt,url`. A closed, unmerged PR whose `baseRefName` no longer exists on
    `origin` (`git ls-remote --heads origin <base>` prints nothing) was closed by GitHub when its
-   base branch was deleted: say it cannot be reopened and to use `/jois:write-pr`, then stop.
-   Otherwise say there is no open PR, to use `/jois:write-pr`, and stop. Note uncommitted changes
+   base branch was deleted: say it cannot be reopened and to use `/jois-git:write-pr`, then stop.
+   Otherwise say there is no open PR, to use `/jois-git:write-pr`, and stop. Note uncommitted changes
    (`git status --short`); they are not in the PR.
 2. **Read.** `git fetch`, then `gh pr view <n> --json number,title,body,baseRefName,url`. If
    `git log --format="%h %s" HEAD..origin/<branch>` shows commits the local branch lacks, say so and

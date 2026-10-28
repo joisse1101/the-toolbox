@@ -1,7 +1,7 @@
 ---
 metadata:
-  version: "1.0.0"
-  last_updated: "2026-10-14"
+  version: "1.1.0"
+  last_updated: "2026-10-28"
 paths:
   - "**/*.ps1"
   - "**/*.sh"
@@ -9,7 +9,7 @@ paths:
 ---
 # Scripts
 
-Adds script mechanics to [core-principles](core-principles.md); it does not restate them.
+Adds script mechanics to [jois-code-core-principles](jois-code-core-principles.md); it does not restate them.
 
 - Fail fast. PowerShell: `Set-StrictMode -Version Latest` and `$ErrorActionPreference = 'Stop'`.
   Bash: `set -euo pipefail`. Batch: check `%ERRORLEVEL%` after every command that can fail.
