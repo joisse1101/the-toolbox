@@ -16,14 +16,20 @@ def _problems(root):
 
 
 def _toolkit_tree(root):
-    _write(root, "rules/jois-code-core-principles.md", _scoped("py"))
-    _write(root, "rules/jois-code-architecture-boundaries.md", _scoped("py"))
-    _write(root, "rules/jois-code-quality.md", _scoped("py"))
+    _write(root, "rules/jois-code-core-principles.md", _code_scoped())
+    _write(root, "rules/jois-code-architecture-boundaries.md", _code_scoped())
+    _write(root, "rules/jois-code-quality.md", _code_scoped())
     _write(root, "rules/jois-code-java.md", f'---\n{VERSION}\npaths:\n  - "**/*.java"\n---\nJava\n')
 
 
 def _scoped(extension, padding=0):
     return f'---\n{VERSION}\npaths:\n  - "**/*.{extension}"\n---\n' + "x" * padding
+
+
+def _code_scoped(without=(), extra=()):
+    globs = [e for e in check_toolkit.CODE_EXTENSIONS if e not in without] + list(extra)
+    paths = "".join(f'  - "**/*.{e}"\n' for e in globs)
+    return f"---\n{VERSION}\npaths:\n{paths}---\n"
 
 
 def test_toolkit_tree_passes(tmp_path):
@@ -40,7 +46,7 @@ def test_always_on_rule_needs_paths(tmp_path):
 
 def test_large_rules_have_no_size_problem(tmp_path):
     _toolkit_tree(tmp_path)
-    _write(tmp_path, "rules/jois-code-core-principles.md", _scoped("py", 20000))
+    _write(tmp_path, "rules/jois-code-core-principles.md", _code_scoped() + "x" * 20000)
     _write(tmp_path, "rules/jois-code-java.md", _scoped("java", 20000))
     _write(tmp_path, "rules/jois-git-commit-hygiene.md", f"---\n{VERSION}\n---\n" + "x" * 20000)
     assert _problems(tmp_path) == []
@@ -48,7 +54,7 @@ def test_large_rules_have_no_size_problem(tmp_path):
 
 def test_core_rule_paths_must_be_source_code(tmp_path):
     _toolkit_tree(tmp_path)
-    _write(tmp_path, "rules/jois-code-core-principles.md", _scoped("json"))
+    _write(tmp_path, "rules/jois-code-core-principles.md", _code_scoped(extra=("json",)))
     assert "rules/jois-code-core-principles.md: glob '**/*.json' is not a source-code file type" in _problems(
         tmp_path
     )
@@ -76,8 +82,21 @@ def test_quality_rule_needs_paths(tmp_path):
 
 def test_quality_rule_paths_must_be_source_code(tmp_path):
     _toolkit_tree(tmp_path)
-    _write(tmp_path, "rules/jois-code-quality.md", _scoped("yaml"))
+    _write(tmp_path, "rules/jois-code-quality.md", _code_scoped(extra=("yaml",)))
     assert "rules/jois-code-quality.md: glob '**/*.yaml' is not a source-code file type" in _problems(tmp_path)
+
+
+def test_code_scoped_rule_missing_a_type_is_named(tmp_path):
+    _toolkit_tree(tmp_path)
+    _write(tmp_path, "rules/jois-code-quality.md", _code_scoped(without=("html",)))
+    assert "rules/jois-code-quality.md: `paths:` is missing the source-code file type 'html'" in _problems(
+        tmp_path
+    )
+
+
+def test_code_scoped_rules_cover_web_and_other_languages():
+    for extension in ("html", "css", "go", "sql"):
+        assert extension in check_toolkit.CODE_EXTENSIONS
 
 
 def test_code_scoped_rules_may_share_extensions_with_technology_rules(tmp_path):
