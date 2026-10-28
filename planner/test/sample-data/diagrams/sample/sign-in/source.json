@@ -1,0 +1,8 @@
+{
+  "scope": { "type": "feature", "epic": "Identity and access", "feature": "Sign in" },
+  "stories": [
+    { "id": "IAM-0001", "title": "Sign in with email", "hash": "baf514d489ee" },
+    { "id": "IAM-0002", "title": "Reset a password", "hash": "ddf31b439280" }
+  ],
+  "drawnAt": "2026-10-28T00:00:00.000Z"
+}
