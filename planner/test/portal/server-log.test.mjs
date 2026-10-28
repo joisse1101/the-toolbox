@@ -37,3 +37,18 @@ test("the portal's create, save and rename are logged; the log is not reachable 
   assert.equal((await fetch(`${origin}/api/logs/files`)).status, 404);
   assert.equal((await fetch(`${origin}/api/logs/files/writes.jsonl`)).status, 404);
 });
+
+test('the diagrams folder is not a store: the file API neither lists, reads nor writes it', async (t) => {
+  fs.mkdirSync(path.join(root, 'diagrams', 'data', 'sign-in'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'diagrams', 'data', 'repo.json'), '{ "path": "." }');
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => server.close());
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  const base = `${origin}/api/diagrams/files`;
+  assert.equal((await fetch(base)).status, 404);
+  assert.equal((await fetch(`${base}/repo.json`)).status, 404);
+  assert.equal((await fetch(base, { method: 'POST', headers: HEADERS, body: JSON.stringify({ name: 'x.csv', content: 'a\r\n' }) })).status, 404);
+  assert.equal((await fetch(`${base}/x.csv`, { method: 'PUT', headers: HEADERS, body: 'a\r\n' })).status, 404);
+  assert.equal(fs.existsSync(path.join(root, 'diagrams', 'x.csv')), false);
+  assert.equal(fs.readFileSync(path.join(root, 'diagrams', 'data', 'repo.json'), 'utf8'), '{ "path": "." }');
+});
