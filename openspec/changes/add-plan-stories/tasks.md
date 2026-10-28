@@ -14,8 +14,8 @@
 
 ## 3. Skill scripts and `diagram-tools`
 
-- [ ] 3.1 `.claude/skills/plan-stories/read-diagrams.mjs`: read a slice, apply healing, report stale slices, generate the spec's story list. Verify with tests on the fixture, including the repaired ID and that diagram files are unchanged.
-- [ ] 3.2 `.claude/skills/plan-stories/write-diagram.mjs`: validate, require `{id, title}` pairs, atomic write, re-read, idempotence, refuse a slice of another scope, append the write log. Verify with tests for each scenario of `diagram-writer`.
+- [x] 3.1 `.claude/skills/plan-stories/read-diagrams.mjs`: read a slice, apply healing, report stale slices, generate the spec's story list. Verify with tests on the fixture, including the repaired ID and that diagram files are unchanged.
+- [x] 3.2 `.claude/skills/plan-stories/write-diagram.mjs`: validate, require `{id, title}` pairs, atomic write, re-read, idempotence, refuse a slice of another scope, append the write log. Verify with tests for each scenario of `diagram-writer`.
 - [x] 3.3 `.claude/skills/plan-stories/repo-reader.mjs` and the `repo.json` schema check: tree, grep with the 50-match cap, ranged read, binary and size skip. Verify with tests on a temp repo including a junction and an excluded file never named in a reply.
 - [ ] 3.4 `planner/claude/mcp/diagram-tools.mjs` with `read_diagrams`, `check_diagram`, `write_diagram` and the repo tools (registered only with a valid `repo.json`), each description carrying its rules. Verify with a test like `backlog-tools-mcp.test.mjs` that the tool list and descriptions match the specs.
 - [ ] 3.5 Confirm `diagrams` is not in `STORES`. Verify with a server test that the file API refuses it.
