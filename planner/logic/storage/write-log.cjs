@@ -11,12 +11,14 @@ const { DATA_DIR } = require('./paths.cjs');
 
 const LOG_FILE = 'writes.jsonl';
 
-// writer: 'portal' or the name of the script or tool; store: the data folder's name; file: the file name; text: the new content.
-function logWrite({ writer, store, file, text, dataDir = DATA_DIR }) {
+// writer: 'portal' or the name of the script or tool; store: the data folder's name; file: the file name; text: the new content;
+// extra: more short fields for the line (the diagram writer adds backlog and slice), which never replace the fields above.
+function logWrite({ writer, store, file, text, extra = {}, dataDir = DATA_DIR }) {
   try {
     const dir = path.join(dataDir, 'logs');
     fs.mkdirSync(dir, { recursive: true });
     const line = {
+      ...extra,
       time: new Date().toISOString(),
       writer,
       store,

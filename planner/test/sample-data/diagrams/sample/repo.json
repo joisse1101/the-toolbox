@@ -1,0 +1,4 @@
+{
+  "path": "../../repos/sample",
+  "exclude": ["config/prod.*"]
+}
