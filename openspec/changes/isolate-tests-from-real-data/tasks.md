@@ -18,5 +18,5 @@
 
 ## 4. Verify independence and document
 
-- [ ] 4.1 Run `npm test` three ways, with the real `planner/data/`, with `planner/data/` temporarily renamed, and with `PLANNER_DATA_DIR` set to an empty folder, and verify the result is identical each time (apart from the known flaky ready-file test)
+- [x] 4.1 Run `npm test` three ways, with the real `planner/data/`, with `planner/data/` temporarily renamed, and with `PLANNER_DATA_DIR` set to an empty folder, and verify the result is identical each time (apart from the known flaky ready-file test)
 - [x] 4.2 Update `CLAUDE.md` (the `npm test` line and the `planner/data/` note) to describe the fixture folder and the setup file, and verify the text matches the implemented script
