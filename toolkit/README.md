@@ -148,8 +148,8 @@ scoped rule is not present before any matching file is touched, so a change plan
 file is opened has no rules yet. Every coding rule here is scoped, so sessions that never touch
 code (tickets, workflows) load none of them. The one exception is `jois-git-commit-hygiene`, which is
 unscoped on purpose: commits of images, deletions, renames and docs touch no code file, so a
-scoped rule would be missing exactly when those commits grow. It is capped at 2 KB and asks
-nothing unless Claude is about to commit.
+scoped rule would be missing exactly when those commits grow. It asks nothing unless Claude is
+about to commit.
 
 The standards are split this way: two small core rules (principles and architecture
 boundaries, scoped to source-code file types), one path-scoped rule per technology (TypeScript/React,
@@ -194,8 +194,7 @@ computed. The installer dot-sources it, and you can run it on any skill folder, 
 
 ## Checks
 
-`check_toolkit.py` verifies the toolkit against its own standards: rule and skill size budgets, rule
-scoping, versions, the `disable-model-invocation` flag, and the write-pr/update-pr shared sections. It
+`check_toolkit.py` verifies the toolkit against its own standards: rule scoping, versions, the `disable-model-invocation` flag, and the write-pr/update-pr shared sections. It
 uses only the Python standard library. Run both from this folder:
 
 ```powershell

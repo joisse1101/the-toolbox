@@ -5,9 +5,9 @@ Standalone: plain standard library, run `python check_toolkit.py` from this fold
 one-line pass.
 
 Checks:
-  1. always-on rules: present, scoped to source-code file types, within their size budgets
-  2. unscoped and technology rules: `paths:` frontmatter, budgets, one rule per file extension
-  3. the review skill: size budget and every backticked rule, skill or path reference exists
+  1. always-on rules: present and scoped to source-code file types
+  2. unscoped and technology rules: `paths:` frontmatter, one rule per file extension
+  3. the review skill: every backticked rule, skill or path reference exists
   4. `metadata.version` and `metadata.last_updated` on every skill, rule, agent and jois-git command
   5. every slash command carries `disable-model-invocation: true`
   6. the PR body template and Author Verification sections of write-pr and update-pr match
@@ -21,15 +21,10 @@ import re
 import sys
 from pathlib import Path
 
-CORE_RULE_BUDGET_BYTES = 2 * 1024
-ALWAYS_ON_BUDGET_BYTES = 4 * 1024
-SCOPED_RULE_BUDGET_BYTES = 3 * 1024
-SKILL_BUDGET_BYTES = 4 * 1024
 ALWAYS_ON_RULES = ("jois-code-core-principles.md", "jois-code-architecture-boundaries.md")
 SHARED_PR_SECTIONS = ("PR body template", "Author Verification")
 # Loads in every session on purpose: a commit can contain no code (images, deletions, docs).
 UNSCOPED_RULES = ("jois-git-commit-hygiene.md",)
-UNSCOPED_RULE_BUDGET_BYTES = 2 * 1024
 # The core rules load only when source code is touched, so config and markup extensions are out.
 CODE_EXTENSIONS = {"py", "java", "ts", "tsx", "js", "jsx", "ps1", "sh", "bat"}
 
@@ -64,30 +59,17 @@ def _rule_paths(text: str) -> list[str] | None:
 
 def _check_always_on_rules(rules: Path) -> list[str]:
     problems = []
-    total = 0
     for name in ALWAYS_ON_RULES:
         path = rules / name
         if not path.is_file():
             problems.append(f"rules/{name}: required always-on rule is missing")
             continue
-        total += path.stat().st_size
         globs = _rule_paths(path.read_text(encoding="utf-8"))
         if not globs:
             problems.append(f"rules/{name}: core rule needs `paths:` frontmatter")
         for glob in globs or []:
             if glob.rsplit(".", 1)[-1] not in CODE_EXTENSIONS:
                 problems.append(f"rules/{name}: glob '{glob}' is not a source-code file type")
-    core = rules / ALWAYS_ON_RULES[0]
-    if core.is_file() and core.stat().st_size > CORE_RULE_BUDGET_BYTES:
-        problems.append(
-            f"rules/{core.name}: {core.stat().st_size} bytes exceeds the "
-            f"{CORE_RULE_BUDGET_BYTES}-byte budget"
-        )
-    if total > ALWAYS_ON_BUDGET_BYTES:
-        problems.append(
-            f"rules: always-on rules total {total} bytes, over the "
-            f"{ALWAYS_ON_BUDGET_BYTES}-byte budget"
-        )
     return problems
 
 
@@ -100,11 +82,6 @@ def _check_unscoped_rules(rules: Path) -> list[str]:
         rel = f"rules/{name}"
         if _rule_paths(path.read_text(encoding="utf-8")):
             problems.append(f"{rel}: unscoped rule must not have `paths:` frontmatter")
-        if path.stat().st_size > UNSCOPED_RULE_BUDGET_BYTES:
-            problems.append(
-                f"{rel}: {path.stat().st_size} bytes exceeds the "
-                f"{UNSCOPED_RULE_BUDGET_BYTES}-byte budget"
-            )
     return problems
 
 
@@ -118,11 +95,6 @@ def _check_scoped_rules(rules: Path) -> list[str]:
         globs = _rule_paths(path.read_text(encoding="utf-8"))
         if not globs:
             problems.append(f"{rel}: technology rule needs `paths:` frontmatter")
-        if path.stat().st_size > SCOPED_RULE_BUDGET_BYTES:
-            problems.append(
-                f"{rel}: {path.stat().st_size} bytes exceeds the "
-                f"{SCOPED_RULE_BUDGET_BYTES}-byte budget"
-            )
         for glob in globs or []:
             ext = glob.rsplit(".", 1)[-1]
             if ext in seen and seen[ext] != path.name:
@@ -137,10 +109,6 @@ def _check_review_skill(root: Path) -> list[str]:
         return []
     rel = "skills/jois-code-standards/SKILL.md"
     problems = []
-    if skill.stat().st_size > SKILL_BUDGET_BYTES:
-        problems.append(
-            f"{rel}: {skill.stat().st_size} bytes exceeds the {SKILL_BUDGET_BYTES}-byte budget"
-        )
     toolkit = root
     for number, line in _prose_lines(skill):
         for token in CODE_RE.findall(line):

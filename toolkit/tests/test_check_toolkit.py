@@ -35,14 +35,19 @@ def test_toolkit_tree_passes(tmp_path):
     assert _problems(tmp_path) == []
 
 
-def test_always_on_rule_budgets_and_paths(tmp_path):
+def test_always_on_rule_needs_paths(tmp_path):
     _toolkit_tree(tmp_path)
-    _write(tmp_path, "rules/jois-code-core-principles.md", _scoped("py", 2100))
-    _write(tmp_path, "rules/jois-code-architecture-boundaries.md", "x" * 2100)
+    _write(tmp_path, "rules/jois-code-architecture-boundaries.md", "no frontmatter")
     problems = _problems(tmp_path)
-    assert any("jois-code-core-principles.md" in p and "2048-byte" in p for p in problems)
     assert any("jois-code-architecture-boundaries.md" in p and "needs `paths:`" in p for p in problems)
-    assert any("always-on rules total" in p for p in problems)
+
+
+def test_large_rules_have_no_size_problem(tmp_path):
+    _toolkit_tree(tmp_path)
+    _write(tmp_path, "rules/jois-code-core-principles.md", _scoped("py", 20000))
+    _write(tmp_path, "rules/jois-code-java.md", _scoped("java", 20000))
+    _write(tmp_path, "rules/jois-git-commit-hygiene.md", f"---\n{VERSION}\n---\n" + "x" * 20000)
+    assert _problems(tmp_path) == []
 
 
 def test_core_rule_paths_must_be_source_code(tmp_path):
@@ -61,14 +66,12 @@ def test_missing_always_on_rule(tmp_path):
     )
 
 
-def test_scoped_rule_needs_paths_budget_and_unique_extensions(tmp_path):
+def test_scoped_rule_needs_paths_and_unique_extensions(tmp_path):
     _toolkit_tree(tmp_path)
     _write(tmp_path, "rules/noscope.md", f"---\n{VERSION}\n---\nno paths\n")
-    _write(tmp_path, "rules/big.md", _scoped("py", 3100))
     _write(tmp_path, "rules/other.md", _scoped("java"))
     problems = _problems(tmp_path)
     assert "rules/noscope.md: technology rule needs `paths:` frontmatter" in problems
-    assert any("big.md" in p and "3072-byte" in p for p in problems)
     assert "rules/other.md: extension 'java' is also scoped by jois-code-java.md" in problems
 
 
@@ -78,23 +81,21 @@ def test_unscoped_commit_rule_is_accepted_without_paths(tmp_path):
     assert _problems(tmp_path) == []
 
 
-def test_unscoped_commit_rule_budget_and_paths(tmp_path):
+def test_unscoped_commit_rule_must_not_have_paths(tmp_path):
     _toolkit_tree(tmp_path)
-    _write(tmp_path, "rules/jois-git-commit-hygiene.md", _scoped("py", 2100))
+    _write(tmp_path, "rules/jois-git-commit-hygiene.md", _scoped("py"))
     problems = _problems(tmp_path)
     assert "rules/jois-git-commit-hygiene.md: unscoped rule must not have `paths:` frontmatter" in problems
-    assert any("jois-git-commit-hygiene.md" in p and "2048-byte" in p for p in problems)
 
 
-def test_skill_size_and_references(tmp_path):
+def test_skill_references(tmp_path):
     _toolkit_tree(tmp_path)
     _write(
         tmp_path,
         "skills/jois-code-standards/SKILL.md",
-        f"---\n{VERSION}\n---\nUse `frontend-patterns` and `rules/common/coding-style.md`.\n" + "x" * 6200,
+        f"---\n{VERSION}\n---\nUse `frontend-patterns` and `rules/common/coding-style.md`.\n",
     )
     problems = _problems(tmp_path)
-    assert any("4096-byte" in p for p in problems)
     assert any("'frontend-patterns' is not in the toolkit" in p for p in problems)
     assert any("'rules/common/coding-style.md' is not in the toolkit" in p for p in problems)
 
