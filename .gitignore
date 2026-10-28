@@ -4,7 +4,3 @@ planner/portal/dist/
 
 __pycache__/
 .pytest_cache/
-
-# OpenSpec output kept only as reference (our patched copies come from toolkit/opsx)
-.claude/commands/opsx/
-.claude/skills/openspec-*/
