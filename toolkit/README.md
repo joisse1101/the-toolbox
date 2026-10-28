@@ -129,7 +129,7 @@ confirmation word before Claude commits. Use `-Scope project` to keep the rules 
 
 ## Versions
 
-Every skill, rule and `jois` or `jois-review` command declares its version in a `metadata:` map in its
+Every skill, rule and `jois` command declares its version in a `metadata:` map in its
 frontmatter, as the Agent Skills format keeps it. Both keys are strings and are bumped by hand
 whenever the item's guidance changes: `version` is semver (`MAJOR.MINOR.PATCH`) and `last_updated`
 is the date of the change.

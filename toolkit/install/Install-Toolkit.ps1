@@ -14,8 +14,8 @@ entry there, not new code.
 
 A destination item that already exists and differs from the toolkit's copy is never overwritten
 silently: it is reported as "differs" and skipped unless -Force is given. "Differs" is decided by a
-hash over every file's relative path and content (the same hash a saved review records; both come
-from skills\coding-standards\scripts\Get-ItemHash.ps1). -List shows that state per item without changing
+hash over every file's relative path and content (computed by
+skills\coding-standards\scripts\Get-ItemHash.ps1). -List shows that state per item without changing
 anything. -Uninstall removes only items that exist in the toolkit; anything else in the destination is
 left alone. Nothing outside the skills, commands and rules folders is touched (settings.json and hooks
 included).

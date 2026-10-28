@@ -212,13 +212,3 @@ def test_shared_pr_check_is_skipped_when_a_command_is_absent(tmp_path):
     _toolkit_tree(tmp_path)
     _write(tmp_path, "commands/jois/write-pr.md", _pr_command("same"))
     assert _problems(tmp_path) == []
-
-
-def test_skill_may_name_the_review_output_folder(tmp_path):
-    _toolkit_tree(tmp_path)
-    _write(
-        tmp_path,
-        "skills/coding-standards/SKILL.md",
-        f"---\n{VERSION}\n---\nSave to `reviews/2026-10-14_1707.md`.\n",
-    )
-    assert _problems(tmp_path) == []

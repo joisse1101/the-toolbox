@@ -24,7 +24,7 @@ from pathlib import Path
 CORE_RULE_BUDGET_BYTES = 2 * 1024
 ALWAYS_ON_BUDGET_BYTES = 4 * 1024
 SCOPED_RULE_BUDGET_BYTES = 3 * 1024
-SKILL_BUDGET_BYTES = 6 * 1024
+SKILL_BUDGET_BYTES = 4 * 1024
 ALWAYS_ON_RULES = ("core-principles.md", "architecture-boundaries.md")
 SHARED_PR_SECTIONS = ("PR body template", "Author Verification")
 # Loads in every session on purpose: a commit can contain no code (images, deletions, docs).
@@ -149,8 +149,6 @@ def _check_review_skill(root: Path) -> list[str]:
                     toolkit / "skills" / token
                 ).is_dir():
                     problems.append(f"{rel}:{number}: reference '{token}' is not in the toolkit")
-            elif token.startswith("reviews/"):
-                continue  # where a review is written in the reviewed repository, not a toolkit file
             elif "/" in token and not (toolkit / token).exists():
                 problems.append(f"{rel}:{number}: path '{token}' is not in the toolkit")
     return problems
