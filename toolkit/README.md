@@ -218,12 +218,19 @@ computed. The installer dot-sources it, and you can run it on any skill folder, 
 ## Checks
 
 `check_toolkit.py` verifies the toolkit against its own standards: rule scoping, versions, the `disable-model-invocation` flag, and the write-pr/update-pr shared sections. It
-uses only the Python standard library. Run both from this folder:
+uses only the Python standard library; only the tests need a package (`pytest`, listed in
+`requirements.txt`). Set up a virtual environment once, then run both from this folder:
 
 ```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+
 python check_toolkit.py
-python -m pytest        # tests/ covers the checker; needs pytest
+python -m pytest        # tests/ covers the checker
 ```
+
+`.venv/` ignores itself, so it stays out of git.
 
 ## Specs and history
 
