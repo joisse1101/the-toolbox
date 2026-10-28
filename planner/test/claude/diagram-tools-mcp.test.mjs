@@ -14,11 +14,12 @@ const SAMPLE = path.resolve(HERE, '../sample-data');
 const SCOPE = { type: 'feature', epic: 'Identity and access', feature: 'Sign in' };
 const STORIES = [{ id: 'IAM-0001', title: 'Sign in with email' }, { id: 'IAM-0002', title: 'Reset a password' }];
 
-// A temp data folder holding the sample backlog and the sample slice, with the repo next to repo.json.
+// A temp data folder holding the sample backlog and slice, and the sample repo that repo.json points at (outside diagrams/, so it is not a slice).
 function temp({ repoJson } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'diagram-tools-test-'));
   fs.cpSync(path.join(SAMPLE, 'backlogs'), path.join(root, 'backlogs'), { recursive: true });
   fs.cpSync(path.join(SAMPLE, 'diagrams'), path.join(root, 'diagrams'), { recursive: true });
+  fs.cpSync(path.join(SAMPLE, 'repos'), path.join(root, 'repos'), { recursive: true });
   if (repoJson !== undefined) fs.writeFileSync(path.join(root, 'diagrams', 'sample', 'repo.json'), repoJson);
   return root;
 }
@@ -61,7 +62,7 @@ test('the repo tools label what they return as data from the repo, the diagram t
 });
 
 test('no repo tools when repo.json is missing, has a bad key or points at no folder, and read_diagrams says why', async () => {
-  for (const [repoJson, why] of [['{ "path": "" }', /No repo is configured/], ['{ "path": "./repo", "exclude": "x" }', /"exclude" must be a list/], ['{ "path": "./missing" }', /"path" is not a folder/]]) {
+  for (const [repoJson, why] of [['{ "path": "" }', /No repo is configured/], ['{ "path": "../../repos/sample", "exclude": "x" }', /"exclude" must be a list/], ['{ "path": "./missing" }', /"path" is not a folder/]]) {
     const client = await connect(temp({ repoJson }), ['--backlog', 'sample.csv']);
     try {
       assert.deepEqual((await client.listTools()).tools.map((t) => t.name).sort(), ['check_diagram', 'read_diagrams', 'write_diagram']);
@@ -75,7 +76,9 @@ test('no repo tools when repo.json is missing, has a bad key or points at no fol
 test('read_diagrams: the slices, one slice with its files, the conventions, bad input', async () => {
   const client = await connect(temp());
   try {
-    assert.match(textOf(await call(client, 'read_diagrams', { backlog: 'sample.csv' })), /sign-in \| Feature: Identity and access > Sign in \| 2 stories \| up to date/);
+    const list = textOf(await call(client, 'read_diagrams', { backlog: 'sample.csv' }));
+    assert.match(list, /1 slice ===/, 'the repo folder is not a slice');
+    assert.match(list, /sign-in \| Feature: Identity and access > Sign in \| 2 stories \| up to date/);
     const one = textOf(await call(client, 'read_diagrams', { backlog: 'sample.csv', slice: 'sign-in' }));
     assert.match(one, /--- UC-sign-in\.md ---/);
     assert.match(one, /--- UC-sign-in-class\.puml ---/);
