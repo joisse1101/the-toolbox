@@ -58,13 +58,15 @@ test('every source file imports only from the zones its own zone may depend on',
 });
 
 test('the zone rules cover the layout: logic, portal, claude, skills and toolkit all have source files', () => {
-  for (const folder of ['planner/logic', 'planner/portal', 'planner/claude', '.claude/skills/_shared', '.claude/skills/review-backlog']) {
+  for (const folder of ['planner/logic', 'planner/logic/diagrams', 'planner/portal', 'planner/claude', '.claude/skills/_shared', '.claude/skills/review-backlog']) {
     assert.ok(files.some((f) => starts(f, folder)), `no source files under ${folder}`);
   }
 });
 
 test('the rules reject what they are for', () => {
   assert.equal(allowed('planner/logic/backlog/ids.js').some((f) => starts('planner/portal/web/lib/word-diff.js', f)), false);
+  assert.equal(allowed('planner/logic/diagrams/source.js').some((f) => starts('planner/portal/web/lib/word-diff.js', f)), false);
+  assert.equal(allowed('planner/logic/diagrams/checks.js').some((f) => starts('.claude/skills/plan-stories/read-diagrams.mjs', f)), false);
   assert.equal(allowed('planner/portal/web/main.jsx').some((f) => starts('.claude/skills/_shared/paths.cjs', f)), false);
   assert.equal(allowed('.claude/skills/review-backlog/write-review.mjs').some((f) => starts('planner/portal/server/flatten.js', f)), false);
   assert.equal(allowed('.claude/skills/review-backlog/write-review.mjs').some((f) => starts('.claude/skills/propose-stories/write-proposal.mjs', f)), false);

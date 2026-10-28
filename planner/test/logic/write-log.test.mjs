@@ -24,6 +24,13 @@ test('a write appends one line with the writer, store, file, size and a short ha
   assert.equal(second.writer, 'write_proposals', 'lines keep the order of the writes');
 });
 
+test('extra fields are added to the line and never replace the standard ones', () => {
+  const root = temp();
+  logWrite({ writer: 'write_diagram', store: 'diagrams', file: 'sample/sign-in', text: 'x', extra: { backlog: 'sample', slice: 'sign-in', writer: 'spoof', bytes: 0 }, dataDir: root });
+  const [line] = lines(root);
+  assert.deepEqual([line.backlog, line.slice, line.writer, line.bytes], ['sample', 'sign-in', 'write_diagram', 1]);
+});
+
 test('the same content has the same hash', () => {
   const root = temp();
   logWrite({ writer: 'a', store: 's', file: 'f.csv', text: 'same', dataDir: root });

@@ -90,6 +90,7 @@ test('the hook tells Claude when the server never connects, and does nothing out
     const late = await runHook({ PLANNER_MCP_READY_FILE: path.join(dir, 'never.ready'), PLANNER_MCP_WAIT_MS: '300' });
     assert.equal(late.code, 0);
     assert.match(late.out, /did not finish connecting/);
+    assert.match(late.out, /MCP server did not/);
     const env = { ...process.env };
     delete env.PLANNER_MCP_READY_FILE;
     const plain = await new Promise((resolve) => {
@@ -99,6 +100,30 @@ test('the hook tells Claude when the server never connects, and does nothing out
       child.on('close', (code) => resolve({ code, out }));
     });
     assert.deepEqual(plain, { code: 0, out: '' });
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('PLANNER_MCP_READY_FILES: the hook waits for every file, and names how many servers are missing on a timeout', async () => {
+  const dir = temp();
+  try {
+    const a = path.join(dir, 'a.ready');
+    const b = path.join(dir, 'b.ready');
+    const files = [a, b].join(path.delimiter);
+    fs.writeFileSync(a, 'ready');
+    const partial = await runHook({ PLANNER_MCP_READY_FILES: files, PLANNER_MCP_WAIT_MS: '300' });
+    assert.match(partial.out, /1 of the 2 MCP servers did not finish connecting/);
+    let released = false;
+    const hook = runHook({ PLANNER_MCP_READY_FILES: files, PLANNER_MCP_WAIT_MS: '20000' }).then((r) => { released = true; return r; });
+    await new Promise((r) => setTimeout(r, 700));
+    assert.equal(released, false, 'released with one server still missing');
+    fs.writeFileSync(b, 'ready');
+    const done = await hook;
+    assert.deepEqual([done.code, done.out], [0, '']);
+    fs.rmSync(a);
+    fs.rmSync(b);
+    assert.match((await runHook({ PLANNER_MCP_READY_FILES: files, PLANNER_MCP_WAIT_MS: '300' })).out, /2 of the 2 MCP servers did not/);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
@@ -129,5 +154,9 @@ test('the story launchers are wired to the hook: settings name an existing scrip
     assert.match(launcher, /--tools "Skill,AskUserQuestion" `/, `${name} gives the session neither Read nor Grep`);
     assert.doesNotMatch(launcher, /guard-read|Confirm-ReadLimit|Test-ReadGuard|Get-ReadFiles|append-system-prompt/, `${name} has no read gate left`);
   }
+  // The plan-stories session has two servers: each its own ready file, all listed for the hook.
+  assert.match(config, /function New-PlanStoriesConfig/);
+  assert.match(config, /planner\/claude\/mcp\/diagram-tools\.mjs/);
+  assert.match(config, /PLANNER_MCP_READY_FILES/);
   assert.doesNotMatch(config, /Confirm-ReadLimit|Test-ReadGuard|Get-ReadFiles/);
 });
