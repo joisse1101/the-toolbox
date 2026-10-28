@@ -1,0 +1,18 @@
+{
+  "claudeMdExcludes": [
+    "**/CLAUDE.md",
+    "**/.claude/rules/**"
+  ],
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node planner/claude/mcp/wait-for-backlog-tools.mjs"
+          }
+        ]
+      }
+    ]
+  }
+}
