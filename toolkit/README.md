@@ -184,12 +184,12 @@ toolkit's and the installed version, so you can see at a glance that an installe
 The version says what changed and when; the content hash decides whether anything changed at all,
 so an edit that forgot to bump the version still shows as `differs`.
 
-`skills/jois-code-standards/scripts/Get-ItemHash.ps1` is the one place the hash and the version are
+`install/Get-ItemHash.ps1` is the one place the hash and the version are
 computed. The installer dot-sources it, and you can run it on any skill folder, command folder or
 `.md` file (it needs Windows PowerShell):
 
 ```powershell
-.\toolkit\skills\jois-code-standards\scripts\Get-ItemHash.ps1 -ItemPath ~\.claude\rules\jois-code-python.md
+.\toolkit\install\Get-ItemHash.ps1 -ItemPath ~\.claude\rules\jois-code-python.md
 ```
 
 ## Checks
