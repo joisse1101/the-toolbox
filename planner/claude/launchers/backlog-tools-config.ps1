@@ -36,3 +36,26 @@ function Select-Backlog([string]$DataDir, [string]$Backlog) {
   if (-not $file) { Write-Host "No backlog '$Backlog' in planner/data/backlogs/. Found: $($backlogs -join ', ')" -ForegroundColor Red; exit 1 }
   return $file
 }
+
+# The --mcp-config file for the plan-stories session: backlog-tools --read-only and diagram-tools for one backlog (--backlog lets the
+# latter use that backlog's repo.json). Each server gets its own ready file through its env block; PLANNER_MCP_READY_FILES lists them for
+# the hook, which waits for all. Returns the config path and the ready files, for the launcher to delete when the session ends.
+function New-PlanStoriesConfig([string]$Root, [string]$Backlog) {
+  $tools = (Join-Path $Root 'planner/claude/mcp/backlog-tools.mjs').Replace('\', '/')
+  $diagrams = (Join-Path $Root 'planner/claude/mcp/diagram-tools.mjs').Replace('\', '/')
+  $temp = [IO.Path]::GetTempPath()
+  $ready = @{
+    'backlog-tools' = Join-Path $temp ("backlog-tools-{0}.ready" -f $PID)
+    'diagram-tools' = Join-Path $temp ("diagram-tools-{0}.ready" -f $PID)
+  }
+  foreach ($file in $ready.Values) { Remove-Item -LiteralPath $file -Force -ErrorAction SilentlyContinue }
+  $config = @{ mcpServers = [ordered]@{
+    'backlog-tools' = @{ command = 'node'; args = [string[]]@($tools, '--read-only'); env = @{ PLANNER_MCP_READY_FILE = $ready['backlog-tools'] } }
+    'diagram-tools' = @{ command = 'node'; args = [string[]]@($diagrams, '--backlog', $Backlog); env = @{ PLANNER_MCP_READY_FILE = $ready['diagram-tools'] } }
+  } }
+  Remove-Item Env:PLANNER_MCP_READY_FILE -ErrorAction SilentlyContinue
+  $env:PLANNER_MCP_READY_FILES = $ready.Values -join [IO.Path]::PathSeparator
+  $path = Join-Path $temp ("plan-stories-{0}.mcp.json" -f $PID)
+  [IO.File]::WriteAllText($path, ($config | ConvertTo-Json -Depth 5 -Compress), (New-Object Text.UTF8Encoding($false)))
+  return [pscustomobject]@{ Path = $path; ReadyFiles = @($ready.Values) }
+}

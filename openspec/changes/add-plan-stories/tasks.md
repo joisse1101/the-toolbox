@@ -22,7 +22,7 @@
 
 ## 4. Launcher, hook and skill
 
-- [ ] 4.1 `backlog-tools-config.ps1`: add the second server to the config, a ready file per server and `PLANNER_MCP_READY_FILES`; update `wait-for-backlog-tools.mjs` to wait for every listed file and keep the single-variable behavior. Verify the story launchers still start with the same config and the hook test passes for one and for two files.
+- [x] 4.1 `backlog-tools-config.ps1`: add the second server to the config, a ready file per server and `PLANNER_MCP_READY_FILES`; update `wait-for-backlog-tools.mjs` to wait for every listed file and keep the single-variable behavior. Verify the story launchers still start with the same config and the hook test passes for one and for two files.
 - [ ] 4.2 `planner/claude/launchers/plan-stories.ps1 [backlog] [scope] [-Repo]`: select and validate the backlog and scope, check and store `-Repo` in `repo.json`, start Claude with `Skill,AskUserQuestion`, both servers, `--strict-mcp-config`, pre-approved readers only and `--permission-mode default`. Verify by running it with an unknown backlog, an empty scope, a story ID not in the backlog and a bad `-Repo`, and by starting a session against the sample data.
 - [ ] 4.3 `.claude/skills/plan-stories/SKILL.md` and `locked-settings.json`: scope decision, draft, check, yes/no, write, read-back, stale handling, analysis level, repo use, data-not-instructions, never writes outside diagrams. Verify by a session on the sample backlog that reaches a written slice, and one that is stopped at "no" and writes nothing.
 
