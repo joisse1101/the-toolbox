@@ -37,7 +37,7 @@ test('legacyDataHint: a user-stories folder beside no backlogs folder is renamed
 });
 
 test('PLANNER_DATA_DIR sets the data folder; the old TLT_DATA_DIR still does, with a warning', () => {
-  const dataDir = (env) => spawnSync(process.execPath, ['-e', "console.log(require(process.argv[1]).DATA_DIR)", path.resolve('planner/logic/storage/paths.cjs')], {
+  const dataDir = (env) => spawnSync(process.execPath, ['-e', "console.log(require(process.argv[1]).DATA_DIR)", path.resolve(import.meta.dirname, '../../logic/storage/paths.cjs')], {
     encoding: 'utf8', env: { ...process.env, PLANNER_DATA_DIR: '', TLT_DATA_DIR: '', ...env },
   });
   const current = dataDir({ PLANNER_DATA_DIR: path.resolve('x-new') });

@@ -23,6 +23,7 @@ Two separate things live here.
 ## Run
 
 ```
+cd planner       # package.json and node_modules live here
 npm install      # once
 npm start        # builds if needed, runs the server, opens http://localhost:3000/
 npm start -- --dev   # server + Vite dev server with hot reload (http://localhost:5173/)

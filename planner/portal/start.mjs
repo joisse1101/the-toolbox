@@ -15,7 +15,7 @@ const args = new Set(process.argv.slice(2));
 const dev = args.has('--dev');
 const port = Number(process.env.PORT) || 3000;
 const VITE_PORT = 5173;
-const viteBin = path.join(ROOT, 'node_modules', 'vite', 'bin', 'vite.js');
+const viteBin = path.join(ROOT, 'planner', 'node_modules', 'vite', 'bin', 'vite.js');
 const viteConfig = path.join(ROOT, 'planner', 'portal', 'web', 'vite.config.mjs');
 
 if (!fs.existsSync(viteBin)) {
