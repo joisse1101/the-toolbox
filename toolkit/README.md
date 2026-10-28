@@ -22,7 +22,6 @@ Other things the script does:
 
 ```powershell
 .\Install-Toolkit.ps1 -List                                   # what's installed, has it drifted, which versions?
-.\Install-Toolkit.ps1 -Skill jois-code-standards                 # just one skill
 .\Install-Toolkit.ps1 -Command opsx                           # just one command item
 .\Install-Toolkit.ps1 -Rule jois-code-java.md                           # just one rule
 .\Install-Toolkit.ps1 -Scope project -Path C:\code\my-app     # into a project instead of globally
@@ -43,7 +42,7 @@ item is for. Domains today:
 
 | Domain | Meaning | Items |
 |---|---|---|
-| `code` | writing and reviewing source code | the `jois-code-standards` skill, the `jois-code-*` rules |
+| `code` | writing source code | the `jois-code-*` rules |
 | `git` | commits and pull requests | the `jois-git` commands, the `jois-git-commit-hygiene` rule |
 
 Skills and rules are `jois-<domain>-<thing>`; a command namespace folder is `jois-<domain>`, so
@@ -65,10 +64,18 @@ Then run `.\Install-Toolkit.ps1` again (or with `-Scope project -Path <project>`
 `-List` shows every item `up to date`. In a project, remove the same names from `<project>\.claude`.
 Project `CLAUDE.md` files and notes that mention `/jois:stage` and the like need updating by hand.
 
+### Migrating from the `jois-code-standards` skill
+
+The `jois-code-standards` skill is now the `jois-code-quality` rule, which loads while code is
+written instead of on request. Delete `~/.claude/skills/jois-code-standards` (in a project,
+`<project>\.claude\skills\jois-code-standards`), then run `.\Install-Toolkit.ps1` to add the rule.
+For a review, use the built-in `code-review` or `simplify` skills.
+
 ## Skills
 
-Each skill is a folder `toolkit/skills/<name>/` with a `SKILL.md` (`name` and `description`
-frontmatter, then instructions) and any support files it needs. A folder is self-contained.
+The toolkit currently ships no skills; the installer and the checks still support them. A skill is a
+folder `toolkit/skills/<name>/` with a `SKILL.md` (`name` and `description` frontmatter, then
+instructions) and any support files it needs. A folder is self-contained.
 
 ## Commands
 
@@ -132,8 +139,8 @@ each such entry as a unit, so `-Command opsx` installs the whole `opsx` set.
 
 Every command declares `disable-model-invocation: true`, so its description is not loaded into each
 new session's skill listing (about 300 tokens for a typical set) while you can still type
-`/jois-git:stage`. `python check_toolkit.py` fails on a command without the flag. Skills such as
-`jois-code-standards` stay discoverable on purpose. `openspec update` does not touch the installed
+`/jois-git:stage`. `python check_toolkit.py` fails on a command without the flag. Skills are not
+given the flag. `openspec update` does not touch the installed
 commands; it writes copies into the project's `.claude/commands/opsx` and `.claude/skills/openspec-*`,
 which carry no flag. In a project where you do not want them listed, delete the project's
 `.claude/commands/opsx` (the global install serves) or re-add the flag.
@@ -151,10 +158,10 @@ unscoped on purpose: commits of images, deletions, renames and docs touch no cod
 scoped rule would be missing exactly when those commits grow. It asks nothing unless Claude is
 about to commit.
 
-The standards are split this way: two small core rules (principles and architecture
-boundaries, scoped to source-code file types), one path-scoped rule per technology (TypeScript/React,
-Java, Python, config files, scripts), and the `jois-code-standards` skill as an on-demand review
-checklist. The unscoped `jois-git-commit-hygiene` rule keeps commits to one concern and requires the user's
+The standards are split this way: three core rules (principles, architecture boundaries and code
+quality, scoped to source-code file types) and one path-scoped rule per technology (TypeScript/React,
+Java, Python, config files, scripts). Rules have no size limit; they are written to be read, not
+squeezed. The unscoped `jois-git-commit-hygiene` rule keeps commits to one concern and requires the user's
 confirmation word before Claude commits. Use `-Scope project` to keep the rules out of unrelated projects. A project's own `CLAUDE.md` takes precedence.
 
 ## Versions
@@ -166,7 +173,7 @@ is the date of the change.
 
 ```yaml
 ---
-name: jois-code-standards
+name: jois-git-example
 description: ...
 metadata:
   version: "1.0.0"
@@ -217,8 +224,8 @@ Copy into the folder your tool reads from:
 | Claude Code | Global | `~/.claude/skills/<name>/` | `~/.claude/commands/<entry>` | `~/.claude/rules/<name>.md` |
 | Claude Code | Per project | `<project>/.claude/skills/<name>/` | `<project>/.claude/commands/<entry>` | `<project>/.claude/rules/<name>.md` |
 
-For example, on Windows: copy `toolkit\skills\jois-code-standards` to
-`%USERPROFILE%\.claude\skills\jois-code-standards`. On macOS/Linux: `cp -r toolkit/commands/opsx
+For example, on Windows: copy `toolkit\rules\jois-code-python.md` to
+`%USERPROFILE%\.claude\rules\jois-code-python.md`. On macOS/Linux: `cp -r toolkit/commands/opsx
 ~/.claude/commands/`.
 
 Where each tool reads these from is data in `install/targets.json`, so supporting another tool is a

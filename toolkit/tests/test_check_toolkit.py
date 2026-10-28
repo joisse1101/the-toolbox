@@ -18,12 +18,8 @@ def _problems(root):
 def _toolkit_tree(root):
     _write(root, "rules/jois-code-core-principles.md", _scoped("py"))
     _write(root, "rules/jois-code-architecture-boundaries.md", _scoped("py"))
+    _write(root, "rules/jois-code-quality.md", _scoped("py"))
     _write(root, "rules/jois-code-java.md", f'---\n{VERSION}\npaths:\n  - "**/*.java"\n---\nJava\n')
-    _write(
-        root,
-        "skills/jois-code-standards/SKILL.md",
-        f"---\n{VERSION}\n---\nCheck against `jois-code-core-principles` and `jois-code-java`.\n",
-    )
 
 
 def _scoped(extension, padding=0):
@@ -58,12 +54,36 @@ def test_core_rule_paths_must_be_source_code(tmp_path):
     )
 
 
-def test_missing_always_on_rule(tmp_path):
+def test_missing_code_scoped_rule(tmp_path):
     _toolkit_tree(tmp_path)
     (tmp_path / "rules/jois-code-core-principles.md").unlink()
-    assert "rules/jois-code-core-principles.md: required always-on rule is missing" in _problems(
+    assert "rules/jois-code-core-principles.md: required code-scoped rule is missing" in _problems(
         tmp_path
     )
+
+
+def test_missing_quality_rule(tmp_path):
+    _toolkit_tree(tmp_path)
+    (tmp_path / "rules/jois-code-quality.md").unlink()
+    assert "rules/jois-code-quality.md: required code-scoped rule is missing" in _problems(tmp_path)
+
+
+def test_quality_rule_needs_paths(tmp_path):
+    _toolkit_tree(tmp_path)
+    _write(tmp_path, "rules/jois-code-quality.md", f"---\n{VERSION}\n---\nno paths\n")
+    assert "rules/jois-code-quality.md: core rule needs `paths:` frontmatter" in _problems(tmp_path)
+
+
+def test_quality_rule_paths_must_be_source_code(tmp_path):
+    _toolkit_tree(tmp_path)
+    _write(tmp_path, "rules/jois-code-quality.md", _scoped("yaml"))
+    assert "rules/jois-code-quality.md: glob '**/*.yaml' is not a source-code file type" in _problems(tmp_path)
+
+
+def test_code_scoped_rules_may_share_extensions_with_technology_rules(tmp_path):
+    _toolkit_tree(tmp_path)
+    _write(tmp_path, "rules/jois-code-python.md", _scoped("py"))
+    assert _problems(tmp_path) == []
 
 
 def test_scoped_rule_needs_paths_and_unique_extensions(tmp_path):
@@ -86,18 +106,6 @@ def test_unscoped_commit_rule_must_not_have_paths(tmp_path):
     _write(tmp_path, "rules/jois-git-commit-hygiene.md", _scoped("py"))
     problems = _problems(tmp_path)
     assert "rules/jois-git-commit-hygiene.md: unscoped rule must not have `paths:` frontmatter" in problems
-
-
-def test_skill_references(tmp_path):
-    _toolkit_tree(tmp_path)
-    _write(
-        tmp_path,
-        "skills/jois-code-standards/SKILL.md",
-        f"---\n{VERSION}\n---\nUse `frontend-patterns` and `rules/common/coding-style.md`.\n",
-    )
-    problems = _problems(tmp_path)
-    assert any("'frontend-patterns' is not in the toolkit" in p for p in problems)
-    assert any("'rules/common/coding-style.md' is not in the toolkit" in p for p in problems)
 
 
 def _item(version='"1.0.0"', last_updated='"2026-10-14"', extra=""):

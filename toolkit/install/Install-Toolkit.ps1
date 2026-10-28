@@ -59,8 +59,8 @@ Show this help and exit (-h works too).
 Install every toolkit skill, command and rule globally.
 
 .EXAMPLE
-.\Install-Toolkit.ps1 -Scope project -Path C:\code\my-app -Skill jois-code-standards -Command opsx
-Install one skill and one command namespace into a project.
+.\Install-Toolkit.ps1 -Scope project -Path C:\code\my-app -Rule jois-code-python.md -Command opsx
+Install one rule and one command namespace into a project.
 
 .EXAMPLE
 .\Install-Toolkit.ps1 -List
