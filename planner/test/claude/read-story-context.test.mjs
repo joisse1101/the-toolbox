@@ -10,6 +10,8 @@ import { composeSuggestions, emptySuggestions } from '../../logic/lexicon/lexico
 import { readStoryContext, formatSection, formatMenu, formatStory, fileLines, SECTIONS, backlogIndex, listBacklogs, searchStories, readFile } from '../../../.claude/skills/explore-stories/read-story-context.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+// The committed sample data, so the CLI tests never read the real planner/data/ even when run without test/setup.mjs.
+const SAMPLE_DATA = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'sample-data');
 
 function temp() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'context-test-'));
@@ -80,28 +82,28 @@ test('bad names and unknown backlogs are refused', () => {
 });
 
 test('CLI: lists backlogs, prints the menu, exits non-zero on a bad name or extra arguments', () => {
-  const run = (...args) => spawnSync(process.execPath, ['.claude/skills/explore-stories/read-story-context.mjs', ...args], { cwd: REPO, encoding: 'utf8' });
+  const run = (...args) => spawnSync(process.execPath, ['.claude/skills/explore-stories/read-story-context.mjs', ...args], { cwd: REPO, encoding: 'utf8', env: { ...process.env, PLANNER_DATA_DIR: SAMPLE_DATA } });
   assert.equal(run().status, 0);
   assert.equal(run('..\\x.csv').status, 1);
   assert.equal(run('a.csv', 'b', 'c').status, 2);
-  assert.equal(run('data-portal.csv', 'NO-0000').status, 1);
-  assert.equal(run('data-portal.csv', '--section').status, 2);
-  assert.equal(run('data-portal.csv', '--section', 'nope').status, 2);
-  assert.equal(run('data-portal.csv', '--section', 'index', 'x').status, 2);
+  assert.equal(run('sample.csv', 'NO-0000').status, 1);
+  assert.equal(run('sample.csv', '--section').status, 2);
+  assert.equal(run('sample.csv', '--section', 'nope').status, 2);
+  assert.equal(run('sample.csv', '--section', 'index', 'x').status, 2);
 });
 
 test('CLI: --section prints just that section; the menu prints no section', () => {
-  const run = (...args) => spawnSync(process.execPath, ['.claude/skills/explore-stories/read-story-context.mjs', ...args], { cwd: REPO, encoding: 'utf8' });
-  const guidelines = run('data-portal.csv', '--section', 'guidelines');
+  const run = (...args) => spawnSync(process.execPath, ['.claude/skills/explore-stories/read-story-context.mjs', ...args], { cwd: REPO, encoding: 'utf8', env: { ...process.env, PLANNER_DATA_DIR: SAMPLE_DATA } });
+  const guidelines = run('sample.csv', '--section', 'guidelines');
   assert.equal(guidelines.status, 0);
   assert.match(guidelines.stdout, /^=== guidelines\/product-backlog.md ===/);
   assert.doesNotMatch(guidelines.stdout, /=== (backlogs|proposals|lexicons)\//);
-  const menuOut = run('data-portal.csv');
+  const menuOut = run('sample.csv');
   assert.equal(menuOut.status, 0);
   assert.doesNotMatch(menuOut.stdout, /=== (guidelines|backlogs|proposals|lexicons)\//);
   for (const name of SECTIONS) assert.match(menuOut.stdout, new RegExp(`${name}: \\d+ characters`));
-  assert.equal(run('data-portal.csv', 'IAM-0001', '--section', 'index').status, 2);
-  const refused = run('data-portal.csv', '--section', 'lexicon');
+  assert.equal(run('sample.csv', 'IAM-0001', '--section', 'index').status, 2);
+  const refused = run('sample.csv', '--section', 'lexicon');
   assert.equal(refused.status, 1);
   assert.match(refused.stderr, /not a read_context section.*read_file \(file 'lexicon'/);
 });

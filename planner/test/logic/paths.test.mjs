@@ -6,7 +6,13 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { spawnSync } from 'node:child_process';
 
-const { legacyDataHint } = createRequire(import.meta.url)('../../logic/storage/paths.cjs');
+const { legacyDataHint, DATA_DIR } = createRequire(import.meta.url)('../../logic/storage/paths.cjs');
+
+// Guard: `npm test` loads test/setup.mjs, which points the data folder at the committed sample data. Without it a test
+// that forgets to isolate itself would read the real planner/data/.
+test('under npm test the data folder is the committed sample data, not the real planner/data', () => {
+  assert.equal(DATA_DIR, path.resolve(import.meta.dirname, '../sample-data'));
+});
 
 function repo() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'paths-'));
