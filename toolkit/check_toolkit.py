@@ -29,8 +29,14 @@ CODE_SCOPED_RULES = (
 SHARED_PR_SECTIONS = ("PR body template", "Author Verification")
 # Loads in every session on purpose: a commit can contain no code (images, deletions, docs).
 UNSCOPED_RULES = ("jois-git-commit-hygiene.md",)
-# The core rules load only when source code is touched, so config and markup extensions are out.
-CODE_EXTENSIONS = {"py", "java", "ts", "tsx", "js", "jsx", "ps1", "sh", "bat"}
+# The source-code file types the three code-scoped rules load for. Each of them declares exactly
+# this set, one `**/*.<ext>` glob per type, so they load together. Config and data extensions
+# (json, yaml, md) are out. To cover another language, add it here and to all three rules.
+CODE_EXTENSIONS = (
+    "py", "java", "ts", "tsx", "js", "jsx", "ps1", "sh", "bat",
+    "html", "css", "scss", "vue", "svelte",
+    "go", "rs", "cs", "kt", "rb", "php", "c", "h", "cpp", "swift", "sql",
+)
 
 # `metadata.version` in frontmatter: a semantic version, bumped by hand with `last_updated`.
 SEMVER_RE = re.compile(r"\d+\.\d+\.\d+")
@@ -57,9 +63,14 @@ def _check_code_scoped_rules(rules: Path) -> list[str]:
         globs = _rule_paths(path.read_text(encoding="utf-8"))
         if not globs:
             problems.append(f"rules/{name}: core rule needs `paths:` frontmatter")
-        for glob in globs or []:
+            continue
+        for glob in globs:
             if glob.rsplit(".", 1)[-1] not in CODE_EXTENSIONS:
                 problems.append(f"rules/{name}: glob '{glob}' is not a source-code file type")
+        declared = {glob.rsplit(".", 1)[-1] for glob in globs}
+        for extension in CODE_EXTENSIONS:
+            if extension not in declared:
+                problems.append(f"rules/{name}: `paths:` is missing the source-code file type '{extension}'")
     return problems
 
 
