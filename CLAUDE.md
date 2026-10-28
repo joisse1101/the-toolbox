@@ -13,12 +13,12 @@ npm start            # unified: build if needed + server + open browser (-- --de
 npm run build        # vite build -> planner/portal/dist/ (required after any change to planner/portal/web/ or planner/logic/ before the server shows it)
 node planner/portal/server/server.cjs   # serves planner/portal/dist/ + CSV API on 127.0.0.1:3000 (PORT env to change; PLANNER_DATA_DIR moves the data folder)
 npm run dev          # Vite dev server with HMR; proxies /api to the backend, so run both
-npm test             # node --test test/*.test.mjs test/*/*.test.mjs
+npm test             # node --test --import ./test/setup.mjs test/*.test.mjs test/*/*.test.mjs (setup.mjs points PLANNER_DATA_DIR at test/sample-data/)
 node --test planner/test/logic/ids.test.mjs                  # single test file
 node --test --test-name-pattern="renumber" planner/test/logic/ids.test.mjs   # single test by name
 ```
 
-There is no linter or type checker. Tests cover only the pure modules (no DOM/React tests).
+There is no linter or type checker. Tests cover only the pure modules (no DOM/React tests). `npm test` never reads the real `planner/data/`: `planner/test/setup.mjs` (loaded with `--import`) sets `PLANNER_DATA_DIR` to the committed `planner/test/sample-data/` (same layout as `planner/data/`; read-only, a test that writes uses a temp copy) and clears `TLT_DATA_DIR`, and a guard test in `paths.test.mjs` fails if it is dropped. A test run alone with plain `node --test <file>` skips the setup file, so a test that needs data sets `PLANNER_DATA_DIR` itself.
 
 ## Architecture
 
