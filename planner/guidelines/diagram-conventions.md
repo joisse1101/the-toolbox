@@ -111,3 +111,9 @@ Recommend an **Epic** slice when its stories share a root entity (found from the
 the stories' nouns) and the class diagram stays within `maxClasses`; a **Feature** slice when it does
 not; a **story** slice only for a flow its Feature's slice lacks. The numbers are starting values and
 are tuned in section 1.
+
+## 7. Rendering
+
+The diagrams are plain PlantUML text, opened with the VS Code PlantUML plugin (`jebbs.plantuml`). By default the plugin
+sends the text of a diagram to the public PlantUML server to draw it, so a slice drawn from private stories leaves the machine.
+Set the plugin to a local renderer (Java and Graphviz installed) or to a self-hosted server before opening a slice.
