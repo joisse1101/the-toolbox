@@ -1,7 +1,7 @@
 ---
 metadata:
-  version: "1.0.0"
-  last_updated: "2026-10-14"
+  version: "1.1.0"
+  last_updated: "2026-10-28"
 paths:
   - "**/*.ts"
   - "**/*.tsx"
@@ -12,7 +12,7 @@ paths:
 ---
 # TypeScript and React
 
-Adds TypeScript and React mechanics to [core-principles](core-principles.md); it does not restate them.
+Adds TypeScript and React mechanics to [jois-code-core-principles](jois-code-core-principles.md); it does not restate them.
 
 ## Types
 

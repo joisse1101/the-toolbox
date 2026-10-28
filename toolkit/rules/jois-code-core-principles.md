@@ -1,7 +1,7 @@
 ---
 metadata:
-  version: "1.0.0"
-  last_updated: "2026-10-14"
+  version: "1.1.0"
+  last_updated: "2026-10-28"
 paths:
   - "**/*.py"
   - "**/*.java"

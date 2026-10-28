@@ -11,8 +11,8 @@ hooks:
           command: >-
             powershell -NoProfile -Command "if ([Console]::In.ReadToEnd() -match 'gh\s+(pr\s+(merge|.*--auto)|api\b.*merge)') { [Console]::Error.WriteLine('write-pr never merges: the user runs gh pr merge'); exit 2 }"
 metadata:
-  version: "2.2.0"
-  last_updated: "2026-10-19"
+  version: "2.3.0"
+  last_updated: "2026-10-28"
 ---
 
 # Write PRs

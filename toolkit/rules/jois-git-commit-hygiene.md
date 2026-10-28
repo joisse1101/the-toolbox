@@ -1,7 +1,7 @@
 ---
 metadata:
-  version: "1.1.0"
-  last_updated: "2026-10-15"
+  version: "1.2.0"
+  last_updated: "2026-10-28"
 ---
 # Commit hygiene
 

@@ -22,9 +22,9 @@ Other things the script does:
 
 ```powershell
 .\Install-Toolkit.ps1 -List                                   # what's installed, has it drifted, which versions?
-.\Install-Toolkit.ps1 -Skill coding-standards                 # just one skill
+.\Install-Toolkit.ps1 -Skill jois-code-standards                 # just one skill
 .\Install-Toolkit.ps1 -Command opsx                           # just one command item
-.\Install-Toolkit.ps1 -Rule java.md                           # just one rule
+.\Install-Toolkit.ps1 -Rule jois-code-java.md                           # just one rule
 .\Install-Toolkit.ps1 -Scope project -Path C:\code\my-app     # into a project instead of globally
 .\Install-Toolkit.ps1 -Force                                  # overwrite a copy that differs
 .\Install-Toolkit.ps1 -Uninstall                              # remove toolkit items (only those)
@@ -34,6 +34,36 @@ Passing `-Skill`, `-Command` and/or `-Rule` limits the run to those items. An it
 differs from the toolkit's copy is never overwritten unless you pass `-Force`; `-List` shows it as
 `differs`. The script writes only inside the skills, commands and rules folders — it never touches
 `settings.json` or hooks.
+
+## Naming
+
+Every item is named `jois-<domain>-<thing>`. `jois` is the owner, so the names never collide with a
+built-in or third-party item (`code-review` is already a built-in skill). The domain says what the
+item is for. Domains today:
+
+| Domain | Meaning | Items |
+|---|---|---|
+| `code` | writing and reviewing source code | the `jois-code-standards` skill, the `jois-code-*` rules |
+| `git` | commits and pull requests | the `jois-git` commands, the `jois-git-commit-hygiene` rule |
+
+Skills and rules are `jois-<domain>-<thing>`; a command namespace folder is `jois-<domain>`, so
+`commands/jois-git/stage.md` is `/jois-git:stage`. A new domain (`design`, `comms`, `writing`) picks
+its own word. `opsx` is the exception: the `openspec` CLI generates it, so it keeps its name.
+
+### Migrating from the old names
+
+Before this naming the items were `coding-standards`, `/jois:*` and unprefixed rules. A machine that
+has them installed keeps them, and the installer no longer manages them, so a rule would load twice
+once the new copy is installed. Remove the old items first:
+
+- skill `~/.claude/skills/coding-standards`
+- command folder `~/.claude/commands/jois`
+- rules in `~/.claude/rules`: `commit-hygiene.md`, `core-principles.md`, `architecture-boundaries.md`,
+  `java.md`, `python.md`, `typescript-react.md`, `config-files.md`, `scripts.md`
+
+Then run `.\Install-Toolkit.ps1` again (or with `-Scope project -Path <project>`) and check that
+`-List` shows every item `up to date`. In a project, remove the same names from `<project>\.claude`.
+Project `CLAUDE.md` files and notes that mention `/jois:stage` and the like need updating by hand.
 
 ## Skills
 
@@ -46,13 +76,13 @@ Each entry directly under `toolkit/commands/` is one command item: a `.md` file 
 a folder used as a namespace (`commands/opsx/apply.md` becomes `/opsx:apply`). The installer treats
 each such entry as a unit, so `-Command opsx` installs the whole `opsx` set.
 
-### The `jois` commands
+### The `jois-git` commands
 
-- `/jois:stage` clears a messy working tree, with or without an OpenSpec change. It stages one
+- `/jois-git:stage` clears a messy working tree, with or without an OpenSpec change. It stages one
   concern at a time, shows the message and a confirmation word, and waits. Typing the word commits
   that concern and moves on, until the tree is clean. Secret files and build output are skipped and
   named. It has no commit authority of its own.
-- `/jois:write-pr` opens GitHub pull requests for the commits on the current branch. It is one file:
+- `/jois-git:write-pr` opens GitHub pull requests for the commits on the current branch. It is one file:
   the steps, the PR guidelines, the body template and the verification rules all sit inside it. It
   reads the commits since the default branch on the remote, so a local branch that is behind does not
   matter, proposes groups of commits that each form one concern (a
@@ -85,16 +115,16 @@ each such entry as a unit, so `-Command opsx` installs the whole `opsx` set.
 
   It replaces the old `/write-pr` skill. If you installed that, delete `~/.claude/skills/write-pr` (the
   installer only manages items the toolkit still holds), then run
-  `.\Install-Toolkit.ps1 -Command jois -Force`.
+  `.\Install-Toolkit.ps1 -Command jois-git -Force`.
 
-- `/jois:update-pr` brings the open PR of the current branch up to date. It finds the PR, then handles
+- `/jois-git:update-pr` brings the open PR of the current branch up to date. It finds the PR, then handles
   whichever of these apply: a restack, when the PR sits on a branch whose PR has merged and that branch
   still exists (rebase onto the default branch, retarget the PR); a push of commits the remote lacks;
-  and a refreshed body, built from the same template and verification rules as `/jois:write-pr`, shown
+  and a refreshed body, built from the same template and verification rules as `/jois-git:write-pr`, shown
   to you as a diff against the live body. One confirmation word covers everything it will do, listed
   first. It pushes plainly, except the `--force-with-lease` push of a restack you confirmed; it never
   uses `--force`, never renames or deletes a branch, and never merges (the same hook as write-pr). With
-  no open PR it says so and points to `/jois:write-pr`. It is also a single file, so the body template
+  no open PR it says so and points to `/jois-git:write-pr`. It is also a single file, so the body template
   and verification sections are copied from write-pr; `python check_toolkit.py` fails if the two copies
   differ.
 
@@ -102,8 +132,8 @@ each such entry as a unit, so `-Command opsx` installs the whole `opsx` set.
 
 Every command declares `disable-model-invocation: true`, so its description is not loaded into each
 new session's skill listing (about 300 tokens for a typical set) while you can still type
-`/jois:stage`. `python check_toolkit.py` fails on a command without the flag. Skills such as
-`coding-standards` stay discoverable on purpose. `openspec update` does not touch the installed
+`/jois-git:stage`. `python check_toolkit.py` fails on a command without the flag. Skills such as
+`jois-code-standards` stay discoverable on purpose. `openspec update` does not touch the installed
 commands; it writes copies into the project's `.claude/commands/opsx` and `.claude/skills/openspec-*`,
 which carry no flag. In a project where you do not want them listed, delete the project's
 `.claude/commands/opsx` (the global install serves) or re-add the flag.
@@ -116,27 +146,27 @@ session start, in every project. A rule with `paths:` frontmatter (a list of glo
 `"**/*.java"`) loads once a matching file is read or created. Tested on Claude Code 2.1.299: a
 scoped rule is not present before any matching file is touched, so a change planned before any
 file is opened has no rules yet. Every coding rule here is scoped, so sessions that never touch
-code (tickets, workflows) load none of them. The one exception is `commit-hygiene`, which is
+code (tickets, workflows) load none of them. The one exception is `jois-git-commit-hygiene`, which is
 unscoped on purpose: commits of images, deletions, renames and docs touch no code file, so a
 scoped rule would be missing exactly when those commits grow. It is capped at 2 KB and asks
 nothing unless Claude is about to commit.
 
 The standards are split this way: two small core rules (principles and architecture
 boundaries, scoped to source-code file types), one path-scoped rule per technology (TypeScript/React,
-Java, Python, config files, scripts), and the `coding-standards` skill as an on-demand review
-checklist. The unscoped `commit-hygiene` rule keeps commits to one concern and requires the user's
+Java, Python, config files, scripts), and the `jois-code-standards` skill as an on-demand review
+checklist. The unscoped `jois-git-commit-hygiene` rule keeps commits to one concern and requires the user's
 confirmation word before Claude commits. Use `-Scope project` to keep the rules out of unrelated projects. A project's own `CLAUDE.md` takes precedence.
 
 ## Versions
 
-Every skill, rule and `jois` or `jois-review` command declares its version in a `metadata:` map in its
+Every skill, rule and `jois-git` command declares its version in a `metadata:` map in its
 frontmatter, as the Agent Skills format keeps it. Both keys are strings and are bumped by hand
 whenever the item's guidance changes: `version` is semver (`MAJOR.MINOR.PATCH`) and `last_updated`
 is the date of the change.
 
 ```yaml
 ---
-name: coding-standards
+name: jois-code-standards
 description: ...
 metadata:
   version: "1.0.0"
@@ -145,7 +175,7 @@ metadata:
 ```
 
 A rule's frontmatter holds the same `metadata:` block next to its `paths:`; an unscoped rule such
-as `commit-hygiene` has only the `metadata:` block and still loads in every session. A top-level
+as `jois-git-commit-hygiene` has only the `metadata:` block and still loads in every session. A top-level
 `version:` key is not accepted. `python check_toolkit.py` (run from `toolkit/`) fails on a missing or
 malformed version.
 
@@ -154,12 +184,12 @@ toolkit's and the installed version, so you can see at a glance that an installe
 The version says what changed and when; the content hash decides whether anything changed at all,
 so an edit that forgot to bump the version still shows as `differs`.
 
-`skills/coding-standards/scripts/Get-ItemHash.ps1` is the one place the hash and the version are
+`skills/jois-code-standards/scripts/Get-ItemHash.ps1` is the one place the hash and the version are
 computed. The installer dot-sources it, and you can run it on any skill folder, command folder or
 `.md` file (it needs Windows PowerShell):
 
 ```powershell
-.\toolkit\skills\coding-standards\scripts\Get-ItemHash.ps1 -ItemPath ~\.claude\rules\python.md
+.\toolkit\skills\jois-code-standards\scripts\Get-ItemHash.ps1 -ItemPath ~\.claude\rules\jois-code-python.md
 ```
 
 ## Checks
@@ -177,7 +207,7 @@ python -m pytest        # tests/ covers the checker; needs pytest
 
 `openspec/` holds the OpenSpec specs for the toolkit's skills, commands and rules, and the changes that
 shaped them. It is documentation only: the installer never copies it. The `opsx` commands need the
-`openspec` CLI, and the `jois` commands need `git` and `gh`.
+`openspec` CLI, and the `jois-git` commands need `git` and `gh`.
 
 ## Installing by hand
 
@@ -188,8 +218,8 @@ Copy into the folder your tool reads from:
 | Claude Code | Global | `~/.claude/skills/<name>/` | `~/.claude/commands/<entry>` | `~/.claude/rules/<name>.md` |
 | Claude Code | Per project | `<project>/.claude/skills/<name>/` | `<project>/.claude/commands/<entry>` | `<project>/.claude/rules/<name>.md` |
 
-For example, on Windows: copy `toolkit\skills\coding-standards` to
-`%USERPROFILE%\.claude\skills\coding-standards`. On macOS/Linux: `cp -r toolkit/commands/opsx
+For example, on Windows: copy `toolkit\skills\jois-code-standards` to
+`%USERPROFILE%\.claude\skills\jois-code-standards`. On macOS/Linux: `cp -r toolkit/commands/opsx
 ~/.claude/commands/`.
 
 Where each tool reads these from is data in `install/targets.json`, so supporting another tool is a

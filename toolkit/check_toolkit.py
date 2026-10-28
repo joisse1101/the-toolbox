@@ -8,7 +8,7 @@ Checks:
   1. always-on rules: present, scoped to source-code file types, within their size budgets
   2. unscoped and technology rules: `paths:` frontmatter, budgets, one rule per file extension
   3. the review skill: size budget and every backticked rule, skill or path reference exists
-  4. `metadata.version` and `metadata.last_updated` on every skill, rule, agent and jois command
+  4. `metadata.version` and `metadata.last_updated` on every skill, rule, agent and jois-git command
   5. every slash command carries `disable-model-invocation: true`
   6. the PR body template and Author Verification sections of write-pr and update-pr match
 """
@@ -24,11 +24,11 @@ from pathlib import Path
 CORE_RULE_BUDGET_BYTES = 2 * 1024
 ALWAYS_ON_BUDGET_BYTES = 4 * 1024
 SCOPED_RULE_BUDGET_BYTES = 3 * 1024
-SKILL_BUDGET_BYTES = 6 * 1024
-ALWAYS_ON_RULES = ("core-principles.md", "architecture-boundaries.md")
+SKILL_BUDGET_BYTES = 4 * 1024
+ALWAYS_ON_RULES = ("jois-code-core-principles.md", "jois-code-architecture-boundaries.md")
 SHARED_PR_SECTIONS = ("PR body template", "Author Verification")
 # Loads in every session on purpose: a commit can contain no code (images, deletions, docs).
-UNSCOPED_RULES = ("commit-hygiene.md",)
+UNSCOPED_RULES = ("jois-git-commit-hygiene.md",)
 UNSCOPED_RULE_BUDGET_BYTES = 2 * 1024
 # The core rules load only when source code is touched, so config and markup extensions are out.
 CODE_EXTENSIONS = {"py", "java", "ts", "tsx", "js", "jsx", "ps1", "sh", "bat"}
@@ -132,10 +132,10 @@ def _check_scoped_rules(rules: Path) -> list[str]:
 
 
 def _check_review_skill(root: Path) -> list[str]:
-    skill = root / "skills" / "coding-standards" / "SKILL.md"
+    skill = root / "skills" / "jois-code-standards" / "SKILL.md"
     if not skill.is_file():
         return []
-    rel = "skills/coding-standards/SKILL.md"
+    rel = "skills/jois-code-standards/SKILL.md"
     problems = []
     if skill.stat().st_size > SKILL_BUDGET_BYTES:
         problems.append(
@@ -149,8 +149,6 @@ def _check_review_skill(root: Path) -> list[str]:
                     toolkit / "skills" / token
                 ).is_dir():
                     problems.append(f"{rel}:{number}: reference '{token}' is not in the toolkit")
-            elif token.startswith("reviews/"):
-                continue  # where a review is written in the reviewed repository, not a toolkit file
             elif "/" in token and not (toolkit / token).exists():
                 problems.append(f"{rel}:{number}: path '{token}' is not in the toolkit")
     return problems
@@ -186,8 +184,7 @@ def _versioned_items(toolkit: Path) -> list[Path]:
             *toolkit.glob("rules/*.md"),
             *toolkit.glob("skills/*/SKILL.md"),
             *toolkit.glob("agents/*.md"),
-            *toolkit.glob("commands/jois-review/*.md"),
-            *toolkit.glob("commands/jois/*.md"),
+            *toolkit.glob("commands/jois-git/*.md"),
         ]
     )
 
@@ -247,7 +244,7 @@ def _h2_section(text: str, title: str) -> str | None:
 
 def _check_shared_pr_sections(root: Path) -> list[str]:
     """write-pr and update-pr each carry the PR body rules; they must not drift apart."""
-    commands = root / "commands" / "jois"
+    commands = root / "commands" / "jois-git"
     write, update = commands / "write-pr.md", commands / "update-pr.md"
     if not (write.is_file() and update.is_file()):
         return []
