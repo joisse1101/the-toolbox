@@ -52,6 +52,14 @@ test('tool list: three diagram tools without a repo, six with one; only the writ
   }
 });
 
+test('the repo tools label what they return as data from the repo, the diagram tools as data from the diagrams folder', async () => {
+  assert.match(DESCRIPTIONS.read_diagrams, /data from the diagrams folder/);
+  for (const name of ['repo_tree', 'repo_grep', 'repo_read']) {
+    assert.match(DESCRIPTIONS[name], /data from the repo/, name);
+    assert.doesNotMatch(DESCRIPTIONS[name], /diagrams folder/, name);
+  }
+});
+
 test('no repo tools when repo.json is missing, has a bad key or points at no folder, and read_diagrams says why', async () => {
   for (const [repoJson, why] of [['{ "path": "" }', /No repo is configured/], ['{ "path": "./repo", "exclude": "x" }', /"exclude" must be a list/], ['{ "path": "./missing" }', /"path" is not a folder/]]) {
     const client = await connect(temp({ repoJson }), ['--backlog', 'sample.csv']);
