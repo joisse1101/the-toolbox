@@ -19,9 +19,9 @@
 
 - [x] 3.1 Install into a temp project with `Install-Toolkit.ps1 -Scope project -Path <temp>` and verify the files land under the new names and `-List` shows every item `up to date`
 - [x] 3.2 Uninstall from the temp project with `-Uninstall` and verify the folder holds none of the toolkit's items afterwards
-- [ ] 3.3 In a new Claude Code session on a machine with the old items removed and the toolkit reinstalled, verify `/jois-git:stage` runs and `jois-code-standards` appears in the skill listing
+- [x] 3.3 In a new Claude Code session on a machine with the old items removed and the toolkit reinstalled, verify `/jois-git:stage` runs and `jois-code-standards` appears in the skill listing
 
 ## 4. Specs and archive
 
 - [x] 4.1 Edit the Purpose line of `openspec/specs/jois-stage/spec.md` directly to name `/jois-git:stage` (a delta cannot change a Purpose), and verify line 5 reads `/jois-git:stage` (the requirement bodies keep the old name until archive applies the delta)
-- [ ] 4.2 Run `openspec validate rename-toolkit-items --strict` and verify it reports the change valid, then archive the change
+- [x] 4.2 Run `openspec validate rename-toolkit-items --strict` and verify it reports the change valid, then archive the change

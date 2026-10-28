@@ -30,8 +30,8 @@ under it SHALL be a single `.md` file, optionally with `paths:` frontmatter limi
 files, and is the unit the installer acts on.
 
 #### Scenario: Rule file is one unit
-- **WHEN** `toolkit/rules/java.md` exists
-- **THEN** the installer SHALL treat `java.md` as one rule item and copy that file
+- **WHEN** `toolkit/rules/jois-code-java.md` exists
+- **THEN** the installer SHALL treat `jois-code-java.md` as one rule item and copy that file
 
 ### Requirement: Documented manual path
 `toolkit/README.md` SHALL document a quick start that installs everything, and a separate section
@@ -97,28 +97,28 @@ modify Claude Code settings, hooks, or any other configuration.
 Every command file under `toolkit/commands/`, including the `opsx` set, SHALL declare
 `disable-model-invocation: true` in its frontmatter, so its description is not loaded into a new
 session's skill listing while the user can still invoke it by name. Skills, including
-`coding-standards`, SHALL NOT be given this flag by this requirement. The docs check SHALL fail and
+`jois-code-standards`, SHALL NOT be given this flag by this requirement. The docs check SHALL fail and
 name any command file without the flag.
 
 #### Scenario: Command is hidden but runnable
 - **WHEN** a new session starts with the commands installed
-- **THEN** no command description SHALL appear in `/context`, and typing `/jois:stage` SHALL still run it
+- **THEN** no command description SHALL appear in `/context`, and typing `/jois-git:stage` SHALL still run it
 
 #### Scenario: Flag is missing
 - **WHEN** a command file under `toolkit/commands/` lacks the flag
 - **THEN** the docs check SHALL fail and name the file
 
 #### Scenario: Skill stays discoverable
-- **WHEN** a session starts with `coding-standards` installed
+- **WHEN** a session starts with `jois-code-standards` installed
 - **THEN** its description SHALL still be listed
 
 ### Requirement: Jois commands carry a version
-Each command file under `toolkit/commands/jois/` SHALL declare `metadata.version` (semver) and
+Each command file under `toolkit/commands/jois-git/` SHALL declare `metadata.version` (semver) and
 `metadata.last_updated` (a date) in its frontmatter, and the docs check SHALL fail and name a file
 where either is missing or malformed. The generated `opsx` commands are exempt.
 
 #### Scenario: Missing version
-- **WHEN** `toolkit/commands/jois/stage.md` has no `metadata.version`
+- **WHEN** `toolkit/commands/jois-git/stage.md` has no `metadata.version`
 - **THEN** the docs check SHALL fail and name the file
 
 #### Scenario: Opsx commands exempt
@@ -126,8 +126,8 @@ where either is missing or malformed. The generated `opsx` commands are exempt.
 - **THEN** the docs check SHALL NOT report it for that reason
 
 ### Requirement: Manual-only PR skill
-The toolkit SHALL include a command `jois:write-pr`, the single file
-`toolkit/commands/jois/write-pr.md`, that opens GitHub pull requests for the commits on the current
+The toolkit SHALL include a command `jois-git:write-pr`, the single file
+`toolkit/commands/jois-git/write-pr.md`, that opens GitHub pull requests for the commits on the current
 branch. It SHALL declare `disable-model-invocation: true`, so it runs only when the user invokes it by
 name and is not listed in the session context. The file SHALL carry the PR guidelines, the PR template
 and the verification rules inside it and SHALL be complete when copied by hand. The toolkit SHALL NOT
@@ -148,7 +148,7 @@ requirements below that say "the skill" apply to this command.
 
 #### Scenario: Single entry point
 - **WHEN** the toolkit is installed
-- **THEN** `/jois:write-pr` SHALL exist and no `write-pr` skill SHALL be copied from the toolkit
+- **THEN** `/jois-git:write-pr` SHALL exist and no `write-pr` skill SHALL be copied from the toolkit
 
 ### Requirement: PRs grouped by concern and confirmed
 The skill SHALL read the commits on the branch since the base branch as it is on the remote, not as
@@ -382,7 +382,7 @@ command's frontmatter SHALL block `gh pr merge` and the merge API endpoint from 
 command is invoked.
 
 #### Scenario: Merge attempted after the skill is invoked
-- **WHEN** a merge command is attempted in a session where `/jois:write-pr` has been invoked
+- **WHEN** a merge command is attempted in a session where `/jois-git:write-pr` has been invoked
 - **THEN** the hook SHALL block it and the PR SHALL stay open
 
 ### Requirement: Merge-order summary
@@ -471,12 +471,12 @@ shell command text that contains the merge words is still blocked.
 - **THEN** the file SHALL be outside the repository's working tree and SHALL NOT appear in `git status`
 
 ### Requirement: Manual-only PR update command
-The toolkit SHALL include a command `jois:update-pr`, the single file
-`toolkit/commands/jois/update-pr.md`, that updates the open PR of the current branch. It SHALL declare
+The toolkit SHALL include a command `jois-git:update-pr`, the single file
+`toolkit/commands/jois-git/update-pr.md`, that updates the open PR of the current branch. It SHALL declare
 `disable-model-invocation: true`, SHALL carry the PR body template, the ticking rules and the
 verification rules inside it, and SHALL be complete when copied by hand. It SHALL find the PR with the
 current branch as head. If no open PR exists it SHALL change nothing and SHALL tell the user to use
-`/jois:write-pr`. It SHALL NOT merge a PR, enable auto-merge or pass `--auto`, and a hook in its
+`/jois-git:write-pr`. It SHALL NOT merge a PR, enable auto-merge or pass `--auto`, and a hook in its
 frontmatter SHALL block `gh pr merge` and the merge API endpoint from the moment it is invoked.
 
 #### Scenario: Not offered unprompted
@@ -485,10 +485,10 @@ frontmatter SHALL block `gh pr merge` and the merge API endpoint from the moment
 
 #### Scenario: No open PR
 - **WHEN** the command is invoked on a branch with no open PR
-- **THEN** it SHALL push nothing, edit nothing and tell the user to use `/jois:write-pr`
+- **THEN** it SHALL push nothing, edit nothing and tell the user to use `/jois-git:write-pr`
 
 #### Scenario: Merge attempted
-- **WHEN** a merge command is attempted in a session where `/jois:update-pr` has been invoked
+- **WHEN** a merge command is attempted in a session where `/jois-git:update-pr` has been invoked
 - **THEN** the hook SHALL block it and the PR SHALL stay open
 
 ### Requirement: Update is confirmed before anything is published
@@ -522,7 +522,7 @@ default branch from the old base with `git rebase --onto`, push with `--force-wi
 the PR to the default branch with `gh pr edit --base`. It SHALL NOT delete the old base branch. On a
 rebase conflict it SHALL abort the rebase, leave the branch as it was and report the conflict. If GitHub
 already closed the PR because its base branch was deleted, it SHALL say that the PR cannot be
-reopened and tell the user to use `/jois:write-pr`.
+reopened and tell the user to use `/jois-git:write-pr`.
 
 #### Scenario: Stacked PR after its base merged
 - **WHEN** PR 32 is based on `feat/a`, PR 31 from `feat/a` has merged and `feat/a` still exists
@@ -538,11 +538,11 @@ reopened and tell the user to use `/jois:write-pr`.
 
 #### Scenario: Base branch deleted
 - **WHEN** the PR is closed because its base branch was deleted
-- **THEN** the command SHALL change nothing and tell the user to use `/jois:write-pr`
+- **THEN** the command SHALL change nothing and tell the user to use `/jois-git:write-pr`
 
 ### Requirement: PR body is refreshed from the branch
 The update command SHALL regenerate the body from the same template, ticking rules and verification
-rules as `jois:write-pr`, from the commits the PR now holds, and SHALL keep the title unless the user
+rules as `jois-git:write-pr`, from the commits the PR now holds, and SHALL keep the title unless the user
 asks to change it or it no longer fits the commits. A verification bullet SHALL state no result its
 source lacks. It SHALL tell the user when the live body has content that the new body drops.
 
@@ -560,8 +560,8 @@ source lacks. It SHALL tell the user when the live body has content that the new
 
 ### Requirement: Shared PR sections stay identical
 The docs check SHALL fail and name both files when the "PR body template" or "Author Verification"
-section of `toolkit/commands/jois/update-pr.md` differs from the same section of
-`toolkit/commands/jois/write-pr.md`.
+section of `toolkit/commands/jois-git/update-pr.md` differs from the same section of
+`toolkit/commands/jois-git/write-pr.md`.
 
 #### Scenario: Sections differ
 - **WHEN** the "PR body template" section of `update-pr.md` differs from that of `write-pr.md`
