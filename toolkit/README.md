@@ -227,8 +227,8 @@ python -m pytest        # tests/ covers the checker; needs pytest
 
 ## Specs and history
 
-`openspec/` holds the OpenSpec specs for the toolkit's skills, commands and rules, and the changes that
-shaped them. It is documentation only: the installer never copies it. The `/opsx:*` commands need the
+The root `openspec/` holds the OpenSpec specs for the toolkit's skills, commands and rules (`toolkit-*`,
+`jois-stage`), and the changes that shaped them, next to the planner's. It is documentation only: the installer never copies it. The `/opsx:*` commands need the
 `openspec` CLI, and the `jois-git` commands need `git` and `gh`.
 
 ## Installing by hand
