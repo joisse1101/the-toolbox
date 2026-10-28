@@ -4,13 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
+Run the `npm` commands from `planner/`, which holds `package.json`, `package-lock.json` and `node_modules/` (the toolkit has none).
+
 ```
+cd planner
 npm install
 npm start            # unified: build if needed + server + open browser (-- --dev for hot reload)
 npm run build        # vite build -> planner/portal/dist/ (required after any change to planner/portal/web/ or planner/logic/ before the server shows it)
 node planner/portal/server/server.cjs   # serves planner/portal/dist/ + CSV API on 127.0.0.1:3000 (PORT env to change; PLANNER_DATA_DIR moves the data folder)
 npm run dev          # Vite dev server with HMR; proxies /api to the backend, so run both
-npm test             # node --test planner/test/*.test.mjs planner/test/*/*.test.mjs
+npm test             # node --test test/*.test.mjs test/*/*.test.mjs
 node --test planner/test/logic/ids.test.mjs                  # single test file
 node --test --test-name-pattern="renumber" planner/test/logic/ids.test.mjs   # single test by name
 ```
@@ -47,6 +50,6 @@ The `explore-stories` and `propose-stories` skills draft new stories and edits t
 
 The `meeting-minutes` skill (`.claude/skills/meeting-minutes/`) turns notes pasted into the session into minutes following `template.md` in its folder. It asks the user for every field the notes lack (a skipped one shows `[TBC]`), attributes a point to a person only when the notes do, shows the minutes, and after confirmation saves them through `write-minutes.mjs "<title>" <YYYY-MM-DD>` (minutes on stdin) to `planner/data/meetings/<slug>_<YYYY-MM-DD>.md`. The writer never overwrites: a taken name gets `_1`, `_2`, ...; `write-minutes.mjs --replace <file name>` swaps the content of an existing file and is used only when the user says the notes refine saved minutes. `meetings` is deliberately not in `STORES` (the file API and the portal cannot reach it). `planner/claude/launchers/meeting-minutes.ps1 ["notes"]` starts a locked session (Bash, Skill and AskUserQuestion only; asks for the notes, ended by `END` on its own line, when not given): its `locked-settings.json` runs `.claude/skills/meeting-minutes/guard-bash.mjs`, which allows only the two writer forms with a `<<'MINUTES'` heredoc and nothing else, and sets `claudeMdExcludes` like the story launchers.
 
-The repo is ESM (`"type": "module"` in `package.json`); `planner/portal/server/server.cjs`, `planner/logic/storage/file-name.cjs` and `planner/logic/storage/paths.cjs` stay CommonJS (the `.cjs` extension), so the server and the ESM skill scripts can share them.
+The repo is ESM (`"type": "module"` in `planner/package.json`); `planner/portal/server/server.cjs`, `planner/logic/storage/file-name.cjs` and `planner/logic/storage/paths.cjs` stay CommonJS (the `.cjs` extension), so the server and the ESM skill scripts can share them.
 
 `planner/guidelines/product-backlog.md` is the single source of backlog standards (epic/feature/story/AC definitions, the 13-point size cap, INVEST) used for both writing and reviewing stories; the review skill cites it and does not restate it. `planner/guidelines/sprint-points-guideline.md` covers point sizing benchmarks.
