@@ -136,6 +136,18 @@ treats each such entry as a unit, so `-Command jois-git` installs the whole `joi
   and verification sections are copied from write-pr; `python check_toolkit.py` fails if the two copies
   differ.
 
+- `/jois-git:write-issue` drafts one issue and creates it on the repository's host. It reads the `origin`
+  remote: `github.com` uses `gh`, a host with `gitlab` in its name uses `glab`, and any other host it asks
+  you about once. It picks a bug, feature or task template from what you describe (or asks when it could
+  be two), and uses the repository's own template from `.github/ISSUE_TEMPLATE/` or
+  `.gitlab/issue_templates/` instead when one matches. Required sections it lacks are asked for once;
+  optional sections you give nothing for (Screenshots / Logs and Environment on a bug, Design / Visuals and
+  Technical Considerations / Security on a feature, Testing & Verification and Dependencies / Blockers on
+  a task) are left out, heading included. It scans the draft for secrets, lists similar open issues, then
+  shows the issue and creates it only when you type its confirmation word, passing the body from a file.
+  It only creates: no labels, assignees, milestones, closing or comments. `glab` is needed only for GitLab
+  repos, and its flags are checked against the GitLab CLI docs, not run.
+
 ### Commands stay out of the session context
 
 Every command declares `disable-model-invocation: true`, so its description is not loaded into each
@@ -236,7 +248,7 @@ python -m pytest        # tests/ covers the checker
 
 The root `openspec/` holds the OpenSpec specs for the toolkit's skills, commands and rules (`toolkit-*`,
 `jois-stage`), and the changes that shaped them, next to the planner's. It is documentation only: the installer never copies it. The `/opsx:*` commands need the
-`openspec` CLI, and the `jois-git` commands need `git` and `gh`.
+`openspec` CLI, and the `jois-git` commands need `git` and `gh` (`/jois-git:write-issue` also uses `glab` on GitLab repos).
 
 ## Installing by hand
 
