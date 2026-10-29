@@ -1,108 +1,149 @@
-// The structural checks of a slice (planner/guidelines/diagram-conventions.md). They read text and return problems; they
-// do not parse PlantUML, so a syntax error is for the plugin's render to find. Pure: the caller reads the files.
+// The structural checks of a slice (planner/guidelines/diagram-conventions.md). They read the slice's one document and
+// return problems; whether a diagram is valid Mermaid is for the parser step of the skill side to judge (planner/logic is
+// pure and has no DOM). Pure: the caller reads the file.
 import { sameTitle } from '../backlog/story-ref.js';
 import { criteriaOf } from './source.js';
-import { colorForStereotype } from './limits.js';
+import { layerForStereotype } from './limits.js';
+import { readDocument } from './document.js';
 
 const SLUG = '[a-z0-9]+(?:-[a-z0-9]+)*';
 const STORY_ID = /\b[A-Z][A-Z0-9]*-\d{4}\b/;
 const FILE_PATH = /\b[\w.-]+(?:\/[\w.-]+)*\.(?:py|js|jsx|mjs|cjs|ts|tsx|java|cs|go|rb|php|rs|kt|swift|sql|ya?ml|json|toml|xml|html|css|sh|ps1)\b/;
 const FAILURE_WORDS = /\b(fail\w*|invalid|wrong|reject\w*|refus\w*|denied|error\w*|expired|unauthori[sz]ed)\b/i;
-const KINDS = 'class|interface|enum|entity|participant|actor|database|boundary|control|collections|queue';
-const DECL = new RegExp(`^\\s*(${KINDS})\\s+"([^"]*)"\\s+as\\s+([A-Za-z_]\\w*)\\s*(#[0-9A-Fa-f]{3,8})?`);
-const UNQUOTED = new RegExp(`^\\s*(?:abstract\\s+)?(?:${KINDS})\\s+(?!")\\S`);
-const CLASS_LINE = /^\s*(?:abstract\s+)?(?:class|interface|enum|entity)\b/;
-const MESSAGE = /^\s*([A-Za-z_]\w*)\s*(?:--?>>?|<<?--?)\s*([A-Za-z_]\w*)\s*:\s*(.*)$/;
+const TYPES = { class: 'classDiagram', sequence: 'sequenceDiagram' };
+// The line every sequence diagram opens with (conventions, "Readable in both themes"): it fixes the message text color so
+// the diagram reads on GitHub and in the VS Code preview in either theme. The conventions show the same text.
+export const SEQUENCE_INIT = "%%{init: {'themeVariables': {'signalTextColor':'#1f2328','labelTextColor':'#1f2328','loopTextColor':'#1f2328','signalColor':'#444','labelBoxBkgColor':'#dde3ea','labelBoxBorderColor':'#444'}}}%%";
+const CLASS_DECL =/^class\s+([A-Za-z_]\w*)(?:\[[^\]]*\]|~[^~]*~)?\s*(\{)?(.*)$/;
+const STEREOTYPE_LINE = /^<<([^>]+)>>\s+([A-Za-z_]\w*)\s*$/;
+const PARTICIPANT = /^(actor|participant)\s+([A-Za-z_]\w*)(?:\s+as\s+(.*))?$/;
+const PHASE_NOTE = /^Note\s+over\s+[^:]*:\s*Phase\s+(\d+)\b/i;
+const BLOCK_OPEN = /^(rect|alt|opt|loop|par|critical|break|box)\b/;
+const MESSAGE = /^([A-Za-z_]\w*)\s*(?:-->>|->>|--x|-x|--\)|-\)|-->|->)\s*[+-]?([A-Za-z_]\w*)\s*:\s*(.*)$/;
 const STEP = /^(\d+)\.(\d+)('*)(?=\s|$)/;
-const PHASE = /^==\s*Phase\s+(\d+)\b/i;
 
-const SPEC_HEADINGS = ['## Description', '## Preconditions', '## Main flow', '## Alternative and exception flows', '## Postconditions', '## Acceptance criteria', '## Implementation overview', '## Traceability'];
+const SPEC_HEADINGS = ['## Description', '## Preconditions', '## Main flow', '## Alternative and exception flows', '## Postconditions', '## Acceptance criteria', '## Implementation overview', '## Traceability', '## Class diagram', '## Sequence diagrams'];
 
 const problem = (file, message, line) => ({ file, ...(line ? { line } : {}), message });
-const ident = (s) => String(s).replace(/[^A-Za-z0-9]+/g, '_');
 const squash = (s) => String(s ?? '').replace(/\s+/g, ' ').trim();
 const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-// The `@startuml` name of every `.puml` file of the given slice files, for the cross-slice uniqueness check.
-export function diagramNames(files) {
-  const names = new Map();
-  for (const [file, text] of Object.entries(files)) {
-    const m = /^\s*@startuml[ \t]+(\S+)/m.exec(text);
-    if (file.endsWith('.puml') && m) names.set(m[1], file);
-  }
-  return names;
+// Every class states a stereotype as the first line of its body (`<<service>>`) or as a `<<service>> Name` line.
+// -> the number of classes declared.
+function checkClasses(lines, comment, stereotypeProblem) {
+  const classes = new Map(); // class name -> { line, stereotype }
+  let open = null; // the class whose body is open
+  lines.forEach((raw, i) => {
+    const line = raw.trim();
+    if (comment(raw)) return;
+    if (open) {
+      if (line.startsWith('}')) open = null;
+      else if (!classes.get(open).stereotype) classes.get(open).stereotype = /^<<([^>]+)>>$/.exec(line)?.[1].trim();
+      return;
+    }
+    const decl = CLASS_DECL.exec(line);
+    if (decl) {
+      const [, name, brace, rest] = decl;
+      classes.set(name, { line: i + 1, stereotype: brace ? /^<<([^>]+)>>/.exec(rest.trim())?.[1].trim() : undefined });
+      if (brace && !line.includes('}')) open = name;
+      return;
+    }
+    const standalone = STEREOTYPE_LINE.exec(line);
+    if (standalone && classes.has(standalone[2])) classes.get(standalone[2]).stereotype = standalone[1].trim();
+  });
+  for (const [name, { line, stereotype }] of classes) stereotypeProblem(line, name, stereotype);
+  return classes.size;
 }
 
-// One .puml file. kind: 'class' | 'sequence'. Returns { problems, declared, hasAlt, classes }.
-function checkPuml({ file, text, kind, expectedName, limits, otherNames, repo }) {
-  const problems = [];
-  const lines = text.split(/\r?\n/);
-  const at = (n, message) => problems.push(problem(file, message, n));
-
-  const starts = lines.map((l, i) => [l, i + 1]).filter(([l]) => /^\s*@startuml\b/.test(l));
-  const ends = lines.map((l, i) => [l, i + 1]).filter(([l]) => /^\s*@enduml\b/.test(l));
-  if (starts.length !== 1 || ends.length !== 1) at(starts[1]?.[1] ?? ends[1]?.[1] ?? 1, `needs exactly one @startuml and one @enduml (found ${starts.length} and ${ends.length})`);
-  const nameMatch = starts[0] && /^\s*@startuml[ \t]+(\S+)/.exec(starts[0][0]);
-  if (starts[0] && !nameMatch) at(starts[0][1], '@startuml needs a name');
-  else if (nameMatch && nameMatch[1] !== expectedName) at(starts[0][1], `@startuml name must be ${expectedName}, found ${nameMatch[1]}`);
-  if (nameMatch && otherNames.has(nameMatch[1])) at(starts[0][1], `@startuml name ${nameMatch[1]} is already used by ${otherNames.get(nameMatch[1])}`);
-
+// Participants declared before use, a stereotype in each label, `phase.step` ids and the rect/Note phase.
+// -> whether the diagram has an alt branch.
+function checkSequence(lines, comment, at, stereotypeProblem) {
   const declared = new Set();
-  const state = { classes: 0, alt: false, phase: null, last: null, ids: new Set(), inNote: false };
+  const blocks = []; // the open blocks: { type, line, phase }
+  const state = { alt: false, last: null, ids: new Set() };
+  const phaseOf = () => blocks.findLast((b) => b.phase != null)?.phase ?? null;
   lines.forEach((raw, i) => {
     const n = i + 1;
     const line = raw.trim();
-    if (state.inNote) {
-      if (/^end\s+note\b/i.test(line)) state.inNote = false;
-      return;
-    }
-    if (line === '' || line.startsWith("'")) return;
-    if (/^note\b/i.test(line) && !line.includes(':')) {
-      state.inNote = true;
-      return;
-    }
-    if (/^!(include|import)/i.test(line)) at(n, 'must not use !include or !import; each file is self-contained with its palette inline');
-    if (STORY_ID.test(raw)) at(n, `holds text shaped like a story ID (${STORY_ID.exec(raw)[0]}); story IDs live only in source.json`);
-    if (!repo && FILE_PATH.test(raw)) at(n, `names a file path (${FILE_PATH.exec(raw)[0]}) with no repo read; analysis level names no path`);
-    if (CLASS_LINE.test(line)) state.classes += 1;
-    if (UNQUOTED.test(line)) at(n, 'declare it as `<kind> "«stereotype»\\nName" as ID #color`');
-    const decl = DECL.exec(raw);
+    if (comment(raw)) return;
+    const decl = PARTICIPANT.exec(line);
     if (decl) {
-      const [, keyword, label, id, color] = decl;
+      const [, keyword, id, label = ''] = decl;
       declared.add(id);
-      const stereotype = /«([^»]+)»/.exec(label)?.[1];
-      if (keyword === 'actor') return;
-      const expected = keyword === 'database' && !stereotype ? colorForStereotype(limits, 'infra') : colorForStereotype(limits, stereotype);
-      if (!stereotype && keyword !== 'database') at(n, `${id} has no «stereotype» in its label`);
-      else if (stereotype && !expected) at(n, `${id} has the stereotype «${stereotype}», which is not in the conventions (${Object.keys(limits.stereotypes).join(', ')})`);
-      else if (!color) at(n, `${id} has no color; «${stereotype ?? 'infra'}» is ${expected}`);
-      else if (color.toUpperCase() !== expected) at(n, `${id} is ${color} but «${stereotype ?? 'infra'}» is ${expected}`);
+      if (keyword === 'participant') stereotypeProblem(n, id, /«([^»]+)»/.exec(label)?.[1]?.trim());
       return;
     }
-    if (kind !== 'sequence') return;
-    if (/^alt\b/.test(line)) state.alt = true;
-    const phase = PHASE.exec(line);
-    if (phase) {
-      state.phase = Number(phase[1]);
+    const note = PHASE_NOTE.exec(line);
+    if (note) {
+      const open = blocks[blocks.length - 1];
+      if (open?.type === 'rect' && open.phase == null) open.phase = Number(note[1]);
+      else at(n, 'a phase note must be the first line of a rect block');
       state.last = null;
       return;
     }
-    const msg = MESSAGE.exec(raw);
+    const block = BLOCK_OPEN.exec(line);
+    if (block) {
+      blocks.push({ type: block[1], line: n });
+      if (block[1] === 'alt') state.alt = true;
+      return;
+    }
+    if (/^end\b/.test(line)) {
+      const closed = blocks.pop();
+      if (closed?.type === 'rect') {
+        if (closed.phase == null) at(closed.line, 'a rect block must open with "Note over <participants>: Phase <n> - <name>"');
+        state.last = null;
+      }
+      return;
+    }
+    const msg = MESSAGE.exec(line);
     if (!msg) return;
     for (const who of [msg[1], msg[2]]) if (!declared.has(who)) at(n, `names the participant ${who}, which is not declared before this line`);
     const step = STEP.exec(msg[3].trim());
     if (!step) return;
     const [, phaseNo, stepNo, primes] = step;
     const id = `${phaseNo}.${stepNo}${primes}`;
-    if (state.phase !== null && Number(phaseNo) !== state.phase) at(n, `step ${id} is in Phase ${state.phase}; its first number must be ${state.phase}`);
-    if (state.ids.has(id)) at(n, `step ${id} is used twice in this file`);
+    const phase = phaseOf();
+    if (phase !== null && Number(phaseNo) !== phase) at(n, `step ${id} is in Phase ${phase}; its first number must be ${phase}`);
+    if (state.ids.has(id)) at(n, `step ${id} is used twice in this diagram`);
     state.ids.add(id);
     const key = [Number(stepNo), primes.length];
     if (state.last && (key[0] < state.last[0] || (key[0] === state.last[0] && key[1] <= state.last[1]))) at(n, `step ${id} does not come after the step before it in Phase ${phaseNo}`);
     state.last = key;
   });
-  if (kind === 'class' && state.classes > limits.maxClasses) problems.push(problem(file, `declares ${state.classes} classes; the limit is ${limits.maxClasses} (diagram-conventions.md); split the slice by Feature`));
-  return { problems, hasAlt: state.alt };
+  for (const b of blocks) at(b.line, `the ${b.type} block is never closed with end`);
+  return state.alt;
+}
+
+// One diagram of the document. -> { problems: [{ line, message }], hasAlt }
+function checkDiagram({ diagram, limits }) {
+  const problems = [];
+  const at = (n, message) => problems.push({ line: diagram.line + n, message: `${diagram.heading}: ${message}` });
+  const lines = diagram.text.split('\n');
+  const comment = (l) => l.trim() === '' || l.trim().startsWith('%%');
+
+  const typeLine = lines.findIndex((l) => !comment(l));
+  const type = typeLine === -1 ? '' : lines[typeLine].trim().split(/\s+/)[0];
+  if (type !== TYPES[diagram.kind]) {
+    at(Math.max(typeLine, 0) + 1, `the block opens with "${type}" but must be a ${TYPES[diagram.kind]}; only classDiagram and sequenceDiagram are accepted`);
+    return { problems, hasAlt: false };
+  }
+  const first = lines.find((l) => l.trim() !== '');
+  if (diagram.kind === 'sequence' && first.trim() !== SEQUENCE_INIT) {
+    at(lines.indexOf(first) + 1, `a sequence diagram must open with the init line of diagram-conventions.md section 3 (Readable in both themes), exactly: ${SEQUENCE_INIT}`);
+  }
+  lines.forEach((raw, i) => {
+    if (!comment(raw) && STORY_ID.test(raw)) at(i + 1, `holds text shaped like a story ID (${STORY_ID.exec(raw)[0]}); story IDs live only in source.json`);
+  });
+  const stereotypeProblem = (n, name, stereotype) => {
+    if (!stereotype) at(n, `${name} has no stereotype`);
+    else if (!layerForStereotype(limits, stereotype)) at(n, `${name} has the stereotype ${stereotype}, which is not in the conventions (${Object.keys(limits.stereotypes).join(', ')})`);
+  };
+  if (diagram.kind === 'class') {
+    const count = checkClasses(lines, comment, stereotypeProblem);
+    if (count > limits.maxClasses) at(0, `declares ${count} classes; the limit is ${limits.maxClasses} (diagram-conventions.md); split the slice by Feature`);
+    return { problems, hasAlt: false };
+  }
+  return { problems, hasAlt: checkSequence(lines, comment, at, stereotypeProblem) };
 }
 
 const tableRows = (lines) =>
@@ -176,8 +217,8 @@ function checkSpec({ file, text, slice, stories, flows, repo }) {
     const story = stories.find((s) => sameTitle(s.title, storyTitle));
     if (!story) at(rowAt(r), `${id} names the story "${storyTitle}", which is not in the slice`);
     if (path !== 'main' && path !== 'failure') at(rowAt(r), `${id} Path must be main or failure`);
-    if (!flows.has(flow)) at(rowAt(r), `${id} names the flow "${flow}", which has no sequence diagram`);
-    else if (path === 'failure' && !flows.get(flow)) at(rowAt(r), `${id} is a failure path but the ${flow} sequence has no alt branch for it`);
+    if (!flows.has(flow)) at(rowAt(r), `${id} names the flow "${flow}", which has no "### Sequence: ${flow}" heading`);
+    else if (path === 'failure' && !flows.get(flow)) at(rowAt(r), `${id} is a failure path but the "### Sequence: ${flow}" diagram has no alt branch for it`);
     if (path === 'main' && FAILURE_WORDS.test(criterion)) at(rowAt(r), `${id} describes a failure (“${FAILURE_WORDS.exec(criterion)[0]}”) but is marked main; mark it failure and draw an alt branch`);
     if (story) covered.add(`${story.title.trim().toLowerCase()}\n${squash(criterion)}`);
   }
@@ -193,33 +234,33 @@ function checkSpec({ file, text, slice, stories, flows, repo }) {
 
 // The whole slice. Input:
 //   backlog      backlog file name without .csv          slice   the slice name
-//   files        { 'UC-<slice>.md': text, '...puml': text }
+//   files        { 'UC-<slice>.md': text }: a slice is one document plus source.json
 //   stories      the backlog stories in the slice's scope (loadBacklog stories)
-//   limits       parseLimits(...)                        otherNames  Map of @startuml names used by other slices -> file
+//   limits       parseLimits(...)
 //   repo         null (analysis level) or { readPaths: Set of repo paths returned by repo_read }
-// -> { ok, problems: [{ file, line?, message }] }
-export function checkSlice({ backlog, slice, files, stories, limits, otherNames = new Map(), repo = null }) {
+// -> { ok, problems: [{ file, line?, message }], diagrams: [{ heading, line, text }] }; `diagrams` are the document's mermaid
+// blocks, for the caller's parser step.
+export function checkSlice({ slice, files, stories, limits, repo = null }) {
   const problems = [];
-  if (!new RegExp(`^${SLUG}$`).test(slice)) problems.push(problem('', `the slice name "${slice}" must be a lowercase slug`));
   const specName = `UC-${slice}.md`;
-  const className = `UC-${slice}-class.puml`;
-  const sequence = new RegExp(`^UC-${escapeRe(slice)}-(${SLUG})-sequence\\.puml$`);
-  const flowFiles = new Map(Object.keys(files).filter((f) => sequence.test(f)).map((f) => [sequence.exec(f)[1], f]));
-
+  if (!new RegExp(`^${SLUG}$`).test(slice)) problems.push(problem('', `the slice name "${slice}" must be a lowercase slug`));
   if (!(specName in files)) problems.push(problem(specName, 'is missing'));
-  if (!(className in files)) problems.push(problem(className, 'is missing'));
-  if (flowFiles.size === 0) problems.push(problem(`UC-${slice}-<flow>-sequence.puml`, 'the slice needs at least one sequence diagram'));
-  for (const f of Object.keys(files)) if (f !== specName && f !== className && !sequence.test(f)) problems.push(problem(f, `is not a file of a slice (${specName}, ${className}, UC-${slice}-<flow>-sequence.puml)`));
+  for (const f of Object.keys(files)) if (f !== specName) problems.push(problem(f, `is not part of a slice: a slice is one document (${specName}) plus source.json`));
+  if (!(specName in files)) return { ok: false, problems, diagrams: [] };
+
+  const document = readDocument(files[specName]);
+  for (const p of document.problems) problems.push(problem(specName, p.message, p.line));
+  if (!document.diagrams.some((d) => d.kind === 'class')) problems.push(problem(specName, 'has no "## Class diagram" heading with a mermaid block'));
+  if (!document.diagrams.some((d) => d.kind === 'sequence')) problems.push(problem(specName, 'the slice needs at least one "### Sequence: <flow>" heading with a mermaid block'));
 
   const flows = new Map();
-  if (className in files) problems.push(...checkPuml({ file: className, text: files[className], kind: 'class', expectedName: `${ident(backlog)}_${ident(slice)}_class`, limits, otherNames, repo }).problems);
-  for (const [flow, file] of flowFiles) {
-    const r = checkPuml({ file, text: files[file], kind: 'sequence', expectedName: `${ident(backlog)}_${ident(slice)}_${ident(flow)}_seq`, limits, otherNames, repo });
-    problems.push(...r.problems);
-    flows.set(flow, r.hasAlt);
+  for (const diagram of document.diagrams) {
+    const r = checkDiagram({ diagram, limits });
+    problems.push(...r.problems.map((p) => problem(specName, p.message, p.line)));
+    if (diagram.kind === 'sequence') flows.set(diagram.flow, r.hasAlt);
   }
-  if (specName in files) problems.push(...checkSpec({ file: specName, text: files[specName], slice, stories, flows, repo }));
-  return { ok: problems.length === 0, problems };
+  problems.push(...checkSpec({ file: specName, text: files[specName], slice, stories, flows, repo }));
+  return { ok: problems.length === 0, problems, diagrams: document.diagrams.map(({ heading, line, text }) => ({ heading, line, text })) };
 }
 
 // One line per problem: `file:line: message` (or `file: message`).

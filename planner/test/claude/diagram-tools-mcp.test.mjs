@@ -81,7 +81,7 @@ test('read_diagrams: the slices, one slice with its files, the conventions, bad 
     assert.match(list, /sign-in \| Feature: Identity and access > Sign in \| 2 stories \| up to date/);
     const one = textOf(await call(client, 'read_diagrams', { backlog: 'sample.csv', slice: 'sign-in' }));
     assert.match(one, /--- UC-sign-in\.md ---/);
-    assert.match(one, /--- UC-sign-in-class\.puml ---/);
+    assert.match(one, /## Class diagram/);
     assert.match(textOf(await call(client, 'read_diagrams', { backlog: 'sample.csv', section: 'conventions' })), /^# Diagram conventions/);
     const both = await call(client, 'read_diagrams', { backlog: 'sample.csv', section: 'conventions', slice: 'sign-in' });
     assert.equal(both.isError, true);
@@ -91,7 +91,7 @@ test('read_diagrams: the slices, one slice with its files, the conventions, bad 
   }
 });
 
-test('check_diagram writes nothing; write_diagram of the same files changes nothing; a bad file writes nothing', async () => {
+test('check_diagram writes nothing; write_diagram of the same files changes nothing; a bad diagram writes nothing', async () => {
   const root = temp();
   const client = await connect(root);
   const dir = path.join(root, 'diagrams', 'sample');
@@ -99,7 +99,7 @@ test('check_diagram writes nothing; write_diagram of the same files changes noth
     const before = fs.readdirSync(path.join(dir, 'sign-in')).sort();
     assert.match(textOf(await call(client, 'check_diagram', sliceArgs(root))), /Check passed; nothing was written/);
     assert.match(textOf(await call(client, 'write_diagram', sliceArgs(root))), /Nothing changed/);
-    const files = sliceFiles(root).map((f) => (f.name.endsWith('-class.puml') ? { ...f, content: f.content.replace('@enduml', '') } : f));
+    const files = sliceFiles(root).map((f) => ({ ...f, content: f.content.replace('classDiagram', 'pie') }));
     const bad = await call(client, 'write_diagram', sliceArgs(root, { files }));
     assert.equal(bad.isError, true);
     assert.match(textOf(bad), /^Nothing was written/);
@@ -127,7 +127,7 @@ test('repo tools read the repo, refuse an excluded file, and repo_read records w
     assert.match(textOf(outside), /outside the repo/);
     // A traceability row naming a file the session never read is refused; once repo_read returned its lines it is accepted.
     const spec = sliceFiles(root).find((f) => f.name === 'UC-sign-in.md');
-    const traced = spec.content.replace(/## Traceability[\s\S]*$/, '## Traceability\n\n| Step | What | Code |\n|---|---|---|\n| sign-in 1.1 | Checks the password | `src/auth/login.js::signIn` |\n');
+    const traced = spec.content.replace(/## Traceability[\s\S]*?(?=\n## )/,'## Traceability\n\n| Step | What | Code |\n|---|---|---|\n| sign-in 1.1 | Checks the password | `src/auth/login.js::signIn` |\n');
     const files = sliceFiles(root).map((f) => (f.name === spec.name ? { ...f, content: traced } : f));
     const first = await call(client, 'check_diagram', sliceArgs(root, { files }));
     assert.match(textOf(first), /src\/auth\/login\.js.*did not return|repo_read did not return/);
