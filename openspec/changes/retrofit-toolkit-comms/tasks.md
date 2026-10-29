@@ -1,9 +1,9 @@
 ## 1. Rules (PR `docs/retrofit-rules`, based on `feat/comms-rules`)
 
-- [ ] 1.1 Rewrite `jois-code-architecture-boundaries.md`, `jois-code-config-files.md` and `jois-code-core-principles.md` to follow the documents rule, bump their version and date, and verify `python check_toolkit.py` passes
-- [ ] 1.2 Rewrite `jois-code-java.md`, `jois-code-python.md`, `jois-code-quality.md`, `jois-code-scripts.md` and `jois-code-typescript-react.md` the same way and verify `python check_toolkit.py` passes
-- [ ] 1.3 Rewrite `jois-git-commit-hygiene.md` the same way, keep the confirmation-word and one-concern rules unchanged in meaning, and verify `python check_toolkit.py` and `python -m pytest` pass from `toolkit/`
-- [ ] 1.4 Compare each rule with its old text (`git diff`) and verify no normative rule, path scope or limit changed
+- [x] 1.1 Rewrite `jois-code-architecture-boundaries.md`, `jois-code-config-files.md` and `jois-code-core-principles.md` to follow the documents rule, bump their version and date, and verify `python check_toolkit.py` passes
+- [x] 1.2 Rewrite `jois-code-java.md`, `jois-code-python.md`, `jois-code-quality.md`, `jois-code-scripts.md` and `jois-code-typescript-react.md` the same way and verify `python check_toolkit.py` passes
+- [x] 1.3 Rewrite `jois-git-commit-hygiene.md` the same way, keep the confirmation-word and one-concern rules unchanged in meaning, and verify `python check_toolkit.py` and `python -m pytest` pass from `toolkit/`
+- [x] 1.4 Compare each rule with its old text (`git diff`) and verify no normative rule, path scope or limit changed
 
 ## 2. Commands (PR `docs/retrofit-commands`, based on `docs/retrofit-rules`)
 
