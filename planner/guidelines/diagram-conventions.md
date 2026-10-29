@@ -62,7 +62,16 @@ they are kept only here, healed by Title on read, and **never written in a diagr
   of section 1's.
 - **Shared classes.** The slice that owns an entity (its Epic) draws it in full. Another slice shows a
   stub: the stereotype and the name, with a `note for <class> "(see <slice>)"` and no members.
-- **Phases.** A phase is a `rect` block whose first line is `Note over <participants>: Phase <n> - <name>`. Fill it with a translucent gray, `rect rgba(128, 128, 128, 0.15)`: a pale solid color hides the text in GitHub dark mode.
+- **Phases.** A phase is a `rect` block whose first line is `Note over <participants>: Phase <n> - <name>`,
+  filled `rect rgb(235, 242, 250)`.
+- **Readable in both themes.** GitHub and the VS Code preview pick their own text color for the page's
+  theme (light on GitHub dark, dark in VS Code dark), so a fill alone hides the text in one of them.
+  Every sequence diagram therefore opens with this line, which fixes the message text dark to match
+  the pale fill (checked on GitHub dark and light and on VS Code 1.143.1 dark):
+
+  ```
+  %%{init: {'themeVariables': {'signalTextColor':'#1f2328','labelTextColor':'#1f2328','loopTextColor':'#1f2328','signalColor':'#444','labelBoxBkgColor':'#dde3ea','labelBoxBorderColor':'#444'}}}%%
+  ```
 - **Sequence steps** carry ids `phase.step` in the message text: the first number is the number of the
   phase the step is in, the second increases within the phase and is unique in the diagram; a primed
   id (`1.6'`) is a variant of the step before it. Reference a step in prose as `<slice> 1.3`.
