@@ -17,7 +17,7 @@ const CLASS = `classDiagram
 const SEQUENCE = `sequenceDiagram
   actor U as Member
   participant AUTH as «service»<br/>AuthService
-  rect rgba(128, 128, 128, 0.15)
+  rect rgb(235, 242, 250)
     Note over U,AUTH: Phase 1 - Authenticate
     U->>AUTH: 1.1 sign in
     alt member found

@@ -115,6 +115,7 @@ classDiagram
 ### Sequence: login
 
 ```mermaid
+%%{init: {'themeVariables': {'signalTextColor':'#1f2328','labelTextColor':'#1f2328','loopTextColor':'#1f2328','signalColor':'#444','labelBoxBkgColor':'#dde3ea','labelBoxBorderColor':'#444'}}}%%
 sequenceDiagram
   actor U as Member
   participant FORM as «boundary»<br/>SignInForm
@@ -123,7 +124,7 @@ sequenceDiagram
   participant MEMBER as «root entity»<br/>Member
   participant DASH as «boundary»<br/>Dashboard
 
-  rect rgba(128, 128, 128, 0.15)
+  rect rgb(235, 242, 250)
     Note over U,DASH: Phase 1 - Authenticate
     U->>FORM: 1.1 enter email + password, submit
     FORM->>AUTH: 1.2 authenticate(email, password)
@@ -143,7 +144,7 @@ sequenceDiagram
     end
   end
 
-  rect rgba(128, 128, 128, 0.15)
+  rect rgb(235, 242, 250)
     Note over U,DASH: Phase 2 - Reach the account
     AUTH-->>FORM: Member
     FORM->>DASH: 2.1 show dashboard
@@ -154,6 +155,7 @@ sequenceDiagram
 ### Sequence: reset
 
 ```mermaid
+%%{init: {'themeVariables': {'signalTextColor':'#1f2328','labelTextColor':'#1f2328','loopTextColor':'#1f2328','signalColor':'#444','labelBoxBkgColor':'#dde3ea','labelBoxBorderColor':'#444'}}}%%
 sequenceDiagram
   actor U as Member
   participant FORM as «boundary»<br/>ResetRequestForm
@@ -162,7 +164,7 @@ sequenceDiagram
   participant RLINK as «value object»<br/>ResetLink
   participant MAILER as «port»<br/>Mailer
 
-  rect rgba(128, 128, 128, 0.15)
+  rect rgb(235, 242, 250)
     Note over U,MAILER: Phase 1 - Ask for a reset
     U->>FORM: 1.1 enter email, ask for a reset
     FORM->>RESET: 1.2 requestReset(email)
@@ -176,7 +178,7 @@ sequenceDiagram
     end
   end
 
-  rect rgba(128, 128, 128, 0.15)
+  rect rgb(235, 242, 250)
     Note over U,MAILER: Phase 2 - Send the link
     RESET->>MAILER: 2.1 send(email, link)
     MAILER-->>U: 2.2 reset link received
