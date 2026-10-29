@@ -35,6 +35,14 @@ to be wording in the command, backed by a spec scenario.
   placeholder, as the optional-section rule already forbids.
 - **`AskUserQuestion` replaces the typed word.** Options "Create issue" and "Change something". The
   "never create before confirmation" rule stays explicit in the text. Free text does not create.
+- **The dialog is self-contained.** The dialog can cover text written earlier in the same turn, so the
+  question carries the type, repository, title and drafted-section note, and the preview of "Create
+  issue" carries the complete body. *Alternative:* print the draft, end the turn, ask on the next
+  message; rejected as an extra reply on every issue. *Alternative:* plan mode's approval dialog;
+  untested, and its options can switch the session to auto-accept edits, so left for a spike.
+- **Grounding is a duty, not an option.** Before drafting a required section, the command reads the
+  files or folders the request points at, so drafts fit the existing code; with nothing to read it says
+  the draft rests on little.
 - **Code reads use `Read`, `Glob` and `Grep`,** added to `allowed-tools` along with `AskUserQuestion`;
   text taken from code goes through the existing scan. Glob replaces `ls` for template lookup.
 - **Version 1.2.0,** `last_updated` set to the day of the change.
@@ -47,5 +55,7 @@ to be wording in the command, backed by a spec scenario.
   drafted-sections note at confirmation, and asks when nothing supports a draft.
 - [Wider `allowed-tools` lets the model read secrets from code] -> The scan covers anything that goes
   into the draft, and the user reads the whole body at confirmation.
+- [The preview pane may render a long body poorly] -> Check with a long issue in the manual run (task
+  3.3); fall back to printing the draft and asking on the next message if it is unreadable.
 - [`AskUserQuestion` makes confirmation easier to click through] -> Acceptable: an issue is easy to edit
   or close, unlike a commit.

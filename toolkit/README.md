@@ -143,13 +143,15 @@ treats each such entry as a unit, so `-Command jois-git` installs the whole `joi
   description before it drafts anything. It picks a bug, feature or task template from what you describe
   (or asks when it could be two), and uses the repository's own template from `.github/ISSUE_TEMPLATE/` or
   `.gitlab/issue_templates/` instead when one matches. A required section you give nothing for is drafted
-  from your words, the conversation and, for a bug or feature, the code it reads (read-only), and is
-  pointed out when it shows you the issue; it asks, as a numbered list, only when nothing supports a draft.
+  from your words, the conversation and, for a bug or feature, the files your request points at (read
+  first, read-only), and is pointed out when it shows you the issue; it asks, as a numbered list, only
+  when nothing supports a draft.
   Optional sections you give nothing for (Screenshots / Logs and Environment on a bug, Alternatives
   Considered, Design / Visuals and Technical Considerations / Security on a feature, Testing &
   Verification and Dependencies / Blockers on a task) are left out, heading included. It titles the issue
   like a commit (`fix:`, `feat(scope):`, `chore:`, at most 70 characters), scans the draft for secrets,
-  then shows the issue and creates it only when you select "Create issue", passing the body from a file.
+  then shows the whole issue inside the confirmation dialog and creates it only when you select "Create
+  issue", passing the body from a file.
   It reports the issue as a link.
   It only creates: no labels, assignees, milestones, closing or comments. `glab` is needed only for GitLab
   repos, and its flags are checked against the GitLab CLI docs, not run.

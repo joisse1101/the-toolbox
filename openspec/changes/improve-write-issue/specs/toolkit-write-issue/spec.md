@@ -32,13 +32,19 @@ file holding the issue body, outside the repository.
 - **THEN** the only file it wrote SHALL be the temporary body file outside the repository
 
 ### Requirement: Read-only code grounding
-For a bug or feature issue the command MAY read the code the request names with read-only tools, to
-ground a draft. It SHALL NOT edit any file. Text taken from code SHALL be subject to the secret scan
-before the draft is presented.
+For a bug or feature issue the command SHALL, before drafting a required section the user gave nothing
+for, read with read-only tools the files or folders the request names or points to, and SHALL write the
+draft to fit what it read. When the request names nothing to read, it SHALL draft from the user's words
+and the conversation and SHALL say at confirmation that the draft rests on little. It SHALL NOT edit any
+file. Text taken from code SHALL be subject to the secret scan before the draft is presented.
 
-#### Scenario: Draft grounded in code
-- **WHEN** a bug report names a function and the expected behavior is missing
-- **THEN** the command MAY read that function to draft the section and SHALL NOT edit it
+#### Scenario: Draft grounded in files the request points at
+- **WHEN** a feature request is about the skills in `toolkit/skills/` and gives no solution or criteria
+- **THEN** the command SHALL read those skills before drafting the Proposed Solution and Acceptance Criteria, SHALL write them to fit how the skills are built, and SHALL NOT edit any of them
+
+#### Scenario: Nothing to read
+- **WHEN** the request names no file, folder or code and gives no solution
+- **THEN** the command SHALL draft from the user's words and say at confirmation that the draft rests on little
 
 #### Scenario: Secret in code that was read
 - **WHEN** a line read from the code that would go into the draft holds a token
@@ -53,11 +59,21 @@ by a one-line summary of its title.
 - **THEN** the command SHALL report `[#N](url)` and a one-line summary of the title
 
 ### Requirement: Confirmation before publishing
-The command SHALL show the issue type, repository, title and body, plus the sections it drafted, and
-ask the user with a question offering "Create issue" and "Change something", then end its turn. It
-SHALL create the issue only when the user selects "Create issue". Free text, including "looks good" or
-"yes", SHALL NOT create the issue. After "Change something" the command SHALL revise, scan the changed
-text again and ask again.
+The command SHALL ask the user with a question offering "Create issue" and "Change something", then
+end its turn. The question SHALL stand on its own: it SHALL carry the issue type, repository, title, the
+sections the command drafted and whether the draft rests on little, and the option "Create issue" SHALL
+carry the complete body as it will be posted in its preview, so the user reads the whole issue in the
+dialog and does not depend on text written earlier in the turn. It SHALL create the issue only when the
+user selects "Create issue". Free text, including "looks good" or "yes", SHALL NOT create the issue.
+After "Change something" the command SHALL revise, scan the changed text again and ask again.
+
+#### Scenario: Issue readable in the dialog
+- **WHEN** the command asks for confirmation
+- **THEN** the dialog SHALL show the title and the complete body without the user scrolling back to earlier text
+
+#### Scenario: Draft not shown before the question
+- **WHEN** the command writes its reply and the question in the same turn
+- **THEN** the user SHALL still be able to read the whole issue in the dialog
 
 #### Scenario: Create selected
 - **WHEN** the user selects "Create issue"
@@ -125,7 +141,7 @@ a value.
 
 ### Requirement: Missing required content is drafted or asked for
 When a required section has no content from the user, the command SHALL draft it from the user's
-words, the conversation and the code it may read, and SHALL tell the user at confirmation which
+words, the conversation and the files it reads, and SHALL tell the user at confirmation which
 sections it drafted. The posted body SHALL NOT carry a drafted marker or a placeholder. Only when
 nothing supports a draft SHALL the command ask the user, once for every such section together, as a
 numbered list with a proposed draft per question where it can, and end its turn. It SHALL NOT invent

@@ -4,7 +4,7 @@ description: Draft a bug, feature or task issue from the team templates and crea
 disable-model-invocation: true
 allowed-tools: AskUserQuestion, Read, Glob, Grep, Bash(git remote get-url:*), Bash(git rev-parse:*), Bash(gh repo view:*), Bash(gh issue list:*), Bash(gh issue create:*), Bash(glab repo view:*), Bash(glab issue list:*), Bash(glab issue create:*)
 metadata:
-  version: "1.2.0"
+  version: "1.2.1"
   last_updated: "2026-10-29"
 ---
 
@@ -57,13 +57,15 @@ issue holds everything the user listed: never narrow the list to a part of it.
    not an error. Use a match instead of the toolkit's template and say which file. For a YAML form, use
    its field labels as the section headings and say so. With no match, use the toolkit template for the
    type (Issue templates below).
-5. **Compose.** For a bug or feature you may look briefly at the code the request names, with Read, Glob
-   and Grep only, to ground the draft. Fill the template from the user's words, the conversation and that
-   code. Leave out an optional section, heading included, when nothing was supplied for it. In
+5. **Compose.** Leave out an optional section, heading included, when nothing was supplied for it. In
    Environment, list only entries that have a value.
 
-   For a required section the user gave nothing for, draft it from the same sources and remember it as
-   drafted: step 7 tells the user. Ask only when nothing supports a draft: put every such section in one
+   For a required section the user gave nothing for, ground it first. For a bug or feature, read the
+   files or folders the request names or points to (a skills folder, a module, a command), with Read,
+   Glob and Grep only, and write the draft to fit what is there: a Proposed Solution and Acceptance
+   Criteria that match how those files are built, not generic ones. If the request names nothing to
+   read, draft from the user's words and the conversation, and remember that the draft rests on little.
+   Remember each section you drafted: step 7 tells the user. Ask only when nothing supports a draft: put every such section in one
    numbered list in plain text, each with your proposed draft where you can offer one, so a reply such
    as "yep, both" works, and end the turn. Continue from the reply.
 
@@ -78,11 +80,14 @@ issue holds everything the user listed: never narrow the list to a part of it.
    code you read, for secrets: tokens, API keys, private keys, passwords, connection strings with
    credentials and `.env` contents. On a hit, do not present. Name the line and ask for a redacted
    version, then end the turn. The scan is a first filter: the user still reads the whole body.
-7. **Present and ask.** Show the type, repository, template used, title and the complete body as it
-   will be posted, and name the sections you drafted so the user can correct them. Then ask with
-   AskUserQuestion, "Create issue" or "Change something", and end the turn. Anything else the user
-   types is not a selection: create nothing and ask again. On "Change something", revise, re-run step 6,
-   re-run step 2 only if the subject or the summary changed, present again and ask again.
+7. **Present and ask.** The dialog hides text written earlier in the same turn, so the question must
+   stand on its own. Ask with AskUserQuestion, "Create issue" or "Change something". Put in the
+   question the type, repository, template used and title, the sections you drafted so the user can
+   correct them, and a note when the draft rests on little. Put the complete body, exactly as it will be
+   posted, in the preview of "Create issue". Do not rely on a reply written before the question. End
+   the turn. Anything else the user types is not a selection: create nothing and ask again. On "Change
+   something", revise, re-run step 6, re-run step 2 only if the subject or the summary changed, then
+   ask again the same way.
 8. **Create** only after the user selects "Create issue". Write the body to a temporary file outside the
    repository with the file-writing tool: the session's scratch directory if it names one, otherwise the
    OS temp directory. Never write it from a shell command. Then run one of, with the path in double

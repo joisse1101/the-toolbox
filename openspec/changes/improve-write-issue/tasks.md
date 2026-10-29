@@ -17,4 +17,11 @@
 
 - [x] 3.1 Update the write-issue paragraph in `toolkit/README.md` (gaps, confirmation, duplicate search order, code reads); verify by reading it against the command
 - [x] 3.2 Run `python check_toolkit.py` and `python -m pytest` from `toolkit/` and `openspec validate improve-write-issue --strict`; all pass
-- [ ] 3.3 Run the command by hand with an imperative description about the command itself, and with a feature request that has no alternatives; verify it writes one issue each time and edits no file
+- [ ] 3.3 Run the command by hand with an imperative description about the command itself, and with a feature request that has no alternatives; verify it writes one issue each time and edits no file; use a long issue and check the confirmation dialog shows the whole body in the preview
+
+## 4. Follow-up: self-contained confirmation and grounding
+
+- [x] 4.1 In `write-issue.md` step 7, put the type, repository, title, drafted sections and thin-draft note in the question and the complete body in the preview of "Create issue", and say the dialog can hide earlier text; verify against "Confirmation before publishing"
+- [x] 4.2 In step 5, make reading the files the request points at a duty before drafting a required section, with the thin-draft note when there is nothing to read; verify against "Read-only code grounding"
+- [x] 4.3 Bump `metadata.version` to 1.2.1, update the README paragraph, and run `python check_toolkit.py`, `python -m pytest` and `openspec validate improve-write-issue --strict`; all pass
+
