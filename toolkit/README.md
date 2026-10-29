@@ -143,7 +143,7 @@ treats each such entry as a unit, so `-Command jois-git` installs the whole `joi
   `.gitlab/issue_templates/` instead when one matches. Required sections it lacks are asked for once;
   optional sections you give nothing for (Screenshots / Logs and Environment on a bug, Design / Visuals and
   Technical Considerations / Security on a feature, Testing & Verification and Dependencies / Blockers on
-  a task) are left out, heading included. It scans the draft for secrets, lists similar open issues, then
+  a task) are left out, heading included. It titles the issue like a commit (`fix:`, `feat(scope):`, `chore:`), scans the draft for secrets, lists similar open issues, then
   shows the issue and creates it only when you type its confirmation word, passing the body from a file.
   It only creates: no labels, assignees, milestones, closing or comments. `glab` is needed only for GitLab
   repos, and its flags are checked against the GitLab CLI docs, not run.
