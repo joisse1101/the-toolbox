@@ -153,7 +153,7 @@ test('write: a slice name that would leave the backlog\'s diagrams folder writes
 
 test('write: one failing diagram writes nothing and every problem is listed', async () => {
   const root = setup();
-  const files = fixtureFiles().map((f) => ({ ...f, content: f.content.replace('FORM->>AUTH: 1.2', 'FORM->>GHOST: 1.2').replace('<<service>>\n      +authenticate', '+authenticate') }));
+  const files = fixtureFiles().map((f) => ({ ...f, content: f.content.replace('FORM->>AUTH: 1.2', 'FORM->>GHOST: 1.2').replace('<<service>>\n    +authenticate', '+authenticate') }));
   const r = await writeDiagram(input(root, { files }));
   assert.equal(r.ok, false);
   assert.match(r.text, /2 problems/);
@@ -196,7 +196,7 @@ test('write: the specification\'s generated list is written by the writer whatev
 
 test('write: a document with a diagram that does not parse writes nothing and lists the parser message and line', async () => {
   const root = setup();
-  const files = fixtureFiles().map((f) => ({ ...f, content: f.content.replace('MAILER-->>U: 2.2 reset link received', 'MAILER-->>>U: 2.2 reset link received') }));
+  const files = fixtureFiles().map((f) => ({ ...f, content: f.content.replace('MAILER-->>U: 2.10 reset link received', 'MAILER-->>>U: 2.10 reset link received') }));
   const r = await writeDiagram(input(root, { files }));
   assert.equal(r.ok, false);
   assert.match(r.text, /UC-sign-in\.md:\d+: ### Sequence: reset: does not parse as Mermaid: Parse error on line \d+/);

@@ -127,7 +127,7 @@ test('repo tools read the repo, refuse an excluded file, and repo_read records w
     assert.match(textOf(outside), /outside the repo/);
     // A traceability row naming a file the session never read is refused; once repo_read returned its lines it is accepted.
     const spec = sliceFiles(root).find((f) => f.name === 'UC-sign-in.md');
-    const traced = spec.content.replace(/## Traceability[\s\S]*?(?=\n## )/,'## Traceability\n\n| Step | What | Code |\n|---|---|---|\n| sign-in 1.1 | Checks the password | `src/auth/login.js::signIn` |\n');
+    const traced = spec.content.replace(/## Traceability[\s\S]*$/,'## Traceability\n\n| Step | What | Code |\n|---|---|---|\n| sign-in 1.1 | Checks the password | `src/auth/login.js::signIn` |\n');
     const files = sliceFiles(root).map((f) => (f.name === spec.name ? { ...f, content: traced } : f));
     const first = await call(client, 'check_diagram', sliceArgs(root, { files }));
     assert.match(textOf(first), /src\/auth\/login\.js.*did not return|repo_read did not return/);

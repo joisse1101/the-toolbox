@@ -74,8 +74,8 @@ test('an undeclared participant is named with its diagram', () => {
 });
 
 test('a class or participant with no stereotype, or an unknown one, is named', () => {
-  assert.match(messages(run(changed('<<service>>\n      +authenticate', '+authenticate'))), /## Class diagram: AuthService has no stereotype/);
-  assert.match(messages(run(changed('<<service>>\n      +authenticate', '<<magic>>\n      +authenticate'))), /AuthService has the stereotype magic, which is not in the conventions/);
+  assert.match(messages(run(changed('<<service>>\n    +authenticate', '+authenticate'))), /## Class diagram: AuthService has no stereotype/);
+  assert.match(messages(run(changed('<<service>>\n    +authenticate', '<<magic>>\n    +authenticate'))), /AuthService has the stereotype magic, which is not in the conventions/);
   assert.match(messages(run(changed('participant AUTH as «service»<br/>AuthService', 'participant AUTH as AuthService'))), /AUTH has no stereotype/);
   assert.match(messages(run(changed('«service»<br/>AuthService', '«magic»<br/>AuthService'))), /AUTH has the stereotype magic/);
 });
@@ -91,24 +91,26 @@ test('text shaped like a story ID is rejected inside a diagram', () => {
 });
 
 test('step ids: a duplicate, a step out of order and a step in the wrong phase are rejected', () => {
-  assert.match(messages(run(changed('1.3 getByEmail(email)\n    alt member found\n      REPO-->>AUTH: Member\n      AUTH->>MEMBER', '1.2 getByEmail(email)\n    alt member found\n      REPO-->>AUTH: Member\n      AUTH->>MEMBER'))), /step 1\.2 is used twice/);
-  assert.match(messages(run(changed('1.4 verifyCredential', '1.0 verifyCredential'))), /step 1\.0 does not come after/);
-  assert.match(messages(run(changed('2.1 show dashboard', '3.1 show dashboard'))), /step 3\.1 is in Phase 2; its first number must be 2/);
+  assert.match(messages(run(changed('REPO-->>AUTH: 2.2 none', 'REPO-->>AUTH: 2.1 none'))), /step 2\.1 is used twice/);
+  assert.match(messages(run(changed('2.5 verifyCredential', '2.0 verifyCredential'))), /step 2\.0 does not come after/);
+  assert.match(messages(run(changed('SESS: 3.1 create(', 'SESS: 4.1 create('))), /step 4\.1 is in Phase 3; its first number must be 3/);
 });
 
 test('a primed step may follow its step', () => {
-  const r = run(changed('      AUTH-->>FORM: sign-in refused\n    end\n  end', "      AUTH->>MEMBER: 1.4' dummyVerify(password)\n      AUTH-->>FORM: sign-in refused\n    end\n  end"));
+  const r = run(changed('      AUTH-->>FORM: 2.7 401 {message: invalid email or password}', "      AUTH-->>FORM: 2.7 401 {message: invalid email or password}\n      AUTH->>MEMBER: 2.7' dummyVerify(password)"));
   assert.deepEqual(formatProblems(r.problems), []);
 });
 
 test('a rect block must open with a phase note, and a phase note must open a rect', () => {
-  assert.match(messages(run(changed('    Note over U,DASH: Phase 1 - Authenticate\n', ''))), /a rect block must open with "Note over/);
-  assert.match(messages(run(changed('    Note over U,DASH: Phase 1 - Authenticate\n', '    Note over U,DASH: Phase 1 - Authenticate\n    Note over U,DASH: Phase 9 - Again\n'))), /a phase note must be the first line of a rect block/);
+  const note = '    Note over U,AUTH: Phase 1 - Validate the input\n';
+  assert.match(messages(run(changed(note, ''))), /a rect block must open with "Note over/);
+  assert.match(messages(run(changed(note, `${note}    Note over U,AUTH: Phase 9 - Again\n`))), /a phase note must be the first line of a rect block/);
 });
 
-test('thirteen classes break the limit and name it', () => {
-  const extra = Array.from({ length: 4 }, (_, i) => `    class Extra${i} {\n      <<value object>>\n    }`).join('\n');
-  assert.match(messages(run(changed('    class Mailer {', `${extra}\n    class Mailer {`))), /## Class diagram: declares 14 classes; the limit is 12/);
+test('thirteen classes break the limit and name it, and the namespace is not counted', () => {
+  assert.doesNotMatch(messages(run(mock)), /declares/);
+  const extra = '  class Extra {\n    <<value object>>\n  }';
+  assert.match(messages(run(changed('  class Mailer {', `${extra}\n  class Mailer {`))), /## Class diagram: declares 13 classes; the limit is 12/);
 });
 
 test('a story criterion with no row names the story by Title and the criterion', () => {
@@ -121,7 +123,9 @@ test('a criterion changed in the row is not verbatim, so the story criterion has
 });
 
 test('a failure row needs an alt branch in its flow, and a flow with no diagram is named', () => {
-  const noAlt = changed('| main | reset |', '| failure | reset |').replace('    alt member found\n      REPO-->>RESET: Member\n      RESET->>RLINK: 1.4 issue()\n      RLINK-->>RESET: ResetLink\n    else no such member\n      REPO-->>RESET: none\n    end\n', '    REPO-->>RESET: Member\n');
+  const failureRow = changed('| main | reset |', '| failure | reset |');
+  const flat = `### Sequence: reset\n\n\`\`\`mermaid\n${SEQUENCE_INIT}\nsequenceDiagram\n  actor U as Member\n  U->>U: 1.1 ask\n\`\`\`\n\n`;
+  const noAlt = failureRow.slice(0, failureRow.indexOf('### Sequence: reset')) + flat + failureRow.slice(failureRow.indexOf('## Design decisions'));
   assert.match(messages(run(noAlt)), /failure path but the "### Sequence: reset" diagram has no alt branch/);
   assert.doesNotMatch(messages(run(changed('| main | login |', '| failure | login |'))), /no alt branch/);
   assert.match(messages(run(changed('| main | login |', '| main | nowhere |'))), /flow "nowhere", which has no "### Sequence: nowhere" heading/);
@@ -150,7 +154,59 @@ test('repo level: a traceability path the session never read is rejected', () =>
 });
 
 test('every problem of a failing slice is reported together', () => {
-  const r = run(changed('FORM->>AUTH: 1.2', 'FORM->>GHOST: 1.2').replace('<<service>>\n      +authenticate', '+authenticate'));
+  const r = run(changed('FORM->>AUTH: 1.2', 'FORM->>GHOST: 1.2').replace('<<service>>\n    +authenticate', '+authenticate'));
   assert.equal(r.ok, false);
   assert.equal(r.problems.length >= 2, true);
+});
+
+test('a missing design section is named by its heading, and an empty one is reported', () => {
+  assert.match(messages(run(changed('## Design decisions', '## Decisions'))), /has no "## Design decisions" heading/);
+  assert.match(messages(run(changed('## Open questions', '## Open questions\n\n## Notes'))), /"## Open questions" is empty/);
+});
+
+test('the Steps column is required and each step id must exist in the flow of the row', () => {
+  assert.match(messages(run(changed('| 1.1, 1.2, 2.1, 2.4, 2.5, 2.8, 3.1, 3.3, 3.5 |', ''))), /must have the six columns/);
+  assert.match(messages(run(changed('| 1.1, 1.2, 2.1, 2.4, 2.5, 2.8, 3.1, 3.3, 3.5 |', '| 1.1, 9.9 |'))), /AC-sign-in-dashboard names the step 9\.9, which the "### Sequence: login" diagram does not contain/);
+  assert.match(messages(run(changed('| 1.1, 1.2, 2.1, 2.4, 2.5, 2.8, 3.1, 3.3, 3.5 |', '|  |'))), /names no step in Steps/);
+});
+
+test('a step id of another flow is not accepted for the row', () => {
+  assert.match(messages(run(changed('| 1.1, 1.2, 2.1, 2.4, 2.5, 2.7, 2.10, 2.11 |', '| 1.1, 3.5 |'))), /AC-sign-in-reset-link names the step 3\.5/);
+});
+
+test('a design decision needs a source of user-confirmed, repo or TBC, and repo only with a repo', () => {
+  assert.match(messages(run(changed('| user-confirmed | login 3.1, 3.3 |', '|  | login 3.1, 3.3 |'))), /decision "D1" has the source ""/);
+  assert.match(messages(run(changed('| user-confirmed | login 3.1, 3.3 |', '| guessed | login 3.1, 3.3 |'))), /decision "D1" has the source "guessed"; it must be one of user-confirmed, repo, TBC/);
+  assert.match(messages(run(changed('| user-confirmed | login 3.1, 3.3 |', '| repo | login 3.1, 3.3 |'))), /source repo, but no repo was read/);
+  assert.match(messages(run(changed('| user-confirmed | login 3.1 |', '| TBC | login 3.1 |'))), /^((?!has the source).)*$/s);
+});
+
+test('a failure response names an acceptance criterion that is a row of the table', () => {
+  assert.match(messages(run(changed('| login unknown email | no member has the email | 401 `invalid email or password`, the same as a wrong password on purpose (D3) | AC-sign-in-dashboard |', '| login unknown email | no member has the email | 401 | AC-sign-in-nothing |'))), /failure "login unknown email" names the acceptance criterion "AC-sign-in-nothing"/);
+});
+
+test('the aggregate boundary: a root outside a namespace is named', () => {
+  const text = changed('  namespace MemberAggregate {', '  namespace Members {');
+  assert.match(messages(run(text)), /the root entity Member is not inside an aggregate boundary/);
+});
+
+test('the aggregate boundary: a namespace without a rule line is named', () => {
+  const text = changed('  note for Member "Rule: a member has exactly one credential"\n', '');
+  assert.match(messages(run(text)), /the aggregate MemberAggregate has no line naming its rule/);
+});
+
+test('the aggregate boundary: a class outside the namespace may not link to an inner class', () => {
+  const text = changed('  AuthService ..> Member : verifyCredential\n', '  AuthService ..> Member : verifyCredential\n  AuthService ..> Credential : read\n');
+  assert.match(messages(run(text)), /AuthService is outside the aggregate MemberAggregate but is linked to Credential, which is not its root/);
+  assert.match(messages(run(changed('  AuthService ..> Member : verifyCredential\n', '  Email <.. AuthService : read\n  AuthService ..> Member : verifyCredential\n'))), /AuthService is outside the aggregate MemberAggregate but is linked to Email/);
+});
+
+test('the aggregate boundary: a stub of a root another slice owns needs no namespace', () => {
+  const stub = changed('  class SignInForm {', '  class Account {\n    <<root entity>>\n  }\n  note for Account "(see accounts)"\n  class SignInForm {');
+  assert.doesNotMatch(messages(run(stub)), /Account/);
+});
+
+test('without a repo, a path in the text is rejected and the message does not call it a lower level', () => {
+  const text = messages(run(changed('Set-Cookie sid', 'Set-Cookie sid in session.json')));
+  assert.match(text, /a slice without a repo names no path/);
 });
