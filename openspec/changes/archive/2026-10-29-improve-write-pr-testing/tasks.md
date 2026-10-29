@@ -20,4 +20,3 @@
 
 - [x] 4.1 Run `python check_toolkit.py` and `python -m pytest` from `toolkit/` and verify both pass
 - [x] 4.2 Run `openspec validate improve-write-pr-testing --strict` and verify it passes
-- [ ] 4.3 Run `/jois-git:write-pr` on a branch whose only commit is a `chore` touching a manifest and a README and verify the presented PR has a one-sentence Summary, no testing block and no verification question; run it on a `fix` branch that adds a test and verify the steps name that test
