@@ -7,7 +7,7 @@
 
 ## 2. Commands (PR `docs/retrofit-commands`, based on `docs/retrofit-rules`)
 
-- [ ] 2.1 Rewrite `commands/jois-git/stage.md` and `commands/jois-init/opsx.md`, bump version and date, and verify `python check_toolkit.py` passes
+- [x] 2.1 Rewrite `commands/jois-git/stage.md` and `commands/jois-init/opsx.md`, bump version and date, and verify `python check_toolkit.py` passes
 - [ ] 2.2 Rewrite `commands/jois-git/write-issue.md` and verify every step, hard stop and confirmation word is still present
 - [ ] 2.3 Rewrite `commands/jois-git/write-pr.md` and `commands/jois-git/update-pr.md`, and verify the Never list, the end-turn steps and the no-merge rule are unchanged in meaning
 - [ ] 2.4 Check the size of the PR with `git diff --numstat`, split it by file into a further stacked PR if it passes about 400 changed lines, and verify `python -m pytest` passes from `toolkit/`
