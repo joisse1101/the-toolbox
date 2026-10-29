@@ -64,8 +64,8 @@ Before `check_diagram`, walk the completeness checklist of section 8 for every f
 
 1. Call `check_diagram` with the backlog, the slice name, the scope, the `stories` (`{ id, title }` for every story in the scope and no others) and the document of the slice (`UC-<slice>.md`). It applies the rules of `write_diagram` and writes nothing. Fix every problem it reports and check again, so the question below is asked only about a document the writer will accept.
 2. Show the **complete final text of the document** in one reply (the specification and every diagram, whole), the scope and the stories by Title, what the slice replaces if it exists, and any findings from the repo. Never refer to an earlier draft ("as before"); a document the user changed is shown whole again.
-3. Ask one direct yes/no question at the end of that reply, for example "Write this slice?", and **stop**. Do not call `write_diagram` in the same turn.
-4. Write only after the user answers yes in a separate message. An answer to the scope question, or approval of the idea, is not a yes. If the user changes anything after the question, show the changed document whole and ask again. If the document is too long for one reply, say so up front, show it whole in sections, and ask the yes/no once, after the last section.
+3. End that reply with one `AskUserQuestion` ("Write this slice?") whose options are "Yes, write" and "No, change it", and **stop**: it is the last call of the reply. Do not call `write_diagram` before the user picks "Yes, write".
+4. Write only after the user picks "Yes, write" in that question. A typed "yes" or "looks good", an answer to the scope question, or approval of the idea is not a confirmation: ask the question again. If the user changes anything after the question, show the changed document whole and ask again. If the document is too long for one reply, say so up front, show it whole in sections, and ask the yes/no once, after the last section.
 
 ## Write and read back
 
