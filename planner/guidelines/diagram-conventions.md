@@ -112,6 +112,6 @@ are tuned in section 1.
 
 ## 7. Viewing a slice
 
-Open `UC-<slice>.md` on GitHub, which draws a `mermaid` fence in place, or in the VS Code markdown
-preview with a Mermaid extension installed (for example `bierner.markdown-mermaid`). Nothing is sent to
-a render server and no Java or Graphviz is needed.
+Open `UC-<slice>.md` on GitHub, which draws a `mermaid` fence in place, or in the built-in VS Code
+markdown preview (checked on VS Code 1.143.1), which needs no extension. Nothing is sent to a render
+server and no Java or Graphviz is needed.
