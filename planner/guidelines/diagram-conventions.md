@@ -26,9 +26,18 @@ the value is the layer the stereotype belongs to.
     "port": "port",
     "adapter": "port",
     "infra": "infra"
-  }
+  },
+  "relationshipTypes": [
+    "customer-supplier",
+    "anti-corruption-layer",
+    "shared-kernel",
+    "conformist",
+    "published-events"
+  ]
 }
 ```
+
+`relationshipTypes` are the types a link of the context map (section 9) may have; `TBC` is also accepted there.
 
 Every class and participant states its stereotype, so the layers read without color. Color is optional
 and nothing checks it. A database participant is `infra`.
@@ -63,7 +72,9 @@ they are kept only here, healed by Title on read, and **never written in a diagr
   of section 1's.
 - **Shared classes.** The slice that owns an entity (its Epic) draws it in full. Another slice shows a
   stub: the stereotype and the name, with a `note for <class> "(see <slice>)"` and no members. A stub shows
-  only the root of an aggregate that another slice owns.
+  only the root of an aggregate that another slice owns. When the backlog has a context map (section 9) and the
+  entity belongs to another context, the link to the stub also states the type of the relationship between the
+  two contexts (for example `customer-supplier`).
 - **Aggregate boundary.** Each `root entity` is drawn inside a `namespace <Root>Aggregate { ... }` (for
   example `MemberAggregate`) together with the classes it owns. The rule the aggregate protects is one line
   right after the namespace, `note for <Root> "Rule: <rule>"`. A class outside the namespace has a
@@ -167,3 +178,28 @@ Each distinct failure has its own `alt` branch and its own row of `## Failure re
 credential, inactive, invalid input and rate limited are prompts, not a closed list. Two failures share a
 branch only when the user (at repo level, the code) says their responses are deliberately the same, and the
 row says so.
+
+## 9. Context map
+
+An optional, backlog-level overview, drawn by `plan-stories` with the user: the bounded contexts of the
+product, who owns each, and how they depend on each other. It is two files next to `repo.json`, never a
+folder: `planner/data/diagrams/<backlog>/context-map.json` (the source, the only thing the checks read) and
+`context-map.md` (generated from it by `write_context_map`, never written by hand). A backlog without a map
+works as before; a slice is cut from the Epics as in section 6 whether or not a map exists.
+
+- A **context** is `{name, purpose, owner, epics, reason?}`. `epics` are Epic names of the backlog; `owner`
+  may be `TBC`. A context holding more than one Epic records the `reason` for the merge.
+- **Every Epic of the backlog is in exactly one context**, never split and never in two: an Epic is one
+  domain area (`product-backlog.md` section 1). The map starts as one context per Epic; merging Epics that use
+  the same terms with the same meaning is the user's decision, advised by the skill with a reason from the
+  lexicon and the stories.
+- A **relationship** is `{from, to, type, crosses}`: `from` the upstream context, `to` the downstream one, `type`
+  one of `relationshipTypes` (section 1) or `TBC`, `crosses` what passes the link or `TBC`. It joins two
+  contexts of the map and never a context to itself.
+- The checks test facts only (coverage of the Epics, names, types, references). Whether a split is a good one
+  is the user's call.
+- `context-map.md` holds a table of the contexts (name, owner, Epics, purpose), a table of the relationships,
+  and one `mermaid` `flowchart` with a `subgraph` per context and a labelled link per relationship, upstream to
+  downstream. The init line of section 3 is for sequence diagrams and is not required here.
+- The map is compared with the Epics of the backlog on every read; an Epic it lacks or no longer finds is
+  reported and the map is not changed.

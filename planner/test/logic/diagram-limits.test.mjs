@@ -20,9 +20,15 @@ test('a value changed in the file changes the result', () => {
   assert.equal(parseLimits(changed).maxClasses, 7);
 });
 
+test('the relationship types come from the block and a change in the file changes them', () => {
+  const text = fs.readFileSync(CONVENTIONS, 'utf8');
+  assert.deepEqual(parseLimits(text).relationshipTypes, ['customer-supplier', 'anti-corruption-layer', 'shared-kernel', 'conformist', 'published-events']);
+  assert.equal(parseLimits(text.replace('"conformist",', '')).relationshipTypes.includes('conformist'), false);
+});
+
 test('a palette key is ignored', () => {
-  const limits = parseLimits(withBlock('{"maxClasses": 3, "palette": {"a": "blue"}, "stereotypes": {"x": "a"}}'));
-  assert.deepEqual(limits, { maxClasses: 3, stereotypes: { x: 'a' } });
+  const limits = parseLimits(withBlock('{"maxClasses": 3, "palette": {"a": "blue"}, "stereotypes": {"x": "a"}, "relationshipTypes": ["t"]}'));
+  assert.deepEqual(limits, { maxClasses: 3, stereotypes: { x: 'a' }, relationshipTypes: ['t'] });
 });
 
 test('a missing block is refused', () => {
@@ -33,5 +39,7 @@ test('bad JSON, a bad limit and a bad stereotype each fail naming the key', () =
   assert.throws(() => parseLimits(withBlock('{ nope')), /not valid JSON/);
   assert.throws(() => parseLimits(withBlock('{"maxClasses": 0, "stereotypes": {}}')), /"maxClasses"/);
   assert.throws(() => parseLimits(withBlock('{"maxClasses": 3}')), /"stereotypes"/);
+  assert.throws(() => parseLimits(withBlock('{"maxClasses": 3, "stereotypes": {}}')), /"relationshipTypes"/);
+  assert.throws(() => parseLimits(withBlock('{"maxClasses": 3, "stereotypes": {}, "relationshipTypes": [""]}')), /"relationshipTypes\[0\]"/);
   assert.throws(() => parseLimits(withBlock('{"maxClasses": 3, "stereotypes": {"x": ""}}')), /"stereotypes\.x"/);
 });
