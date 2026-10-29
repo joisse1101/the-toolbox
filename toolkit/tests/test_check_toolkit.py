@@ -186,6 +186,19 @@ def test_version_is_required_on_skills_agents_and_jois_commands(tmp_path):
         assert any(p.startswith(f"{rel}: missing `metadata.version`") for p in problems)
 
 
+def test_agent_without_tools_fails_and_names_the_file(tmp_path):
+    _toolkit_tree(tmp_path)
+    _write(tmp_path, "agents/open.md", f"---\nname: open\n{VERSION}\n---\nbody\n")
+    problems = _problems(tmp_path)
+    assert any(p.startswith("agents/open.md: missing `tools`") for p in problems)
+
+
+def test_agent_with_tools_passes(tmp_path):
+    _toolkit_tree(tmp_path)
+    _write(tmp_path, "agents/narrow.md", f"---\nname: narrow\ntools: Read, Grep\n{VERSION}\n---\nbody\n")
+    assert _problems(tmp_path) == []
+
+
 def test_commands_must_be_hidden_from_the_session_listing(tmp_path):
     _toolkit_tree(tmp_path)
     _write(tmp_path, "commands/jois-init/opsx.md", f"---\nname: a\n{HIDDEN}\n{VERSION}\n---\nbody\n")
