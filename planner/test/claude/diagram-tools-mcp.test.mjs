@@ -14,6 +14,15 @@ const SAMPLE = path.resolve(HERE, '../sample-data');
 const SCOPE = { type: 'feature', epic: 'Identity and access', feature: 'Sign in' };
 const STORIES = [{ id: 'IAM-0001', title: 'Sign in with email' }, { id: 'IAM-0002', title: 'Reset a password' }];
 
+const DIAGRAM_AND_MAP_TOOLS = ['check_context_map', 'check_diagram', 'read_context_map', 'read_diagrams', 'write_context_map', 'write_diagram'];
+const MAP = {
+  contexts: [
+    { name: 'Accounts', purpose: 'Sign in', owner: 'TBC', epics: ['Identity and access'] },
+    { name: 'Insight', purpose: 'Reports', owner: 'TBC', epics: ['Reporting'] },
+  ],
+  relationships: [{ from: 'Accounts', to: 'Insight', type: 'TBC', crosses: 'TBC' }],
+};
+
 // A temp data folder holding the sample backlog and slice, and the sample repo that repo.json points at (outside diagrams/, so it is not a slice).
 function temp({ repoJson } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'diagram-tools-test-'));
@@ -37,15 +46,15 @@ const sliceFiles = (root) => {
 };
 const sliceArgs = (root, over = {}) => ({ backlog: 'sample.csv', slice: 'sign-in', scope: SCOPE, stories: STORIES, files: sliceFiles(root), ...over });
 
-test('tool list: three diagram tools without a repo, six with one; only the writer is not read-only', async () => {
+test('tool list: six diagram tools without a repo, nine with one; only the two writers are not read-only', async () => {
   const root = temp();
   const without = await connect(root);
   const withRepo = await connect(root, ['--backlog', 'sample.csv']);
   try {
-    assert.deepEqual((await without.listTools()).tools.map((t) => t.name).sort(), ['check_diagram', 'read_diagrams', 'write_diagram']);
+    assert.deepEqual((await without.listTools()).tools.map((t) => t.name).sort(), DIAGRAM_AND_MAP_TOOLS);
     const tools = (await withRepo.listTools()).tools;
-    assert.deepEqual(tools.map((t) => t.name).sort(), ['check_diagram', 'read_diagrams', 'repo_grep', 'repo_read', 'repo_tree', 'write_diagram']);
-    for (const t of tools) assert.equal(!!t.annotations?.readOnlyHint, t.name !== 'write_diagram', t.name);
+    assert.deepEqual(tools.map((t) => t.name).sort(), [...DIAGRAM_AND_MAP_TOOLS, 'repo_grep', 'repo_read', 'repo_tree'].sort());
+    for (const t of tools) assert.equal(!!t.annotations?.readOnlyHint, !['write_diagram', 'write_context_map'].includes(t.name), t.name);
     for (const t of tools) assert.equal(t.description, DESCRIPTIONS[t.name], `${t.name} carries its rules`);
   } finally {
     await without.close();
@@ -65,7 +74,7 @@ test('no repo tools when repo.json is missing, has a bad key or points at no fol
   for (const [repoJson, why] of [['{ "path": "" }', /No repo is configured/], ['{ "path": "../../repos/sample", "exclude": "x" }', /"exclude" must be a list/], ['{ "path": "./missing" }', /"path" is not a folder/]]) {
     const client = await connect(temp({ repoJson }), ['--backlog', 'sample.csv']);
     try {
-      assert.deepEqual((await client.listTools()).tools.map((t) => t.name).sort(), ['check_diagram', 'read_diagrams', 'write_diagram']);
+      assert.deepEqual((await client.listTools()).tools.map((t) => t.name).sort(), DIAGRAM_AND_MAP_TOOLS);
       assert.match(textOf(await call(client, 'read_diagrams', { backlog: 'sample.csv' })), why);
     } finally {
       await client.close();
@@ -108,6 +117,29 @@ test('check_diagram writes nothing; write_diagram of the same files changes noth
     assert.deepEqual(fs.readdirSync(path.join(dir, 'sign-in')).sort(), before);
     const wrongTitle = await call(client, 'check_diagram', sliceArgs(root, { stories: [{ id: 'IAM-0001', title: 'Something else' }, STORIES[1]] }));
     assert.equal(wrongTitle.isError, true);
+  } finally {
+    await client.close();
+  }
+});
+
+test('the map tools: read says none, check writes nothing, write is read back and repeated unchanged, a bad map writes nothing', async () => {
+  const root = temp();
+  const client = await connect(root);
+  const dir = path.join(root, 'diagrams', 'sample');
+  for (const f of ['context-map.json', 'context-map.md']) fs.rmSync(path.join(dir, f)); // the sample ships a map; this test starts without one
+  const mapFiles = () => fs.readdirSync(dir).filter((f) => f.startsWith('context-map')).sort();
+  try {
+    assert.match(textOf(await call(client, 'read_context_map', { backlog: 'sample.csv' })), /no context map/);
+    assert.match(textOf(await call(client, 'check_context_map', { backlog: 'sample.csv', ...MAP })), /Check passed; nothing was written/);
+    assert.deepEqual(mapFiles(), []);
+    const bad = await call(client, 'write_context_map', { backlog: 'sample.csv', ...MAP, contexts: [MAP.contexts[0]] });
+    assert.equal(bad.isError, true);
+    assert.deepEqual(mapFiles(), []);
+    assert.match(textOf(await call(client, 'write_context_map', { backlog: 'sample.csv', ...MAP })), /Wrote the context map/);
+    assert.deepEqual(mapFiles(), ['context-map.json', 'context-map.md']);
+    assert.match(textOf(await call(client, 'write_context_map', { backlog: 'sample.csv', ...MAP })), /Nothing changed/);
+    assert.match(textOf(await call(client, 'read_context_map', { backlog: 'sample.csv' })), /2 contexts \| up to date/);
+    assert.match(textOf(await call(client, 'read_diagrams', { backlog: 'sample.csv' })), /1 slice ===/, 'the map is not a slice');
   } finally {
     await client.close();
   }
