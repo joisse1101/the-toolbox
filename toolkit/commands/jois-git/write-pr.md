@@ -11,8 +11,8 @@ hooks:
           command: >-
             powershell -NoProfile -Command "if ([Console]::In.ReadToEnd() -match 'gh\s+(pr\s+(merge|.*--auto)|api\b.*merge)') { [Console]::Error.WriteLine('write-pr never merges: the user runs gh pr merge'); exit 2 }"
 metadata:
-  version: "2.3.0"
-  last_updated: "2026-10-28"
+  version: "2.4.0"
+  last_updated: "2026-10-29"
 ---
 
 # Write PRs
@@ -50,23 +50,28 @@ list of steps: Guidelines, PR body template and Author Verification.
 4. **Scan each group's added lines.** Block that group, naming the file, on a secret or credential, an
    `.env*` file, `*.pem`/`*.key`, or build output. Warn, without blocking, on `console.log`, `print` or
    `debugger` calls and commented-out code.
-5. **Gather verification** for every group as Author Verification below says: `tasks.md`, runs seen
-   in this conversation, then the offer to run missing tests. If a question is needed, ask it once for
-   all groups, in plain text, and end the turn. Continue from the reply.
+5. **Classify, then gather verification.** Decide for each group whether it needs no tests, as
+   Needs no tests below says. Skip those groups here: no run offer and no question. For every other
+   group gather verification as Author Verification below says: `tasks.md`, runs seen in this
+   conversation, then the offer to run missing tests. If a question is needed, ask it once for all
+   those groups, in plain text, and end the turn. Continue from the reply.
 6. **Compose** each PR from the PR body template:
    - Title: the commit subject for a one-commit group; otherwise a new `type(scope): subject`
      (lowercase, imperative, no period). The squash merge makes it the commit on the base.
    - Summary leads with why. Related Issues only from `#n` or ticket ids in commit messages or the
      branch name; otherwise omit the section.
    - Changes Made: the group's commit subjects from `git log`.
-   - Tests: test files the group adds or changes, and their names. Fill Author Verification and How
-     to Test This PR as the Author Verification section says. Never state a result no source records.
+   - A group that needs no tests: Summary is one sentence, and the body has no testing block.
+   - Any other group, tests: test files the group adds or changes, and their names. Fill Author
+     Verification and How to Test This PR as the Author Verification section says. Never state a
+     result no source records.
    - End with the PR attribution line the session gives, if any.
 7. **Present and stop.** Show the groups with their commits, then for each PR the title, base, head,
    body, size, and any warning or block, including any run reported as failed, timed out or out of
    date. On the base branch, also state: "After the PRs are pushed, local `<base>` is set to
-   `origin/<base>`; your commits stay on the new branches." Tag each verification bullet and reviewer
-   step with its source (Author Verification, Sources).
+   `origin/<base>`; your commits stay on the new branches." For each group say whether it needs tests
+   and why, in one line, so the author can reply that it does. Tag each verification bullet and
+   reviewer step with its source (Author Verification, Sources).
    Name a common confirmation word that differs from your previous prompt's and say: "Reply with
    <word> to open these PRs, or tell me what to change." Then end the turn and call no tool. "Yes" or
    "looks good" is not the word. After any change request, present again with a new word.
@@ -175,7 +180,8 @@ emoji headings exactly as written.
 
 ```markdown
 ## 📌 Summary
-<!-- What this PR does and why it is needed. Lead with the why; the diff already shows the what. -->
+<!-- What this PR does and why it is needed. Lead with the why; the diff already shows the what.
+     One sentence when the group needs no tests. -->
 
 ## 🔗 Related Issues / Tickets
 <!-- OMIT THIS WHOLE SECTION unless a commit message or the branch name references an issue or ticket
@@ -194,7 +200,8 @@ emoji headings exactly as written.
 -
 
 ## 🧪 How Has This Been Tested?
-<!-- List the tests this PR adds or changes under the first box. -->
+<!-- List the tests this PR adds or changes under the first box.
+     OMIT this heading and the two subsections below when the group needs no tests. -->
 - [ ] Automated Unit / Integration Tests passed
 - [ ] Manual testing completed
 
@@ -213,6 +220,9 @@ emoji headings exactly as written.
   tick Refactoring; `docs` ticks Documentation; `test` ticks Tests. A `chore`, `build`, `ci` or `revert` group touching only docs
   or specs ticks Documentation, otherwise nothing. Tick Breaking change when any commit subject has
   `!` after the type or any commit body has a `BREAKING CHANGE` footer. Several boxes may be ticked.
+- **Needs no tests**: omit the testing block (How Has This Been Tested?, Author Verification and How
+  to Test This PR) and write Summary as one sentence that leads with why. Related Issues, Type of
+  Change and Changes Made follow the rules above. Needs no tests below says when this applies.
 - **Automated**: tick when the group adds or changes a test file, and list those files and the test
   names under the box. The user has said to assume the tests were run.
 - **Author Verification**: bullets come from the matching OpenSpec `tasks.md`, runs seen in this
@@ -229,6 +239,19 @@ emoji headings exactly as written.
 
 How to fill the two testing subsections of the template. Sources are read, not guessed: only the
 runs the user agrees to are executed (Missing verification).
+
+### Needs no tests
+
+A group needs no tests when its commit type is `chore`, `build`, `ci`, `docs` or `revert` (for a
+group of several commits, every commit's type) and its diff changes no behavior. Judge from the diff,
+never from a list of paths. Behavior is executable code, tests, migrations, and files that instruct
+an agent or tool: prompts, skills, commands, hooks and workflows, even when they are Markdown, JSON
+or YAML. Prose documentation, specs, comments, manifests, lockfiles and formatting are not behavior.
+An extension is only a hint; read the change. When unsure, the group needs tests.
+
+Such a group has no verification gathered, no run offer, no question, and none of the three testing
+headings in its body. The presentation says which groups need no tests and why; the author can reply
+that one does, and the next presentation then treats it as needing tests.
 
 ### Sources of a bullet
 
@@ -261,7 +284,8 @@ repository's test command is automated.
 ### Missing verification
 
 A group has none when no source above gives a bullet with a result: no OpenSpec change, no verification
-task in `tasks.md`, a task with no recorded result, and no usable run. For these groups:
+task in `tasks.md`, a task with no recorded result, and no usable run. A group that needs no tests is
+never one of them. For these groups:
 
 1. **Offer to run.** Pick, per group, a command a repository document states (`CLAUDE.md`, README,
    `package.json` scripts, a testing page) for a directory the group's diff changes, copied as written
@@ -280,18 +304,25 @@ task in `tasks.md`, a task with no recorded result, and no usable run. For these
 
 ### How to Test This PR
 
-Suggest steps from the group's diff, its `tasks.md` and the repository's own documents. Keep a step
-only if it is one of:
+Suggest steps from the group's diff, its commit bodies, its `tasks.md`, the commands run in this
+conversation and the repository's own documents. Aim the steps at what the group changes: for a fix,
+how to confirm the fix, naming the test the group adds and the behavior it confirms; for a feature,
+how to exercise it. The repository's general test command may follow, but is not the only step when
+the group's own tests or checks can be named. Keep a step only if it is one of:
 
 1. **Checkout**: `git fetch`, then `git switch <branch>`. Always first.
-2. **Run**: a command a document states, for a directory the diff changed, copied as written with no
-   added flags. Check that every script and path in it exists in the checkout; drop the step if one does
-   not. Do not repair it.
-3. **Read**: a file in the diff and why to start there. A script no document explains gets a read step
-   at most, never a run step.
+2. **Run**: a command a document states, or a command this conversation shows was run (source
+   `chat`), for a directory the diff changed, copied as written with no added flags. A conversation
+   command follows the run rules above: it covers the diff's directory, a later edit to the group's
+   files makes it out of date, and a failed run is not a step. Check that every script and path in it
+   exists in the checkout; drop the step if one does not. Do not repair it.
+3. **Read**: a file in the diff and why to start there. A script no document explains and the
+   conversation never ran gets a read step at most, never a run step.
 
-Never invent a command or flag. Put each command in a fenced block. Delete the subsection if only the
-checkout step is left and the diff has nothing worth reading first.
+Never invent a command or flag that neither a document nor the conversation shows. A summarized
+history contributes no step. Put each command in a fenced block. Delete the subsection if only the
+checkout step is left and the diff has nothing worth reading first. A group that needs no tests has
+no steps.
 
 ### Sources
 

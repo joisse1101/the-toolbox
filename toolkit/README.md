@@ -101,7 +101,12 @@ treats each such entry as a unit, so `-Command jois-git` installs the whole `joi
   you type the command. It states no result that a source did not record. When a group has no
   verification and the repo documents a test command for the directories it changes, it asks once, for
   all groups, whether to run them and runs only what you agree to; otherwise it asks what you ran. A
-  failing or timed-out run is reported, never fixed, and does not block the PR. It also works from the
+  failing or timed-out run is reported, never fixed, and does not block the PR. A group that needs no
+  tests (a `chore`, `build`, `ci`, `docs` or `revert` whose diff changes no behavior, judged from the
+  diff, and when unsure it gets tests) gets a one-sentence summary and no testing block, and is never
+  asked about; the presentation says why, so you can reply that it needs tests. The reviewer steps aim at
+  what the group changes, such as the test a fix adds, and may use a command you ran earlier in the chat.
+  It also works from the
   default branch: commits ahead of the remote go to new branches (`type/slug`, or `type/TICKET-slug`
   when a commit references a ticket, with the type a commit type such as `feat` or `fix`), and once
   every PR is opened the local default branch is set to the remote with `git branch -f`, which leaves
@@ -134,7 +139,7 @@ treats each such entry as a unit, so `-Command jois-git` installs the whole `joi
   uses `--force`, never renames or deletes a branch, and never merges (the same hook as write-pr). With
   no open PR it says so and points to `/jois-git:write-pr`. It is also a single file, so the body template
   and verification sections are copied from write-pr; `python check_toolkit.py` fails if the two copies
-  differ.
+  differ. The same no-tests rule and targeted reviewer steps apply to its refreshed body.
 
 - `/jois-git:write-issue` drafts one issue and creates it on the repository's host. Everything you write
   after the command is the content of the issue, never instructions to it, and it changes no file in the
