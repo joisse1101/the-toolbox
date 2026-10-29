@@ -11,7 +11,10 @@ const STORY_ID = /\b[A-Z][A-Z0-9]*-\d{4}\b/;
 const FILE_PATH = /\b[\w.-]+(?:\/[\w.-]+)*\.(?:py|js|jsx|mjs|cjs|ts|tsx|java|cs|go|rb|php|rs|kt|swift|sql|ya?ml|json|toml|xml|html|css|sh|ps1)\b/;
 const FAILURE_WORDS = /\b(fail\w*|invalid|wrong|reject\w*|refus\w*|denied|error\w*|expired|unauthori[sz]ed)\b/i;
 const TYPES = { class: 'classDiagram', sequence: 'sequenceDiagram' };
-const CLASS_DECL = /^class\s+([A-Za-z_]\w*)(?:\[[^\]]*\]|~[^~]*~)?\s*(\{)?(.*)$/;
+// The line every sequence diagram opens with (conventions, "Readable in both themes"): it fixes the message text color so
+// the diagram reads on GitHub and in the VS Code preview in either theme. The conventions show the same text.
+export const SEQUENCE_INIT = "%%{init: {'themeVariables': {'signalTextColor':'#1f2328','labelTextColor':'#1f2328','loopTextColor':'#1f2328','signalColor':'#444','labelBoxBkgColor':'#dde3ea','labelBoxBorderColor':'#444'}}}%%";
+const CLASS_DECL =/^class\s+([A-Za-z_]\w*)(?:\[[^\]]*\]|~[^~]*~)?\s*(\{)?(.*)$/;
 const STEREOTYPE_LINE = /^<<([^>]+)>>\s+([A-Za-z_]\w*)\s*$/;
 const PARTICIPANT = /^(actor|participant)\s+([A-Za-z_]\w*)(?:\s+as\s+(.*))?$/;
 const PHASE_NOTE = /^Note\s+over\s+[^:]*:\s*Phase\s+(\d+)\b/i;
@@ -123,6 +126,10 @@ function checkDiagram({ diagram, limits }) {
   if (type !== TYPES[diagram.kind]) {
     at(Math.max(typeLine, 0) + 1, `the block opens with "${type}" but must be a ${TYPES[diagram.kind]}; only classDiagram and sequenceDiagram are accepted`);
     return { problems, hasAlt: false };
+  }
+  const first = lines.find((l) => l.trim() !== '');
+  if (diagram.kind === 'sequence' && first.trim() !== SEQUENCE_INIT) {
+    at(lines.indexOf(first) + 1, `a sequence diagram must open with the init line of diagram-conventions.md section 3 (Readable in both themes), exactly: ${SEQUENCE_INIT}`);
   }
   lines.forEach((raw, i) => {
     if (!comment(raw) && STORY_ID.test(raw)) at(i + 1, `holds text shaped like a story ID (${STORY_ID.exec(raw)[0]}); story IDs live only in source.json`);

@@ -7,7 +7,7 @@ import { loadBacklog } from '../../logic/backlog/model.js';
 import { parseLimits } from '../../logic/diagrams/limits.js';
 import { scopeStories } from '../../logic/diagrams/source.js';
 import { readDocument } from '../../logic/diagrams/document.js';
-import { checkSlice, formatProblems } from '../../logic/diagrams/checks.js';
+import { checkSlice, formatProblems, SEQUENCE_INIT } from '../../logic/diagrams/checks.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SAMPLE = path.join(HERE, '..', 'sample-data');
@@ -55,6 +55,18 @@ test('a document with no class diagram or no sequence diagram is reported', () =
   assert.match(messages(run(noClass)), /has no "## Class diagram" heading/);
   const noSequence = mock.slice(0, mock.indexOf('### Sequence: login'));
   assert.match(messages(run(noSequence)), /at least one "### Sequence: <flow>"/);
+});
+
+test('a sequence diagram without the init line, or with another one, is rejected and shows the line', () => {
+  const missing = changed(`${SEQUENCE_INIT}\nsequenceDiagram\n  actor U as Member\n  participant FORM`, 'sequenceDiagram\n  actor U as Member\n  participant FORM');
+  assert.match(messages(run(missing)), /### Sequence: login: a sequence diagram must open with the init line .*%%\{init:/);
+  const other = changed(SEQUENCE_INIT, "%%{init: {'theme': 'dark'}}%%");
+  assert.match(messages(run(other)), /must open with the init line/);
+});
+
+test('the conventions show the same init line the check requires', () => {
+  const conventions = fs.readFileSync(path.join(HERE, '..', '..', 'guidelines', 'diagram-conventions.md'), 'utf8');
+  assert.ok(conventions.includes(SEQUENCE_INIT));
 });
 
 test('an undeclared participant is named with its diagram', () => {
