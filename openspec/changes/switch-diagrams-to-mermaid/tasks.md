@@ -37,4 +37,4 @@
 
 - [x] 7.1 Update `planner/test/logic/diagram-checks.test.mjs`, `planner/test/claude/diagram-scripts.test.mjs` and `planner/test/claude/diagram-tools-mcp.test.mjs` wherever they build or read a slice in the old layout; verify each passes alone.
 - [x] 7.2 Run `npm test` from `planner/` and verify the whole suite, including `zones.test.mjs`, passes.
-- [ ] 7.3 Draw one slice from scratch with the updated skill (a manual check); verify the document passes `check_diagram` and renders in both viewers.
+- [x] 7.3 Draw one slice from scratch with the updated skill (a manual check); verify the document passes `check_diagram` and renders in both viewers.
