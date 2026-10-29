@@ -58,35 +58,6 @@ by a one-line summary of its title.
 - **WHEN** the host CLI returns the issue number and URL
 - **THEN** the command SHALL report `[#N](url)` and a one-line summary of the title
 
-### Requirement: Confirmation before publishing
-The command SHALL ask the user with a question offering "Create issue" and "Change something", then
-end its turn. The question SHALL stand on its own: it SHALL carry the issue type, repository, title, the
-sections the command drafted and whether the draft rests on little, and the option "Create issue" SHALL
-carry the complete body as it will be posted in its preview, so the user reads the whole issue in the
-dialog and does not depend on text written earlier in the turn. It SHALL create the issue only when the
-user selects "Create issue". Free text, including "looks good" or "yes", SHALL NOT create the issue.
-After "Change something" the command SHALL revise, scan the changed text again and ask again.
-
-#### Scenario: Issue readable in the dialog
-- **WHEN** the command asks for confirmation
-- **THEN** the dialog SHALL show the title and the complete body without the user scrolling back to earlier text
-
-#### Scenario: Draft not shown before the question
-- **WHEN** the command writes its reply and the question in the same turn
-- **THEN** the user SHALL still be able to read the whole issue in the dialog
-
-#### Scenario: Create selected
-- **WHEN** the user selects "Create issue"
-- **THEN** the command SHALL create the issue and report it
-
-#### Scenario: Approval typed as free text
-- **WHEN** the user replies "looks good" as free text instead of selecting an option
-- **THEN** the command SHALL NOT create the issue and SHALL ask the question again
-
-#### Scenario: Change requested
-- **WHEN** the user selects "Change something" and asks to reword the summary
-- **THEN** the command SHALL revise, present again with the same two options and create nothing
-
 ## RENAMED Requirements
 
 - FROM: `### Requirement: Missing required content is asked for once`
@@ -194,6 +165,30 @@ subject and summary, not the type or scope of the title.
 - **WHEN** the title is `fix(toolkit): crash on empty remote`
 - **THEN** the search terms SHALL come from `crash on empty remote` and SHALL NOT include `fix` or `toolkit` as such
 
+### Requirement: Confirmation word before publishing
+The command SHALL print the issue type, repository, title and complete body, plus the sections it
+drafted and whether a draft rests on little, as plain text in its reply, name a confirmation word, and
+end its turn without calling any tool, so the user reads the whole issue before choosing. It SHALL
+create the issue only when the user's next message is that word. A different reply SHALL NOT create the
+issue; after a change request the command SHALL revise, scan the changed text again, present again and
+name a new word. The word SHALL differ from the one in its previous prompt.
+
+#### Scenario: Word typed
+- **WHEN** the user replies with the confirmation word from the latest prompt
+- **THEN** the command SHALL create the issue and report it
+
+#### Scenario: Approval without the word
+- **WHEN** the user replies "looks good"
+- **THEN** the command SHALL NOT create the issue and SHALL restate the word
+
+#### Scenario: Change requested
+- **WHEN** the user asks to reword the summary instead of confirming
+- **THEN** the command SHALL revise, present again with a different word and create nothing
+
+#### Scenario: Whole issue readable
+- **WHEN** the command asks for confirmation
+- **THEN** the complete issue SHALL be in the reply as plain text and no dialog SHALL be opened over it
+
 ### Requirement: Body passed from a file
 The command SHALL write the issue body to a temporary file outside the repository with the
 file-writing tool and SHALL pass it to the host CLI from that file, with the file path quoted in the
@@ -247,9 +242,3 @@ The title SHALL be at most 70 characters and SHALL contain no quotes and no `$`.
 #### Scenario: Long title
 - **WHEN** the natural title would run past 70 characters
 - **THEN** the command SHALL shorten the subject and keep the detail in the body
-
-## REMOVED Requirements
-
-### Requirement: Confirmation word before publishing
-**Reason**: Confirmation by a typed word is heavier than the action needs, since an issue is easy to edit or close later. "Confirmation before publishing" replaces it with a question that offers "Create issue" and "Change something".
-**Migration**: Select "Create issue" in the question instead of typing the word. Free text still creates nothing.

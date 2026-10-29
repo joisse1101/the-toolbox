@@ -150,8 +150,8 @@ treats each such entry as a unit, so `-Command jois-git` installs the whole `joi
   Considered, Design / Visuals and Technical Considerations / Security on a feature, Testing &
   Verification and Dependencies / Blockers on a task) are left out, heading included. It titles the issue
   like a commit (`fix:`, `feat(scope):`, `chore:`, at most 70 characters), scans the draft for secrets,
-  then shows the whole issue inside the confirmation dialog and creates it only when you select "Create
-  issue", passing the body from a file.
+  then prints the whole issue and creates it only when you type its confirmation word, passing the body
+  from a file.
   It reports the issue as a link.
   It only creates: no labels, assignees, milestones, closing or comments. `glab` is needed only for GitLab
   repos, and its flags are checked against the GitLab CLI docs, not run.

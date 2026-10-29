@@ -29,23 +29,23 @@ to be wording in the command, backed by a spec scenario.
   outside the repo is the one exception. `Write` stays needed for it, and `allowed-tools` cannot scope it
   by path, so the rule is text only.
 - **Step order:** host check, duplicate search (terms from the description), type, template, compose
-  (draft gaps, ask only when nothing supports a draft), scan, present with `AskUserQuestion`, create,
-  report. The search re-runs after a revision only when the subject or summary changed.
+  (draft gaps, ask only when nothing supports a draft), scan, print the issue and stop for the
+  confirmation word, create, report. The search re-runs after a revision only when the subject or summary changed.
 - **Drafted sections are flagged in the presentation only.** The posted body never carries a marker or a
   placeholder, as the optional-section rule already forbids.
-- **`AskUserQuestion` replaces the typed word.** Options "Create issue" and "Change something". The
-  "never create before confirmation" rule stays explicit in the text. Free text does not create.
-- **The dialog is self-contained.** The dialog can cover text written earlier in the same turn, so the
-  question carries the type, repository, title and drafted-section note, and the preview of "Create
-  issue" carries the complete body. *Alternative:* print the draft, end the turn, ask on the next
-  message; rejected as an extra reply on every issue. *Alternative:* plan mode's approval dialog;
-  untested, and its options can switch the session to auto-accept edits, so left for a spike.
+- **The typed confirmation word stays, and the issue is printed as plain text.** The command prints the
+  whole issue, names a word and ends the turn with no tool call; the next message with that word
+  creates it, so the issue is created in one reply. *Alternative tried:* an `AskUserQuestion` with the
+  body in the preview of "Create issue"; in a real run the preview hid 5 lines, and the dialog can
+  cover text written earlier in the turn, so the user chose without reading the whole draft. *Alternative:*
+  plan mode's approval dialog; untested, and its options can switch the session to auto-accept edits.
+  This reverses #16 item 7, whose own Alternatives Considered names the typed word as the stricter option.
 - **Grounding is a duty, not an option.** Before drafting a required section, the command reads the
   files or folders the request points at, so drafts fit the existing code; with nothing to read it says
   the draft rests on little.
-- **Code reads use `Read`, `Glob` and `Grep`,** added to `allowed-tools` along with `AskUserQuestion`;
+- **Code reads use `Read`, `Glob` and `Grep`,** added to `allowed-tools`;
   text taken from code goes through the existing scan. Glob replaces `ls` for template lookup.
-- **Version 1.2.0,** `last_updated` set to the day of the change.
+- **Version 1.2.2,** `last_updated` set to the day of the change.
 
 ## Risks / Trade-offs
 
@@ -55,7 +55,5 @@ to be wording in the command, backed by a spec scenario.
   drafted-sections note at confirmation, and asks when nothing supports a draft.
 - [Wider `allowed-tools` lets the model read secrets from code] -> The scan covers anything that goes
   into the draft, and the user reads the whole body at confirmation.
-- [The preview pane may render a long body poorly] -> Check with a long issue in the manual run (task
-  3.3); fall back to printing the draft and asking on the next message if it is unreadable.
-- [`AskUserQuestion` makes confirmation easier to click through] -> Acceptable: an issue is easy to edit
-  or close, unlike a commit.
+- [A typed word is heavier than a click] -> Accepted: the word is one reply, the whole issue is on
+  screen when it is typed, and it matches the commit rule.
