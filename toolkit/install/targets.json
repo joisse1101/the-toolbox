@@ -11,6 +11,10 @@
     "rules": {
       "global": "~/.claude/rules",
       "project": ".claude/rules"
+    },
+    "agents": {
+      "global": "~/.claude/agents",
+      "project": ".claude/agents"
     }
   }
 }

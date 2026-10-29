@@ -1,4 +1,4 @@
-"""Checks that the toolkit's rules, skills and commands still follow its own standards.
+"""Checks that the toolkit's rules, skills, agents and commands still follow its own standards.
 
 Standalone: plain standard library, run `python check_toolkit.py` from this folder (or pass
 `--root <toolkit folder>`). Exits 1 and prints one `file:line: message` per problem, else prints a
@@ -10,6 +10,7 @@ Checks:
   3. `metadata.version` and `metadata.last_updated` on every skill, rule, agent and jois-git or jois-init command
   4. every slash command carries `disable-model-invocation: true`
   5. the PR body template and Author Verification sections of write-pr and update-pr match
+  6. every agent declares `tools` (an omitted list inherits every tool)
 """
 
 from __future__ import annotations
@@ -176,6 +177,16 @@ def _check_versions(root: Path) -> list[str]:
     return problems
 
 
+def _check_agents_have_tools(root: Path) -> list[str]:
+    """An agent without a `tools` field inherits every tool, so each one must list its own."""
+    problems = []
+    for path in sorted((root / "agents").glob("*.md")):
+        frontmatter = _frontmatter(path.read_text(encoding="utf-8")) or ""
+        if not re.search(r"^tools:[ \t]*\S", frontmatter, re.MULTILINE):
+            problems.append(f"{_rel(root, path)}: missing `tools` in the frontmatter (an omitted list inherits every tool)")
+    return problems
+
+
 def _h2_section(text: str, title: str) -> str | None:
     """The text under `## title` up to the next `## ` heading outside a code fence, or None."""
     body: list[str] = []
@@ -218,6 +229,7 @@ def check_toolkit(root: Path) -> list[str]:
         + _check_versions(root)
         + _check_commands_hidden(root)
         + _check_shared_pr_sections(root)
+        + _check_agents_have_tools(root)
     )
 
 
