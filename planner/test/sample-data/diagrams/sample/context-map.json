@@ -1,0 +1,28 @@
+{
+  "contexts": [
+    {
+      "name": "Accounts",
+      "purpose": "Who a member is and how they sign in",
+      "owner": "Platform team",
+      "epics": [
+        "Identity and access"
+      ]
+    },
+    {
+      "name": "Insight",
+      "purpose": "What analysts export and read",
+      "owner": "TBC",
+      "epics": [
+        "Reporting"
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "from": "Accounts",
+      "to": "Insight",
+      "type": "customer-supplier",
+      "crosses": "Member id and display name"
+    }
+  ]
+}

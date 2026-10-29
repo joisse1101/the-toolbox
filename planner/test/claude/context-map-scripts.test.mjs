@@ -124,3 +124,17 @@ test('read_diagrams does not list the map as a slice', async () => {
   const list = readDiagrams({ dataDir: root, name: 'sample' });
   assert.deepEqual(list.slices.map((s) => s.slice), ['sign-in']);
 });
+
+test('the committed sample map passes the checks and the parser, matches its composed document, and is up to date', async () => {
+  const sampleDir = path.join(SAMPLE, 'diagrams', 'sample');
+  const source = JSON.parse(fs.readFileSync(path.join(sampleDir, 'context-map.json'), 'utf8'));
+  const checked = await checkContextMap({ dataDir: SAMPLE, name: 'sample', ...source });
+  assert.equal(checked.ok, true, checked.errors?.join('\n'));
+  const root = setup();
+  assert.equal((await writeContextMap({ dataDir: root, name: 'sample', ...source })).ok, true);
+  for (const file of ['context-map.json', 'context-map.md']) {
+    assert.equal(fs.readFileSync(path.join(dirOf(root), file), 'utf8').replace(/\r\n/g, '\n'), fs.readFileSync(path.join(sampleDir, file), 'utf8').replace(/\r\n/g, '\n'), file);
+  }
+  const read = readContextMap({ dataDir: SAMPLE, name: 'sample' });
+  assert.deepEqual([read.exists, read.missing, read.unknown], [true, [], []]);
+});

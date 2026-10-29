@@ -126,6 +126,7 @@ test('the map tools: read says none, check writes nothing, write is read back an
   const root = temp();
   const client = await connect(root);
   const dir = path.join(root, 'diagrams', 'sample');
+  for (const f of ['context-map.json', 'context-map.md']) fs.rmSync(path.join(dir, f)); // the sample ships a map; this test starts without one
   const mapFiles = () => fs.readdirSync(dir).filter((f) => f.startsWith('context-map')).sort();
   try {
     assert.match(textOf(await call(client, 'read_context_map', { backlog: 'sample.csv' })), /no context map/);
