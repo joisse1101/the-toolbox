@@ -41,6 +41,13 @@ A slice SHALL be a folder `planner/data/diagrams/<backlog>/<slice>/` holding `so
 - **WHEN** a file other than `UC-<slice>.md` is submitted for a slice
 - **THEN** the check rejects it, names the file and says a slice is one document plus `source.json`
 
+### Requirement: Readable in both themes
+Every sequence diagram SHALL open with the one init line that the conventions give, which fixes the color of the message text to suit the phase fill, so that the diagram reads on GitHub and in the VS Code markdown preview in both their light and dark themes. The conventions SHALL show the line and the phase fill it goes with.
+
+#### Scenario: Sequence diagram without the init line
+- **WHEN** a sequence diagram does not open with the init line, or opens with a different one
+- **THEN** the check rejects the document, names the diagram and shows the line it must open with
+
 ## MODIFIED Requirements
 
 ### Requirement: Single source of diagram rules
