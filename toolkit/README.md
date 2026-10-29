@@ -1,8 +1,8 @@
 # Toolkit
 
-Reusable AI-agent skills, slash commands and rules, kept in one place so they have version history and can
-be put on any machine or project. Nothing here depends on a vendor's plugin marketplace: a skill or
-command or rule is just files, and the script below only automates copying them.
+Reusable AI-agent skills, slash commands, rules and agents, kept in one place so they have version history
+and can be put on any machine or project. Nothing here depends on a vendor's plugin marketplace: a skill,
+command, rule or agent is just files, and the script below only automates copying them.
 
 Claude Code is the only supported tool today.
 
@@ -16,7 +16,7 @@ Claude Code is the only supported tool today.
    .\Install-Toolkit.ps1
    ```
 
-3. Start a new Claude Code session; the skills, commands and rules are now available.
+3. Start a new Claude Code session; the skills, commands, rules and agents are now available.
 
 Other things the script does:
 
@@ -24,15 +24,17 @@ Other things the script does:
 .\Install-Toolkit.ps1 -List                                   # what's installed, has it drifted, which versions?
 .\Install-Toolkit.ps1 -Command jois-git                       # just one command item
 .\Install-Toolkit.ps1 -Rule jois-code-java.md                           # just one rule
+.\Install-Toolkit.ps1 -Agent opsx-task-applier.md             # just one agent
 .\Install-Toolkit.ps1 -Scope project -Path C:\code\my-app     # into a project instead of globally
 .\Install-Toolkit.ps1 -Force                                  # overwrite a copy that differs
 .\Install-Toolkit.ps1 -Uninstall                              # remove toolkit items (only those)
 ```
 
-Passing `-Skill`, `-Command` and/or `-Rule` limits the run to those items. An item already installed that
-differs from the toolkit's copy is never overwritten unless you pass `-Force`; `-List` shows it as
-`differs`. The script writes only inside the skills, commands and rules folders — it never touches
-`settings.json` or hooks.
+Passing `-Skill`, `-Command`, `-Rule` and/or `-Agent` limits the run to those items. An item already
+installed that differs from the toolkit's copy is never overwritten unless you pass `-Force`; `-List`
+shows it as `differs`. The script writes only inside the skills, commands, rules and agents folders — it
+never touches `settings.json` or hooks. Uninstall removes only items the toolkit holds, so the other
+agents in `~/.claude/agents/` stay.
 
 ## Naming
 
@@ -183,13 +185,37 @@ project), and:
 - reads the global `workflows` and, only when `apply` or `archive` is missing (the guidance would
   not take effect), offers to add it as a separate optional question;
 - reports when `~/.claude/rules/jois-git-commit-hygiene.md` is not installed;
-- ends with one line, e.g. `OpenSpec 1.x | openspec/ present | workflows=ok | guidance: added | commit rule: found`.
+- reports when the `opsx-task-applier` agent is in neither `~/.claude/agents/` nor the project's
+  `.claude/agents/`, and names `Install-Toolkit.ps1`; it never copies the agent itself;
+- ends with one line, e.g. `OpenSpec 1.x | openspec/ present | workflows=ok | guidance: added | commit rule: found | task agent: found`.
 
 It never changes the global `delivery` and never runs `openspec update`.
 
 The guidance only points at the `jois-git-commit-hygiene` rule, which holds the steps; it is advisory,
 and the rule is what enforces them. Accepted losses: the generated `/opsx:*` commands show in the skill
 list, and archive's git commands prompt for permission.
+
+### The task agent
+
+The `operations.apply` guidance also asks the main session to hand each task to the `opsx-task-applier`
+agent, one at a time. The task's working detail then stays in the agent's own context, and the main
+conversation keeps one announcement before each task and one line after it. Before each dispatch the
+session says the task, the files it expects to touch, a rough time estimate labeled as an estimate,
+that there is no live timer, how to open the agent's transcript (its row in the agent panel then Enter,
+or `/tasks`) and the agent's turn limit. After each report it says whether the task is done, failed or
+blocked. The ticks in `tasks.md` are the progress across tasks, the transcript the view inside one.
+
+The agent's report lists the changed files, each command with the result and counts its output showed,
+the manual checks, what it could not verify, and one `result:` clause. The main session copies that
+clause verbatim into the task's line in `tasks.md`, where `/jois-git:write-pr` already reads it for
+Author Verification. The agent never edits `tasks.md`; when a task needs a decision it cannot make it
+ends with `blocked: <question>` and the main session asks you.
+
+This is advisory, not enforced: the guidance asks the main session to delegate and nothing forces it
+to. What is enforced is inside the agent: its tool list, its turn limit (`maxTurns`) and two hooks that
+block `git commit`, `git push` and `gh`, and an edit of a change's `tasks.md`. The hooks look at the
+direct command, so a `gh` call hidden inside a script is not caught; the main session's commit stop is
+the backstop. Tasks run one at a time, never in parallel, because the agents share one checkout.
 
 ## Rules
 
@@ -210,9 +236,18 @@ Java, Python, config files, scripts). Rules have no size limit; they are written
 squeezed. The unscoped `jois-git-commit-hygiene` rule keeps commits to one concern and requires the user's
 confirmation word before Claude commits. Use `-Scope project` to keep the rules out of unrelated projects. A project's own `CLAUDE.md` takes precedence.
 
+## Agents
+
+Each `.md` file directly under `toolkit/agents/` is one Claude Code agent: a file with `name`,
+`description` and `tools` frontmatter (an agent without `tools` inherits every tool, so
+`python check_toolkit.py` fails on one), then the instructions. The installer treats each file as a
+unit, so `-Agent opsx-task-applier.md` installs one. The toolkit ships `opsx-task-applier` (see
+[The task agent](#the-task-agent)); other agents in `~/.claude/agents/` are not the toolkit's and are
+never touched.
+
 ## Versions
 
-Every skill, rule and `jois-git` command declares its version in a `metadata:` map in its
+Every skill, rule, agent and `jois-git` command declares its version in a `metadata:` map in its
 frontmatter, as the Agent Skills format keeps it. Both keys are strings and are bumped by hand
 whenever the item's guidance changes: `version` is semver (`MAJOR.MINOR.PATCH`) and `last_updated`
 is the date of the change.
@@ -247,7 +282,7 @@ computed. The installer dot-sources it, and you can run it on any skill folder, 
 
 ## Checks
 
-`check_toolkit.py` verifies the toolkit against its own standards: rule scoping, versions, the `disable-model-invocation` flag, and the write-pr/update-pr shared sections. It
+`check_toolkit.py` verifies the toolkit against its own standards: rule scoping, versions, the `disable-model-invocation` flag, the write-pr/update-pr shared sections, and a `tools` list on every agent. It
 uses only the Python standard library; only the tests need a package (`pytest`, listed in
 `requirements.txt`). Set up a virtual environment once, then run both from this folder:
 
@@ -264,7 +299,7 @@ python -m pytest        # tests/ covers the checker
 
 ## Specs and history
 
-The root `openspec/` holds the OpenSpec specs for the toolkit's skills, commands and rules (`toolkit-*`,
+The root `openspec/` holds the OpenSpec specs for the toolkit's skills, commands, rules and agents (`toolkit-*`,
 `jois-stage`), and the changes that shaped them, next to the planner's. It is documentation only: the installer never copies it. The `/opsx:*` commands need the
 `openspec` CLI, and the `jois-git` commands need `git` and `gh` (`/jois-git:write-issue` also uses `glab` on GitLab repos).
 
@@ -272,10 +307,10 @@ The root `openspec/` holds the OpenSpec specs for the toolkit's skills, commands
 
 Copy into the folder your tool reads from:
 
-| Tool | Scope | Skills | Commands | Rules |
-|---|---|---|---|---|
-| Claude Code | Global | `~/.claude/skills/<name>/` | `~/.claude/commands/<entry>` | `~/.claude/rules/<name>.md` |
-| Claude Code | Per project | `<project>/.claude/skills/<name>/` | `<project>/.claude/commands/<entry>` | `<project>/.claude/rules/<name>.md` |
+| Tool | Scope | Skills | Commands | Rules | Agents |
+|---|---|---|---|---|---|
+| Claude Code | Global | `~/.claude/skills/<name>/` | `~/.claude/commands/<entry>` | `~/.claude/rules/<name>.md` | `~/.claude/agents/<name>.md` |
+| Claude Code | Per project | `<project>/.claude/skills/<name>/` | `<project>/.claude/commands/<entry>` | `<project>/.claude/rules/<name>.md` | `<project>/.claude/agents/<name>.md` |
 
 For example, on Windows: copy `toolkit
 ules\jois-code-python.md` to
