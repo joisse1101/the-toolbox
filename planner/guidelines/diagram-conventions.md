@@ -2,7 +2,8 @@
 
 The single statement of the rules for a **slice**: the use-case specification, class diagram and
 sequence diagrams drawn from the shaped stories of one Epic, one Feature or one story. The
-`plan-stories` skill and `check_diagram` cite this file and do not restate it. A mock slice built from the sample backlog is in
+`plan-stories` skill and `check_diagram` cite this file and do not restate it. Every slice is drawn to the
+design level of section 8. A mock slice built from the sample backlog is in
 `planner/test/sample-data/diagrams/sample/sign-in/`.
 
 ## 1. Limits and stereotypes
@@ -61,7 +62,13 @@ they are kept only here, healed by Title on read, and **never written in a diagr
   in its label, `participant ID as «stereotype»<br/>Name`. An `actor` needs none. The stereotype is one
   of section 1's.
 - **Shared classes.** The slice that owns an entity (its Epic) draws it in full. Another slice shows a
-  stub: the stereotype and the name, with a `note for <class> "(see <slice>)"` and no members.
+  stub: the stereotype and the name, with a `note for <class> "(see <slice>)"` and no members. A stub shows
+  only the root of an aggregate that another slice owns.
+- **Aggregate boundary.** Each `root entity` is drawn inside a `namespace <Root>Aggregate { ... }` (for
+  example `MemberAggregate`) together with the classes it owns. The rule the aggregate protects is one line
+  right after the namespace, `note for <Root> "Rule: <rule>"`. A class outside the namespace has a
+  relationship only to the root, never to an inner class. The namespace is not a class and does not count
+  toward `maxClasses`. The rule is also a row of `## Design decisions`.
 - **Phases.** A phase is a `rect` block whose first line is `Note over <participants>: Phase <n> - <name>`,
   filled `rect rgb(235, 242, 250)`.
 - **Readable in both themes.** GitHub and the VS Code preview pick their own text color for the page's
@@ -84,8 +91,10 @@ they are kept only here, healed by Title on read, and **never written in a diagr
 
 Sections, in this order, with these exact headings: the title line `# UC-<slice> - <name>`, a header
 table, **Stories**, `## Description`, `## Preconditions`, `## Main flow`,
-`## Alternative and exception flows`, `## Postconditions`, `## Acceptance criteria`,
-`## Implementation overview`, `## Traceability`, `## Class diagram`, `## Sequence diagrams`.
+`## Alternative and exception flows`, `## Postconditions`, `## Acceptance criteria`, `## Class diagram`,
+`## Sequence diagrams`, `## Design decisions`, `## Interface contracts`, `## Failure responses`,
+`## Non-functional and security rules`, `## Open questions`, `## Implementation overview`,
+`## Traceability`.
 
 - `## Class diagram` holds exactly one `mermaid` block. `## Sequence diagrams` holds one
   `### Sequence: <flow>` heading per flow (`<flow>` a lowercase slug), each with exactly one `mermaid`
@@ -95,17 +104,28 @@ table, **Stories**, `## Description`, `## Preconditions`, `## Main flow`,
 - **Stories** is the generated block `<!-- stories:start -->` ... `<!-- stories:end -->`, one
   `- <id> <Title>` line per story. `read_diagrams` and `write_diagram` regenerate it from `source.json`;
   the model writes it empty (the two markers) and never edits inside.
-- The Acceptance criteria table is `| AC id | Story | Path | Flow | Given / when / then |`. Every criterion
-  of every story in scope is one row: `AC id` is `AC-<slice>-<name>` (kebab-case, unique), `Story` the
-  Title, `Path` `main` or `failure`, `Flow` the `<flow>` of the `### Sequence: <flow>` heading that draws it, and the
-  last cell the criterion text **verbatim** (after its `AC<n>:` label). A `failure` row needs an `alt`
-  in that flow's diagram.
+- The Acceptance criteria table is `| AC id | Story | Path | Flow | Given / when / then | Steps |`. Every
+  criterion of every story in scope is one row: `AC id` is `AC-<slice>-<name>` (kebab-case, unique),
+  `Story` the Title, `Path` `main` or `failure`, `Flow` the `<flow>` of the `### Sequence: <flow>` heading
+  that draws it, the criterion text **verbatim** (after its `AC<n>:` label), and `Steps` the step ids of
+  that flow's diagram that realise it (`1.2, 1.4`). A `failure` row needs an `alt` in that flow's diagram,
+  and every id in `Steps` must exist in it.
+- The five design sections are tables, each present and not empty (one that does not apply says so):
+  - `## Design decisions`: `| D id | Decision | Alternatives | Why | Source | Steps |`. `Source` is
+    `user-confirmed`, `repo` (only with a repo) or `TBC`.
+  - `## Interface contracts`: per flow, `| Flow | Method and path or message | Request | Success response | Steps |`.
+  - `## Failure responses`: `| Failure | Trigger | Client response | AC id | Step |`; every `AC id` is a row
+    of the Acceptance criteria table.
+  - `## Non-functional and security rules`: `| Rule | Source | Steps |`.
+  - `## Open questions`: `| Item | Blocking |`, `Blocking` being `yes` or `no`.
 
-## 5. Analysis level and repo level
+## 5. Limits without a repo, and with one
 
-Without a repo the slice is **analysis level**: no file path, library or infrastructure element that no
-story names and the user has not confirmed, no file path in a boundary label, `Maturity` is
-`planned`, and `## Implementation overview` and `## Traceability` read `TBC`.
+Without a repo the slice is still design-level (section 8); what differs is where the detail comes from:
+the user, by question. It names no file path, library or infrastructure element that no story names and the
+user has not confirmed (a path appears only if the user states it), `Maturity` is `planned`, and
+`## Implementation overview` and `## Traceability` read `TBC`. Technology the user confirms is recorded as
+a `user-confirmed` row of `## Design decisions` and may then be drawn.
 
 With a repo (`repo_tree`, `repo_grep`, `repo_read` in the session) a traceability row
 `| Step | What | Code |` names a `` `file::symbol` `` that `repo_read` returned in this session; a path the session
@@ -124,3 +144,26 @@ are tuned in section 1.
 Open `UC-<slice>.md` on GitHub, which draws a `mermaid` fence in place, or in the built-in VS Code
 markdown preview (checked on VS Code 1.143.1), which needs no extension. Nothing is sent to a render
 server and no Java or Graphviz is needed.
+
+## 8. Design level
+
+Every slice is **design-level and implementation-bound**, with or without a repo: a developer can implement
+from it and a tester can derive test cases from it. A conceptual diagram (generic verbs such as "log in",
+no boundary, no stated outcome of a failure) is a defect. Self-check before a slice is shown: could a
+developer implement this and a tester derive cases from it? If not, go down a level.
+
+Every flow states, or records in its row that it does not apply:
+
+- the entry contract (method and path, or message, and the payload);
+- the validation layer;
+- the owner of credential or rule verification;
+- the datastores and ports it uses;
+- any session or token artifact and how it is delivered;
+- each failure with the response the client receives;
+- the security behaviour;
+- the redirect or hand-off target.
+
+Each distinct failure has its own `alt` branch and its own row of `## Failure responses`. Not found, wrong
+credential, inactive, invalid input and rate limited are prompts, not a closed list. Two failures share a
+branch only when the user (at repo level, the code) says their responses are deliberately the same, and the
+row says so.
