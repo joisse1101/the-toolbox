@@ -4,8 +4,8 @@ description: Draft a bug, feature or task issue from the team templates and crea
 disable-model-invocation: true
 allowed-tools: Bash(git remote get-url:*), Bash(git rev-parse:*), Bash(gh repo view:*), Bash(gh issue list:*), Bash(gh issue create:*), Bash(glab repo view:*), Bash(glab issue list:*), Bash(glab issue create:*)
 metadata:
-  version: "1.0.0"
-  last_updated: "2026-10-28"
+  version: "1.1.0"
+  last_updated: "2026-10-29"
 ---
 
 # Write an issue
@@ -40,12 +40,18 @@ repository's host. The templates are in the sections below the steps.
    section yourself.
 5. **Compose.** Fill the template from what the user gave. Leave out an optional section, heading
    included, when nothing was supplied for it. In Environment, list only entries that have a value.
-   Write a title of one plain line that names the problem, request or work.
+   Write the title as one line in the commit form `type(scope): subject`:
+   - The type defaults from the issue type: bug `fix`, feature `feat`, task `chore`. Use another type
+     from feat, fix, refactor, perf, style, docs, test, build, ci, chore, revert when it fits better.
+   - The `(scope)` is optional. Add one only when the user names it or the description clearly points to
+     one area; never invent one.
+   - The subject names the problem, request or work, in lowercase and imperative, with no trailing
+     period. The whole title is lowercase.
 6. **Scan.** Check the title and body, the Screenshots / Logs section above all, for secrets: tokens,
    API keys, private keys, passwords, connection strings with credentials and `.env` contents. On a
    hit, do not present. Name the line and ask for a redacted version, then end the turn. The scan
    is a first filter: the user still reads the whole body.
-7. **Duplicates.** Search open issues for the key terms of the title and summary:
+7. **Duplicates.** Search open issues for the key terms of the title's subject and the summary, not the type or scope:
    - `gh issue list --search "<terms>" --state open`
    - `glab issue list --search "<terms>"` (open issues by default)
 
