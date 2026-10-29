@@ -5,7 +5,7 @@
 #   scope    ONE argument: an Epic name, "Epic > Feature", a story ID of the backlog (IAM-0004) or free text; quote it when it has spaces; asked for when missing
 #   -Repo    the folder of the existing solution, read-only, to ground the diagrams in; stored in planner/data/diagrams/<backlog>/repo.json
 #            (git-ignored) and used again by later sessions that do not pass it. The "exclude" list of that file is yours to edit and is
-#            kept. Without a repo the session draws at analysis level.
+#            kept. Without a repo the session is still design-level and asks you for the detail.
 # It refuses an unknown backlog, an empty scope, a story ID that is not in the backlog and a -Repo that is not a folder before Claude starts.
 # Starts in /plan-stories with both filled in. Tools are limited to backlog-tools --read-only (read_context, search_stories, read_file),
 # diagram-tools (read_diagrams, check_diagram, write_diagram, and repo_tree, repo_grep, repo_read when a repo is set), Skill and
