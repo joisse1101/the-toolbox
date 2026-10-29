@@ -17,7 +17,7 @@
 
 - [x] 3.1 Update the write-issue paragraph in `toolkit/README.md` (gaps, confirmation, duplicate search order, code reads); verify by reading it against the command
 - [x] 3.2 Run `python check_toolkit.py` and `python -m pytest` from `toolkit/` and `openspec validate improve-write-issue --strict`; all pass
-- [ ] 3.3 Run the command by hand with an imperative description about the command itself, and with a feature request that has no alternatives; verify it writes one issue each time and edits no file; use a long issue and check the whole issue is on screen before the word is asked
+- [x] 3.3 Run the command by hand with an imperative description about the command itself, and with a feature request that has no alternatives; verify it writes one issue each time and edits no file; use a long issue and check the whole issue is on screen before the word is asked
 
 ## 4. Follow-up: self-contained confirmation and grounding
 
