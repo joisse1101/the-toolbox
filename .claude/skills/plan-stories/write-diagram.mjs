@@ -1,7 +1,7 @@
-// Checks and writes one slice for the diagram-tools server: planner/data/diagrams/<backlog>/<slice>/ with the use-case
-// specification, the class diagram, the sequence diagrams and source.json. checkDiagram and writeDiagram run the same
-// preparation and the same checks (planner/logic/diagrams/checks.js), so a slice that passes one is accepted by the other;
-// only writeDiagram writes. The stories come as { id, title } pairs, as for the backlog tools, and the story hashes are
+// Checks and writes one slice for the diagram-tools server: planner/data/diagrams/<backlog>/<slice>/ with the one document
+// UC-<slice>.md (specification and Mermaid diagrams) and source.json. checkDiagram and writeDiagram run the same
+// preparation, the same structural checks (planner/logic/diagrams/checks.js) and Mermaid's own parser on every diagram, so
+// a slice that passes one is accepted by the other; only writeDiagram writes. The stories come as { id, title } pairs, as for the backlog tools, and the story hashes are
 // computed here, never taken from the caller.
 
 import fs from 'node:fs';
@@ -10,9 +10,10 @@ import { createRequire } from 'node:module';
 import { resolveStoryRef } from '../../../planner/logic/backlog/story-ref.js';
 import { parseLimits } from '../../../planner/logic/diagrams/limits.js';
 import { buildSource, scopeStories, applyStoriesBlock } from '../../../planner/logic/diagrams/source.js';
-import { checkSlice, diagramNames, formatProblems } from '../../../planner/logic/diagrams/checks.js';
+import { checkSlice, formatProblems } from '../../../planner/logic/diagrams/checks.js';
 import { writeAtomic } from '../_shared/write-atomic.mjs';
-import { loadStories, listSlices, slicePath, readSliceFolder, readConventions, scopeText, SOURCE_FILE } from './read-diagrams.mjs';
+import { loadStories, slicePath, readSliceFolder, readConventions, scopeText, SOURCE_FILE } from './read-diagrams.mjs';
+import { parseMermaid } from './parse-mermaid.mjs';
 
 const require = createRequire(import.meta.url);
 const { logWrite } = require('../../../planner/logic/storage/write-log.cjs');
@@ -43,7 +44,7 @@ function cleanScope(scope) {
 
 // Everything both tools need, or { ok: false, errors } naming every problem found.
 //   input: { name, slice, scope, stories: [{ id, title }], files: [{ name, content }], repo?: { readPaths: Set } }
-function prepare({ dataDir = DATA_DIR, guidelinesDir = GUIDELINES_DIR, name, slice, scope: rawScope, stories: pairs, files: fileList, repo = null, now = () => new Date().toISOString() }) {
+async function prepare({ dataDir = DATA_DIR, guidelinesDir = GUIDELINES_DIR, name, slice, scope: rawScope, stories: pairs, files: fileList, repo = null, now = () => new Date().toISOString() }) {
   const loaded = loadStories({ dataDir, name });
   if (!loaded.ok) return loaded;
   const errors = [];
@@ -81,37 +82,35 @@ function prepare({ dataDir = DATA_DIR, guidelinesDir = GUIDELINES_DIR, name, sli
     return { ok: false, errors: [`The slice "${slice}" already exists for another scope (${scopeText(existing.source.scope)}); it is not overwritten. Choose another slice name.`] };
   }
 
-  const otherNames = new Map();
-  for (const other of listSlices(loaded.dir).filter((s) => s !== slice)) {
-    const otherFiles = readSliceFolder(path.join(loaded.dir, other)).files;
-    for (const [n, f] of diagramNames(otherFiles)) otherNames.set(n, `${other}/${f}`);
-  }
-
   let limits;
   try {
     limits = parseLimits(readConventions({ guidelinesDir }));
   } catch (err) {
     return { ok: false, errors: [err.message] };
   }
-  const checked = checkSlice({ backlog: loaded.base, slice, files, stories: inScope, limits, otherNames, repo });
-  if (!checked.ok) return { ok: false, errors: formatProblems(checked.problems) };
+  const checked = checkSlice({ slice, files, stories: inScope, limits, repo });
+  const specName = `UC-${slice}.md`;
+  const parsed = await Promise.all(checked.diagrams.map(async (d) => ({ d, result: await parseMermaid(d.text) })));
+  const parserProblems = parsed.filter(({ result }) => !result.ok).map(({ d, result }) => ({ file: specName, line: d.line + (result.line ?? 0), message: `${d.heading}: does not parse as Mermaid: ${result.message}` }));
+  const all = [...checked.problems, ...parserProblems];
+  if (all.length) return { ok: false, errors: formatProblems(all) };
   return { ok: true, loaded, sliceDir, slice, scope, inScope, files, existing, now };
 }
 
 const problemsText = (errors) => `Nothing was written. ${errors.length} problem${errors.length === 1 ? '' : 's'}:\n${errors.map((e) => `- ${e}`).join('\n')}`;
 
 // -> { ok: true, text } | { ok: false, errors }. Writes nothing.
-export function checkDiagram(input) {
-  const p = prepare(input);
+export async function checkDiagram(input) {
+  const p = await prepare(input);
   if (!p.ok) return p;
-  return { ok: true, text: `Check passed; nothing was written. ${Object.keys(p.files).length} file${Object.keys(p.files).length === 1 ? '' : 's'} of the slice "${p.slice}" (${scopeText(p.scope)}, ${p.inScope.length} stor${p.inScope.length === 1 ? 'y' : 'ies'}) meet the conventions.` };
+  return { ok: true, text: `Check passed; nothing was written. The document of the slice "${p.slice}" (${scopeText(p.scope)}, ${p.inScope.length} stor${p.inScope.length === 1 ? 'y' : 'ies'}) meets the conventions, and every diagram parses as Mermaid.` };
 }
 
 const sameStories = (a, b) => JSON.stringify(a?.stories ?? null) === JSON.stringify(b?.stories ?? null) && JSON.stringify(a?.scope ?? null) === JSON.stringify(b?.scope ?? null);
 
 // Writes the slice. -> { ok: true, changed, written, leftover, slice, base, text } | { ok: false, errors, text }.
-export function writeDiagram(input) {
-  const p = prepare(input);
+export async function writeDiagram(input) {
+  const p = await prepare(input);
   if (!p.ok) return { ...p, text: problemsText(p.errors) };
   const { loaded, sliceDir, slice, scope, inScope, existing } = p;
   const keepDrawnAt = existing?.source?.drawnAt;

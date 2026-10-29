@@ -38,11 +38,11 @@ test('read: the committed mock is up to date and its files are returned', () => 
   assert.deepEqual(list.slices.map((s) => [s.slice, s.stale]), [['sign-in', false]]);
   assert.match(formatDiagrams(list), /sign-in \| Feature: Identity and access > Sign in \| 2 stories \| up to date/);
   const one = readDiagrams({ dataDir: root, name: 'sample', slice: 'sign-in' });
-  assert.match(formatDiagrams(one), /--- UC-sign-in-class\.puml ---[\s\S]*--- UC-sign-in\.md ---/);
+  assert.match(formatDiagrams(one), /--- UC-sign-in\.md ---[\s\S]*## Class diagram/);
   assert.deepEqual(listSlices(path.join(root, 'diagrams', 'sample')), ['sign-in']);
 });
 
-test('read: a renumber is healed in source.json and the specification list, and no diagram file changes', () => {
+test('read: a renumber is healed in source.json and the specification list, and no diagram changes', () => {
   const root = setup({ withSlice: true });
   // A story added ahead of "Reset a password" shifts its derived ID; the locked story keeps its code.
   editCsv(root, (t) => t.replace('IAM-0002,Identity and access,Sign in,Reset a password', ',Identity and access,Sign in,Verify the email,"As a member, I want to verify my email, so that it is mine.",2,Low,,"AC1: Given a, when b, then c.",,,\nIAM-0002,Identity and access,Sign in,Reset a password'));
@@ -55,7 +55,9 @@ test('read: a renumber is healed in source.json and the specification list, and 
   const after = snapshot(sliceDir(root));
   assert.equal(JSON.parse(after['source.json']).stories[1].id, 'IAM-0003');
   assert.match(after['UC-sign-in.md'], /- IAM-0003 Reset a password/);
-  for (const f of Object.keys(before).filter((n) => n.endsWith('.puml'))) assert.equal(after[f], before[f], `${f} unchanged`);
+  const blocks = (text) => text.match(/```mermaid[\s\S]*?```/g);
+  assert.equal(blocks(before['UC-sign-in.md']).length, 3);
+  assert.deepEqual(blocks(after['UC-sign-in.md']), blocks(before['UC-sign-in.md']), 'every mermaid block is byte-for-byte as before');
   assert.equal(after['UC-sign-in.md'].replace(/- IAM-0003/, '- IAM-0002'), before['UC-sign-in.md'], 'only the generated list changed in the specification');
   assert.match(formatDiagrams(r), /healed: "Reset a password" is now IAM-0003 \(was IAM-0002\)/);
   assert.equal(logLines(root).at(-1).writer, 'read_diagrams');
@@ -83,17 +85,17 @@ test('read: a slice that does not exist, a bad backlog and a missing source.json
 
 // ---- check_diagram and write_diagram ----
 
-test('check passes on the mock and writes nothing', () => {
+test('check passes on the mock and writes nothing', async () => {
   const root = setup();
-  const r = checkDiagram(input(root));
+  const r = await checkDiagram(input(root));
   assert.equal(r.ok, true, r.errors?.join('\n'));
   assert.match(r.text, /nothing was written/);
   assert.equal(fs.existsSync(path.join(root, 'diagrams')), false);
 });
 
-test('write: the slice is written, read back, logged without contents, and the hashes are the writer\'s', () => {
+test('write: the slice is written, read back, logged without contents, and the hashes are the writer\'s', async () => {
   const root = setup();
-  const r = writeDiagram(input(root));
+  const r = await writeDiagram(input(root));
   assert.equal(r.ok, true, r.errors?.join('\n'));
   assert.equal(r.changed, true);
   const written = snapshot(sliceDir(root));
@@ -108,12 +110,12 @@ test('write: the slice is written, read back, logged without contents, and the h
   assert.ok(!fs.readFileSync(path.join(root, 'logs', 'writes.jsonl'), 'utf8').includes('Sign in with email'), 'no diagram text in the log');
 });
 
-test('write: the same slice twice changes no byte and says nothing changed', () => {
+test('write: the same slice twice changes no byte and says nothing changed', async () => {
   const root = setup();
-  writeDiagram(input(root));
+  await writeDiagram(input(root));
   const before = snapshot(sliceDir(root));
   const mtimes = Object.fromEntries(fs.readdirSync(sliceDir(root)).map((f) => [f, fs.statSync(path.join(sliceDir(root), f)).mtimeMs]));
-  const again = writeDiagram(input(root));
+  const again = await writeDiagram(input(root));
   assert.equal(again.ok, true);
   assert.equal(again.changed, false);
   assert.match(again.text, /Nothing changed/);
@@ -122,26 +124,26 @@ test('write: the same slice twice changes no byte and says nothing changed', () 
   assert.equal(logLines(root).length, 1, 'only the first write is logged');
 });
 
-test('write: a Title that does not match is refused and says what the ID holds', () => {
+test('write: a Title that does not match is refused and says what the ID holds', async () => {
   const root = setup();
-  const r = writeDiagram(input(root, { stories: [{ id: 'IAM-0001', title: 'Reset a password' }, PAIRS[1]] }));
+  const r = await writeDiagram(input(root, { stories: [{ id: 'IAM-0001', title: 'Reset a password' }, PAIRS[1]] }));
   assert.equal(r.ok, false);
   assert.match(r.text, /IAM-0001 is now "Sign in with email" \(Identity and access > Sign in\), not "Reset a password"/);
   assert.equal(fs.existsSync(path.join(root, 'diagrams')), false);
-  assert.match(writeDiagram(input(root, { stories: [{ id: 'IAM-0001' }, PAIRS[1]] })).text, /needs the story's current Title/);
+  assert.match((await writeDiagram(input(root, { stories: [{ id: 'IAM-0001' }, PAIRS[1]] }))).text, /needs the story's current Title/);
 });
 
-test('write: a story of the scope that was not listed, and a story outside the scope, are refused', () => {
+test('write: a story of the scope that was not listed, and a story outside the scope, are refused', async () => {
   const root = setup();
-  assert.match(writeDiagram(input(root, { stories: [PAIRS[0]] })).text, /"Reset a password" is in the scope but was not listed/);
-  assert.match(writeDiagram(input(root, { stories: [...PAIRS, { id: 'R-0001', title: 'Export a list as CSV' }] })).text, /"Export a list as CSV" is not in the scope/);
-  assert.match(writeDiagram(input(root, { scope: { type: 'feature', epic: 'Identity and access', feature: 'Nowhere' } })).text, /No story of sample\.csv is in the scope/);
+  assert.match((await writeDiagram(input(root, { stories: [PAIRS[0]] }))).text, /"Reset a password" is in the scope but was not listed/);
+  assert.match((await writeDiagram(input(root, { stories: [...PAIRS, { id: 'R-0001', title: 'Export a list as CSV' }] }))).text, /"Export a list as CSV" is not in the scope/);
+  assert.match((await writeDiagram(input(root, { scope: { type: 'feature', epic: 'Identity and access', feature: 'Nowhere' } }))).text, /No story of sample\.csv is in the scope/);
 });
 
-test('write: a slice name that would leave the backlog\'s diagrams folder writes nothing', () => {
+test('write: a slice name that would leave the backlog\'s diagrams folder writes nothing', async () => {
   const root = setup();
   for (const slice of ['../escape', '..\\escape', 'a/b', 'UPPER', '']) {
-    const r = writeDiagram(input(root, { slice }));
+    const r = await writeDiagram(input(root, { slice }));
     assert.equal(r.ok, false, slice);
     assert.match(r.text, /must be a lowercase slug/);
   }
@@ -149,45 +151,61 @@ test('write: a slice name that would leave the backlog\'s diagrams folder writes
   assert.equal(fs.existsSync(path.join(root, 'escape')), false);
 });
 
-test('write: one failing file writes no file and every problem is listed', () => {
+test('write: one failing diagram writes nothing and every problem is listed', async () => {
   const root = setup();
-  const files = fixtureFiles().map((f) => (f.name.endsWith('login-sequence.puml') ? { ...f, content: f.content.replace('FORM -> AUTH', 'FORM -> GHOST') } : f.name.endsWith('class.puml') ? { ...f, content: f.content.replace('as AUTH #E7F4EA', 'as AUTH #FFFFFF') } : f));
-  const r = writeDiagram(input(root, { files }));
+  const files = fixtureFiles().map((f) => ({ ...f, content: f.content.replace('FORM->>AUTH: 1.2', 'FORM->>GHOST: 1.2').replace('<<service>>\n      +authenticate', '+authenticate') }));
+  const r = await writeDiagram(input(root, { files }));
   assert.equal(r.ok, false);
   assert.match(r.text, /2 problems/);
   assert.match(r.text, /GHOST/);
-  assert.match(r.text, /AUTH is #FFFFFF/);
+  assert.match(r.text, /## Class diagram: AuthService has no stereotype/);
   assert.equal(fs.existsSync(path.join(root, 'diagrams')), false);
 });
 
-test('write: a slice under the same name for another scope is refused and names the existing scope', () => {
+test('write: a slice under the same name for another scope is refused and names the existing scope', async () => {
   const root = setup({ withSlice: true });
   const before = snapshot(sliceDir(root));
-  const r = writeDiagram(input(root, { scope: { type: 'epic', epic: 'Identity and access' } }));
+  const r = await writeDiagram(input(root, { scope: { type: 'epic', epic: 'Identity and access' } }));
   assert.equal(r.ok, false);
   assert.match(r.text, /already exists for another scope \(Feature: Identity and access > Sign in\)/);
   assert.deepEqual(snapshot(sliceDir(root)), before);
 });
 
-test('write: a changed slice is rewritten, a file that was not sent is left alone and reported', () => {
+test('write: a changed slice is rewritten, a file that was not sent is left alone and reported', async () => {
   const root = setup({ withSlice: true });
-  fs.writeFileSync(path.join(sliceDir(root), 'UC-sign-in-extra-sequence.puml'), '@startuml old\n@enduml\n');
+  fs.writeFileSync(path.join(sliceDir(root), 'notes.txt'), 'old notes\n');
   const files = fixtureFiles().map((f) => (f.name === 'UC-sign-in.md' ? { ...f, content: f.content.replace('A member signs in', 'A registered member signs in') } : f));
-  const r = writeDiagram(input(root, { files }));
+  const r = await writeDiagram(input(root, { files }));
   assert.equal(r.ok, true, r.errors?.join('\n'));
   assert.equal(r.changed, true);
-  assert.deepEqual(r.leftover, ['UC-sign-in-extra-sequence.puml']);
-  assert.match(r.text, /left as they are: UC-sign-in-extra-sequence\.puml/);
+  assert.deepEqual(r.leftover, ['notes.txt']);
+  assert.match(r.text, /left as they are: notes\.txt/);
   assert.match(fs.readFileSync(path.join(sliceDir(root), 'UC-sign-in.md'), 'utf8'), /A registered member signs in/);
-  assert.ok(fs.existsSync(path.join(sliceDir(root), 'UC-sign-in-extra-sequence.puml')));
+  assert.ok(fs.existsSync(path.join(sliceDir(root), 'notes.txt')));
   assert.deepEqual(r.written, ['UC-sign-in.md']);
 });
 
-test('write: the specification\'s generated list is written by the writer whatever the model put in it', () => {
+test('write: the specification\'s generated list is written by the writer whatever the model put in it', async () => {
   const root = setup();
   const files = fixtureFiles().map((f) => (f.name === 'UC-sign-in.md' ? { ...f, content: f.content.replace('- IAM-0001 Sign in with email', '- ZZZ-9999 invented') } : f));
-  assert.equal(writeDiagram(input(root, { files })).ok, true);
+  assert.equal((await writeDiagram(input(root, { files }))).ok, true);
   const spec = fs.readFileSync(path.join(sliceDir(root), 'UC-sign-in.md'), 'utf8');
   assert.match(spec, /- IAM-0001 Sign in with email/);
   assert.doesNotMatch(spec, /ZZZ-9999/);
+});
+
+test('write: a document with a diagram that does not parse writes nothing and lists the parser message and line', async () => {
+  const root = setup();
+  const files = fixtureFiles().map((f) => ({ ...f, content: f.content.replace('MAILER-->>U: 2.2 reset link received', 'MAILER-->>>U: 2.2 reset link received') }));
+  const r = await writeDiagram(input(root, { files }));
+  assert.equal(r.ok, false);
+  assert.match(r.text, /UC-sign-in\.md:\d+: ### Sequence: reset: does not parse as Mermaid: Parse error on line \d+/);
+  assert.equal(fs.existsSync(path.join(root, 'diagrams')), false);
+});
+
+test('write: a second document is refused, naming the rule', async () => {
+  const root = setup();
+  const r = await writeDiagram(input(root, { files: [...fixtureFiles(), { name: 'UC-sign-in-extra.md', content: '# extra' }] }));
+  assert.equal(r.ok, false);
+  assert.match(r.text, /UC-sign-in-extra\.md: is not part of a slice: a slice is one document/);
 });
