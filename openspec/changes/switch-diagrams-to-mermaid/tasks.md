@@ -1,6 +1,6 @@
 ## 1. Syntax spike and conventions
 
-- [ ] 1.1 In a scratch folder, write one markdown file with a class diagram and a sequence diagram that use the forms the conventions will name (a stereotype in a class label and in a participant label, a `rect` block opening with `Note over ... : Phase 1 - <name>`, `alt` / `else`, `phase.step` ids in messages); verify each block parses with Mermaid's parser (with the DOM shim) and that the file draws without error in the VS Code markdown preview and in GitHub (the user opens it on GitHub), then record the label form that works in task 1.2.
+- [x] 1.1 In a scratch folder, write one markdown file with a class diagram and a sequence diagram that use the forms the conventions will name (a stereotype in a class label and in a participant label, a `rect` block opening with `Note over ... : Phase 1 - <name>`, `alt` / `else`, `phase.step` ids in messages); verify each block parses with Mermaid's parser (with the DOM shim) and that the file draws without error in the VS Code markdown preview and in GitHub (the user opens it on GitHub), then record the label form that works in task 1.2.
 - [x] 1.2 Rewrite `planner/guidelines/diagram-conventions.md` for Mermaid: the `diagram-limits` block keeps `maxClasses` and `stereotypes` and drops `palette`; section 2 states the one-document layout (`source.json` and `UC-<slice>.md`); section 3 the Mermaid subset, the stereotype-in-label form from 1.1, step ids, the `rect` and `Note over` phase and the story-ID rule; section 4 adds `## Class diagram` and `## Sequence diagrams` with a `### Sequence: <flow>` heading per flow; section 7 says how to view a slice in GitHub and in VS Code. Verify by reading that sections 1-7 number consistently, that no sentence mentions PlantUML, a palette color or `!include`, and that each rule appears once.
 
 ## 2. Parser dependency
@@ -26,7 +26,7 @@
 ## 5. Mock slice
 
 - [x] 5.1 Replace the three `.puml` files and `UC-sign-in.md` of `planner/test/sample-data/diagrams/sample/sign-in/` with one `UC-sign-in.md` holding the specification, `## Class diagram` and a `### Sequence: login` and `### Sequence: reset` block, drawn from the same classes and flows as before; keep `source.json` and its hashes unchanged and the generated story list block unchanged; verify the checks and the parser report no problem on it.
-- [ ] 5.2 Open the mock slice in GitHub and in the built-in VS Code markdown preview; verify every diagram draws with no error in place of a picture (a manual check; note the extension and Mermaid versions used in the commit message of the change).
+- [x] 5.2 Open the mock slice in GitHub and in the built-in VS Code markdown preview; verify every diagram draws with no error in place of a picture (a manual check; note the extension and Mermaid versions used in the commit message of the change).
 
 ## 6. Skill and docs
 
