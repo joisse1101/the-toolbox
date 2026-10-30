@@ -1,6 +1,6 @@
 ---
 name: opsx-task-applier
-description: Applies exactly one task of an OpenSpec change on behalf of /opsx:apply, then reports what it changed and what it saw. Never commits, pushes, calls GitHub or edits tasks.md.
+description: Use for every task of an /opsx:apply run; the main session does not implement those tasks itself. Applies exactly one task of an OpenSpec change, then reports what it changed and what it saw. Never commits, pushes, calls GitHub or edits tasks.md.
 tools: Read, Grep, Glob, Edit, Write, Bash
 maxTurns: 30
 hooks:
@@ -16,8 +16,8 @@ hooks:
           command: >-
             powershell -NoProfile -Command "if ([Console]::In.ReadToEnd() -match '\x22file_path\x22\s*:\s*\x22[^\x22]*openspec[\x5c/]+changes[\x5c/]+[^\x22]*tasks\.md\x22') { [Console]::Error.WriteLine('opsx-task-applier never edits tasks.md: put the result: clause in your report and the main session records it'); exit 2 }"
 metadata:
-  version: "1.0.0"
-  last_updated: "2026-10-29"
+  version: "1.1.0"
+  last_updated: "2026-10-30"
 ---
 
 # OpenSpec task applier
