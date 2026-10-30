@@ -43,6 +43,7 @@ test('a broken diagram is refused with the parser message and its line', async (
 });
 
 test('a participant named after a Mermaid keyword is refused', async () => {
-  const r = await parseMermaid('sequenceDiagram\n  participant LINK as «value object»<br/>ResetLink\n  participant A\n  A->>LINK: 1.1 x');
+  const r = await parseMermaid('sequenceDiagram\n  participant end as «value object»<br/>ResetLink\n  participant A\n  A->>end: 1.1 x');
   assert.equal(r.ok, false);
+  assert.equal(r.line, 4);
 });
