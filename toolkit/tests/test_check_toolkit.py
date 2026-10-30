@@ -252,6 +252,13 @@ def test_orchestrator_command_without_a_version_fails(tmp_path):
     assert any(p.startswith("commands/jois-code/apply.md: missing `metadata.version`") for p in problems)
 
 
+def test_jois_docs_command_without_a_version_fails(tmp_path):
+    _toolkit_tree(tmp_path)
+    _write(tmp_path, "commands/jois-docs/minutes.md", f"---\n{HIDDEN}\n---\nbody\n")
+    problems = _problems(tmp_path)
+    assert any(p.startswith("commands/jois-docs/minutes.md: missing `metadata.version`") for p in problems)
+
+
 def _pr_command(body):
     return (
         f"---\n{HIDDEN}\n{VERSION}\n---\n# Steps\nown steps\n\n"
