@@ -7,10 +7,10 @@
 
 ## 2. The `jois-docs` command
 
-- [ ] 2.1 Create `toolkit/commands/jois-docs/meeting-minutes.md` with `disable-model-invocation: true`, `allowed-tools: Read, Glob, Write`, `metadata` version and date, the inline template, and the rules from the `toolkit-meeting-minutes` spec; verify `python check_toolkit.py` passes
-- [ ] 2.2 Document the command in `toolkit/README.md`: add a `docs` row to the Naming table, a `jois-docs` commands section (input, save location, refinement), and `-Command jois-docs` as the install line; verify the README names the command exactly as the file does
-- [ ] 2.3 Run `.\Install-Toolkit.ps1 -Scope project -Path <temp folder> -Command jois-docs` into a temp folder, then `-List`, and verify the command is listed as installed with its version
-- [ ] 2.4 Run `/jois-docs:meeting-minutes` on mock notes you write for the test, never real notes, and verify the minutes match the template, gaps show `[TBC]`, nothing is written before confirmation, and a referenced notes file gets its minutes saved beside it under `<slug>_<date>.md`
+- [x] 2.1 Create `toolkit/commands/jois-docs/meeting-minutes.md` with `disable-model-invocation: true`, `allowed-tools: Read, Glob, Write`, `metadata` version and date, the inline template, and the rules from the `toolkit-meeting-minutes` spec; verify `python check_toolkit.py` passes (result: python check_toolkit.py -> "toolkit check passed", exit 0)
+- [x] 2.2 Document the command in `toolkit/README.md`: add a `docs` row to the Naming table, a `jois-docs` commands section (input, save location, refinement), and `-Command jois-docs` as the install line; verify the README names the command exactly as the file does (result: grep of README -> `/jois-docs:meeting-minutes` found once, matches commands/jois-docs/meeting-minutes.md; python check_toolkit.py -> "toolkit check passed", exit 0 (run before the README edit, not repeated after it))
+- [x] 2.3 Run `.\Install-Toolkit.ps1 -Scope project -Path <temp folder> -Command jois-docs` into a temp folder, then `-List`, and verify the command is listed as installed with its version (result: Install-Toolkit.ps1 -Scope project -Path <temp> -Command jois-docs -> "installed command jois-docs", file landed at .claude/commands/jois-docs/meeting-minutes.md; -List -> "jois-docs up to date 1.0.0 (2026-10-30)")
+- [ ] 2.4 Run `/jois-docs:meeting-minutes` on mock notes you write for the test, never real notes, and verify the minutes match the template, gaps show `[TBC]`, nothing is written before confirmation, and a referenced notes file gets its minutes saved beside it under `<slug>_<date>.md` (result: read-through only, not run -- /jois-docs:meeting-minutes was not executed; hand-followed steps on mock notes agree with the command text on template match, `[TBC]` gaps, no write before confirmation and save beside the notes file as `<slug>_<date>.md`; a real run in a normal session is still pending)
 
 ## 3. Remove the planner's meeting minutes
 
