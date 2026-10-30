@@ -1,4 +1,5 @@
 import check_toolkit
+import pytest
 
 HIDDEN = "disable-model-invocation: true"
 VERSION = 'metadata:\n  version: "1.0.0"\n  last_updated: "2026-10-14"'
@@ -114,17 +115,25 @@ def test_scoped_rule_needs_paths_and_unique_extensions(tmp_path):
     assert "rules/other.md: extension 'java' is also scoped by jois-code-java.md" in problems
 
 
-def test_unscoped_commit_rule_is_accepted_without_paths(tmp_path):
+@pytest.mark.parametrize("name", check_toolkit.UNSCOPED_RULES)
+def test_unscoped_rule_is_accepted_without_paths(tmp_path, name):
     _toolkit_tree(tmp_path)
-    _write(tmp_path, "rules/jois-git-commit-hygiene.md", f"---\n{VERSION}\n---\n# Commit hygiene\n")
+    _write(tmp_path, f"rules/{name}", f"---\n{VERSION}\n---\n# Rule\n")
     assert _problems(tmp_path) == []
 
 
-def test_unscoped_commit_rule_must_not_have_paths(tmp_path):
+@pytest.mark.parametrize("name", check_toolkit.UNSCOPED_RULES)
+def test_unscoped_rule_must_not_have_paths(tmp_path, name):
     _toolkit_tree(tmp_path)
-    _write(tmp_path, "rules/jois-git-commit-hygiene.md", _scoped("py"))
+    _write(tmp_path, f"rules/{name}", _scoped("py"))
     problems = _problems(tmp_path)
-    assert "rules/jois-git-commit-hygiene.md: unscoped rule must not have `paths:` frontmatter" in problems
+    assert f"rules/{name}: unscoped rule must not have `paths:` frontmatter" in problems
+
+
+def test_markdown_scoped_rule_passes_the_technology_check(tmp_path):
+    _toolkit_tree(tmp_path)
+    _write(tmp_path, "rules/jois-comms-documents.md", _scoped("md"))
+    assert _problems(tmp_path) == []
 
 
 def test_unscoped_mock_data_rule_is_accepted_without_paths(tmp_path):
