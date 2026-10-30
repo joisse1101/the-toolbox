@@ -21,7 +21,11 @@ test('the skill is named plan-stories and allows only tools that write nothing',
 });
 
 test('the tools the skill names exist on the servers, and the writers it calls are the diagram and map writers only', () => {
-  const named = new Set(skill.match(/`(read_diagrams|check_diagram|write_diagram|read_context_map|check_context_map|write_context_map|repo_tree|repo_grep|repo_read|read_context|search_stories|read_file|write_[a-z_]+|suggest_[a-z_]+)`/g).map((s) => s.slice(1, -1)));
+  const neverCall = /you never call a story writer \(((?:`[a-z_]+`(?:, )?)+)\)/.exec(skill);
+  assert.ok(neverCall, 'the skill does not state that it never calls a story writer');
+  assert.deepEqual(neverCall[1].match(/[a-z_]+/g).sort(), ['suggest_lexicon_change', 'write_lexicon', 'write_proposals', 'write_review']);
+  const calls = skill.replace(neverCall[0], ''); // the four story writers are named only to forbid them
+  const named = new Set(calls.match(/`(read_diagrams|check_diagram|write_diagram|read_context_map|check_context_map|write_context_map|repo_tree|repo_grep|repo_read|read_context|search_stories|read_file|write_[a-z_]+|suggest_[a-z_]+)`/g).map((s) => s.slice(1, -1)));
   const writers = [...named].filter((n) => /^(write|suggest)_/.test(n));
   assert.deepEqual(writers.sort(), ['write_context_map', 'write_diagram']);
   const server = createServer({ backlog: 'sample.csv', dataDir: path.join(ROOT, 'planner/test/sample-data') });
