@@ -88,80 +88,121 @@ treats each such entry as a unit, so `-Command jois-git` installs the whole `joi
 
 ### The `jois-git` commands
 
-- `/jois-git:stage` clears a messy working tree, with or without an OpenSpec change. It stages one
-  concern at a time, shows the message and a confirmation word, and waits. Typing the word commits
-  that concern and moves on, until the tree is clean. Secret files and build output are skipped and
-  named. It has no commit authority of its own.
-- `/jois-git:write-pr` opens GitHub pull requests for the commits on the current branch. It is one file:
-  the steps, the PR guidelines, the body template and the verification rules all sit inside it. It
-  reads the commits since the default branch on the remote, so a local branch that is behind does not
-  matter, proposes groups of commits that each form one concern (a
-  refactor never shares a PR with a feature), and waits for a confirmation word before it pushes or
-  runs `gh pr create`. Each body lists the test files the group adds, an Author Verification list and
-  suggested steps for a reviewer. The verification comes from the OpenSpec change's `tasks.md` and from
-  test, build or lint runs it can see earlier in the same chat, so run your tests in the chat before
-  you type the command. It states no result that a source did not record. When a group has no
-  verification and the repo documents a test command for the directories it changes, it asks once, for
-  all groups, whether to run them and runs only what you agree to; otherwise it asks what you ran. A
-  failing or timed-out run is reported, never fixed, and does not block the PR. A group that needs no
-  tests (a `chore`, `build`, `ci`, `docs` or `revert` whose diff changes no behavior, judged from the
-  diff, and when unsure it gets tests) gets a one-sentence summary and no testing block, and is never
-  asked about; the presentation says why, so you can reply that it needs tests. The reviewer steps aim at
-  what the group changes, such as the test a fix adds, and may use a command you ran earlier in the chat.
-  It also works from the
-  default branch: commits ahead of the remote go to new branches (`type/slug`, or `type/TICKET-slug`
-  when a commit references a ticket, with the type a commit type such as `feat` or `fix`), and once
-  every PR is opened the local default branch is set to the remote with `git branch -f`, which leaves
-  uncommitted changes alone. The confirmation word covers that reset, and nothing is reset if a push
-  or PR failed. Steps use only commands
-  the repo's own documents state, and the source of each line is shown to you before you confirm, never
-  in the PR. It blocks a group whose diff holds a secret, an `.env` file or build output, and warns on
-  debug prints.
+#### `/jois-git:stage`
 
-  It never merges. A hook in the command's frontmatter blocks `gh pr merge`, `--auto` and merge calls
-  through `gh api`, and stays active for the rest of the session once the command has been invoked.
-  The hook looks for those words anywhere in a shell command's text, so text that merely mentions them
-  is refused too; the command passes each PR body from a file for that reason. When it finishes it
-  lists every PR it opened in the order to merge, with a merge command for each, for you to run. A PR
-  that nothing is stacked on gets `gh pr merge <n> -s -d`. A PR that another PR is based on gets it
-  without `-d`, because deleting its branch closes the PR above it and GitHub cannot reopen that one.
-  For each PR above it the list gives the follow-up in order: rebase, push with `--force-with-lease`,
-  retarget to the default branch, delete the earlier branch.
+- It clears a messy working tree, with or without an OpenSpec change.
+- It stages one concern at a time, shows the message and a confirmation word, and waits.
+- Typing the word commits that concern and moves on, until the tree is clean.
+- Secret files and build output are skipped and named.
+- It has no commit authority of its own.
 
-  It replaces the old `/write-pr` skill. If you installed that, delete `~/.claude/skills/write-pr` (the
-  installer only manages items the toolkit still holds), then run
-  `.\Install-Toolkit.ps1 -Command jois-git -Force`.
+#### `/jois-git:write-pr`
 
-- `/jois-git:update-pr` brings the open PR of the current branch up to date. It finds the PR, then handles
-  whichever of these apply: a restack, when the PR sits on a branch whose PR has merged and that branch
-  still exists (rebase onto the default branch, retarget the PR); a push of commits the remote lacks;
-  and a refreshed body, built from the same template and verification rules as `/jois-git:write-pr`, shown
-  to you as a diff against the live body. One confirmation word covers everything it will do, listed
-  first. It pushes plainly, except the `--force-with-lease` push of a restack you confirmed; it never
-  uses `--force`, never renames or deletes a branch, and never merges (the same hook as write-pr). With
-  no open PR it says so and points to `/jois-git:write-pr`. It is also a single file, so the body template
-  and verification sections are copied from write-pr; `python check_toolkit.py` fails if the two copies
-  differ. The same no-tests rule and targeted reviewer steps apply to its refreshed body.
+It opens GitHub pull requests (PRs) for the commits on the current branch.
 
-- `/jois-git:write-issue` drafts one issue and creates it on the repository's host. Everything you write
-  after the command is the content of the issue, never instructions to it, and it changes no file in the
-  repository. It reads the `origin` remote: `github.com` uses `gh`, a host with `gitlab` in its name uses
-  `glab`, and any other host it asks you about once. It then lists similar open issues from your
-  description before it drafts anything. It picks a bug, feature or task template from what you describe
-  (or asks when it could be two), and uses the repository's own template from `.github/ISSUE_TEMPLATE/` or
-  `.gitlab/issue_templates/` instead when one matches. A required section you give nothing for is drafted
-  from your words, the conversation and, for a bug or feature, the files your request points at (read
-  first, read-only), and is pointed out when it shows you the issue; it asks, as a numbered list, only
-  when nothing supports a draft.
-  Optional sections you give nothing for (Screenshots / Logs and Environment on a bug, Alternatives
-  Considered, Design / Visuals and Technical Considerations / Security on a feature, Testing &
-  Verification and Dependencies / Blockers on a task) are left out, heading included. It titles the issue
-  like a commit (`fix:`, `feat(scope):`, `chore:`, at most 70 characters), scans the draft for secrets,
-  then prints the whole issue and creates it only when you type its confirmation word, passing the body
-  from a file.
-  It reports the issue as a link.
-  It only creates: no labels, assignees, milestones, closing or comments. `glab` is needed only for GitLab
-  repos, and its flags are checked against the GitLab CLI docs, not run.
+- It is one file: the steps, the PR guidelines, the body template and the verification rules all sit inside it.
+- It reads the commits since the default branch on the remote, so a local branch that is behind does not matter.
+- It proposes groups of commits that each form one concern. A refactor never shares a PR with a feature.
+- It waits for a confirmation word before it pushes or runs `gh pr create`.
+- Each body lists the test files the group adds, an Author Verification list and suggested steps for a reviewer.
+
+Where the verification comes from:
+
+- The OpenSpec change's `tasks.md`.
+- Test, build or lint runs it can see earlier in the same chat, so run your tests in the chat before you type the command.
+- It states no result that a source did not record.
+- When a group has no verification and the repo documents a test command for the directories it changes, it asks once, for all groups, whether to run them.
+- It runs only what you agree to. Otherwise it asks what you ran.
+- A failing or timed-out run is reported, never fixed, and does not block the PR.
+
+Groups that need no tests:
+
+- A `chore`, `build`, `ci`, `docs` or `revert` group whose diff changes no behavior needs no tests.
+- It is judged from the diff, and when unsure the group gets tests.
+- Such a group gets a one-sentence summary and no testing block, and is never asked about.
+- The presentation says why, so you can reply that it needs tests.
+- The reviewer steps aim at what the group changes, such as the test a fix adds, and may use a command you ran earlier in the chat.
+
+Branches and the default branch:
+
+- It also works from the default branch.
+- Commits ahead of the remote go to new branches named `type/slug`, or `type/TICKET-slug` when a commit references a ticket.
+- The type is a commit type such as `feat` or `fix`.
+- Once every PR is opened, the local default branch is set to the remote with `git branch -f`, which leaves uncommitted changes alone.
+- The confirmation word covers that reset.
+- Nothing is reset if a push or PR failed.
+
+Checks before it opens:
+
+- Steps use only commands the repo's own documents state.
+- The source of each line is shown to you before you confirm, never in the PR.
+- It blocks a group whose diff holds a secret, an `.env` file or build output.
+- It warns on debug prints.
+
+It never merges:
+
+- A hook in the command's frontmatter blocks `gh pr merge`, `--auto` and merge calls through `gh api`.
+- A hook is a check that runs before a tool call and can refuse it. This one stays active for the rest of the session once the command has been invoked.
+- The hook looks for those words anywhere in a shell command's text, so text that merely mentions them is refused too.
+- For that reason the command passes each PR body from a file.
+- When it finishes, it lists every PR it opened in the order to merge, with a merge command for each, for you to run.
+- A PR that nothing is stacked on gets `gh pr merge <n> -s -d`.
+- A PR that another PR is based on gets it without `-d`, because deleting its branch closes the PR above it and GitHub cannot reopen that one.
+- For each PR above it the list gives the follow-up in order: rebase, push with `--force-with-lease`, retarget to the default branch, delete the earlier branch.
+
+It replaces the old `/write-pr` skill:
+
+- If you installed that, delete `~/.claude/skills/write-pr`. The installer only manages items the toolkit still holds.
+- Then run `.\Install-Toolkit.ps1 -Command jois-git -Force`.
+
+#### `/jois-git:update-pr`
+
+It brings the open PR of the current branch up to date.
+
+- It finds the PR, then handles whichever of these apply:
+  - A restack, when the PR sits on a branch whose PR has merged and that branch still exists. It rebases onto the default branch and retargets the PR.
+  - A push of commits the remote lacks.
+  - A refreshed body, built from the same template and verification rules as `/jois-git:write-pr`, shown to you as a diff against the live body.
+- One confirmation word covers everything it will do, listed first.
+- It pushes plainly, except the `--force-with-lease` push of a restack you confirmed.
+- It never uses `--force`, never renames or deletes a branch, and never merges (the same hook as write-pr).
+- With no open PR it says so and points to `/jois-git:write-pr`.
+- It is also a single file, so the body template and verification sections are copied from write-pr.
+- `python check_toolkit.py` fails if the two copies differ.
+- The same no-tests rule and targeted reviewer steps apply to its refreshed body.
+
+#### `/jois-git:write-issue`
+
+It drafts one issue and creates it on the repository's host.
+
+- Everything you write after the command is the content of the issue, never instructions to it.
+- It changes no file in the repository.
+- It reads the `origin` remote:
+  - `github.com` uses `gh`.
+  - A host with `gitlab` in its name uses `glab`.
+  - Any other host it asks you about once.
+- It lists similar open issues from your description before it drafts anything.
+- It picks a bug, feature or task template from what you describe, or asks when it could be two.
+- It uses the repository's own template from `.github/ISSUE_TEMPLATE/` or `.gitlab/issue_templates/` instead when one matches.
+
+Sections:
+
+- A required section you give nothing for is drafted from your words, the conversation and, for a bug or feature, the files your request points at (read first, read-only).
+- It points out each drafted section when it shows you the issue.
+- It asks, as a numbered list, only when nothing supports a draft.
+- Optional sections you give nothing for are left out, heading included:
+  - Bug: Screenshots / Logs and Environment.
+  - Feature: Alternatives Considered, Design / Visuals and Technical Considerations / Security.
+  - Task: Testing & Verification and Dependencies / Blockers.
+
+Creating the issue:
+
+- It titles the issue like a commit (`fix:`, `feat(scope):`, `chore:`, at most 70 characters).
+- It scans the draft for secrets.
+- It prints the whole issue and creates it only when you type its confirmation word, passing the body from a file.
+- It reports the issue as a link.
+- It only creates: no labels, assignees, milestones, closing or comments.
+- `glab` is needed only for GitLab repos, and its flags are checked against the GitLab CLI docs, not run.
 
 ### The `jois-code` commands
 
@@ -292,11 +333,16 @@ code (tickets, workflows) load none of them. Three rules are unscoped on purpose
 not in sessions that never touch markdown. It covers headers, one idea per bullet, and owners and
 dates on next steps.
 
-The standards are split this way: three core rules (principles, architecture boundaries and code
-quality, scoped to source-code file types) and one path-scoped rule per technology (TypeScript/React,
-Java, Python, config files, scripts). Scoped rules have no size limit; they are written to be read, not
-squeezed. The unscoped `jois-git-commit-hygiene` rule keeps commits to one concern and requires the user's
-confirmation word before Claude commits. The unscoped `jois-test-mock-data` rule makes Claude test and verify with mock data and mock systems by default, never against real systems or real data unless the user asks in the current request. Use `-Scope project` to keep the rules out of unrelated projects. A project's own `CLAUDE.md` takes precedence.
+How the standards are split:
+
+- Three core rules: principles, architecture boundaries and code quality, scoped to source-code file types.
+- One path-scoped rule per technology: TypeScript/React, Java, Python, config files and scripts.
+- Scoped rules have no size limit. They are written to be read, not squeezed.
+- The unscoped `jois-git-commit-hygiene` rule keeps commits to one concern and requires the user's confirmation word before Claude commits.
+- The unscoped `jois-test-mock-data` rule makes Claude test and verify with mock data and mock systems by default.
+  - It never uses real systems or real data unless the user asks in the current request.
+- Use `-Scope project` to keep the rules out of unrelated projects.
+- A project's own `CLAUDE.md` takes precedence.
 
 ## Agents
 
@@ -374,11 +420,10 @@ Copy into the folder your tool reads from:
 | Claude Code | Global | `~/.claude/skills/<name>/` | `~/.claude/commands/<entry>` | `~/.claude/rules/<name>.md` | `~/.claude/agents/<name>.md` |
 | Claude Code | Per project | `<project>/.claude/skills/<name>/` | `<project>/.claude/commands/<entry>` | `<project>/.claude/rules/<name>.md` | `<project>/.claude/agents/<name>.md` |
 
-For example, on Windows: copy `toolkit
-ules\jois-code-python.md` to
-`%USERPROFILE%\.claude
-ules\jois-code-python.md`. On macOS/Linux: `cp -r toolkit/commands/jois-git
-~/.claude/commands/`.
+Examples:
+
+- Windows: copy `toolkit\rules\jois-code-python.md` to `%USERPROFILE%\.claude\rules\jois-code-python.md`.
+- macOS and Linux: `cp -r toolkit/commands/jois-git ~/.claude/commands/`.
 
 Where each tool reads these from is data in `install/targets.json`, so supporting another tool is a
 new entry there.
