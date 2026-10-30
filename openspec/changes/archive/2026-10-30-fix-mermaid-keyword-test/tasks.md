@@ -9,7 +9,7 @@
 ## 2. Correct the conventions
 
 - [x] 2.1 In `planner/guidelines/diagram-conventions.md` (line 97), drop `LINK` from the refused names, name `END` and `NOTE` as examples, state that matching ignores case, and state that a reserved word is refused only once a message line uses it; verify `LINK` no longer appears in the file and the sentences follow the documents rule (one idea per bullet) (result: grep `LINK` in `planner/guidelines/diagram-conventions.md` -> 0 matches; the four new lines read by hand, one idea each)
-- [ ] 2.2 Run `npm test` from `planner/` and verify all tests pass, including the conventions-related ones
+- [x] 2.2 Run `npm test` from `planner/` and verify all tests pass, including the conventions-related ones (result: npm test -> 759 tests, 759 pass, 0 fail, after rebasing onto origin/main and re-checking out files as LF)
 
 ## Workflow follow-up
 
