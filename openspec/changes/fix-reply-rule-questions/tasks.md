@@ -6,5 +6,5 @@
 
 ## 2. Verify
 
-- [ ] 2.1 Run `cd toolkit; python check_toolkit.py; python -m pytest` and confirm they pass.
-- [ ] 2.2 Run `openspec validate fix-reply-rule-questions` and confirm it passes.
+- [x] 2.1 Run `cd toolkit; python check_toolkit.py; python -m pytest` and confirm they pass. (result: `python check_toolkit.py` -> "toolkit check passed", exit 0; `python -m pytest` -> 33 passed in 3.61s)
+- [x] 2.2 Run `openspec validate fix-reply-rule-questions` and confirm it passes. (result: `openspec validate fix-reply-rule-questions` -> "Change 'fix-reply-rule-questions' is valid", exit 0)
