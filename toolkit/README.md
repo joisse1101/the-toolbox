@@ -44,7 +44,7 @@ item is for. Domains today:
 
 | Domain | Meaning | Items |
 |---|---|---|
-| `code` | writing source code | the `jois-code-*` rules |
+| `code` | writing source code | the `jois-code-*` rules, the `jois-code` command |
 | `git` | commits and pull requests | the `jois-git` commands, the `jois-git-commit-hygiene` rule |
 
 Skills and rules are `jois-<domain>-<thing>`; a command namespace folder is `jois-<domain>`, so
@@ -163,6 +163,15 @@ treats each such entry as a unit, so `-Command jois-git` installs the whole `joi
   It only creates: no labels, assignees, milestones, closing or comments. `glab` is needed only for GitLab
   repos, and its flags are checked against the GitLab CLI docs, not run.
 
+### The `jois-code` commands
+
+- `/jois-code:apply <change>` applies an OpenSpec change by handing its tasks to the `opsx-task-applier`
+  agent one group at a time, records each task's `result:` clause in `tasks.md`, and stops for a commit
+  after each group. It never implements a task itself. Without a change name it asks you to choose.
+  Install it with `.\Install-Toolkit.ps1 -Command jois-code`, and the agent it needs with
+  `-Agent opsx-task-applier.md`; see [The task agent](#the-task-agent). It is advisory: plain
+  `/opsx:apply` is unchanged and still works as before.
+
 ### Commands stay out of the session context
 
 Every command declares `disable-model-invocation: true`, so its description is not loaded into each
@@ -185,9 +194,7 @@ project), and:
 - reads the global `workflows` and, only when `apply` or `archive` is missing (the guidance would
   not take effect), offers to add it as a separate optional question;
 - reports when `~/.claude/rules/jois-git-commit-hygiene.md` is not installed;
-- reports when the `opsx-task-applier` agent is in neither `~/.claude/agents/` nor the project's
-  `.claude/agents/`, and names `Install-Toolkit.ps1`; it never copies the agent itself;
-- ends with one line, e.g. `OpenSpec 1.x | openspec/ present | workflows=ok | guidance: added | commit rule: found | task agent: found`.
+- ends with one line, e.g. `OpenSpec 1.x | openspec/ present | workflows=ok | guidance: added | commit rule: found`.
 
 It never changes the global `delivery` and never runs `openspec update`.
 
@@ -197,25 +204,42 @@ list, and archive's git commands prompt for permission.
 
 ### The task agent
 
-The `operations.apply` guidance also asks the main session to hand each task to the `opsx-task-applier`
-agent, one at a time. The task's working detail then stays in the agent's own context, and the main
-conversation keeps one announcement before each task and one line after it. Before each dispatch the
-session says the task, the files it expects to touch, a rough time estimate labeled as an estimate,
-that there is no live timer, how to open the agent's transcript (its row in the agent panel then Enter,
-or `/tasks`) and the agent's turn limit. After each report it says whether the task is done, failed or
-blocked. The ticks in `tasks.md` are the progress across tasks, the transcript the view inside one.
+`/jois-code:apply <change>` applies an OpenSpec change by handing its tasks to the `opsx-task-applier`
+agent, one group at a time. A group is one `##` section of the change's `tasks.md`. The group's
+working detail stays in the agent's own context, and the main conversation keeps one announcement
+before each group and one line after it. Before each dispatch the session says the group and its
+tasks, the files it expects to touch, a rough time estimate labeled as an estimate, that there is no
+live timer, how to open the agent's transcript (its row in the agent panel then Enter, or `/tasks`)
+and the agent's turn limit. After each report it says whether the group is done, failed or blocked.
+The ticks in `tasks.md` are the progress across groups, the transcript the view inside one. After
+each completed group it stops for a commit under the `jois-git-commit-hygiene` rule. If the session
+ends, run the command again: it resumes from the pending tasks.
 
-The agent's report lists the changed files, each command with the result and counts its output showed,
-the manual checks, what it could not verify, and one `result:` clause. The main session copies that
-clause verbatim into the task's line in `tasks.md`, where `/jois-git:write-pr` already reads it for
-Author Verification. The agent never edits `tasks.md`; when a task needs a decision it cannot make it
-ends with `blocked: <question>` and the main session asks you.
+Install both parts, then start the command in a Claude Code session:
 
-This is advisory, not enforced: the guidance asks the main session to delegate and nothing forces it
-to. What is enforced is inside the agent: its tool list, its turn limit (`maxTurns`) and two hooks that
-block `git commit`, `git push` and `gh`, and an edit of a change's `tasks.md`. The hooks look at the
-direct command, so a `gh` call hidden inside a script is not caught; the main session's commit stop is
-the backstop. Tasks run one at a time, never in parallel, because the agents share one checkout.
+```powershell
+.\Install-Toolkit.ps1 -Command jois-code
+.\Install-Toolkit.ps1 -Agent opsx-task-applier.md
+```
+
+The command checks that the agent is in `~/.claude/agents/` or the project's `.claude/agents/`; if it
+is in neither it says so, names `Install-Toolkit.ps1` and stops. It never copies the agent itself.
+
+The agent works through the group's tasks in order and stops at the first one that is blocked or
+failed, so no later task is built on it. For each task its report lists the changed files, each
+command with the result and counts its output showed, the manual checks, what it could not verify, the
+requirement or scenario of the change's specs the task satisfies, and one `result:` clause labeled
+with the task number. The command copies each clause verbatim into the task's line in `tasks.md` and
+ticks the box, where `/jois-git:write-pr` already reads it for Author Verification. The agent never
+edits `tasks.md`. When a task needs a decision it cannot make, or would narrow a requirement of the
+specs, it ends with `blocked: <question>` and the command asks you.
+
+This is advisory, not enforced: plain `/opsx:apply` is unchanged, and nothing stops a session that
+runs it from implementing the tasks itself. What is enforced is inside the agent: its tool list, its
+turn limit (`maxTurns`, 50) and two hooks that block `git commit`, `git push` and `gh`, and an edit of
+a change's `tasks.md`. The hooks look at the direct command, so a `gh` call hidden inside a script is
+not caught; the commit stop is the backstop. Groups run one at a time, never in parallel, because the
+agents share one checkout.
 
 ## Rules
 
@@ -247,7 +271,7 @@ never touched.
 
 ## Versions
 
-Every skill, rule, agent and `jois-git` command declares its version in a `metadata:` map in its
+Every skill, rule, agent and `jois-git`, `jois-init` and `jois-code` command declares its version in a `metadata:` map in its
 frontmatter, as the Agent Skills format keeps it. Both keys are strings and are bumped by hand
 whenever the item's guidance changes: `version` is semver (`MAJOR.MINOR.PATCH`) and `last_updated`
 is the date of the change.
