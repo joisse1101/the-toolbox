@@ -60,8 +60,8 @@ once the new copy is installed. Remove the old items first:
 
 - skill `~/.claude/skills/coding-standards`
 - command folder `~/.claude/commands/jois`
-- rules in `~/.claude/rules`: `commit-hygiene.md`, `core-principles.md`, `architecture-boundaries.md`,
-  `java.md`, `python.md`, `typescript-react.md`, `config-files.md`, `scripts.md`
+- rules in `~/.claude/rules`: `commit-hygiene.md`, `test-mock-data.md`, `core-principles.md`,
+  `architecture-boundaries.md`, `java.md`, `python.md`, `typescript-react.md`, `config-files.md`, `scripts.md`
 
 Then run `.\Install-Toolkit.ps1` again (or with `-Scope project -Path <project>`) and check that
 `-List` shows every item `up to date`. In a project, remove the same names from `<project>\.claude`.
@@ -225,11 +225,14 @@ session start, in every project. A rule with `paths:` frontmatter (a list of glo
 `"**/*.java"`) loads once a matching file is read or created. Tested on Claude Code 2.1.299: a
 scoped rule is not present before any matching file is touched, so a change planned before any
 file is opened has no rules yet. Every coding rule here is scoped, so sessions that never touch
-code (tickets, workflows) load none of them. Two rules are unscoped on purpose:
+code (tickets, workflows) load none of them. Three rules are unscoped on purpose:
 
 - `jois-git-commit-hygiene`: commits of images, deletions, renames and docs touch no code file, so a
   scoped rule would be missing exactly when those commits grow. It asks nothing unless Claude is
   about to commit.
+- `jois-test-mock-data`: verification such as a `git push`, a deploy or a request to the user for
+  data touches no code file either. It asks nothing unless Claude is about to test or verify a
+  change.
 - `jois-comms-replies`: replies happen in every session, whatever files are touched. It loads on
   every turn, so it is kept to about 10 lines.
 
@@ -241,7 +244,7 @@ The standards are split this way: three core rules (principles, architecture bou
 quality, scoped to source-code file types) and one path-scoped rule per technology (TypeScript/React,
 Java, Python, config files, scripts). Scoped rules have no size limit; they are written to be read, not
 squeezed. The unscoped `jois-git-commit-hygiene` rule keeps commits to one concern and requires the user's
-confirmation word before Claude commits. Use `-Scope project` to keep the rules out of unrelated projects. A project's own `CLAUDE.md` takes precedence.
+confirmation word before Claude commits. The unscoped `jois-test-mock-data` rule makes Claude test and verify with mock data and mock systems by default, never against real systems or real data unless the user asks in the current request. Use `-Scope project` to keep the rules out of unrelated projects. A project's own `CLAUDE.md` takes precedence.
 
 ## Agents
 
@@ -270,7 +273,7 @@ metadata:
 ```
 
 A rule's frontmatter holds the same `metadata:` block next to its `paths:`; an unscoped rule such
-as `jois-git-commit-hygiene` has only the `metadata:` block and still loads in every session. A top-level
+as `jois-git-commit-hygiene` or `jois-test-mock-data` has only the `metadata:` block and still loads in every session. A top-level
 `version:` key is not accepted. `python check_toolkit.py` (run from `toolkit/`) fails on a missing or
 malformed version.
 

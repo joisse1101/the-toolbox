@@ -28,8 +28,14 @@ CODE_SCOPED_RULES = (
     "jois-code-quality.md",
 )
 SHARED_PR_SECTIONS = ("PR body template", "Author Verification")
-# Load in every session on purpose: a commit can contain no code (images, deletions, docs), and replies happen without touching a file.
-UNSCOPED_RULES = ("jois-git-commit-hygiene.md", "jois-comms-replies.md")
+# Load in every session on purpose: a commit can contain no code (images, deletions, docs),
+# verification (a push, a deploy, a request for data) touches no code file either, and replies
+# happen without touching a file.
+UNSCOPED_RULES = (
+    "jois-git-commit-hygiene.md",
+    "jois-test-mock-data.md",
+    "jois-comms-replies.md",
+)
 # The source-code file types the three code-scoped rules load for. Each of them declares exactly
 # this set, one `**/*.<ext>` glob per type, so they load together. Config and data extensions
 # (json, yaml, md) are out. To cover another language, add it here and to all three rules.
