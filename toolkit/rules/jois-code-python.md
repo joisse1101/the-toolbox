@@ -1,33 +1,54 @@
 ---
 metadata:
-  version: "1.1.0"
-  last_updated: "2026-10-28"
+  version: "1.1.1"
+  last_updated: "2026-10-29"
 paths:
   - "**/*.py"
 ---
 # Python
 
-Adds Python mechanics to [jois-code-core-principles](jois-code-core-principles.md); it does not restate them.
+Python mechanics. It adds to [jois-code-core-principles](jois-code-core-principles.md) and does not restate them.
 
-- Never use a bare `except:` or `except Exception: pass`. Catch the narrowest type, and use
-  `raise ... from err` to keep the cause.
-- Never use a mutable default argument (`def f(x=[])`); default to `None` and create inside.
-- Use `with` for files, locks, connections and temporary state, never manual open/close.
-- Annotate public function signatures. Use `dataclass` or `pydantic` models for structured data
-  rather than loose dicts passed across layers.
-- Validate external input (request bodies, files, environment) at the boundary into typed models
-  and reject bad data there.
+## Errors
+
+- Never use a bare `except:` or `except Exception: pass`.
+- Catch the narrowest type.
+- Use `raise ... from err` to keep the cause.
+- Never use `assert` for runtime validation, because `-O` removes it.
+- Raise a real exception instead.
+
+## Functions and resources
+
+- Never use a mutable default argument, such as `def f(x=[])`.
+- Default to `None` and create the value inside the function.
+- Use `with` for files, locks, connections and temporary state.
+- Never open and close them by hand.
+- Use `pathlib.Path` for paths.
+- Never build paths by string concatenation or hardcode separators.
+
+## Data and modules
+
+- Annotate public function signatures.
+- Use `dataclass` or `pydantic` models for structured data.
+- Do not pass loose dicts across layers.
+- Validate external input, such as request bodies, files and environment, at the boundary.
+- Turn it into typed models there and reject bad data.
 - Keep import-time side effects out of modules: no I/O, network or config reading at import.
-- Use `pathlib.Path` for paths; never build them with string concatenation or hardcode separators.
-- Use parameterized queries only; never build SQL with f-strings or `%`.
-- Never use `assert` for runtime validation; it is removed under `-O`. Raise a real exception.
-- Web handlers stay thin, and the data layer imports no web-framework code (see
-  [jois-code-architecture-boundaries](jois-code-architecture-boundaries.md)).
-- In tests, use pytest fixtures to isolate state (temp dirs, in-memory databases); never read or
-  write the real home folder.
+
+## Queries and layers
+
+- Use parameterized queries only.
+- Never build SQL with f-strings or `%`.
+- Keep web handlers thin.
+- The data layer imports no web-framework code. See [jois-code-architecture-boundaries](jois-code-architecture-boundaries.md).
+
+## Tests
+
+- Use pytest fixtures to isolate state, such as temp dirs and in-memory databases.
+- Never read or write the real home folder.
 
 ## Prefer
 
-- `logging` with a module logger rather than `print`, beyond a throwaway script.
-- Comprehensions over `map`/`filter` with lambdas when it reads clearer.
-- `enum` over magic strings for closed sets.
+- Use `logging` with a module logger rather than `print`, beyond a throwaway script.
+- Use comprehensions over `map` or `filter` with lambdas when it reads clearer.
+- Use `enum` over magic strings for closed sets.
