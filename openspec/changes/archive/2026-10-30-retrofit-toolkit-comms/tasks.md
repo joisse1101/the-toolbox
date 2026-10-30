@@ -19,4 +19,4 @@
 
 ## 4. Stack
 
-- [ ] 4.1 Open each PR with `/jois-git:write-pr`, based on the previous branch, and verify the merge order and the rebase steps are in the final summary
+- [x] 4.1 Open each PR with `/jois-git:write-pr`, based on the previous branch, and verify the merge order and the rebase steps are in the final summary (result: opened #46 on main and #47 on docs/retrofit-pr-commands; merge order and rebase steps were in the final summary; #46 merged, #47 rebased onto main and retargeted)
