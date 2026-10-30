@@ -14,8 +14,8 @@
 
 ## 3. Agent and README (PR `docs/retrofit-agent-readme`, based on `docs/retrofit-commands`)
 
-- [ ] 3.1 Rewrite `agents/opsx-task-applier.md`, bump version and date, and verify its never-commit, never-push and never-edit-tasks limits are unchanged
-- [ ] 3.2 Rewrite `toolkit/README.md` to follow the documents rule, match the final wording of the rules and commands, and verify `python check_toolkit.py` and `python -m pytest` pass from `toolkit/`
+- [x] 3.1 Rewrite `agents/opsx-task-applier.md`, bump version and date, and verify its never-commit, never-push and never-edit-tasks limits are unchanged (result: git diff compared by hand -> never-commit, never-push, never-edit-tasks lines and both hooks unchanged, frontmatter tools and maxTurns unchanged; version 1.2.1 -> 1.2.2, last_updated 2026-10-30)
+- [x] 3.2 Rewrite `toolkit/README.md` to follow the documents rule, match the final wording of the rules and commands, and verify `python check_toolkit.py` and `python -m pytest` pass from `toolkit/` (result: python check_toolkit.py -> toolkit check passed; python -m pytest -> 33 passed in 1.07s)
 
 ## 4. Stack
 
