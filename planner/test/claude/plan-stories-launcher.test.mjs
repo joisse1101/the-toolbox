@@ -10,17 +10,18 @@ const LAUNCHER = path.join(ROOT, 'planner/claude/launchers/plan-stories.ps1');
 const SAMPLE = path.join(ROOT, 'planner/test/sample-data');
 const launcher = fs.readFileSync(LAUNCHER, 'utf8');
 
-test('the launcher gives the session no Bash, Read or Grep, only the two servers, and pre-approves the readers and checks but neither writer', () => {
+test('the launcher gives the session no Bash, Read or Grep, only the two servers, and pre-approves the readers and checks (check_drafts included) but no writer', () => {
   assert.match(launcher, /--tools "Skill,AskUserQuestion" `/);
   assert.match(launcher, /--strict-mcp-config/);
   assert.match(launcher, /--permission-mode default/);
   assert.match(launcher, /New-PlanStoriesConfig \$root \$file/);
   const approved = launcher.match(/--allowedTools (.*) `/)[1].match(/mcp__[a-z-]+__[a-z_]+/g);
   assert.deepEqual(approved.sort(), [
-    'mcp__backlog-tools__read_context', 'mcp__backlog-tools__read_file', 'mcp__backlog-tools__search_stories',
+    'mcp__backlog-tools__check_drafts', 'mcp__backlog-tools__read_context', 'mcp__backlog-tools__read_file', 'mcp__backlog-tools__search_stories',
     'mcp__diagram-tools__check_context_map', 'mcp__diagram-tools__check_diagram', 'mcp__diagram-tools__read_context_map', 'mcp__diagram-tools__read_diagrams', 'mcp__diagram-tools__repo_grep', 'mcp__diagram-tools__repo_read', 'mcp__diagram-tools__repo_tree',
   ]);
-  assert.doesNotMatch(launcher, /--allowedTools .*write_(diagram|context_map)/);
+  assert.doesNotMatch(launcher, /--allowedTools .*write_(diagram|context_map|proposals|lexicon|review)/);
+  assert.doesNotMatch(launcher, /--allowedTools .*suggest_lexicon_change/);
 });
 
 // The refusals happen before Claude starts, so they can run here; Windows PowerShell is how the launchers are run.
