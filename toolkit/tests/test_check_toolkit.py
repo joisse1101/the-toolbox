@@ -127,6 +127,19 @@ def test_unscoped_commit_rule_must_not_have_paths(tmp_path):
     assert "rules/jois-git-commit-hygiene.md: unscoped rule must not have `paths:` frontmatter" in problems
 
 
+def test_unscoped_apply_delegation_rule_is_accepted_without_paths(tmp_path):
+    _toolkit_tree(tmp_path)
+    _write(tmp_path, "rules/jois-opsx-apply-delegation.md", f"---\n{VERSION}\n---\n# Apply delegation\n")
+    assert _problems(tmp_path) == []
+
+
+def test_unscoped_apply_delegation_rule_must_not_have_paths(tmp_path):
+    _toolkit_tree(tmp_path)
+    _write(tmp_path, "rules/jois-opsx-apply-delegation.md", _scoped("py"))
+    problems = _problems(tmp_path)
+    assert "rules/jois-opsx-apply-delegation.md: unscoped rule must not have `paths:` frontmatter" in problems
+
+
 def _item(version='"1.0.0"', last_updated='"2026-10-14"', extra=""):
     lines = ["---"]
     if version is not None or last_updated is not None:
