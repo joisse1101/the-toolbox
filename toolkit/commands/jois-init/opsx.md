@@ -4,8 +4,8 @@ description: "Set OpenSpec up in this project: init when missing, check the glob
 allowed-tools: Bash(openspec:*), Bash(git status:*), Bash(git diff:*), Read, Edit, Write
 disable-model-invocation: true
 metadata:
-  version: "1.2.1"
-  last_updated: "2026-10-29"
+  version: "1.3.0"
+  last_updated: "2026-10-30"
 ---
 
 Set OpenSpec up in the project this runs in.
@@ -56,24 +56,19 @@ Set OpenSpec up in the project this runs in.
    - The guidance points at `~/.claude/rules/jois-git-commit-hygiene.md`.
    - If that file does not exist, say so and name `Install-Toolkit.ps1`.
    - Do not create the rule yourself.
-6. **Check the task agent.**
-   - The apply guidance hands tasks to `opsx-task-applier`.
-   - Look for `opsx-task-applier.md` in `~/.claude/agents/` and in this project's `.claude/agents/`.
-   - If it is in neither, say so and name `Install-Toolkit.ps1` (`-Agent opsx-task-applier.md`).
-   - Do not copy the agent yourself.
-7. **Report in one line**, in the form below.
-   - Then add that the commit stops and the delegation are advisory guidance.
-   - The global rule is what enforces the commit stops.
+6. **Report in one line**, in the form below.
+   - Then add that the commit stops are advisory guidance.
+   - The global rule is what enforces them.
 
    ```
-   OpenSpec 1.x | openspec/ present | workflows=ok | guidance: added | commit rule: found | task agent: found
+   OpenSpec 1.x | openspec/ present | workflows=ok | guidance: added | commit rule: found
    ```
 
    The report fields take these values:
    - `openspec/`: `present` or `created`.
    - `workflows`: `ok`, `missing apply`, `missing archive` or `fixed`.
    - `guidance`: `added`, `replaced` or `unchanged`.
-   - `commit rule` and `task agent`: `found` or `missing`.
+   - `commit rule`: `found` or `missing`.
 
 ## The guidance block
 
@@ -86,7 +81,6 @@ Set OpenSpec up in the project this runs in.
 ```yaml
       # jois-init:opsx begin (managed by /jois-init:opsx; edits here are overwritten)
       - "At the end of each concern, stop and follow the jois-git-commit-hygiene rule: stage by explicit path, show the summary and message, name a confirmation word, and end the turn. Never commit in the turn you stage."
-      - "Hand each task to the opsx-task-applier agent, one at a time, and wait for its report before the next. Before each dispatch say: the task, the files you expect it to touch, a rough time estimate labeled as an estimate, that there is no live timer, how to open the agent's transcript (its row in the agent panel then Enter, or /tasks), and its turn limit (maxTurns in the agent file). After each report say in one line whether the task is done, failed or blocked. Copy the report's result: clause verbatim into the task's line in tasks.md and tick the box; on blocked: ask the user, then dispatch again with the answer."
       # jois-init:opsx end
 ```
 

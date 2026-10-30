@@ -7,7 +7,7 @@ one-line pass.
 Checks:
   1. code-scoped rules: present and scoped to source-code file types
   2. unscoped and technology rules: `paths:` frontmatter, one rule per file extension
-  3. `metadata.version` and `metadata.last_updated` on every skill, rule, agent and jois-git or jois-init command
+  3. `metadata.version` and `metadata.last_updated` on every skill, rule, agent and jois-git, jois-init or jois-code command
   4. every slash command carries `disable-model-invocation: true`
   5. the PR body template and Author Verification sections of write-pr and update-pr match
   6. every agent declares `tools` (an omitted list inherits every tool)
@@ -143,6 +143,7 @@ def _versioned_items(toolkit: Path) -> list[Path]:
             *toolkit.glob("agents/*.md"),
             *toolkit.glob("commands/jois-git/*.md"),
             *toolkit.glob("commands/jois-init/*.md"),
+            *toolkit.glob("commands/jois-code/*.md"),
         ]
     )
 
