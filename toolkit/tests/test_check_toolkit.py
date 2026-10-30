@@ -223,6 +223,13 @@ def test_jois_commands_with_a_version_pass(tmp_path):
     assert not any("jois-git/stage.md" in p for p in problems)
 
 
+def test_orchestrator_command_without_a_version_fails(tmp_path):
+    _toolkit_tree(tmp_path)
+    _write(tmp_path, "commands/jois-code/apply.md", f"---\n{HIDDEN}\n---\nbody\n")
+    problems = _problems(tmp_path)
+    assert any(p.startswith("commands/jois-code/apply.md: missing `metadata.version`") for p in problems)
+
+
 def _pr_command(body):
     return (
         f"---\n{HIDDEN}\n{VERSION}\n---\n# Steps\nown steps\n\n"
