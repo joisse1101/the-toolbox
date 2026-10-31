@@ -11,7 +11,7 @@
 
 ## 3. Align the README
 
-- [ ] 3.1 Check `toolkit/README.md` for any statement of the replies rule's length or content and update it to match.
+- [x] 3.1 Check `toolkit/README.md` for any statement of the replies rule's length or content and update it to match. (result: grep of toolkit/README.md for the replies rule's length and content -> only the jois-comms-replies bullet at lines 329-330 mentioned them; changed "about 10 lines" to "about 20 lines" and added a one-line content sub-bullet; python check_toolkit.py (run from toolkit/) -> toolkit check passed)
 
 ## 4. Verify
 
