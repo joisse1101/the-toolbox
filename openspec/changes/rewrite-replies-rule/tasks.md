@@ -6,8 +6,8 @@
 
 ## 2. Update the documents rule
 
-- [ ] 2.1 In `toolkit/rules/jois-comms-documents.md`, change the Words bullet to: define a technical term on first use unless the repo has a glossary or definitions page, then link to it.
-- [ ] 2.2 Bump `version` to `1.1.0` and set `last_updated` in that file's frontmatter.
+- [x] 2.1 In `toolkit/rules/jois-comms-documents.md`, change the Words bullet to: define a technical term on first use unless the repo has a glossary or definitions page, then link to it. (result: Words bullet in `toolkit/rules/jois-comms-documents.md` changed to the glossary-or-define wording, kept as one bullet; `python check_toolkit.py` -> "toolkit check passed")
+- [x] 2.2 Bump `version` to `1.1.0` and set `last_updated` in that file's frontmatter. (result: frontmatter now `version: "1.1.0"`, `last_updated: "2026-10-31"`, `paths:` unchanged; `python check_toolkit.py` -> "toolkit check passed")
 
 ## 3. Align the README
 
