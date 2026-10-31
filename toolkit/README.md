@@ -327,7 +327,8 @@ code (tickets, workflows) load none of them. Three rules are unscoped on purpose
   data touches no code file either. It asks nothing unless Claude is about to test or verify a
   change.
 - `jois-comms-replies`: replies happen in every session, whatever files are touched. It loads on
-  every turn, so it is kept to about 10 lines.
+  every turn, so it is kept to about 20 lines.
+  - It covers plain words, a clear reply shape, when to decide and when to ask, and how to ask.
 
 `jois-comms-documents` is scoped to `**/*.md`: it loads when a markdown file is read or created, and
 not in sessions that never touch markdown. It covers headers, one idea per bullet, and owners and

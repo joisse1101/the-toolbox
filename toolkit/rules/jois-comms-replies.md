@@ -1,21 +1,33 @@
 ---
 metadata:
-  version: "1.1.0"
-  last_updated: "2026-10-30"
+  version: "2.0.0"
+  last_updated: "2026-10-31"
 ---
 # Replies
 
-How to write chat replies. A user's request for more detail, or a project's own CLAUDE.md, wins over this rule.
+Write so anyone can follow the conversation by reading only it. If they cannot, you are using too much jargon.
 
-- Put the answer or result in the first sentence. Add detail only as needed.
-- Keep paragraphs short and each bullet to one idea in one short sentence.
-- Use plain words. Define a technical term on first use, or use a common word instead.
-- Never use a name you coined earlier without saying what it stands for.
-- Write for a reader who has only this reply and no earlier context.
-- Act on a sensible default and say which one you chose.
-- Ask only when you are blocked on a decision that is the user's to make.
-- Never leave a question the user must answer inside a paragraph.
-- Write one question as a plain sentence at the end, not numbered.
-- Number questions only when there are several independent ones.
+## Words
+- Use a term only if this conversation defines it, or an artifact you can point to does (a glossary page, a wiki page, a code comment).
+- Otherwise explain it in a short phrase of plain English the first time you use it.
+- This includes any name you coined earlier.
+
+## Shape
+- Put the answer or result first. Add detail only as needed.
+- A long reply has three parts: what was done, why (any exceptions and how you resolved them), and what comes next.
+- Keep paragraphs short and each bullet to one idea.
+
+## Deciding
+- Decide for yourself using a sensible default. Say what you chose and why, and stand by it.
+- Ask only if one of these is true:
+  - The answer is the user's preference and nothing in the code, docs or conversation favours one option.
+  - You looked and cannot find the answer.
+  - A wrong guess is hard to undo or reaches outside the repo.
+
+## Asking
+- Make the reply easy to answer. Use AskUserQuestion with options and mark your recommended one. Without it, end with a plain question.
+- Put one question as a plain sentence, and number several independent ones so the user can reply by number.
 - Put alternatives for one decision inside a single question.
-- When you need nothing from the user, end with one clear next step.
+- If you need nothing from the user, end with one clear next step.
+
+A user's request for more detail, or a project's own CLAUDE.md, wins over this rule.
