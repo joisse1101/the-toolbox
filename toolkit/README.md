@@ -318,7 +318,7 @@ session start, in every project. A rule with `paths:` frontmatter (a list of glo
 `"**/*.java"`) loads once a matching file is read or created. Tested on Claude Code 2.1.299: a
 scoped rule is not present before any matching file is touched, so a change planned before any
 file is opened has no rules yet. Every coding rule here is scoped, so sessions that never touch
-code (tickets, workflows) load none of them. Three rules are unscoped on purpose:
+code (tickets, workflows) load none of them. Four rules are unscoped on purpose:
 
 - `jois-git-commit-hygiene`: commits of images, deletions, renames and docs touch no code file, so a
   scoped rule would be missing exactly when those commits grow. It asks nothing unless Claude is
@@ -329,6 +329,9 @@ code (tickets, workflows) load none of them. Three rules are unscoped on purpose
 - `jois-comms-replies`: replies happen in every session, whatever files are touched. It loads on
   every turn, so it is kept to about 20 lines.
   - It covers plain words, a clear reply shape, when to decide and when to ask, and how to ask.
+- `jois-env-local-installs`: installing a package, such as `pip install` or `npm install -g`, touches
+  no code file, so a scoped rule would be missing exactly when it matters. It asks nothing unless
+  Claude is about to install something.
 
 `jois-comms-documents` is scoped to `**/*.md`: it loads when a markdown file is read or created, and
 not in sessions that never touch markdown. It covers headers, one idea per bullet, and owners and
@@ -342,6 +345,8 @@ How the standards are split:
 - The unscoped `jois-git-commit-hygiene` rule keeps commits to one concern and requires the user's confirmation word before Claude commits.
 - The unscoped `jois-test-mock-data` rule makes Claude test and verify with mock data and mock systems by default.
   - It never uses real systems or real data unless the user asks in the current request.
+- The unscoped `jois-env-local-installs` rule lets Claude install packages only inside the project, such as through a project `.venv`.
+  - It never installs globally and asks the user when no project-local way exists.
 - Use `-Scope project` to keep the rules out of unrelated projects.
 - A project's own `CLAUDE.md` takes precedence.
 
@@ -372,7 +377,7 @@ metadata:
 ```
 
 A rule's frontmatter holds the same `metadata:` block next to its `paths:`; an unscoped rule such
-as `jois-git-commit-hygiene` or `jois-test-mock-data` has only the `metadata:` block and still loads in every session. A top-level
+as `jois-git-commit-hygiene`, `jois-test-mock-data` or `jois-env-local-installs` has only the `metadata:` block and still loads in every session. A top-level
 `version:` key is not accepted. `python check_toolkit.py` (run from `toolkit/`) fails on a missing or
 malformed version.
 

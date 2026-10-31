@@ -6,6 +6,6 @@
 
 ## 2. Docs and delivery
 
-- [ ] 2.1 Update `toolkit/README.md`: add the rule to the rules list and to the "why unscoped" and install-summary wording (three unscoped rules besides the replies rule's entry, as the README currently counts them); verify no remaining text gives a stale count of unscoped rules
-- [ ] 2.2 Check the README's existing `.venv` section still agrees with the rule
-- [ ] 2.3 Verify the installer delivers the rule with the toolkit's installer in a temporary install folder (`-Scope project -Path <temp folder>`) and `-List` shows it `up to date`
+- [x] 2.1 Update `toolkit/README.md`: add the rule to the rules list and to the "why unscoped" and install-summary wording (three unscoped rules besides the replies rule's entry, as the README currently counts them); verify no remaining text gives a stale count of unscoped rules (result: grep of toolkit/**/*.md for stale unscoped-rule counts -> none left, only the updated "Four rules are unscoped"; python check_toolkit.py -> toolkit check passed)
+- [x] 2.2 Check the README's existing `.venv` section still agrees with the rule (result: manual read of the README `.venv` section against `toolkit/rules/jois-env-local-installs.md` -> consistent, no edit needed)
+- [x] 2.3 Verify the installer delivers the rule with the toolkit's installer in a temporary install folder (`-Scope project -Path <temp folder>`) and `-List` shows it `up to date` (result: Install-Toolkit.ps1 -Scope project -Path <scratchpad temp folder> -> installed rule jois-env-local-installs.md among all rules; same command with -List -> `rule jois-env-local-installs.md up to date 1.0.0 (2026-10-31)`, and no differs, missing or not-installed line matched the filter)
