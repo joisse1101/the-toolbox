@@ -15,7 +15,7 @@ The toolkit SHALL provide a `jois-comms-replies` rule at `toolkit/rules/jois-com
 
 #### Scenario: Rule is short
 - **WHEN** the rule file is read
-- **THEN** its body SHALL be about 10 lines, one idea per bullet
+- **THEN** its body SHALL be about 20 lines, one idea per bullet
 
 #### Scenario: Docs check accepts the unscoped rule
 - **WHEN** the docs check runs and `jois-comms-replies.md` has no `paths:` frontmatter
@@ -25,31 +25,57 @@ The toolkit SHALL provide a `jois-comms-replies` rule at `toolkit/rules/jois-com
 - **WHEN** the docs check runs and `jois-comms-replies.md` has `paths:` frontmatter
 - **THEN** it SHALL fail and name the file, because the rule must load in every session
 
-### Requirement: Replies lead with the answer in plain words
-The replies rule SHALL tell Claude to put the answer or result first and give detail only as needed. It SHALL tell Claude to keep paragraphs short and to keep each bullet to one idea in one short sentence. It SHALL tell Claude to use plain words, to define a technical term on first use or use a common word instead, and never to use a name or label it invented earlier in the session without saying what it stands for. It SHALL tell Claude to write for a reader who has only the current reply and no earlier context.
+### Requirement: Replies are understandable from the conversation alone
+The replies rule SHALL state the principle that anyone should be able to follow the conversation by reading only the conversation, and that failing this means there is too much jargon. It SHALL tell Claude to use a term only when the conversation or an artifact it can point to (a glossary page, a wiki page or a code comment) defines it, and otherwise to explain the term in a short phrase of plain English the first time. It SHALL say this includes any name Claude coined earlier.
 
-#### Scenario: Answer comes first
-- **WHEN** Claude answers a question
-- **THEN** the rule SHALL require the first sentence to hold the answer or result
+#### Scenario: Term defined in an artifact
+- **WHEN** a glossary page or defining code comment exists for a term
+- **THEN** the rule SHALL allow Claude to use the term and point to that artifact
+
+#### Scenario: Term defined nowhere
+- **WHEN** Claude needs a term that neither the conversation nor any artifact defines
+- **THEN** the rule SHALL require a short plain-English explanation on first use
 
 #### Scenario: Coined label is explained
 - **WHEN** Claude refers to a label it made up earlier in the session
 - **THEN** the rule SHALL require the reply to say what the label stands for
 
+### Requirement: Replies have a clear shape
+The replies rule SHALL tell Claude to put the answer or result first and give detail only as needed. It SHALL tell Claude that a long reply has three parts in order: what was done, why it was done (including any exceptions and how they were resolved), and what comes next. It SHALL tell Claude to keep paragraphs short and each bullet to one idea.
+
+#### Scenario: Answer comes first
+- **WHEN** Claude answers a question
+- **THEN** the rule SHALL require the first sentence to hold the answer or result
+
+#### Scenario: Long reply has three parts
+- **WHEN** a long explanatory reply is needed
+- **THEN** the rule SHALL require a summary of what was done, then the reasoning with exceptions and their resolution, then next steps, questions or calls to action
+
 #### Scenario: One idea per bullet
 - **WHEN** Claude writes a bullet list in a reply
-- **THEN** the rule SHALL require each bullet to hold one idea in one short sentence
+- **THEN** the rule SHALL require each bullet to hold one idea
 
-### Requirement: Replies end with a next step or numbered questions
-The replies rule SHALL tell Claude to act on a sensible default and say which default it chose, and to ask only when it is blocked on a decision that is the user's to make. It SHALL tell Claude to close a reply that needs an answer with the question set apart from the text above it. It SHALL tell Claude to write one question as a plain sentence ending with a question mark, not numbered. It SHALL tell Claude to number questions only when a reply holds several independent ones, each a full question on its own line ending with a question mark. It SHALL tell Claude to write alternatives as options inside one question, not as separate questions. It SHALL tell Claude never to place a question the user must answer inside a paragraph. It SHALL tell Claude to end a reply with one clear next step when it needs nothing from the user. It SHALL NOT require Claude to limit the number of options it presents or the number of questions it asks.
+### Requirement: Claude decides by default and asks in three cases
+The replies rule SHALL tell Claude to decide for itself using a sensible default, to say what it chose and why, and to stand by the choice. It SHALL tell Claude to ask only when at least one of three conditions holds: the answer is the user's preference and nothing in the code, docs or conversation favours one option; Claude looked and cannot find the answer; or a wrong guess is hard to undo or reaches outside the repo.
 
 #### Scenario: Default is used and stated
 - **WHEN** a sensible default exists for a decision
-- **THEN** the rule SHALL require Claude to act on it and say which default it chose, without asking
+- **THEN** the rule SHALL require Claude to act on it and say what it chose and why, without asking
 
-#### Scenario: Question is not hidden
-- **WHEN** Claude is blocked on a decision that is the user's to make
-- **THEN** the rule SHALL require the question to close the reply, apart from the text before it
+#### Scenario: Preference with no favoured option
+- **WHEN** the choice is the user's preference and nothing favours one option
+- **THEN** the rule SHALL allow Claude to ask
+
+#### Scenario: Hard to undo
+- **WHEN** a wrong guess is hard to undo or reaches outside the repo
+- **THEN** the rule SHALL allow Claude to ask
+
+### Requirement: Questions are easy to answer
+The replies rule SHALL tell Claude, when it must ask, to use the AskUserQuestion tool where available with options and its recommended option marked, and otherwise to end the reply with a plain question. It SHALL tell Claude to write one question as a plain sentence and to number several independent questions so the user can reply by number. It SHALL tell Claude to write alternatives for one decision as options inside a single question. It SHALL tell Claude to end a reply with one clear next step when it needs nothing from the user. It SHALL NOT limit the number of options or questions.
+
+#### Scenario: Recommended option is marked
+- **WHEN** Claude asks through AskUserQuestion
+- **THEN** the rule SHALL require the options to include its recommendation, marked as such
 
 #### Scenario: One question is not numbered
 - **WHEN** a reply holds exactly one question
@@ -61,11 +87,11 @@ The replies rule SHALL tell Claude to act on a sensible default and say which de
 
 #### Scenario: Alternatives stay in one question
 - **WHEN** Claude offers alternatives for one decision
-- **THEN** the rule SHALL require them to appear as options inside one question, not as separate numbered questions
+- **THEN** the rule SHALL require them to appear as options inside one question
 
 #### Scenario: Nothing is asked
 - **WHEN** Claude needs nothing from the user
-- **THEN** the rule SHALL require the reply to end with the one next step
+- **THEN** the rule SHALL require the reply to end with one next step
 
 #### Scenario: Options are not capped
 - **WHEN** the replies rule is read
@@ -94,7 +120,7 @@ The toolkit SHALL provide a `jois-comms-documents` rule at `toolkit/rules/jois-c
 - **THEN** the extension `md` SHALL appear in no rule other than the documents rule
 
 ### Requirement: Documents are organized
-The documents rule SHALL tell Claude to give each topic of a markdown document its own header and to keep a clear hierarchy of headers. It SHALL tell Claude to keep each bullet to one idea in one short sentence, to move a second idea into its own bullet or a sub-list, and to define a technical term on first use. It SHALL tell Claude to put the purpose or the result of a document first. It SHALL tell Claude to name who owns a next step and by when. It SHALL tell Claude to mark what is known, what is assumed and what is unchecked. It SHALL apply to every markdown file Claude writes, including specs, READMEs, skills and rules.
+The documents rule SHALL tell Claude to give each topic of a markdown document its own header and to keep a clear hierarchy of headers. It SHALL tell Claude to keep each bullet to one idea in one short sentence, to move a second idea into its own bullet or a sub-list, and to define a technical term on first use unless the repository has a glossary or definitions page, in which case Claude SHALL link to it. It SHALL tell Claude to put the purpose or the result of a document first. It SHALL tell Claude to name who owns a next step and by when. It SHALL tell Claude to mark what is known, what is assumed and what is unchecked. It SHALL apply to every markdown file Claude writes, including specs, READMEs, skills and rules.
 
 #### Scenario: Several ideas in one bullet
 - **WHEN** a bullet in a document Claude writes holds more than one idea
@@ -103,6 +129,14 @@ The documents rule SHALL tell Claude to give each topic of a markdown document i
 #### Scenario: Topic without a header
 - **WHEN** a document covers several topics
 - **THEN** the rule SHALL require a header for each topic, nested by hierarchy
+
+#### Scenario: Glossary exists
+- **WHEN** a repository has a glossary page that defines a term the document uses
+- **THEN** the rule SHALL require the document to link to it instead of redefining the term
+
+#### Scenario: No glossary
+- **WHEN** no glossary page defines a term the document uses
+- **THEN** the rule SHALL require the term to be defined on first use
 
 #### Scenario: Next step without an owner
 - **WHEN** a document Claude writes lists a next step
