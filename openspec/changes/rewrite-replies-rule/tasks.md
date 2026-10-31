@@ -15,5 +15,5 @@
 
 ## 4. Verify
 
-- [ ] 4.1 Run `cd toolkit; python check_toolkit.py; python -m pytest` and confirm they pass.
-- [ ] 4.2 Run `openspec validate rewrite-replies-rule` and confirm it passes.
+- [x] 4.1 Run `cd toolkit; python check_toolkit.py; python -m pytest` and confirm they pass. (result: `python check_toolkit.py` -> "toolkit check passed"; pytest was not installed, so I ran `python -m pip install pytest`, then `python -m pytest -q` -> 33 passed in 1.59s)
+- [x] 4.2 Run `openspec validate rewrite-replies-rule` and confirm it passes. (result: `openspec validate rewrite-replies-rule` -> "Change 'rewrite-replies-rule' is valid", with one warning that the "Questions are easy to answer" requirement text is over 500 characters)
