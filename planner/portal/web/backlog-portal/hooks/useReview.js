@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createFileStore } from '../../shared/files.js';
 import { parseReview, serializeReview, retargetRows } from '../../../../logic/review/review.js';
 
-const store = createFileStore('reviews');
+const store = createFileStore('review');
 const SAVE_DEBOUNCE_MS = 400;
 const RETRY_START_MS = 2000;
 const RETRY_MAX_MS = 30000;

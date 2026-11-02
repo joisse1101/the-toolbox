@@ -7,7 +7,6 @@ import { useReview } from './hooks/useReview.js';
 import { useProposals } from './hooks/useProposals.js';
 import { useLexicon } from './hooks/useLexicon.js';
 import { useLexiconSuggestions } from './hooks/useLexiconSuggestions.js';
-import { backup } from '../shared/files.js';
 import { acceptProposed, moveToProposed as moveStoryToProposed } from '../../../logic/backlog/proposals.js';
 import FileBar from './components/FileBar.jsx';
 import Info from './components/Info.jsx';
@@ -19,7 +18,6 @@ import ReviewTab from './components/ReviewTab.jsx';
 import ProposedTab from './components/ProposedTab.jsx';
 import { openRows } from '../../../logic/lexicon/lexicon-suggestions.js';
 import LexiconTab from './components/LexiconTab.jsx';
-import BackupsTab from './components/BackupsTab.jsx';
 import SettingsTab from './components/SettingsTab.jsx';
 import { useSettings } from './hooks/useSettings.js';
 import ResizeHandle from './components/ResizeHandle.jsx';
@@ -71,7 +69,7 @@ export default function App() {
     if (sameStory && (before.epic !== now.epic || before.feature !== now.feature)) reveal(now.epic, now.feature);
   }, [current, selected?.id, selectedEpic, selectedFeature, reveal]);
 
-  // Review suggestions for the open backlog (reviews/<same name>), shown next to the fields they concern.
+  // Review suggestions for the open backlog (its review file), shown next to the fields they concern.
   const review = useReview(current);
   const reload = review.reload;
   const reviewUnits = useMemo(() => unitsOf(review.rows), [review.rows]);
@@ -110,12 +108,12 @@ export default function App() {
     if (leaveReview) actions.setView('editor');
   }, [leaveReview, actions]);
 
-  // Proposed stories for the open backlog (proposals/<same name>); the tab is always there, the file may not be.
+  // Proposed stories for the open backlog (its proposals file); the tab is always there, the file may not be.
   const proposals = useProposals(current, backlog?.headers);
   const refreshProposals = proposals.actions.refreshFromDisk;
   const [proposedNotice, setProposedNotice] = useState(null);
 
-  // The lexicon of the open backlog (lexicons/<same name>.md); the tab is always there, the file may not be.
+  // The lexicon of the open backlog (its lexicon file); the tab is always there, the file may not be.
   const lexicon = useLexicon(current);
   const editorList = useListWidth('editor');
   const refreshLexicon = lexicon.actions.refreshFromDisk;
@@ -153,7 +151,7 @@ export default function App() {
     setProposedNotice({ kind: 'ok', text: `Moved ${story.code} to Proposed as ${result.moved.code}.` }); // shown in the Proposed tab
   };
 
-  // Backup: wait until backlog, proposals and review are on disk, so the copy matches the screen.
+  // Wait until every pending save is on disk; the Settings tab needs it before it switches the data folder.
   const settleAll = async () => {
     const saved = await Promise.all([actions.settle(), proposals.actions.settle(), review.settle(), lexicon.actions.settle(), lexiconSuggestions.settle()]);
     return saved.every(Boolean);
@@ -165,27 +163,6 @@ export default function App() {
     document.title = projectName ? `${projectName} - Backlog portal` : 'Backlog portal';
   }, [projectName]);
   const showSettings = view === 'settings' || !current; // with no backlog there is nothing else to show
-  const [backupNote, setBackupNote] = useState(null);
-  const [backingUp, setBackingUp] = useState(false);
-  const [backupCount, setBackupCount] = useState(0); // lets the Backups tab reload its list
-  useEffect(() => setBackupNote(null), [current]);
-  const backUp = async () => {
-    const name = current;
-    setBackupNote(null);
-    setBackingUp(true);
-    try {
-      if (!(await settleAll())) {
-        return setBackupNote({ kind: 'error', text: 'No backup made: the latest changes could not be saved yet.' });
-      }
-      const { folder } = await backup(name); // folder is YYYY-MM-DD_HHMMSS[-n]
-      setBackupCount((n) => n + 1);
-      setBackupNote({ kind: 'ok', text: `Backed up ${name} at ${folder.slice(11, 13)}:${folder.slice(13, 15)}` });
-    } catch (err) {
-      setBackupNote({ kind: 'error', text: `No backup made: ${err.message}` });
-    } finally {
-      setBackingUp(false);
-    }
-  };
 
   // Ask the Story form to focus a field once it has rendered (default: Epic).
   const [focusRequest, setFocusRequest] = useState(null);
@@ -284,8 +261,8 @@ export default function App() {
         </header>
 
         <FileBar
-          files={files} current={current} message={message} olderLayout={settingsState.settings?.olderLayout} backupNote={backupNote} backingUp={backingUp} focusNameToken={focusNameToken}
-          onSelect={actions.selectFile} onRename={actions.renameFile} onNew={newBacklog} onBackup={backUp} onOpenFolder={actions.openFolder} onRefresh={refreshAll}
+          files={files} current={current} message={message} olderLayout={settingsState.settings?.olderLayout} focusNameToken={focusNameToken}
+          onSelect={actions.selectFile} onRename={actions.renameFile} onNew={newBacklog} onOpenFolder={actions.openFolder} onRefresh={refreshAll}
         />
 
         {(review.message || review.notice || acceptSummary || orphans.length > 0) && (
@@ -303,7 +280,7 @@ export default function App() {
         )}
 
         <p id="emptyPrompt" className="card muted" hidden={!!current}>
-          There are no backlogs in <code>planner/data/backlogs/</code> yet. Click <strong>New</strong> to create one.
+          There are no backlog folders in the data folder yet. Click <strong>New</strong> to create one.
         </p>
 
         <div id="tabs" className="tabs" role="tablist" aria-label="Views">
@@ -317,7 +294,6 @@ export default function App() {
           <button type="button" role="tab" id="tabLexicon" className="tab" aria-controls="lexiconView" aria-selected={view === 'lexicon'} onClick={() => actions.setView('lexicon')}>
             {`Lexicon (${lexicon.lexicon.terms.length}${openSuggestions ? `, ${openSuggestions} suggested` : ''})`}
           </button>
-          <button type="button" role="tab" id="tabBackups" className="tab" aria-controls="backupsView" aria-selected={view === 'backups'} onClick={() => actions.setView('backups')}>Backups</button>
           {review.exists && (
             <button type="button" role="tab" id="tabReview" className="tab" aria-controls="reviewView" aria-selected={view === 'review'} onClick={() => actions.setView('review')}>
               {openReviewCount ? `Review (${openReviewCount})` : 'Review'}
@@ -374,8 +350,6 @@ export default function App() {
             onOpen={openInEditor} onApply={applyUnit} onDismiss={dismissUnit} onUnlock={unlockUnit} onAcceptAll={acceptUnits} onClear={review.clear}
           />
         )}
-
-        <BackupsTab name={current} hidden={!current || view !== 'backups'} refreshToken={backupCount} settleAll={settleAll} />
 
         <SettingsTab hidden={!showSettings} settingsState={settingsState} />
 

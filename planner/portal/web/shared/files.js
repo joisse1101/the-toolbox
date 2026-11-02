@@ -1,4 +1,4 @@
-// Fetch wrapper for the CSV file API: /api/<store>/...
+// Fetch wrapper for the CSV file API: /api/<kind>/...
 // Errors are thrown as FileApiError with a readable message; `locked` is true when the file
 // is held open by another program (for example Excel).
 
@@ -35,25 +35,6 @@ async function call(method, url, { json, text } = {}) {
   }
   if (!res.ok) throw new FileApiError(data.error || `Request failed (${res.status})`, res.status, data.code);
   return data;
-}
-
-// Backups of one backlog: /api/backup/<name>. The server copies the backlog, its review and its proposals.
-const backupUrl = (name) => `/api/backup/${encodeURIComponent(name)}`;
-
-// Resolves to { folder, files } of the new backup.
-export function backup(name) {
-  return call('POST', backupUrl(name));
-}
-
-// Resolves to [{ folder, files }], newest first.
-export async function listBackups(name) {
-  return (await call('GET', backupUrl(name))).backups;
-}
-
-// `a` and `b` are backup folder names or 'current'. Resolves to git's colored diff ('' when nothing differs).
-export async function compareBackups(name, a, b) {
-  const query = `a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`;
-  return (await call('GET', `${backupUrl(name)}/diff?${query}`)).diff;
 }
 
 // Project settings: /api/project. A folder is sent as an absolute path; the server confines it.
@@ -94,8 +75,9 @@ export function migrateOlderLayout() {
   return call('POST', '/api/project/migrate');
 }
 
-export function createFileStore(store) {
-  const base = `/api/${encodeURIComponent(store)}`;
+// `kind` is one of backlog, review, proposals, lexicon, lexicon-suggestions. Files are named by backlog, without ".csv".
+export function createFileStore(kind) {
+  const base = `/api/${encodeURIComponent(kind)}`;
   const file = (name) => `${base}/files/${encodeURIComponent(name)}`;
   return {
     async list() {
@@ -112,7 +94,7 @@ export function createFileStore(store) {
     async write(name, text) {
       await call('PUT', file(name), { text });
     },
-    // Resolves to the new name (".csv" appended if missing).
+    // Resolves to the new backlog name (the folder is renamed).
     async rename(name, newName) {
       return (await call('PATCH', file(name), { json: { name: newName } })).name;
     },

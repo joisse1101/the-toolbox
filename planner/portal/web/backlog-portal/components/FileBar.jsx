@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
-// Backlog dropdown, rename, New, Backup, Open folder and Refresh, plus the message banners.
-export default function FileBar({ files, current, message, olderLayout = [], backupNote, backingUp, focusNameToken, onSelect, onRename, onNew, onBackup, onOpenFolder, onRefresh }) {
+// Backlog dropdown, rename, New, Open folder and Refresh, plus the message banners.
+export default function FileBar({ files, current, message, olderLayout = [], focusNameToken, onSelect, onRename, onNew, onOpenFolder, onRefresh }) {
   const [draft, setDraft] = useState(current ?? '');
   const nameRef = useRef(null);
   const cancelled = useRef(false);
@@ -35,7 +35,7 @@ export default function FileBar({ files, current, message, olderLayout = [], bac
           </select>
         </div>
         <div className="grow">
-          <label htmlFor="fileName">File name</label>
+          <label htmlFor="fileName">Backlog name</label>
           <input
             type="text" id="fileName" autoComplete="off" spellCheck={false} ref={nameRef}
             value={draft} disabled={!current}
@@ -51,7 +51,6 @@ export default function FileBar({ files, current, message, olderLayout = [], bac
           />
         </div>
         <button type="button" id="newBtn" onClick={onNew}>New</button>
-        <button type="button" id="backupBtn" disabled={!current || backingUp} onClick={onBackup}>Backup</button>
         <button type="button" id="openBtn" onClick={onOpenFolder}>Open folder</button>
         <button type="button" id="refreshBtn" className="icon-only" title="Refresh from the CSV files" aria-label="Refresh from the CSV files" onClick={onRefresh}>
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -65,7 +64,6 @@ export default function FileBar({ files, current, message, olderLayout = [], bac
         </p>
       )}
       <p id="message" className="warning" hidden={!message}>{message || ''}</p>
-      {backupNote && <p id="backupNote" className={backupNote.kind === 'error' ? 'warning' : 'muted'} role="status">{backupNote.text}</p>}
     </section>
   );
 }
