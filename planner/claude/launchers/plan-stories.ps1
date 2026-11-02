@@ -25,7 +25,7 @@ $root = Split-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) -Pare
 Set-Location $root
 $skill = '.claude/skills/plan-stories'
 . (Join-Path $PSScriptRoot 'backlog-tools-config.ps1')
-$dataDir = if ($env:PLANNER_DATA_DIR) { $env:PLANNER_DATA_DIR } elseif ($env:TLT_DATA_DIR) { Write-Host "TLT_DATA_DIR is now PLANNER_DATA_DIR; the old name still works for now." -ForegroundColor Yellow; $env:TLT_DATA_DIR } else { Join-Path $root 'planner/data' }
+$dataDir = Get-PlannerDataDir $root
 
 function Stop-Launcher([string]$Message) {
   Write-Host $Message -ForegroundColor Red

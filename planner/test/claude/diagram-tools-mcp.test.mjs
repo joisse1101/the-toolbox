@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { DESCRIPTIONS } from '../../claude/mcp/diagram-tools.mjs';
+import { tempConfig } from '../helpers/temp-config.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SERVER = path.resolve(HERE, '../../claude/mcp/diagram-tools.mjs');
@@ -35,7 +36,7 @@ function temp({ repoJson } = {}) {
 
 async function connect(root, args = []) {
   const client = new Client({ name: 'test', version: '0' });
-  await client.connect(new StdioClientTransport({ command: process.execPath, args: [SERVER, ...args], env: { ...process.env, PLANNER_DATA_DIR: root }, stderr: 'ignore' }));
+  await client.connect(new StdioClientTransport({ command: process.execPath, args: [SERVER, ...args], env: { ...process.env, PLANNER_CONFIG: tempConfig(root) }, stderr: 'ignore' }));
   return client;
 }
 const call = (client, name, args) => client.callTool({ name, arguments: args });

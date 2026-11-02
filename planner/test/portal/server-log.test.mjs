@@ -4,10 +4,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
+import { tempConfig } from '../helpers/temp-config.mjs';
 
-// The server reads PLANNER_DATA_DIR when it is loaded, so the folder is set before it is required.
+// The server reads the config when it is loaded, so PLANNER_CONFIG is set before it is required.
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'server-log-test-'));
-process.env.PLANNER_DATA_DIR = root;
+process.env.PLANNER_CONFIG = tempConfig(root);
 const { server } = createRequire(import.meta.url)('../../portal/server/server.cjs');
 
 const HEADERS = { 'X-Requested-With': 'the-toolbox', 'Content-Type': 'application/json' };

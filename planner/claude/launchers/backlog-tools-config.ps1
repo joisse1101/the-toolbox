@@ -14,6 +14,23 @@ function New-BacklogToolsConfig([string]$Root, [switch]$ReadOnly) {
   return $path
 }
 
+# The planner data folder, asked of paths.cjs so it follows planner.config.yaml (or the file PLANNER_CONFIG names). A config error stops
+# the launcher with paths.cjs's own message, before Claude starts.
+function Get-PlannerDataDir([string]$Root) {
+  $paths = (Join-Path $Root 'planner/logic/storage/paths.cjs').Replace('\', '/')
+  $previous = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
+  try { $out = & node -p "require(process.argv[1]).DATA_DIR" $paths 2>&1 } finally { $ErrorActionPreference = $previous }
+  if ($LASTEXITCODE -ne 0) {
+    $message = (@($out) | ForEach-Object { "$_".TrimEnd() } | Where-Object { $_ }) -join [Environment]::NewLine
+    Write-Host $message -ForegroundColor Red
+    exit 1
+  }
+  $dir = "$(@($out)[-1])".Trim()
+  Write-Host "Data folder: $dir"
+  return $dir
+}
+
 # The backlog file name for a launcher: the one given (with or without .csv, or its number in the list) or, when none is given, the
 # one the user picks from a numbered list of planner/data/backlogs/. Stops the launcher on an unknown backlog.
 function Select-Backlog([string]$DataDir, [string]$Backlog) {

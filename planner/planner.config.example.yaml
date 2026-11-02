@@ -1,0 +1,8 @@
+# Copy this file to planner.config.yaml (git-ignored) and edit it. Both keys are optional.
+
+# Name of the project, shown in the portal header. Default: empty.
+projectName: My project
+
+# Folder holding the planner data. Absolute, or relative to this file's folder.
+# Default: planner/data
+dataDir: ./data

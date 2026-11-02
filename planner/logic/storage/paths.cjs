@@ -1,19 +1,30 @@
 'use strict';
-// Where things live. The private data (backlogs, reviews, proposals) is set by PLANNER_DATA_DIR and defaults to
-// <repo>/planner/data.
+// Where things live. The private data (backlogs, reviews, proposals) is set by `dataDir` in the project config
+// (planner/planner.config.yaml, or the file PLANNER_CONFIG names) and defaults to <repo>/planner/data. See project-config.cjs.
+// DATA_DIR is the folder as read when this module loaded, for short-lived scripts; the server and the write log call
+// getDataDir() each time, so setDataDir() takes effect at once.
 
 const fs = require('fs');
 const path = require('path');
+const { loadConfig, DEFAULT_DATA_DIR } = require('./project-config.cjs');
 
 const ROOT = path.resolve(__dirname, '..', '..', '..');
-// TLT_DATA_DIR, the name before the rename, is still accepted, with a warning.
-const CUSTOM_DIR = process.env.PLANNER_DATA_DIR || process.env.TLT_DATA_DIR;
-if (!process.env.PLANNER_DATA_DIR && process.env.TLT_DATA_DIR) console.error('TLT_DATA_DIR is now PLANNER_DATA_DIR; the old name still works for now.');
-const DATA_DIR = CUSTOM_DIR ? path.resolve(CUSTOM_DIR) : path.join(ROOT, 'planner', 'data');
+const DATA_DIR = loadConfig().dataDir;
+let current = DATA_DIR;
+
+function getDataDir() {
+  return current;
+}
+
+// Switches the folder for callers of getDataDir(). Does not touch the config file or DATA_DIR.
+function setDataDir(dir) {
+  current = path.resolve(dir);
+  return current;
+}
 
 // One line saying how to move data that is still where an earlier version kept it (<repo>/data, and the backlogs in
-// a `user-stories` folder), or null when nothing needs moving. A custom PLANNER_DATA_DIR is never moved, only renamed inside.
-function legacyDataHint({ root = ROOT, dataDir = DATA_DIR, custom = Boolean(CUSTOM_DIR) } = {}) {
+// a `user-stories` folder), or null when nothing needs moving. A data folder named in the config is never moved, only renamed inside.
+function legacyDataHint({ root = ROOT, dataDir = getDataDir(), custom = path.resolve(dataDir) !== DEFAULT_DATA_DIR } = {}) {
   if (!custom && !fs.existsSync(dataDir) && fs.existsSync(path.join(root, 'data'))) {
     return 'Your data is still in data/. It now lives in planner/data/ and the backlogs folder is `backlogs`: run `Move-Item data planner/data`, then `Rename-Item planner/data/user-stories backlogs`.';
   }
@@ -23,4 +34,4 @@ function legacyDataHint({ root = ROOT, dataDir = DATA_DIR, custom = Boolean(CUST
   return null;
 }
 
-module.exports = { ROOT, DATA_DIR, legacyDataHint };
+module.exports = { ROOT, DATA_DIR, getDataDir, setDataDir, legacyDataHint };

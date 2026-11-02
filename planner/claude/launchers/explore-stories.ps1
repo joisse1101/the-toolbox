@@ -12,7 +12,7 @@ $root = Split-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) -Pare
 Set-Location $root
 . (Join-Path $PSScriptRoot 'backlog-tools-config.ps1')
 $skill = '.claude/skills/explore-stories'
-$dataDir = if ($env:PLANNER_DATA_DIR) { $env:PLANNER_DATA_DIR } elseif ($env:TLT_DATA_DIR) { Write-Host "TLT_DATA_DIR is now PLANNER_DATA_DIR; the old name still works for now." -ForegroundColor Yellow; $env:TLT_DATA_DIR } else { Join-Path $root 'planner/data' }
+$dataDir = Get-PlannerDataDir $root
 
 $file = Select-Backlog $dataDir $Backlog
 

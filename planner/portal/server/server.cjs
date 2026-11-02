@@ -8,24 +8,49 @@ const path = require('path');
 const os = require('os');
 const { spawn } = require('child_process');
 const { HttpError, validateName } = require('../../logic/storage/file-name.cjs');
-const { DATA_DIR, legacyDataHint } = require('../../logic/storage/paths.cjs');
+// The config is read when paths.cjs loads. Run as the server, a bad config ends the process with the message that names the key.
+let paths;
+try {
+  paths = require('../../logic/storage/paths.cjs');
+} catch (err) {
+  if (require.main !== module) throw err;
+  console.error(`Cannot start: ${err.message}`);
+  process.exit(1);
+}
+const { getDataDir, setDataDir, legacyDataHint } = paths;
 const { backupFolderName, isBackupFolderName, backupFiles } = require('./backup.cjs');
 const { logWrite } = require('../../logic/storage/write-log.cjs');
+const { loadConfig, saveConfig, configPath, confineDir, checkFolder, initFolders, copyData } = require('../../logic/storage/project-config.cjs');
 
 const HOST = '127.0.0.1';
 const PORT = Number(process.env.PORT) || 3000;
 const DIST_DIR = path.join(__dirname, '..', 'dist'); // built by `npm run build`
 const MAX_BODY = 10 * 1024 * 1024;
-const BACKUPS_DIR = path.join(DATA_DIR, 'backups'); // not a store: only the backup routes reach it
 
-// Allow-list of data folders. Adding a tool's data folder is one line.
-const STORES = {
-  'backlogs': path.join(DATA_DIR, 'backlogs'),
-  reviews: path.join(DATA_DIR, 'reviews'), // review suggestions, written by the review-backlog skill's script
-  proposals: path.join(DATA_DIR, 'proposals'), // proposed stories awaiting acceptance, one file per backlog
-  lexicons: path.join(DATA_DIR, 'lexicons'), // defined terms, one file per backlog
-  'lexicon-suggestions': path.join(DATA_DIR, 'lexicon-suggestions'), // suggested term renames and deletes, one file per backlog
-};
+// Allow-list of data folders, built from the data folder being served. Adding a tool's data folder is one line.
+// BACKUPS_DIR is not a store: only the backup routes reach it. Both are rebuilt by switchTo().
+function buildStores(dataDir) {
+  return {
+    'backlogs': path.join(dataDir, 'backlogs'),
+    reviews: path.join(dataDir, 'reviews'), // review suggestions, written by the review-backlog skill's script
+    proposals: path.join(dataDir, 'proposals'), // proposed stories awaiting acceptance, one file per backlog
+    lexicons: path.join(dataDir, 'lexicons'), // defined terms, one file per backlog
+    'lexicon-suggestions': path.join(dataDir, 'lexicon-suggestions'), // suggested term renames and deletes, one file per backlog
+  };
+}
+let STORES = buildStores(getDataDir());
+let BACKUPS_DIR = path.join(getDataDir(), 'backups');
+
+// Number of requests that write (file save, create, rename, backup, init, copy) and have not finished.
+// A switch of data folder is refused while it is not zero.
+let busy = 0;
+
+// Points the server at `dir`. Synchronous, so no request sees a half-switched server.
+function switchTo(dir) {
+  const next = setDataDir(dir);
+  STORES = buildStores(next);
+  BACKUPS_DIR = path.join(next, 'backups');
+}
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -161,6 +186,46 @@ function openFolder(folder) {
   const child = spawn('explorer.exe', [folder], { detached: true, stdio: 'ignore' });
   child.on('error', () => {});
   child.unref();
+}
+
+// ---------- folder dialog ----------
+
+// A browser cannot return a folder's full path, so the server opens the system folder dialog (Windows only).
+// The start folder travels in an environment variable, never inside the script text.
+const PICK_SCRIPT = [
+  '[Console]::OutputEncoding = [System.Text.Encoding]::UTF8',
+  'Add-Type -AssemblyName System.Windows.Forms',
+  '$owner = New-Object System.Windows.Forms.Form',
+  '$owner.TopMost = $true',
+  '$dialog = New-Object System.Windows.Forms.FolderBrowserDialog',
+  '$dialog.SelectedPath = $env:PLANNER_PICK_START',
+  "if ($dialog.ShowDialog($owner) -eq 'OK') { [Console]::Out.Write($dialog.SelectedPath) }",
+].join('; ');
+
+// Resolves to the chosen folder, or null when the dialog is closed without a choice; rejects when it cannot open.
+// One replaceable function (see setFolderDialog) so tests never open a real window.
+let folderDialog = function windowsFolderDialog(startDir) {
+  return new Promise((resolve, reject) => {
+    if (process.platform !== 'win32') {
+      reject(new Error('The folder dialog is only available on Windows.'));
+      return;
+    }
+    const args = ['-NoProfile', '-NonInteractive', '-STA', '-Command', PICK_SCRIPT];
+    const child = spawn('powershell.exe', args, { env: { ...process.env, PLANNER_PICK_START: startDir }, stdio: ['ignore', 'pipe', 'pipe'] });
+    let out = '';
+    let err = '';
+    child.stdout.setEncoding('utf8').on('data', (d) => { out += d; });
+    child.stderr.setEncoding('utf8').on('data', (d) => { err += d; });
+    child.on('error', (e) => reject(new Error(`Could not open the folder dialog: ${e.message}`)));
+    child.on('close', (code) => {
+      if (code !== 0) reject(new Error(`Could not open the folder dialog: ${err.trim() || `PowerShell exited with ${code}`}`));
+      else resolve(out.trim() || null);
+    });
+  });
+};
+
+function setFolderDialog(fn) {
+  folderDialog = fn;
 }
 
 // ---------- backups ----------
@@ -380,9 +445,117 @@ async function handleBackup(req, res, segments) {
   throw new HttpError(405, 'Method not allowed');
 }
 
+// ---------- project settings ----------
+
+function requireHeader(req) {
+  if (req.headers['x-requested-with'] !== 'the-toolbox') {
+    throw new HttpError(403, 'Missing X-Requested-With header', 'forbidden');
+  }
+}
+
+function settingsReply() {
+  const config = loadConfig({ file: configPath() });
+  return { projectName: config.projectName, dataDir: getDataDir(), configPath: config.configPath };
+}
+
+// A folder named by the browser: refused with 400 unless confineDir accepts it. Returns the real path.
+function confined(dir) {
+  const c = confineDir(dir);
+  if (!c.ok) throw new HttpError(400, c.reason, 'refused');
+  return c.dir;
+}
+
+// /api/project (GET reads, PUT saves and switches), /api/project/check, /api/project/init, /api/project/copy, /api/project/pick.
+// They reach the config file and the folders init and the copy create, nothing else.
+async function handleProject(req, res, segments) {
+  const [, , sub, ...rest] = segments;
+  if (rest.length) throw new HttpError(404, 'Not found', 'not-found');
+
+  if (sub === undefined) {
+    if (req.method === 'GET') {
+      try {
+        return send(res, 200, settingsReply());
+      } catch (err) {
+        throw new HttpError(500, err.message, 'config-invalid');
+      }
+    }
+    if (req.method === 'PUT') {
+      requireHeader(req);
+      const body = await readJson(req);
+      const changes = {};
+      if (body.projectName !== undefined) changes.projectName = body.projectName;
+      if (body.dataDir !== undefined) changes.dataDir = body.dataDir;
+      // From here to the switch there is no await: no request can start between the check and the switch.
+      if (changes.dataDir !== undefined && busy > 0) {
+        throw new HttpError(409, 'A save or backup is running. Try again in a moment.', 'busy');
+      }
+      let saved;
+      try {
+        saved = saveConfig(changes, { file: configPath() });
+      } catch (err) {
+        throw new HttpError(400, err.message, 'refused');
+      }
+      if (changes.dataDir !== undefined) switchTo(saved.dataDir);
+      return send(res, 200, { ...settingsReply(), switched: changes.dataDir !== undefined });
+    }
+    throw new HttpError(405, 'Method not allowed');
+  }
+
+  if (!['check', 'init', 'copy', 'pick'].includes(sub)) throw new HttpError(404, 'Not found', 'not-found');
+  if (req.method !== 'POST') throw new HttpError(405, 'Method not allowed');
+  requireHeader(req);
+
+  // Only asks for a folder: nothing is saved, switched or created here; the path then goes through check.
+  if (sub === 'pick') {
+    let dir;
+    try {
+      dir = await folderDialog(getDataDir());
+    } catch (err) {
+      throw new HttpError(500, err.message, 'picker-unavailable');
+    }
+    return send(res, 200, dir ? { dir } : { cancelled: true });
+  }
+
+  const body = await readJson(req);
+
+  if (sub === 'check') return send(res, 200, checkFolder(body.dir));
+
+  busy++;
+  try {
+    const dir = confined(body.dir);
+    if (sub === 'init') {
+      try {
+        return send(res, 200, initFolders(dir));
+      } catch (err) {
+        throw new HttpError(500, err.message, 'init-failed');
+      }
+    }
+    const result = copyData(getDataDir(), dir);
+    if (result.refused) throw new HttpError(400, result.refused, 'refused');
+    if (result.stopped) {
+      return send(res, 500, { error: `Copy stopped at ${result.stopped.file}: ${result.stopped.message}`, code: 'copy-stopped', ...result });
+    }
+    return send(res, 200, result);
+  } finally {
+    busy--;
+  }
+}
+
 // ---------- API ----------
 
+// Counts a write as busy for as long as it runs, so a switch of data folder cannot land in the middle of it.
 async function handleApi(req, res, segments) {
+  if (segments[1] === 'project') return handleProject(req, res, segments);
+  const writes = req.method !== 'GET' && req.method !== 'HEAD';
+  if (writes) busy++;
+  try {
+    return await handleStoreApi(req, res, segments);
+  } finally {
+    if (writes) busy--;
+  }
+}
+
+async function handleStoreApi(req, res, segments) {
   const [, storeId, resource, fileRaw, ...rest] = segments;
   if (storeId === 'backup') return handleBackup(req, res, segments);
   const folder = Object.prototype.hasOwnProperty.call(STORES, storeId) ? STORES[storeId] : null;
@@ -504,10 +677,13 @@ const server = http.createServer(async (req, res) => {
 if (require.main === module) {
   server.listen(PORT, HOST, () => {
     console.log(`Backlog planner running at http://localhost:${PORT}/`);
+    const { projectName } = loadConfig({ file: configPath() });
+    if (projectName) console.log(`Project: ${projectName}`);
+    console.log(`Data folder: ${getDataDir()}`);
     if (!fs.existsSync(DIST_DIR)) console.log('The app has not been built yet. Run `npm run build` first.');
     const hint = legacyDataHint();
     if (hint) console.log(hint);
   });
 }
 
-module.exports = { server };
+module.exports = { server, setFolderDialog };

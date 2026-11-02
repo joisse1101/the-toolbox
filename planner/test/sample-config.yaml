@@ -1,0 +1,4 @@
+# Test config: the suite points PLANNER_CONFIG here so tests read the sample data, never planner/data.
+projectName: Sample
+# Relative to this file's folder.
+dataDir: ./sample-data
