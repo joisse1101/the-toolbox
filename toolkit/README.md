@@ -278,6 +278,10 @@ project), and:
 
 It never changes the global `delivery` and never runs `openspec update`.
 
+The `apply` guidance names one exception: `/jois-code:apply` commits a finished group under its own
+conditions, and every other apply keeps the confirmation word. Projects set up earlier carry the old
+line, so re-run `/jois-init:opsx` in each project to pick up the new one.
+
 The guidance only points at the `jois-git-commit-hygiene` rule, which holds the steps; it is advisory,
 and the rule is what enforces them. Accepted losses: the generated `/opsx:*` commands show in the skill
 list, and archive's git commands prompt for permission.
