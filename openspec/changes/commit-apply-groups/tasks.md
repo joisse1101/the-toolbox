@@ -22,9 +22,8 @@ Each group is one concern and one commit. Run the toolkit checks through the pro
 - [x] 3.5 Run `python check_toolkit.py` and `python -m pytest` from `toolkit/` and verify both pass. (result: `.venv/Scripts/python check_toolkit.py` -> `toolkit check passed`; `.venv/Scripts/python -m pytest` -> 61 passed in 19.35s)
 ## 4. Specs and docs
 
-- [ ] 4.1 Run `openspec validate commit-apply-groups --strict` and verify it passes for both delta specs.
-- [ ] 4.2 In `toolkit/README.md`, add the new agent to the list of agents and say that the rule and agent must be re-installed for the exception to take effect. Verify that the README's install command for the agent matches `Install-Toolkit.ps1 -Agent opsx-test-runner.md`.
-
+- [x] 4.1 Run `openspec validate commit-apply-groups --strict` and verify it passes for both delta specs. (result: `openspec validate commit-apply-groups --strict` -> "Change 'commit-apply-groups' is valid")
+- [x] 4.2 In `toolkit/README.md`, add the new agent to the list of agents and say that the rule and agent must be re-installed for the exception to take effect. Verify that the README's install command for the agent matches `Install-Toolkit.ps1 -Agent opsx-test-runner.md`. (result: README updated: `opsx-test-runner` added to the Agents list, re-install note for the rule and agent added, README install command `.\Install-Toolkit.ps1 -Agent opsx-test-runner.md` matches the required form; `.venv/Scripts/python check_toolkit.py` -> "toolkit check passed"; `.venv/Scripts/python -m pytest` -> 61 passed)
 ## Workflow follow-up
 
 - Sync the delta specs and archive the change after review (`/opsx:archive`).

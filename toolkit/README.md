@@ -211,11 +211,13 @@ Creating the issue:
 
 - It hands the change's tasks to the `opsx-task-applier` agent, one group at a time.
 - It records each task's `result:` clause in `tasks.md`.
-- It stops for a commit after each group.
+- It commits each finished group by itself on a branch other than `main` or `master`, and otherwise stops for a commit.
+- It never pushes.
 - It never implements a task itself.
 - Without a change name, it asks you to choose.
 - Install it with `.\Install-Toolkit.ps1 -Command jois-code`.
 - It needs the agent, which you install with `-Agent opsx-task-applier.md`.
+- It also uses `opsx-test-runner` to check a group before it commits, installed with `-Agent opsx-test-runner.md`.
 - See [The task agent](#the-task-agent).
 - It is advisory: plain `/opsx:apply` is unchanged and still works as before.
 
@@ -302,7 +304,7 @@ list, and archive's git commands prompt for permission.
   - If the command cannot find the transcript, it says the watch did not start.
 - The ticks in `tasks.md` are the progress across groups.
 - The transcript is the view inside one group.
-- After each completed group it stops for a commit under the `jois-git-commit-hygiene` rule.
+- After each completed group it commits or stops, as described in [Committing a group](#committing-a-group).
 - If the session ends, run the command again.
 - It resumes from the pending tasks.
 
@@ -313,11 +315,32 @@ Install both parts, then start the command in a Claude Code session:
 ```powershell
 .\Install-Toolkit.ps1 -Command jois-code
 .\Install-Toolkit.ps1 -Agent opsx-task-applier.md
+.\Install-Toolkit.ps1 -Agent opsx-test-runner.md
+.\Install-Toolkit.ps1 -Rule jois-git-commit-hygiene.md -Force
 ```
 
-- The command checks for the agent in `~/.claude/agents/` and in the project's `.claude/agents/`.
-- If the agent is in neither, the command says so, names `Install-Toolkit.ps1` and stops.
-- The command never copies the agent itself.
+- The command checks for each agent in `~/.claude/agents/` and in the project's `.claude/agents/`.
+- If `opsx-task-applier` is in neither, the command says so, names `Install-Toolkit.ps1` and stops.
+- If `opsx-test-runner` is in neither, the command says so, names `Install-Toolkit.ps1` and carries on: that group falls back to the confirmation word.
+- The command never copies an agent itself.
+- Re-install the rule and the test runner for the commit exception to take effect.
+  - An older installed rule still says "never commit" next to the new command.
+  - `-Force` overwrites the installed rule, which `-List` shows as `differs`.
+
+#### Committing a group
+
+- The purpose is to commit a checked group without a stop, and to ask only when something is doubtful.
+- It commits by itself only when all of these hold:
+  - The branch is a named branch other than `main` or `master`.
+  - `opsx-test-runner` ran the tests for the group's files and every reported command shows exit code 0.
+  - The group is one concern, and nothing foreign is staged or edited.
+- The command judges the tests by exit codes, never by the agent's wording.
+- Otherwise it stages the group, shows the summary and message, names a confirmation word and ends its turn, as the `jois-git-commit-hygiene` rule says.
+  - A detached HEAD or an unreadable branch name counts as protected.
+  - No test command, a suite that could not run or a missing agent also send it to the confirmation word.
+- It stages by explicit path and never uses `--amend` or `--no-verify`.
+- It never pushes, on any branch.
+- A rejected commit stops the command and is reported.
 
 #### What the agent does
 
@@ -350,7 +373,7 @@ Install both parts, then start the command in a Claude Code session:
 - The agent's instructions also ask for one plain command per Bash call: no chained `cd`, absolute paths only.
 - The hooks look at the direct command, so a `gh` call hidden inside a script is not caught.
 - The `rm` hook reads only the direct command, so an `rm -rf` hidden inside a script is not caught.
-- The commit stop is the backstop.
+- The commit checks are the backstop.
 - Groups run one at a time, never in parallel, because the agents share one checkout.
 
 ## Rules
@@ -386,6 +409,8 @@ How the standards are split:
 - One path-scoped rule per technology: TypeScript/React, Java, Python, config files and scripts.
 - Scoped rules have no size limit. They are written to be read, not squeezed.
 - The unscoped `jois-git-commit-hygiene` rule keeps commits to one concern and requires the user's confirmation word before Claude commits.
+  - One exception: `/jois-code:apply` may commit a finished group on a branch other than `main` or `master`.
+  - Re-install the rule with `Install-Toolkit.ps1` for the exception to take effect.
 - The unscoped `jois-test-mock-data` rule makes Claude test and verify with mock data and mock systems by default.
   - It never uses real systems or real data unless the user asks in the current request.
 - The unscoped `jois-env-local-installs` rule lets Claude install packages only inside the project, such as through a project `.venv`.
@@ -398,9 +423,14 @@ How the standards are split:
 Each `.md` file directly under `toolkit/agents/` is one Claude Code agent: a file with `name`,
 `description` and `tools` frontmatter (an agent without `tools` inherits every tool, so
 `python check_toolkit.py` fails on one), then the instructions. The installer treats each file as a
-unit, so `-Agent opsx-task-applier.md` installs one. The toolkit ships `opsx-task-applier` (see
-[The task agent](#the-task-agent)); other agents in `~/.claude/agents/` are not the toolkit's and are
-never touched.
+unit, so `-Agent opsx-task-applier.md` installs one. The toolkit ships two agents; other agents in
+`~/.claude/agents/` are not the toolkit's and are never touched.
+
+- `opsx-task-applier` does one group of an OpenSpec change's tasks (see [The task agent](#the-task-agent)).
+- `opsx-test-runner` runs the project's own test commands for a group's files and reports each command, exit code and counts.
+  - It uses the Haiku model and has no edit tools.
+  - It installs nothing and never commits, pushes or calls GitHub.
+  - Install it with `.\Install-Toolkit.ps1 -Agent opsx-test-runner.md`.
 
 ## Versions
 
