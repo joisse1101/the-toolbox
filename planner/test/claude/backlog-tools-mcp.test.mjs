@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { pathOf } from '../helpers/backlog-tree.mjs';
 import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
@@ -20,8 +21,8 @@ const CSV =
 
 function temp() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'tools-test-'));
-  fs.mkdirSync(path.join(root, 'backlogs'));
-  fs.writeFileSync(path.join(root, 'backlogs', 'data.csv'), CSV);
+  fs.mkdirSync(path.dirname(pathOf(root, 'data', 'backlog')), { recursive: true });
+  fs.writeFileSync(pathOf(root, 'data', 'backlog'), CSV);
   return root;
 }
 
@@ -97,9 +98,9 @@ test('write_proposals gives the script result', async () => {
   try {
     const r = await call(client, 'write_proposals', { backlog: 'data.csv', items: [story()] });
     assert.ok(!r.isError, textOf(r));
-    assert.match(textOf(r), /Added 1 proposed story to proposals\/data.csv \(NEW-1\); 1 in the file now\./);
+    assert.match(textOf(r), /Added 1 proposed story to data\/user-stories\/proposals\.csv \(NEW-1\); 1 in the file now\./);
     writeProposal({ dataDir: other, name: 'data.csv', input: JSON.stringify([story()]) });
-    assert.equal(fs.readFileSync(path.join(root, 'proposals', 'data.csv'), 'utf8'), fs.readFileSync(path.join(other, 'proposals', 'data.csv'), 'utf8'));
+    assert.equal(fs.readFileSync(pathOf(root, 'data', 'proposals'), 'utf8'), fs.readFileSync(pathOf(other, 'data', 'proposals'), 'utf8'));
     const again = await call(client, 'write_proposals', { backlog: 'data.csv', items: [story()] });
     assert.ok(!again.isError, textOf(again));
     assert.match(textOf(again), /^Skipped 1 already in the file [(]Story 1 = NEW-1[)]; 1 in the file now[.]/);
@@ -115,10 +116,10 @@ test('a bad write call writes nothing and returns the writer messages', async ()
     const r = await call(client, 'write_proposals', { backlog: 'data.csv', items: [story(), story({ title: 'Two', points: 21 })] });
     assert.equal(r.isError, true);
     assert.match(textOf(r), /Nothing was written\. 1 problem:\n- /);
-    assert.ok(!fs.existsSync(path.join(root, 'proposals')));
+    assert.ok(!fs.existsSync(path.dirname(pathOf(root, 'data', 'proposals'))));
     const lex = await call(client, 'write_lexicon', { backlog: 'data.csv', items: [{ term: 'Role' }] });
     assert.equal(lex.isError, true);
-    assert.ok(!fs.existsSync(path.join(root, 'lexicons')));
+    assert.ok(!fs.existsSync(pathOf(root, 'data', 'lexicon')));
   } finally {
     await client.close();
   }
@@ -130,7 +131,7 @@ test('write_lexicon adds a term', async () => {
   try {
     const r = await call(client, 'write_lexicon', { backlog: 'data.csv', items: [{ term: 'Role', definition: 'A set of privileges', avoid: ['hat'] }] });
     assert.ok(!r.isError, textOf(r));
-    assert.match(textOf(r), /Added 1 term to lexicons\/data.csv \(Role\); 1 in the lexicon now\./);
+    assert.match(textOf(r), /Added 1 term to data\/lexicon\.csv \(Role\); 1 in the lexicon now\./);
   } finally {
     await client.close();
   }
@@ -139,15 +140,15 @@ test('write_lexicon adds a term', async () => {
 test('write_review always appends and keeps existing rows', async () => {
   const root = temp();
   writeReview({ dataDir: root, name: 'data.csv', input: JSON.stringify([row()]) });
-  const before = fs.readFileSync(path.join(root, 'reviews', 'data.csv'), 'utf8');
+  const before = fs.readFileSync(pathOf(root, 'data', 'review'), 'utf8');
   const client = await connect(root);
   try {
     const r = await call(client, 'write_review', {
       backlog: 'data.csv', items: [row({ field: 'User Acceptance Criteria', suggested: 'AC1: Given x, when y, then z' })],
     });
     assert.ok(!r.isError, textOf(r));
-    assert.match(textOf(r), /Wrote 1 suggestion to reviews\/data.csv; 2 in the file now\./);
-    const after = fs.readFileSync(path.join(root, 'reviews', 'data.csv'), 'utf8');
+    assert.match(textOf(r), /Wrote 1 suggestion to data\/user-stories\/review\.csv; 2 in the file now\./);
+    const after = fs.readFileSync(pathOf(root, 'data', 'review'), 'utf8');
     assert.ok(after.startsWith(before.trimEnd()), 'the earlier row is kept');
   } finally {
     await client.close();
@@ -163,7 +164,7 @@ test('write_review states the one-line AC rule in its error and its description'
     });
     assert.equal(multi.isError, true);
     assert.match(textOf(multi), /one line/);
-    assert.ok(!fs.existsSync(path.join(root, 'reviews')));
+    assert.ok(!fs.existsSync(path.dirname(pathOf(root, 'data', 'review'))));
     const desc = (await client.listTools()).tools.find((t) => t.name === 'write_review').description;
     for (const word of [...ACTIONS, ...FIELDS, ...AREAS, ...CONFIDENCES]) assert.ok(desc.includes(word), `description mentions ${word}`);
     assert.match(desc, /ONE criterion per row/);
@@ -185,7 +186,8 @@ test('write_review states the one-line AC rule in its error and its description'
 test('read_context without a backlog lists the backlogs', async () => {
   const client = await connect(temp());
   try {
-    assert.match(textOf(await call(client, 'read_context', {})), /data\.csv/);
+    assert.match(textOf(await call(client, 'read_context', {})), /^=== backlogs ===\ndata$/);
+    assert.match(textOf(await call(client, 'read_context', { backlog: 'data' })), /=== read_context data:/);
     const r = await call(client, 'read_context', { section: 'index' });
     assert.equal(r.isError, true);
   } finally {
@@ -202,12 +204,12 @@ test('suggest_lexicon_change appends open rows, keeps earlier ones, reports impa
     await call(client, 'write_lexicon', {
       backlog: 'data.csv', items: [lexiconItem('Role', 'A set of privileges'), lexiconItem('Data owner', 'Holds the role of owner'), lexiconItem('Dataset', 'A table')],
     });
-    const lexiconBefore = fs.readFileSync(path.join(root, 'lexicons', 'data.csv'), 'utf8');
+    const lexiconBefore = fs.readFileSync(pathOf(root, 'data', 'lexicon'), 'utf8');
     const first = await call(client, 'suggest_lexicon_change', {
       backlog: 'data.csv', items: [{ term: 'Role', action: 'rename', newName: 'Privilege', reason: 'Clearer' }],
     });
     assert.ok(!first.isError, textOf(first));
-    assert.match(textOf(first), /Added 1 suggestion to lexicon-suggestions\/data.csv; 1 in the file now\./);
+    assert.match(textOf(first), /Added 1 suggestion to data\/lexicon\/lexicon-suggestions\.csv; 1 in the file now\./);
     assert.match(textOf(first), /rename "Role" to "Privilege"/);
     assert.match(textOf(first), /"Data owner" contain "Role"/);
     assert.match(textOf(first), /Avoid words added to "Privilege": Role/);
@@ -215,10 +217,10 @@ test('suggest_lexicon_change appends open rows, keeps earlier ones, reports impa
       backlog: 'data.csv', items: [{ term: 'Dataset', action: 'delete', reason: 'Unused' }],
     });
     assert.match(textOf(second), /2 in the file now/);
-    const file = fs.readFileSync(path.join(root, 'lexicon-suggestions', 'data.csv'), 'utf8');
+    const file = fs.readFileSync(pathOf(root, 'data', 'lexicon-suggestions'), 'utf8');
     assert.match(file, /Role,rename,Privilege,Role,Clearer,open/);
     assert.match(file, /Dataset,delete,,,Unused,open/);
-    assert.equal(fs.readFileSync(path.join(root, 'lexicons', 'data.csv'), 'utf8'), lexiconBefore);
+    assert.equal(fs.readFileSync(pathOf(root, 'data', 'lexicon'), 'utf8'), lexiconBefore);
   } finally {
     await client.close();
   }
@@ -234,7 +236,7 @@ test('an invalid suggestion writes nothing, and the tool is absent with --read-o
     });
     assert.equal(r.isError, true);
     assert.match(textOf(r), /Nothing was written\. 1 problem:\n- item 1: "Nope" is not a term/);
-    assert.ok(!fs.existsSync(path.join(root, 'lexicon-suggestions')));
+    assert.ok(!fs.existsSync(path.dirname(pathOf(root, 'data', 'lexicon-suggestions'))));
     const desc = (await client.listTools()).tools.find((t) => t.name === 'suggest_lexicon_change').description;
     assert.match(desc, /user applies|USER applies/);
     assert.match(desc, /refused on Apply while another term is part of it/);
@@ -251,7 +253,7 @@ test('write_lexicon refuses a term that exists, and suggest_lexicon_change edit 
   const client = await connect(root);
   try {
     await call(client, 'write_lexicon', { backlog: 'data.csv', items: [lexiconItem('User', 'A person', { avoid: ['customer'] })] });
-    const lexiconBefore = fs.readFileSync(path.join(root, 'lexicons', 'data.csv'), 'utf8');
+    const lexiconBefore = fs.readFileSync(pathOf(root, 'data', 'lexicon'), 'utf8');
     const patch = await call(client, 'write_lexicon', { backlog: 'data.csv', items: [{ term: 'User', avoid: ['customer', 'member'] }] });
     assert.equal(patch.isError, true);
     assert.match(textOf(patch), /item 1: "User" is already a term: suggest a change to it with suggest_lexicon_change/);
@@ -261,7 +263,7 @@ test('write_lexicon refuses a term that exists, and suggest_lexicon_change edit 
     assert.ok(!r.isError, textOf(r));
     assert.match(textOf(r), /edit "User"/);
     assert.match(textOf(r), /Avoid: customer -> customer, member/);
-    assert.equal(fs.readFileSync(path.join(root, 'lexicons', 'data.csv'), 'utf8'), lexiconBefore);
+    assert.equal(fs.readFileSync(pathOf(root, 'data', 'lexicon'), 'utf8'), lexiconBefore);
     const desc = (await client.listTools()).tools;
     assert.match(desc.find((t) => t.name === 'suggest_lexicon_change').description, /action edit: name at least one of definition, avoid, notes, partOf/);
     assert.match(desc.find((t) => t.name === 'write_lexicon').description, /already in the lexicon is REJECTED/);
@@ -296,8 +298,8 @@ test('check_drafts reports the writers\' problems and writes nothing; valid draf
     });
     assert.ok(!ok.isError, textOf(ok));
     assert.match(textOf(ok), /^Check passed; nothing was written\. items: would add 2 proposed stories \(NEW-1, NEW-2\)\. terms: would add 1 term \(Role\)\.$/);
-    assert.ok(!fs.existsSync(path.join(root, 'proposals')));
-    assert.ok(!fs.existsSync(path.join(root, 'lexicons')));
+    assert.ok(!fs.existsSync(path.dirname(pathOf(root, 'data', 'proposals'))));
+    assert.ok(!fs.existsSync(pathOf(root, 'data', 'lexicon')));
   } finally {
     await client.close();
   }
@@ -306,7 +308,7 @@ test('check_drafts reports the writers\' problems and writes nothing; valid draf
 test('check_drafts: needs something to check, reports repeats of stored proposals, and is absent with --read-only', async () => {
   const root = temp();
   writeProposal({ dataDir: root, name: 'data.csv', input: JSON.stringify([story()]) });
-  const before = fs.readFileSync(path.join(root, 'proposals', 'data.csv'));
+  const before = fs.readFileSync(pathOf(root, 'data', 'proposals'));
   const client = await connect(root);
   const readOnly = await connect(root, ['--read-only']);
   try {
@@ -315,7 +317,7 @@ test('check_drafts: needs something to check, reports repeats of stored proposal
     assert.match(textOf(none), /at least one of items, terms or rows/);
     const again = await call(client, 'check_drafts', { backlog: 'data.csv', items: [story(), story({ title: 'Other' })] });
     assert.match(textOf(again), /items: would add 1 proposed story \(NEW-2\); would skip 1 already in the file \(Story 1 = NEW-1\)\./);
-    assert.deepEqual(fs.readFileSync(path.join(root, 'proposals', 'data.csv')), before);
+    assert.deepEqual(fs.readFileSync(pathOf(root, 'data', 'proposals')), before);
     assert.ok(!(await readOnly.listTools()).tools.some((t) => t.name === 'check_drafts'));
     const desc = (await client.listTools()).tools.find((t) => t.name === 'check_drafts').description;
     assert.match(desc, /WITHOUT writing/);
@@ -344,7 +346,7 @@ test('read_context reads the reviews and lexicon-suggestions sections, storyIds 
   const client = await connect(root);
   try {
     const overview = textOf(await call(client, 'read_context', { backlog: 'data.csv', section: 'reviews' }));
-    assert.match(overview, /reviews\/data.csv: 2 rows, 2 open/);
+    assert.match(overview, /data\/user-stories\/review\.csv: 2 rows, 2 open/);
     assert.match(overview, /IAM-0001: 1 open\nIAM-0002: 1 open/);
     const rows = textOf(await call(client, 'read_context', { backlog: 'data.csv', section: 'reviews', storyIds: [{ id: 'IAM-0002', title: 'SSO Login' }] }));
     assert.match(rows, /open rows of IAM-0002/);
@@ -401,7 +403,7 @@ test('write_review and write_proposals refuse a stale pair and write nothing; th
     const checked = await call(client, 'check_drafts', { backlog: 'data.csv', items: [dep], rows: [row({ storyTitle: 'Logout' })] });
     assert.equal(checked.isError, true);
     inOrder(textOf(checked), 'items: Story 1 Depends On: IAM-0001 needs', 'rows: Finding 1 in this batch (IAM-0001 Title): IAM-0001 is now "Login"');
-    assert.ok(!fs.existsSync(path.join(root, 'reviews')) && !fs.existsSync(path.join(root, 'proposals')), 'check_drafts and the refused writes create no file');
+    assert.ok(!fs.existsSync(path.dirname(pathOf(root, 'data', 'review'))) && !fs.existsSync(path.dirname(pathOf(root, 'data', 'proposals'))), 'check_drafts and the refused writes create no file');
     const ok = await call(client, 'write_proposals', { backlog: 'data.csv', items: [{ ...dep, dependsOn: [{ id: 'IAM-0001', title: 'Login' }] }] });
     assert.ok(!ok.isError, textOf(ok));
     const patch = await call(client, 'write_proposals', { backlog: 'data.csv', items: [{ id: 'NEW-1', points: 5 }] });
@@ -430,8 +432,8 @@ test('the descriptions state the Title rule', async () => {
 
 test('search_stories: finds backlog and proposed stories, no match is not an error, a blank query is, and it works with --read-only', async () => {
   const root = temp();
-  fs.mkdirSync(path.join(root, 'proposals'));
-  fs.writeFileSync(path.join(root, 'proposals', 'data.csv'), 'ID,Epic,Feature,Title,Benched\r\nNEW-1,Identity & Access Management,Auth,Reset password for SSO,\r\nNEW-2,Identity & Access Management,Auth,Parked sso idea,Yes\r\n');
+  fs.mkdirSync(path.dirname(pathOf(root, 'data', 'proposals')), { recursive: true });
+  fs.writeFileSync(pathOf(root, 'data', 'proposals'), 'ID,Epic,Feature,Title,Benched\r\nNEW-1,Identity & Access Management,Auth,Reset password for SSO,\r\nNEW-2,Identity & Access Management,Auth,Parked sso idea,Yes\r\n');
   const full = await connect(root);
   const readOnly = await connect(root, ['--read-only']);
   try {
@@ -458,10 +460,10 @@ test('search_stories: finds backlog and proposed stories, no match is not an err
 
 test('read_file: looks up and reads the lexicon and the proposals in parts, refuses other files, and works with --read-only', async () => {
   const root = temp();
-  fs.mkdirSync(path.join(root, 'lexicons'));
-  fs.writeFileSync(path.join(root, 'lexicons', 'data.csv'), 'Term,Definition,Avoid\r\nDataset,A table of records,table\r\nUser,A person,customer\r\n');
-  fs.mkdirSync(path.join(root, 'proposals'));
-  fs.writeFileSync(path.join(root, 'proposals', 'data.csv'), 'ID,Title,Benched\r\nNEW-1,Export,\r\nNEW-2,Parked,Yes\r\n');
+  fs.mkdirSync(path.dirname(pathOf(root, 'data', 'lexicon')), { recursive: true });
+  fs.writeFileSync(pathOf(root, 'data', 'lexicon'), 'Term,Definition,Avoid\r\nDataset,A table of records,table\r\nUser,A person,customer\r\n');
+  fs.mkdirSync(path.dirname(pathOf(root, 'data', 'proposals')), { recursive: true });
+  fs.writeFileSync(pathOf(root, 'data', 'proposals'), 'ID,Title,Benched\r\nNEW-1,Export,\r\nNEW-2,Parked,Yes\r\n');
   fs.mkdirSync(path.join(root, 'backups'));
   fs.writeFileSync(path.join(root, 'backups', 'data.csv'), 'Secret\r\n');
   const full = await connect(root);

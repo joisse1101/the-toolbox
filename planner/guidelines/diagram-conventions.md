@@ -4,7 +4,7 @@ The single statement of the rules for a **slice**: the use-case specification, c
 sequence diagrams drawn from the shaped stories of one Epic, one Feature or one story. The
 `plan-stories` skill and `check_diagram` cite this file and do not restate it. Every slice is drawn to the
 design level of section 8. A mock slice built from the sample backlog is in
-`planner/test/sample-data/diagrams/sample/sign-in/`.
+`planner/test/sample-data/sample/slices/sign-in/`.
 
 ## 1. Limits and stereotypes
 

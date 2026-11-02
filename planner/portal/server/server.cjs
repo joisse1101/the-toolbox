@@ -1,13 +1,13 @@
 'use strict';
 // Local server for the team-lead tools: the built app from dist/ plus a CSV file API
-// restricted to the folders registered in STORES. Node built-ins only.
+// restricted to the five kinds of file of a backlog folder (backlog-paths.cjs). Node built-ins only.
 
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 const { spawn } = require('child_process');
-const { HttpError, validateName } = require('../../logic/storage/file-name.cjs');
+const { HttpError, validateBacklogName } = require('../../logic/storage/file-name.cjs');
+const { KINDS, BACKLOG_FILE, backlogDir, backlogFile, listBacklogs, detectOlderLayout } =require('../../logic/storage/backlog-paths.cjs');
 // The config is read when paths.cjs loads. Run as the server, a bad config ends the process with the message that names the key.
 let paths;
 try {
@@ -18,38 +18,26 @@ try {
   process.exit(1);
 }
 const { getDataDir, setDataDir, legacyDataHint } = paths;
-const { backupFolderName, isBackupFolderName, backupFiles } = require('./backup.cjs');
 const { logWrite } = require('../../logic/storage/write-log.cjs');
-const { loadConfig, saveConfig, configPath, confineDir, checkFolder, initFolders, copyData } = require('../../logic/storage/project-config.cjs');
+const { loadConfig, saveConfig, configPath, confineDir, checkFolder, initFolders, copyData, migrateOlderLayout } = require('../../logic/storage/project-config.cjs');
 
 const HOST = '127.0.0.1';
 const PORT = Number(process.env.PORT) || 3000;
 const DIST_DIR = path.join(__dirname, '..', 'dist'); // built by `npm run build`
 const MAX_BODY = 10 * 1024 * 1024;
 
-// Allow-list of data folders, built from the data folder being served. Adding a tool's data folder is one line.
-// BACKUPS_DIR is not a store: only the backup routes reach it. Both are rebuilt by switchTo().
-function buildStores(dataDir) {
-  return {
-    'backlogs': path.join(dataDir, 'backlogs'),
-    reviews: path.join(dataDir, 'reviews'), // review suggestions, written by the review-backlog skill's script
-    proposals: path.join(dataDir, 'proposals'), // proposed stories awaiting acceptance, one file per backlog
-    lexicons: path.join(dataDir, 'lexicons'), // defined terms, one file per backlog
-    'lexicon-suggestions': path.join(dataDir, 'lexicon-suggestions'), // suggested term renames and deletes, one file per backlog
-  };
-}
-let STORES = buildStores(getDataDir());
-let BACKUPS_DIR = path.join(getDataDir(), 'backups');
+// Allow-list of the kinds of file the API reaches: `backlog`, `review`, `proposals`, `lexicon` and `lexicon-suggestions`.
+// A request names a backlog, and backlog-paths.cjs maps (backlog, kind) to the fixed file in the backlog's folder.
+// `slices` and `logs` are not kinds, so the API cannot reach them.
+const STORES = new Set(KINDS);
 
-// Number of requests that write (file save, create, rename, backup, init, copy) and have not finished.
+// Number of requests that write (file save, create, rename, init, copy) and have not finished.
 // A switch of data folder is refused while it is not zero.
 let busy = 0;
 
 // Points the server at `dir`. Synchronous, so no request sees a half-switched server.
 function switchTo(dir) {
-  const next = setDataDir(dir);
-  STORES = buildStores(next);
-  BACKUPS_DIR = path.join(next, 'backups');
+  setDataDir(dir);
 }
 
 const MIME = {
@@ -62,15 +50,6 @@ const MIME = {
   '.png': 'image/png',
   '.ico': 'image/x-icon',
 };
-
-// Resolves a validated name inside a store folder; defends against anything escaping it.
-function resolveInStore(folder, name) {
-  const full = path.resolve(folder, name);
-  if (path.dirname(full) !== path.resolve(folder)) {
-    throw new HttpError(400, 'File name is not allowed', 'invalid-name');
-  }
-  return full;
-}
 
 // ---------- helpers ----------
 
@@ -119,63 +98,72 @@ function mapFsError(err, name) {
 }
 
 function numbered(name, n) {
-  return n === 1 ? name : name.replace(/\.csv$/i, `-${n}.csv`);
+  return n === 1 ? name : `${name}-${n}`;
 }
 
 // ---------- file operations ----------
 
-async function listFiles(folder) {
-  let entries;
-  try {
-    entries = await fs.promises.readdir(folder, { withFileTypes: true });
-  } catch (err) {
-    if (err.code === 'ENOENT') return [];
-    throw err;
-  }
-  return entries
-    .filter((e) => e.isFile() && /\.csv$/i.test(e.name))
-    .map((e) => e.name)
-    .sort((a, b) => a.localeCompare(b));
+// The backlogs that have a file of `kind` (every backlog for kind `backlog`), by folder name, sorted.
+async function listFiles(dataDir, kind) {
+  return listBacklogs(dataDir).filter((name) => kind === 'backlog' || fs.existsSync(backlogFile(dataDir, name, kind)));
 }
 
-async function createFile(folder, requested, content) {
-  const wanted = validateName(requested);
-  await fs.promises.mkdir(folder, { recursive: true });
+async function writeNew(file, content) {
+  const fh = await fs.promises.open(file, 'wx');
+  try {
+    await fh.writeFile(content, 'utf8');
+  } finally {
+    await fh.close();
+  }
+}
+
+// Creates a backlog: its folder holding user-stories.csv. A taken name gets the next free number. Returns the name used.
+async function createBacklog(dataDir, requested, content) {
+  const wanted = validateBacklogName(requested);
+  await fs.promises.mkdir(dataDir, { recursive: true });
   for (let n = 1; n < 1000; n++) {
     const name = numbered(wanted, n);
+    const dir = backlogDir(dataDir, name);
     try {
-      const fh = await fs.promises.open(resolveInStore(folder, name), 'wx');
-      try {
-        await fh.writeFile(content, 'utf8');
-      } finally {
-        await fh.close();
-      }
-      return name;
+      await fs.promises.mkdir(dir); // not recursive: EEXIST means the name is taken
     } catch (err) {
       if (err.code !== 'EEXIST') throw err;
+      continue;
     }
+    try {
+      await writeNew(path.join(dir, BACKLOG_FILE), content);
+    } catch (err) {
+      await fs.promises.rm(dir, { recursive: true, force: true }); // the folder this call just made, never a partial backlog
+      throw err;
+    }
+    return name;
   }
-  throw new HttpError(409, 'Could not find a free file name', 'exists');
+  throw new HttpError(409, 'Could not find a free backlog name', 'exists');
 }
 
-async function renameFile(folder, from, toRaw) {
-  const src = resolveInStore(folder, validateName(from));
-  const toName = validateName(toRaw);
-  const dst = resolveInStore(folder, toName);
-  if (path.basename(src) === toName) return toName;
-  try {
-    await fs.promises.access(src);
-  } catch {
-    throw new HttpError(404, `${path.basename(src)} was not found`, 'not-found');
+// Creates the file of another kind in an existing backlog; it never overwrites.
+async function createKindFile(dataDir, name, kind, content) {
+  const backlog = validateBacklogName(name);
+  if (!fs.existsSync(backlogFile(dataDir, backlog, 'backlog'))) {
+    throw new HttpError(404, `${backlog} was not found`, 'not-found');
   }
-  // Case-only rename targets the same file on Windows; otherwise refuse to clobber.
-  if (src.toLowerCase() !== dst.toLowerCase()) {
-    try {
-      await fs.promises.access(dst);
-      throw new HttpError(409, `${toName} already exists`, 'exists');
-    } catch (err) {
-      if (err instanceof HttpError) throw err;
-    }
+  const file = backlogFile(dataDir, backlog, kind);
+  await fs.promises.mkdir(path.dirname(file), { recursive: true });
+  await writeNew(file, content);
+  return backlog;
+}
+
+// Renames a backlog by renaming its folder, so every file and slice moves with it.
+async function renameBacklog(dataDir, from, toRaw) {
+  const fromName = validateBacklogName(from);
+  const toName = validateBacklogName(toRaw);
+  const src = backlogDir(dataDir, fromName);
+  const dst = backlogDir(dataDir, toName);
+  if (!fs.existsSync(path.join(src, BACKLOG_FILE))) throw new HttpError(404, `${fromName} was not found`, 'not-found');
+  if (fromName === toName) return toName;
+  // A case-only rename targets the same folder on Windows; otherwise refuse to clobber.
+  if (src.toLowerCase() !== dst.toLowerCase() && fs.existsSync(dst)) {
+    throw new HttpError(409, `${toName} already exists`, 'exists');
   }
   await fs.promises.rename(src, dst);
   return toName;
@@ -228,223 +216,6 @@ function setFolderDialog(fn) {
   folderDialog = fn;
 }
 
-// ---------- backups ----------
-
-const CURRENT = 'current';
-
-// Colors are set here so the diff does not depend on the user's git config.
-const GIT_COLORS = {
-  'color.diff.meta': 'bold',
-  'color.diff.frag': 'magenta',
-  'color.diff.old': 'red',
-  'color.diff.new': 'green',
-  'color.diff.oldMoved': 'blue',
-  'color.diff.newMoved': 'cyan',
-  'color.diff.oldMovedAlternative': 'blue',
-  'color.diff.newMovedAlternative': 'cyan',
-  'color.diff.oldMovedDimmed': 'blue',
-  'color.diff.newMovedDimmed': 'cyan',
-  'color.diff.oldMovedAlternativeDimmed': 'blue',
-  'color.diff.newMovedAlternativeDimmed': 'cyan',
-};
-
-let flattenModule; // planner/portal/server/flatten.js is ESM; load it once, from this CommonJS file
-function loadFlatten() {
-  flattenModule = flattenModule || import('./flatten.js');
-  return flattenModule;
-}
-
-async function fileExists(file) {
-  try {
-    await fs.promises.access(file);
-    return true;
-  } catch (err) {
-    if (err.code === 'ENOENT') return false;
-    throw err;
-  }
-}
-
-// Newest first; a numbered folder (-2) is newer than the plain one of the same second.
-function compareFolders(a, b) {
-  const split = (folder) => {
-    const [, base, n] = /^(.{17})(?:-(\d+))?$/.exec(folder);
-    return { base, n: Number(n || 1) };
-  };
-  const [x, y] = [split(a), split(b)];
-  if (x.base !== y.base) return x.base < y.base ? 1 : -1;
-  return y.n - x.n;
-}
-
-// Backups made before the store was renamed hold the backlog under `user-stories`; they are still read.
-const LEGACY_BACKUP_DIRS = { backlogs: 'user-stories' };
-async function backupFile(name, folder, store) {
-  const file = path.join(BACKUPS_DIR, name, folder, store, name);
-  const legacy = LEGACY_BACKUP_DIRS[store];
-  if (legacy && !(await fileExists(file))) return path.join(BACKUPS_DIR, name, folder, legacy, name);
-  return file;
-}
-
-async function createBackup(name) {
-  const source = (store) => resolveInStore(STORES[store], name);
-  if (!(await fileExists(source('backlogs')))) {
-    throw new HttpError(404, `${name} was not found`, 'not-found');
-  }
-  const parent = path.join(BACKUPS_DIR, name);
-  await fs.promises.mkdir(parent, { recursive: true });
-  const base = backupFolderName(new Date());
-  let folder;
-  let target;
-  for (let n = 1; n < 1000 && !target; n++) {
-    folder = n === 1 ? base : `${base}-${n}`;
-    try {
-      await fs.promises.mkdir(path.join(parent, folder)); // not recursive: EEXIST means the name is taken
-      target = path.join(parent, folder);
-    } catch (err) {
-      if (err.code !== 'EEXIST') throw err;
-    }
-  }
-  if (!target) throw new HttpError(409, 'Could not find a free backup folder', 'exists');
-
-  const copied = [];
-  try {
-    for (const { store } of backupFiles(name)) {
-      await fs.promises.mkdir(path.join(target, store));
-      try {
-        await fs.promises.copyFile(source(store), path.join(target, store, name), fs.constants.COPYFILE_EXCL);
-        copied.push(`${store}/${name}`);
-      } catch (err) {
-        if (err.code === 'ENOENT' && store !== 'backlogs') {
-          await fs.promises.rmdir(path.join(target, store)); // the review or proposals file does not exist yet
-          continue;
-        }
-        throw mapFsError(err, `${store}/${name}`);
-      }
-    }
-  } catch (err) {
-    await fs.promises.rm(target, { recursive: true, force: true }); // never leave a partial backup
-    throw err;
-  }
-  return { folder, files: copied };
-}
-
-async function listBackups(name) {
-  let entries;
-  try {
-    entries = await fs.promises.readdir(path.join(BACKUPS_DIR, name), { withFileTypes: true });
-  } catch (err) {
-    if (err.code === 'ENOENT') return [];
-    throw err;
-  }
-  const folders = entries.filter((e) => e.isDirectory() && isBackupFolderName(e.name)).map((e) => e.name);
-  folders.sort(compareFolders);
-  return Promise.all(
-    folders.map(async (folder) => {
-      const files = [];
-      for (const { store } of backupFiles(name)) {
-        if (await fileExists(await backupFile(name, folder, store))) files.push(`${store}/${name}`);
-      }
-      return { folder, files };
-    }),
-  );
-}
-
-// A state is a backup folder name that exists, or `current`. Anything else is rejected before a path is built.
-async function checkState(name, state) {
-  if (state === CURRENT) return;
-  if (!isBackupFolderName(state)) throw new HttpError(400, 'Not a backup name', 'invalid-name');
-  let stat;
-  try {
-    stat = await fs.promises.stat(path.join(BACKUPS_DIR, name, state));
-  } catch (err) {
-    throw mapFsError(err, `Backup ${state}`);
-  }
-  if (!stat.isDirectory()) throw new HttpError(404, `Backup ${state} was not found`, 'not-found');
-}
-
-// The flattened text of each of the backlog's files in one state; null where the file does not exist.
-async function flattenedState(name, state, flattenCsv) {
-  const result = {};
-  for (const { store } of backupFiles(name)) {
-    const file = state === CURRENT ? resolveInStore(STORES[store], name) : await backupFile(name, state, store);
-    try {
-      result[store] = flattenCsv(await fs.promises.readFile(file, 'utf8'));
-    } catch (err) {
-      if (err.code !== 'ENOENT') throw mapFsError(err, `${store}/${name}`);
-      result[store] = null;
-    }
-  }
-  return result;
-}
-
-function runGitDiff(cwd, left, right) {
-  const args = Object.entries(GIT_COLORS).flatMap(([key, value]) => ['-c', `${key}=${value}`]);
-  args.push('diff', '--no-index', '--color=always', '--color-moved=zebra', '--', left, right);
-  return new Promise((resolve, reject) => {
-    const child = spawn('git', args, { cwd, stdio: ['ignore', 'pipe', 'pipe'] }); // no shell
-    const out = [];
-    const err = [];
-    child.stdout.on('data', (c) => out.push(c));
-    child.stderr.on('data', (c) => err.push(c));
-    child.on('error', (e) => {
-      reject(new HttpError(500, `Comparing backups needs git on the PATH (${e.message})`, 'git-missing'));
-    });
-    child.on('close', (code) => {
-      // git diff --no-index exits 1 when the sides differ: that is a result, not a failure
-      if (code === 0 || code === 1) return resolve(Buffer.concat(out).toString('utf8'));
-      reject(new HttpError(500, `git diff failed: ${Buffer.concat(err).toString('utf8').trim() || `exit ${code}`}`));
-    });
-  });
-}
-
-async function compareBackups(name, a, b) {
-  if (a === b) throw new HttpError(400, 'Choose two different states to compare', 'same-state');
-  await checkState(name, a);
-  await checkState(name, b);
-  const { flattenCsv } = await loadFlatten();
-  const sides = { [a]: await flattenedState(name, a, flattenCsv), [b]: await flattenedState(name, b, flattenCsv) };
-
-  const tmp = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'tlt-diff-'));
-  try {
-    for (const state of [a, b]) {
-      await fs.promises.mkdir(path.join(tmp, state));
-      for (const { store } of backupFiles(name)) {
-        if (sides[a][store] === null && sides[b][store] === null) continue; // the file is on neither side
-        await fs.promises.writeFile(path.join(tmp, state, `${store}.txt`), sides[state][store] ?? '', 'utf8');
-      }
-    }
-    return await runGitDiff(tmp, a, b);
-  } finally {
-    await fs.promises.rm(tmp, { recursive: true, force: true });
-  }
-}
-
-// /api/backup/<file> (POST makes a backup, GET lists them) and /api/backup/<file>/diff?a=&b=
-async function handleBackup(req, res, segments) {
-  const [, , fileRaw, sub, ...rest] = segments;
-  if (req.method !== 'GET' && req.headers['x-requested-with'] !== 'the-toolbox') {
-    throw new HttpError(403, 'Missing X-Requested-With header', 'forbidden');
-  }
-  if (fileRaw === undefined || rest.length || (sub !== undefined && sub !== 'diff')) {
-    throw new HttpError(404, 'Not found', 'not-found');
-  }
-  let decoded;
-  try {
-    decoded = decodeURIComponent(fileRaw);
-  } catch {
-    throw new HttpError(400, 'Bad file name', 'invalid-name');
-  }
-  const name = validateName(decoded);
-
-  if (sub === 'diff') {
-    if (req.method !== 'GET') throw new HttpError(405, 'Method not allowed');
-    const query = new URL(req.url, 'http://localhost').searchParams;
-    return send(res, 200, { diff: await compareBackups(name, query.get('a'), query.get('b')) });
-  }
-  if (req.method === 'POST') return send(res, 201, await createBackup(name));
-  if (req.method === 'GET') return send(res, 200, { backups: await listBackups(name) });
-  throw new HttpError(405, 'Method not allowed');
-}
-
 // ---------- project settings ----------
 
 function requireHeader(req) {
@@ -455,7 +226,9 @@ function requireHeader(req) {
 
 function settingsReply() {
   const config = loadConfig({ file: configPath() });
-  return { projectName: config.projectName, dataDir: getDataDir(), configPath: config.configPath };
+  const dataDir = getDataDir();
+  // `olderLayout`: the folders of the earlier layout still in the data folder; only detected, never read as data.
+  return { projectName: config.projectName, dataDir, configPath: config.configPath, olderLayout: detectOlderLayout(dataDir) };
 }
 
 // A folder named by the browser: refused with 400 unless confineDir accepts it. Returns the real path.
@@ -465,7 +238,7 @@ function confined(dir) {
   return c.dir;
 }
 
-// /api/project (GET reads, PUT saves and switches), /api/project/check, /api/project/init, /api/project/copy, /api/project/pick.
+// /api/project (GET reads, PUT saves and switches), /api/project/check, /api/project/init, /api/project/copy, /api/project/pick, /api/project/migrate.
 // They reach the config file and the folders init and the copy create, nothing else.
 async function handleProject(req, res, segments) {
   const [, , sub, ...rest] = segments;
@@ -487,7 +260,7 @@ async function handleProject(req, res, segments) {
       if (body.dataDir !== undefined) changes.dataDir = body.dataDir;
       // From here to the switch there is no await: no request can start between the check and the switch.
       if (changes.dataDir !== undefined && busy > 0) {
-        throw new HttpError(409, 'A save or backup is running. Try again in a moment.', 'busy');
+        throw new HttpError(409, 'A save is running. Try again in a moment.', 'busy');
       }
       let saved;
       try {
@@ -501,9 +274,21 @@ async function handleProject(req, res, segments) {
     throw new HttpError(405, 'Method not allowed');
   }
 
-  if (!['check', 'init', 'copy', 'pick'].includes(sub)) throw new HttpError(404, 'Not found', 'not-found');
+  if (!['check', 'init', 'copy', 'pick', 'migrate'].includes(sub)) throw new HttpError(404, 'Not found', 'not-found');
   if (req.method !== 'POST') throw new HttpError(405, 'Method not allowed');
   requireHeader(req);
+
+  // Runs only when asked: copies the older layout of the served folder into backlog folders (no body).
+  if (sub === 'migrate') {
+    busy++;
+    try {
+      const result = migrateOlderLayout(getDataDir());
+      if (result.refused) throw new HttpError(400, result.refused, 'refused');
+      return send(res, 200, result);
+    } finally {
+      busy--;
+    }
+  }
 
   // Only asks for a folder: nothing is saved, switched or created here; the path then goes through check.
   if (sub === 'pick') {
@@ -556,10 +341,9 @@ async function handleApi(req, res, segments) {
 }
 
 async function handleStoreApi(req, res, segments) {
-  const [, storeId, resource, fileRaw, ...rest] = segments;
-  if (storeId === 'backup') return handleBackup(req, res, segments);
-  const folder = Object.prototype.hasOwnProperty.call(STORES, storeId) ? STORES[storeId] : null;
-  if (!folder) throw new HttpError(404, 'Unknown store', 'not-found');
+  const [, kind, resource, fileRaw, ...rest] = segments;
+  if (!STORES.has(kind)) throw new HttpError(404, `Unknown kind "${kind}"`, 'unknown-store');
+  const dataDir = getDataDir();
 
   if (req.method !== 'GET' && req.headers['x-requested-with'] !== 'the-toolbox') {
     throw new HttpError(403, 'Missing X-Requested-With header', 'forbidden');
@@ -568,19 +352,21 @@ async function handleStoreApi(req, res, segments) {
 
   if (resource === 'open' && fileRaw === undefined) {
     if (req.method !== 'POST') throw new HttpError(405, 'Method not allowed');
-    openFolder(folder);
+    openFolder(dataDir);
     return send(res, 200, { ok: true });
   }
 
   if (resource !== 'files') throw new HttpError(404, 'Not found', 'not-found');
 
   if (fileRaw === undefined) {
-    if (req.method === 'GET') return send(res, 200, { files: await listFiles(folder) });
+    if (req.method === 'GET') return send(res, 200, { files: await listFiles(dataDir, kind) });
     if (req.method === 'POST') {
       const body = await readJson(req);
       const content = typeof body.content === 'string' ? body.content : '';
-      const name = await createFile(folder, body.name, content);
-      logWrite({ writer: 'portal', store: storeId, file: name, text: content });
+      const name = kind === 'backlog'
+        ? await createBacklog(dataDir, body.name, content)
+        : await createKindFile(dataDir, body.name, kind, content);
+      logWrite({ writer: 'portal', backlog: name, kind, text: content });
       return send(res, 201, { name });
     }
     throw new HttpError(405, 'Method not allowed');
@@ -590,10 +376,10 @@ async function handleStoreApi(req, res, segments) {
   try {
     decoded = decodeURIComponent(fileRaw);
   } catch {
-    throw new HttpError(400, 'Bad file name', 'invalid-name');
+    throw new HttpError(400, 'Bad backlog name', 'invalid-name');
   }
-  const name = validateName(decoded);
-  const full = resolveInStore(folder, name);
+  const name = validateBacklogName(decoded);
+  const full = backlogFile(dataDir, name, kind);
 
   try {
     if (req.method === 'GET') {
@@ -604,15 +390,15 @@ async function handleStoreApi(req, res, segments) {
       const content = await readBody(req);
       await fs.promises.access(full); // PUT never creates; 404 if missing
       await fs.promises.writeFile(full, content, 'utf8');
-      logWrite({ writer: 'portal', store: storeId, file: name, text: content });
+      logWrite({ writer: 'portal', backlog: name, kind, text: content });
       return send(res, 200, { name });
     }
-    if (req.method === 'PATCH') {
+    if (req.method === 'PATCH' && kind === 'backlog') {
       const body = await readJson(req);
-      const newName = await renameFile(folder, name, body.name);
+      const newName = await renameBacklog(dataDir, name, body.name);
       if (newName !== name) {
-        // The file now exists under a new name: log its content so a later write can be traced to this one.
-        logWrite({ writer: 'portal', store: storeId, file: newName, text: await fs.promises.readFile(resolveInStore(folder, newName), 'utf8') });
+        // The backlog now has a new name: log its content so a later write can be traced to this one.
+        logWrite({ writer: 'portal', backlog: newName, kind, text: await fs.promises.readFile(backlogFile(dataDir, newName, kind), 'utf8') });
       }
       return send(res, 200, { name: newName });
     }

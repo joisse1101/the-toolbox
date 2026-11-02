@@ -1,10 +1,10 @@
 // The only way the propose-stories skill changes a lexicon. Usage:
-//   node .claude/skills/propose-stories/write-lexicon.mjs <backlog file name>   (terms as JSON on stdin)
-// Reads backlogs/<name> (it must exist) and lexicons/<name>, applies the input and writes lexicons/<name>. The input
+//   node .claude/skills/propose-stories/write-lexicon.mjs <backlog name>   (terms as JSON on stdin)
+// Reads <name>/user-stories.csv (it must exist) and <name>/lexicon.csv, applies the input and writes <name>/lexicon.csv. The input
 // is a JSON list of { term, definition, avoid?, notes?, partOf? }: every item ADDS a term (and needs a definition); a term
 // that is already there is refused, because a change to it is a suggestion (suggest-lexicon.mjs). The rules are those
 // of the portal's Lexicon tab (planner/logic/lexicon/lexicon.js), checked on the lexicon as it will be; one invalid item means nothing is
-// written. There is no output path argument: the target is fixed, backlogs/ is only checked, and no term is changed or removed.
+// written. There is no output path argument: the target is fixed, user-stories.csv is only checked, and no term is changed or removed.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -14,29 +14,30 @@ import { applyTermItems, composeLexicon, emptyLexicon, parseLexicon } from '../.
 import { describeParseError, writeAtomic } from '../_shared/write-atomic.mjs';
 
 const require = createRequire(import.meta.url);
-const { validateName } = require('../../../planner/logic/storage/file-name.cjs'); // same name rules as the file API
+const { backlogDir, backlogFile } = require('../../../planner/logic/storage/backlog-paths.cjs'); // same name rules as the file API
 const { DATA_DIR } = require('../../../planner/logic/storage/paths.cjs');
+const { shown } = require('../_shared/paths.cjs');
 
 // Reads the backlog and the lexicon and validates the input against them. Returns { ok: true, file, result } (result: the
 // applyTermItems result, with the lexicon as it will be) or { ok: false, errors }. Writes nothing.
 function prepare({ dataDir, name, input }) {
   let file;
+  let backlogPath;
+  let lexiconPath;
   try {
-    file = validateName(name);
+    file = path.basename(backlogDir(dataDir, name));
+    backlogPath = backlogFile(dataDir, name, 'backlog');
+    lexiconPath = backlogFile(dataDir, name, 'lexicon');
   } catch (err) {
     return { ok: false, errors: [err.message] };
   }
-  const backlogDir = path.join(dataDir, 'backlogs');
-  const lexiconDir = path.join(dataDir, 'lexicons');
-  const backlogPath = path.join(backlogDir, file);
-  if (path.dirname(backlogPath) !== backlogDir) return { ok: false, errors: ['File name is not allowed'] };
-  if (!fs.existsSync(backlogPath)) return { ok: false, errors: [`backlogs/${file} was not found.`] };
+  if (!fs.existsSync(backlogPath)) return { ok: false, errors: [`${shown(dataDir, backlogPath)} was not found.`] };
 
   let lexicon = emptyLexicon();
   try {
-    lexicon = parseLexicon(fs.readFileSync(path.join(lexiconDir, file), 'utf8'));
+    lexicon = parseLexicon(fs.readFileSync(lexiconPath, 'utf8'));
   } catch (err) {
-    if (err.code !== 'ENOENT') return { ok: false, errors: [`Could not read lexicons/${file}: ${err.message}`] };
+    if (err.code !== 'ENOENT') return { ok: false, errors: [`Could not read ${shown(dataDir, lexiconPath)}: ${err.message}`] };
   }
 
   let items;
@@ -47,7 +48,7 @@ function prepare({ dataDir, name, input }) {
   }
   const result = applyTermItems(lexicon, items);
   if (!result.ok) return result;
-  return { ok: true, file, result };
+  return { ok: true, file, result, lexiconPath };
 }
 
 // Same input and problems as writeLexicon, and for valid input the terms it would add; no file is created or changed.
@@ -63,24 +64,25 @@ export function checkLexicon({ dataDir = DATA_DIR, name, input }) {
 export function writeLexicon({ dataDir = DATA_DIR, name, input }) {
   const prepared = prepare({ dataDir, name, input });
   if (!prepared.ok) return prepared;
-  const { file, result } = prepared;
-  const lexiconDir = path.join(dataDir, 'lexicons');
+  const { file, result, lexiconPath } = prepared;
+  const lexiconDir = path.dirname(lexiconPath);
+  const lexiconShown = shown(dataDir, lexiconPath);
 
   fs.mkdirSync(lexiconDir, { recursive: true });
-  const failed = writeAtomic(lexiconDir, file, composeLexicon(result.lexicon), 'write_lexicon');
+  const failed = writeAtomic(lexiconDir, path.basename(lexiconPath), composeLexicon(result.lexicon), 'write_lexicon', { dataDir, backlog: file, kind: 'lexicon' });
   if (failed) return { ok: false, errors: [failed] };
 
   let stored;
   try {
-    stored = parseLexicon(fs.readFileSync(path.join(lexiconDir, file), 'utf8'));
+    stored = parseLexicon(fs.readFileSync(lexiconPath, 'utf8'));
   } catch (err) {
-    return { ok: false, errors: [`Wrote lexicons/${file} but could not read it back: ${err.message}`] };
+    return { ok: false, errors: [`Wrote ${lexiconShown} but could not read it back: ${err.message}`] };
   }
   const have = new Set(stored.terms.map((term) => term.name.toLowerCase()));
   const lost = result.added.filter((term) => !have.has(term.toLowerCase()));
   if (lost.length || stored.terms.length !== result.lexicon.terms.length) {
     const what = lost.length ? `${lost.join(', ')} not found` : `${stored.terms.length} terms on disk, ${result.lexicon.terms.length} expected`;
-    return { ok: false, errors: [`Wrote lexicons/${file} but the file read back is wrong: ${what}. Do not report these terms as written.`] };
+    return { ok: false, errors: [`Wrote ${lexiconShown} but the file read back is wrong: ${what}. Do not report these terms as written.`] };
   }
   return { ok: true, file, added: result.added, count: stored.terms.length };
 }
@@ -88,7 +90,7 @@ export function writeLexicon({ dataDir = DATA_DIR, name, input }) {
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
 if (isMain) {
   if (process.argv.length !== 3) {
-    console.error('Usage: node write-lexicon.mjs <backlog file name>  (terms JSON on stdin)');
+    console.error('Usage: node write-lexicon.mjs <backlog name>  (terms JSON on stdin)');
     process.exit(2);
   }
   const result = writeLexicon({ name: process.argv[2], input: fs.readFileSync(0, 'utf8') });
@@ -98,5 +100,5 @@ if (isMain) {
     process.exit(1);
   }
   const n = result.added.length;
-  console.log(`${n ? `Added ${n} term${n === 1 ? '' : 's'} to lexicons/${result.file} (${result.added.join(', ')})` : 'No change'}; ${result.count} in the lexicon now.`);
+  console.log(`${n ? `Added ${n} term${n === 1 ? '' : 's'} to the lexicon of ${result.file} (${result.added.join(', ')})` : 'No change'}; ${result.count} in the lexicon now.`);
 }

@@ -5,15 +5,15 @@ Gives browser-based tools safe read and write access to CSV files in a single de
 ## Requirements
 
 ### Requirement: Access is limited to a registered data folder
-The system SHALL expose file operations only for CSV files located directly inside a data folder registered for the requesting tool. It SHALL NOT read, write, rename or list anything outside that folder, and SHALL NOT operate on subfolders.
+The system SHALL expose file operations only for the CSV files of a backlog folder directly inside the data folder, under the fixed file names of the `backlog-folder-layout` capability. It SHALL NOT read, write, rename or list anything else.
 
 #### Scenario: Path traversal is rejected
-- **WHEN** a request names a file such as `../secret.csv` or `sub/file.csv`
+- **WHEN** a request names a backlog such as `../secret` or `a/b`
 - **THEN** the system rejects the request with an error and touches no file
 
 #### Scenario: Non-CSV files are ignored
-- **WHEN** the data folder contains `notes.txt` and `backlog.csv`
-- **THEN** listing returns only `backlog.csv`
+- **WHEN** a backlog folder holds `notes.txt` and `user-stories.csv`
+- **THEN** only `user-stories.csv` can be reached
 
 ### Requirement: Local-only service
 The system SHALL accept connections only from the local machine.
@@ -23,14 +23,14 @@ The system SHALL accept connections only from the local machine.
 - **THEN** the connection is refused
 
 ### Requirement: List files
-The system SHALL list the CSV files in the data folder, sorted by name.
+The system SHALL list the backlogs, meaning the subfolders of the data folder that hold `user-stories.csv`, sorted by name, each by its folder name.
 
 #### Scenario: Folder with files
-- **WHEN** the data folder contains `b.csv` and `a.csv`
-- **THEN** the list returns `a.csv` then `b.csv`
+- **WHEN** the data folder holds `b/user-stories.csv` and `a/user-stories.csv`
+- **THEN** the list returns `a` then `b`
 
 #### Scenario: Empty folder
-- **WHEN** the data folder contains no CSV files
+- **WHEN** the data folder holds no backlog folder
 - **THEN** the list is empty and no error is raised
 
 ### Requirement: Read and write file contents
@@ -49,26 +49,26 @@ The system SHALL return the full text of a named CSV file and SHALL replace the 
 - **THEN** the system returns an error identifying the file as locked or unwritable, and the file's existing contents are left unchanged
 
 ### Requirement: Create a new file
-The system SHALL create a new CSV file on request and SHALL NOT overwrite an existing file. When the requested name is already taken, it SHALL choose the next free numbered name (`name-2.csv`, `name-3.csv`, ...) and return the name actually used.
+Creating a backlog is described by the `backlog-folder-layout` capability. The system SHALL NOT overwrite an existing backlog.
 
 #### Scenario: Name is free
-- **WHEN** a client creates `new-backlog.csv` and it does not exist
-- **THEN** the file is created and `new-backlog.csv` is returned
+- **WHEN** a client creates `new-backlog` and no such folder exists
+- **THEN** the backlog is created and `new-backlog` is returned
 
 #### Scenario: Name is taken
-- **WHEN** a client creates `new-backlog.csv` and it already exists
-- **THEN** `new-backlog-2.csv` is created, the original is untouched, and `new-backlog-2.csv` is returned
+- **WHEN** a client creates `new-backlog` and it already exists
+- **THEN** `new-backlog-2` is created, the original is untouched and `new-backlog-2` is returned
 
 ### Requirement: Rename a file
-The system SHALL rename a CSV file within the data folder. The new name MUST end in `.csv` (appended if missing), MUST NOT contain path separators or characters invalid in Windows filenames, and MUST NOT already exist.
+The system SHALL rename a backlog as described by the `backlog-folder-layout` capability: the folder is renamed and every file moves with it. The new name MUST be valid and MUST NOT already exist.
 
 #### Scenario: Successful rename
-- **WHEN** a client renames `new-backlog.csv` to `sprint-12`
-- **THEN** the file becomes `sprint-12.csv` and that name is returned
+- **WHEN** a client renames `new-backlog` to `sprint-12`
+- **THEN** the folder becomes `sprint-12` and that name is returned
 
 #### Scenario: Target exists
-- **WHEN** a client renames a file to a name that already exists
-- **THEN** the system returns a conflict error and neither file changes
+- **WHEN** a client renames a backlog to a name that already exists
+- **THEN** the system returns a conflict error and neither backlog changes
 
 #### Scenario: Invalid name
 - **WHEN** the new name is empty or contains `\`, `/`, `:`, `*`, `?`, `"`, `<`, `>` or `|`
@@ -81,115 +81,20 @@ The system SHALL open the data folder in the operating system's file manager on 
 - **WHEN** a client requests the folder be opened
 - **THEN** File Explorer opens showing the data folder
 
-### Requirement: Back up a backlog
-The system SHALL, on request for a named backlog file, copy that backlog and its related files into a new timestamped folder `backups/<backlog name>/<YYYY-MM-DD_HHMMSS>/` inside the data folder, in local time. The folder SHALL hold the files under the same store folder names they have in the data folder: `backlogs/<name>`, and, when they exist, `reviews/<name>`, `proposals/<name>`, `lexicons/<name>` and `lexicon-suggestions/<name>`. The system SHALL NOT copy any other file, including the review's `.csv.decided` sidecar. The backlog file MUST exist; a missing review, proposals, lexicon or lexicon suggestions file SHALL be skipped without error. The response SHALL name the backup folder and list the files copied.
-
-The `backups` folder SHALL NOT be a registered store: the list, read, write, create and rename operations SHALL NOT reach it.
-
-#### Scenario: Backlog with a review and proposals
-- **WHEN** a client requests a backup of `sprint-12.csv` and the backlog, review, proposals, lexicon and lexicon suggestions files all exist
-- **THEN** a folder `backups/sprint-12.csv/<date>_<time>/` is created holding `backlogs/sprint-12.csv`, `reviews/sprint-12.csv`, `proposals/sprint-12.csv`, `lexicons/sprint-12.csv` and `lexicon-suggestions/sprint-12.csv`, and the originals are unchanged
-
-#### Scenario: Backlog without a review or proposals
-- **WHEN** a client requests a backup of `sprint-12.csv` and only the backlog file exists
-- **THEN** the backup holds only `backlogs/sprint-12.csv` and the request succeeds
-
-#### Scenario: Decided sidecar is not copied
-- **WHEN** `reviews/sprint-12.csv.decided` exists next to the review file
-- **THEN** the backup does not contain it
-
-#### Scenario: Backlog does not exist
-- **WHEN** a client requests a backup of a backlog file that does not exist
-- **THEN** the system returns a not-found error and creates no backup folder
-
-#### Scenario: Two backups in the same second
-- **WHEN** a client requests a second backup of the same backlog in the same second as an earlier one
-- **THEN** the earlier backup is left untouched and the new one is made in a folder with a numeric suffix (`<date>_<time>-2`)
-
-#### Scenario: A file cannot be copied
-- **WHEN** a file to copy is held open by another program (for example Excel) and cannot be read
-- **THEN** the system returns a locked error naming the file and leaves no partial backup folder
-
-#### Scenario: Invalid name
-- **WHEN** the requested backlog name contains a path separator or any character invalid in a Windows file name
-- **THEN** the system rejects the request and touches no file
-
-#### Scenario: Backups are not reachable through the file API
-- **WHEN** a client lists, reads or writes files using the store name `backups`
-- **THEN** the system answers that the store is unknown
-
-### Requirement: List the backups of a backlog
-The system SHALL list the backups of a named backlog, newest first, each with its folder name and the files it holds. A backlog with no backups SHALL give an empty list, not an error.
-
-#### Scenario: Several backups
-- **WHEN** `sprint-12.csv` has backups `2026-10-14_093000` and `2026-10-15_143205`
-- **THEN** the list returns `2026-10-15_143205` first, then `2026-10-14_093000`
-
-#### Scenario: No backups yet
-- **WHEN** a client lists the backups of a backlog that was never backed up
-- **THEN** the list is empty and no error is raised
-
-#### Scenario: Other entries are ignored
-- **WHEN** the backlog's backup folder contains a folder or file whose name is not a backup folder name
-- **THEN** it is not listed
-
-### Requirement: Compare backups
-The system SHALL compare two states of a backlog on request, where each state is one of the backlog's backups or the current files, and return a text diff. For each of `backlogs`, `reviews`, `proposals`, `lexicons` and `lexicon-suggestions` that exists in at least one of the two states, the CSV SHALL be turned into text with one field per line, labelled with its column name and grouped in one block per row, with a multi-line cell kept together under its label; a missing file counts as empty. The system SHALL return the line diff of those texts, marking blocks that only moved as moved, or report that there are no differences. Comparing a state with itself SHALL be refused. The comparison SHALL NOT change any file in the data folder or in a backup.
-
-#### Scenario: A field was edited
-- **WHEN** a client compares two backups and only the Priority of one story differs
-- **THEN** the diff shows that story's `Priority:` line removed and added with the old and new value, and nothing else
-
-#### Scenario: A multi-line cell
-- **WHEN** an acceptance-criteria cell of a story gained a criterion on a new line
-- **THEN** the diff shows only the added criterion line, under that story's `User Acceptance Criteria:` label
-
-#### Scenario: A story was moved
-- **WHEN** a story changed position between the two states and its content is the same
-- **THEN** the diff marks its block as moved rather than removed in one place and added in another
-
-#### Scenario: Backup against current
-- **WHEN** a client compares a backup with the current state
-- **THEN** the current backlog, review, proposals, lexicon and lexicon suggestions files are read as they are on disk
-
-#### Scenario: A file exists on one side only
-- **WHEN** the review file exists in the newer backup but not in the older one
-- **THEN** the diff shows every row of the review as added
-
-#### Scenario: A lexicon suggestion was applied
-- **WHEN** a suggestion's Status changed from `open` to `applied` between two states
-- **THEN** the diff shows that suggestion's `Status:` line changed and nothing else in that file
-
-#### Scenario: No differences
-- **WHEN** both states hold identical content
-- **THEN** the response says there are no differences
-
-#### Scenario: Same state twice
-- **WHEN** a client compares a backup with itself
-- **THEN** the system rejects the request with an error
-
-#### Scenario: Unknown or malformed backup
-- **WHEN** a client names a backup that does not exist, or a name that is not a backup folder name (for example `../x`)
-- **THEN** the system returns a not-found or invalid-name error and reads nothing outside the backlog's backup folder
-
-#### Scenario: git is not available
-- **WHEN** the comparison is requested and git cannot be started
-- **THEN** the system returns an error saying that git is needed for comparing backups, and backing up and listing still work
-
 ### Requirement: Writes are logged
-Every write to a registered data folder SHALL append one line of JSON to `planner/data/logs/writes.jsonl` with the time, the writer (`portal` for the file API, or the name of the script or tool), the store, the file name, the byte size of the new content and a short hash of it. The log folder SHALL NOT be a registered store, so the file API cannot reach it. A failure to log SHALL be reported on standard error and SHALL NOT fail or undo the write. The log SHALL hold no file contents.
+Every write by the file API or a writer SHALL append one line of JSON to `<dataDir>/logs/writes.jsonl` with the time, the writer (`portal` for the file API, or the name of the script or tool), the backlog name, the kind of file, the byte size of the new content and a short hash of it. The log folder SHALL NOT be reachable through the file API. A failure to log SHALL be reported on standard error and SHALL NOT fail or undo the write. The log SHALL hold no file contents.
 
 #### Scenario: Portal save logged
-- **WHEN** the portal saves `proposals/data-portal.csv`
-- **THEN** `planner/data/logs/writes.jsonl` gains a line naming writer `portal`, store `proposals`, that file, its size and hash
+- **WHEN** the portal saves the proposals of backlog `data-portal`
+- **THEN** the log gains a line naming writer `portal`, backlog `data-portal`, kind `proposals`, its size and hash
 
 #### Scenario: Writer logged
-- **WHEN** `write_proposals` adds stories to `proposals/data-portal.csv`
-- **THEN** a line names writer `write_proposals` for that file, and a later `portal` line for the same file shows who wrote it last
+- **WHEN** `write_proposals` adds stories to backlog `data-portal`
+- **THEN** a line names writer `write_proposals` for that backlog and kind, and a later `portal` line shows who wrote it last
 
 #### Scenario: Log not reachable
-- **WHEN** a client asks the file API for the `logs` store
-- **THEN** it is rejected as an unknown store
+- **WHEN** a client asks the file API for `logs`
+- **THEN** it is rejected as unknown
 
 #### Scenario: Log failure does not block
 - **WHEN** the log file cannot be written

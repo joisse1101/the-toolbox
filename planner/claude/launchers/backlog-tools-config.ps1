@@ -31,12 +31,15 @@ function Get-PlannerDataDir([string]$Root) {
   return $dir
 }
 
-# The backlog file name for a launcher: the one given (with or without .csv, or its number in the list) or, when none is given, the
-# one the user picks from a numbered list of planner/data/backlogs/. Stops the launcher on an unknown backlog.
+# The backlog name for a launcher: the one given (with or without .csv, or its number in the list) or, when none is given, the
+# one the user picks from a numbered list of the backlog folders of the data folder (a folder that holds user-stories.csv).
+# Returns the folder name, without .csv. Stops the launcher on an unknown backlog.
 function Select-Backlog([string]$DataDir, [string]$Backlog) {
-  $backlogs = @(Get-ChildItem -LiteralPath (Join-Path $DataDir 'backlogs') -Filter '*.csv' -File -ErrorAction SilentlyContinue | Sort-Object Name | ForEach-Object { $_.Name })
+  $backlogs = @(Get-ChildItem -LiteralPath $DataDir -Directory -ErrorAction SilentlyContinue |
+    Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'user-stories.csv') -PathType Leaf } |
+    Sort-Object Name | ForEach-Object { $_.Name })
   if (-not $backlogs.Count) {
-    Write-Host 'There are no backlogs in planner/data/backlogs/.' -ForegroundColor Red
+    Write-Host "There are no backlogs in $DataDir (a backlog is a folder that holds user-stories.csv)." -ForegroundColor Red
     $paths = Join-Path (Split-Path (Split-Path (Split-Path $PSScriptRoot -Parent) -Parent) -Parent) 'planner/logic/storage/paths.cjs'
     $hint = & node -e "const h = require(process.argv[1]).legacyDataHint(); if (h) console.log(h)" $paths
     if ($hint) { Write-Host $hint -ForegroundColor Yellow }
@@ -48,13 +51,13 @@ function Select-Backlog([string]$DataDir, [string]$Backlog) {
   }
   $Backlog = $Backlog.Trim()
   if ($Backlog -match '^\d+$' -and [int]$Backlog -ge 1 -and [int]$Backlog -le $backlogs.Count) { $Backlog = $backlogs[[int]$Backlog - 1] }
-  if (-not $Backlog.EndsWith('.csv', [StringComparison]::OrdinalIgnoreCase)) { $Backlog = "$Backlog.csv" }
-  $file = $backlogs | Where-Object { $_ -ieq $Backlog } | Select-Object -First 1
-  if (-not $file) { Write-Host "No backlog '$Backlog' in planner/data/backlogs/. Found: $($backlogs -join ', ')" -ForegroundColor Red; exit 1 }
-  return $file
+  if ($Backlog.EndsWith('.csv', [StringComparison]::OrdinalIgnoreCase)) { $Backlog = $Backlog.Substring(0, $Backlog.Length - 4) }
+  $name = $backlogs | Where-Object { $_ -ieq $Backlog } | Select-Object -First 1
+  if (-not $name) { Write-Host "No backlog '$Backlog' in $DataDir. Found: $($backlogs -join ', ')" -ForegroundColor Red; exit 1 }
+  return $name
 }
 
-# The --mcp-config file for the plan-stories session: the full backlog-tools (its writers are never pre-approved by the launcher) and diagram-tools for one backlog (--backlog lets the
+# The --mcp-config file for the plan-stories session: the full backlog-tools (its writers are never pre-approved by the launcher) and diagram-tools for one backlog (--backlog, the backlog name, lets the
 # latter use that backlog's repo.json). Each server gets its own ready file through its env block; PLANNER_MCP_READY_FILES lists them for
 # the hook, which waits for all. Returns the config path and the ready files, for the launcher to delete when the session ends.
 function New-PlanStoriesConfig([string]$Root, [string]$Backlog) {

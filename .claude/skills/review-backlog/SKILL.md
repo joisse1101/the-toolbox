@@ -1,17 +1,17 @@
 ---
 name: review-backlog
-description: Review a user-story backlog CSV from backlogs/ against planner/guidelines/product-backlog.md (Epic > Feature > Story hierarchy, INVEST, acceptance-criteria quality and edge cases) and across stories, the backlog's lexicon and its proposals (duplicates, overlaps, contradictions, role and term drift), and report findings with suggested fixes, also written as a review CSV the portal can apply. Never edits the backlog CSV. Use when the user asks to review, audit, sanity-check, consistency-check or "INVEST-check" a backlog or its stories.
+description: Review a user-story backlog CSV (`<backlog>/user-stories.csv`) against planner/guidelines/product-backlog.md (Epic > Feature > Story hierarchy, INVEST, acceptance-criteria quality and edge cases) and across stories, the backlog's lexicon and its proposals (duplicates, overlaps, contradictions, role and term drift), and report findings with suggested fixes, also written as a review CSV the portal can apply. Never edits the backlog CSV. Use when the user asks to review, audit, sanity-check, consistency-check or "INVEST-check" a backlog or its stories.
 allowed-tools: Bash(node .claude/skills/review-backlog/read-backlog.mjs:*), Bash(node .claude/skills/review-backlog/write-review.mjs:*)
 ---
 
 # Review a backlog
 
-Review one backlog CSV, write the suggestions to a review CSV and write a report. **Never edit the backlog CSV or any other file.** The only thing you may write is `reviews/<backlog file name>`, and only by running `write-review.mjs` (see "Write the review file"). Findings come with suggested fixes; the user applies them from the portal, where each one shows next to its field (the app autosaves the backlog CSV, so edits from here would clash with it).
+Review one backlog CSV, write the suggestions to a review CSV and write a report. **Never edit the backlog CSV or any other file.** The only thing you may write is `<backlog>/user-stories/review.csv`, and only by running `write-review.mjs` (see "Write the review file"). Findings come with suggested fixes; the user applies them from the portal, where each one shows next to its field (the app autosaves the backlog CSV, so edits from here would clash with it).
 
 ## Input
 
-1. Read only through `read-backlog.mjs`; do not open any other file. If the user named a backlog, use it. Otherwise run `node .claude/skills/review-backlog/read-backlog.mjs` with no argument to list the backlog file names and ask which one to review.
-2. Run `node .claude/skills/review-backlog/read-backlog.mjs <backlog file name>`. It prints the scope line and a menu of sections with their sizes, so a large backlog is never read in one piece. Read the sections one command each, `node .claude/skills/review-backlog/read-backlog.mjs <backlog file name> <section>`, in this order:
+1. Read only through `read-backlog.mjs`; do not open any other file. If the user named a backlog, use it. Otherwise run `node .claude/skills/review-backlog/read-backlog.mjs` with no argument to list the backlog names and ask which one to review.
+2. Run `node .claude/skills/review-backlog/read-backlog.mjs <backlog name>`. It prints the scope line and a menu of sections with their sizes, so a large backlog is never read in one piece. Read the sections one command each, `node .claude/skills/review-backlog/read-backlog.mjs <backlog name> <section>`, in this order:
    - `checks`: the mechanical problems found without judgement (see "Start from the checks").
    - `lexicon`: the backlog's defined terms (`Term, Part of, Definition, Avoid, Notes`; `Avoid` is a `;`-separated list of words stories must not use). It says "no lexicon file" when there is none.
    - `proposals`: the stories proposed but not yet in the backlog (IDs `NEW-<n>`; benched ones are left out and counted).
@@ -142,13 +142,13 @@ Build a JSON array, one object per row, with exactly these keys (no `current` an
 - A suggested rewording must not grow the story. Keep it to what the story already implies: do not add a capability, a user group, a permission or a rule (for example "only sees what they are entitled to" implies role-based access). If a better benefit would need new scope, use a modest benefit and raise the larger idea as a separate question in Clarifications.
 - Use story IDs exactly as they appear in the CSV.
 
-Write the findings in **batches of about 8-10 rows**, one or more per Epic, not as one large command (a long heredoc can fail). The first batch replaces the review; every later batch adds `--append`. Each command takes the findings on standard input and the backlog file name, with `--append` as the only other argument:
+Write the findings in **batches of about 8-10 rows**, one or more per Epic, not as one large command (a long heredoc can fail). The first batch replaces the review; every later batch adds `--append`. Each command takes the findings on standard input and the backlog name, with `--append` as the only other argument:
 
 ```bash
-node .claude/skills/review-backlog/write-review.mjs data-portal.csv <<'JSON'
+node .claude/skills/review-backlog/write-review.mjs data-portal <<'JSON'
 [ ...first batch... ]
 JSON
-node .claude/skills/review-backlog/write-review.mjs data-portal.csv --append <<'JSON'
+node .claude/skills/review-backlog/write-review.mjs data-portal --append <<'JSON'
 [ ...next batch... ]
 JSON
 ```
@@ -175,4 +175,4 @@ Output the report as text in the reply, in this order:
 
 Keep it specific to this backlog. Do not pad with generic Agile advice, and do not repeat the same finding for every story: group identical problems ("7 stories have no failure-path criterion: "Log in with a password", ..."), naming each story by Title.
 
-Name the review file (`reviews/<backlog file name>`) and say its suggestions can be applied or dismissed from the story form in the portal. End by offering to explain any finding. Do not offer to apply the fixes yourself; the user applies them in the portal.
+Name the review file (`<backlog>/user-stories/review.csv`) and say its suggestions can be applied or dismissed from the story form in the portal. End by offering to explain any finding. Do not offer to apply the fixes yourself; the user applies them in the portal.

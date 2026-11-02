@@ -11,10 +11,10 @@ import { checkSlice, formatProblems, SEQUENCE_INIT } from '../../logic/diagrams/
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SAMPLE = path.join(HERE, '..', 'sample-data');
-const SLICE_DIR = path.join(SAMPLE, 'diagrams', 'sample', 'sign-in');
+const SLICE_DIR = path.join(SAMPLE, 'sample', 'slices', 'sign-in');
 const SPEC = 'UC-sign-in.md';
 const limits = parseLimits(fs.readFileSync(path.join(HERE, '..', '..', 'guidelines', 'diagram-conventions.md'), 'utf8'));
-const stories = scopeStories(loadBacklog(fs.readFileSync(path.join(SAMPLE, 'backlogs', 'sample.csv'), 'utf8')).stories, { type: 'feature', epic: 'Identity and access', feature: 'Sign in' });
+const stories = scopeStories(loadBacklog(fs.readFileSync(path.join(SAMPLE, 'sample', 'user-stories.csv'), 'utf8')).stories, { type: 'feature', epic: 'Identity and access', feature: 'Sign in' });
 
 const mock = fs.readFileSync(path.join(SLICE_DIR, SPEC), 'utf8');
 const run = (text, extra = {}) => checkSlice({ slice: 'sign-in', files: { [SPEC]: text }, stories, limits, ...extra });

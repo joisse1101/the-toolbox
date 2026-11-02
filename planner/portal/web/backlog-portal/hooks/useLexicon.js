@@ -4,7 +4,7 @@ import { composeLexicon, deleteTerm, emptyLexicon, findTerm, parseLexicon, saveT
 import { applySuggestion } from '../../../../logic/lexicon/lexicon-suggestions.js';
 import { useAutosave } from './useAutosave.js';
 
-const lexiconStore = createFileStore('lexicons');
+const lexiconStore = createFileStore('lexicon');
 
 // Saving a lexicon file that is not there yet creates it (the file API's write never does).
 const store = {

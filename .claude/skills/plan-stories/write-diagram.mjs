@@ -1,4 +1,4 @@
-// Checks and writes one slice for the diagram-tools server: planner/data/diagrams/<backlog>/<slice>/ with the one document
+// Checks and writes one slice for the diagram-tools server: <data folder>/<backlog>/slices/<slice>/ with the one document
 // UC-<slice>.md (specification and Mermaid diagrams) and source.json. checkDiagram and writeDiagram run the same
 // preparation, the same structural checks (planner/logic/diagrams/checks.js) and Mermaid's own parser on every diagram, so
 // a slice that passes one is accepted by the other; only writeDiagram writes. The stories come as { id, title } pairs, as for the backlog tools, and the story hashes are
@@ -49,7 +49,7 @@ async function prepare({ dataDir = DATA_DIR, guidelinesDir = GUIDELINES_DIR, nam
   if (!loaded.ok) return loaded;
   const errors = [];
   const sliceDir = slicePath(loaded.dir, slice);
-  if (!sliceDir || path.dirname(sliceDir) !== loaded.dir) return { ok: false, errors: [`The slice name "${slice}" must be a lowercase slug (letters, digits and hyphens); nothing outside diagrams/${loaded.base} can be written.`] };
+  if (!sliceDir || path.dirname(sliceDir) !== loaded.dir) return { ok: false, errors: [`The slice name "${slice}" must be a lowercase slug (letters, digits and hyphens); nothing outside ${loaded.base}/slices can be written.`] };
 
   const cleaned = cleanScope(rawScope);
   if (cleaned.error) return { ok: false, errors: [cleaned.error] };
@@ -149,7 +149,7 @@ export async function writeDiagram(input) {
     return { ok: false, errors, text: problemsText(errors) };
   }
   const written = [...Object.keys(files).filter((f) => existing?.files[f] !== files[f]), ...(sameStories(existing?.source, source) ? [] : [SOURCE_FILE])];
-  logWrite({ writer: 'write_diagram', store: 'diagrams', file: `${loaded.base}/${slice}`, text: Object.values(files).join('') + sourceText, extra: { backlog: loaded.base, slice }, dataDir: input.dataDir ?? DATA_DIR });
+  logWrite({ writer: 'write_diagram', backlog: loaded.base, kind: 'slices', text: Object.values(files).join('') + sourceText, extra: { slice }, dataDir: input.dataDir ?? DATA_DIR });
   const note = leftover.length ? ` Files in the folder that were not sent and were left as they are: ${leftover.join(', ')}.` : '';
-  return { ok: true, changed: true, written, leftover, slice, base: loaded.base, text: `Wrote the slice "${slice}" to diagrams/${loaded.base}/${slice}/ (${written.join(', ')}); ${Object.keys(files).length} files and ${SOURCE_FILE}.${note}` };
+  return { ok: true, changed: true, written, leftover, slice, base: loaded.base, text: `Wrote the slice "${slice}" to ${loaded.base}/slices/${slice}/ (${written.join(', ')}); ${Object.keys(files).length} files and ${SOURCE_FILE}.${note}` };
 }

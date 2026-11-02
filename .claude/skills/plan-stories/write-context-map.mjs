@@ -1,4 +1,4 @@
-// Checks and writes a backlog's context map for the diagram-tools server: planner/data/diagrams/<backlog>/context-map.json (the
+// Checks and writes a backlog's context map for the diagram-tools server: <data folder>/<backlog>/context-map.json (the
 // source) and context-map.md (composed from it). checkContextMap and writeContextMap run the same preparation, the same checks
 // (planner/logic/diagrams/context-map.js) and Mermaid's own parser on the flowchart, so a map that passes one is accepted by the
 // other; only writeContextMap writes. The document is generated here, never sent by the caller.
@@ -78,23 +78,23 @@ export async function writeContextMap(input) {
   const p = await prepare(input);
   if (!p.ok) return { ...p, text: problemsText(p.errors) };
   const { loaded, source, sourceText, documentText } = p;
-  const existing = readMapFiles(loaded.dir);
+  const existing = readMapFiles(loaded.backlogDir);
   if (existing.source === sourceText && existing.document === documentText) {
-    return { ok: true, changed: false, written: [], base: loaded.base, text: `Nothing changed: diagrams/${loaded.base} already holds exactly this map.` };
+    return { ok: true, changed: false, written: [], base: loaded.base, text: `Nothing changed: ${loaded.base} already holds exactly this map.` };
   }
 
-  fs.mkdirSync(loaded.dir, { recursive: true });
+  fs.mkdirSync(loaded.backlogDir, { recursive: true });
   // The source last, so a failure never leaves it describing a document that was not written.
-  const failures = [writeAtomic(loaded.dir, MAP_DOCUMENT_FILE, documentText), writeAtomic(loaded.dir, MAP_SOURCE_FILE, sourceText)].filter(Boolean);
+  const failures = [writeAtomic(loaded.backlogDir, MAP_DOCUMENT_FILE, documentText), writeAtomic(loaded.backlogDir, MAP_SOURCE_FILE, sourceText)].filter(Boolean);
   if (failures.length) return { ok: false, errors: failures, text: problemsText(failures) };
 
-  const back = readMapFiles(loaded.dir);
+  const back = readMapFiles(loaded.backlogDir);
   const missing = [back.document === documentText ? null : MAP_DOCUMENT_FILE, back.source === sourceText ? null : MAP_SOURCE_FILE].filter(Boolean);
   if (missing.length) {
     const errors = [`The folder does not hold what was sent after the write: ${missing.join(', ')}.`];
     return { ok: false, errors, text: problemsText(errors) };
   }
   const written = [existing.document === documentText ? null : MAP_DOCUMENT_FILE, existing.source === sourceText ? null : MAP_SOURCE_FILE].filter(Boolean);
-  logWrite({ writer: 'write_context_map', store: 'diagrams', file: `${loaded.base}/context-map`, text: documentText + sourceText, extra: { backlog: loaded.base }, dataDir: input.dataDir ?? DATA_DIR });
-  return { ok: true, changed: true, written, base: loaded.base, text: `Wrote the context map to diagrams/${loaded.base}/ (${written.join(', ')}).` };
+  logWrite({ writer: 'write_context_map', backlog: loaded.base, kind: 'context-map', text: documentText + sourceText, dataDir: input.dataDir ?? DATA_DIR });
+  return { ok: true, changed: true, written, base: loaded.base, text: `Wrote the context map to ${loaded.base}/ (${written.join(', ')}).` };
 }

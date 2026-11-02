@@ -5,11 +5,11 @@ Gives each backlog one place to define the terms its stories use, so names and m
 ## Requirements
 
 ### Requirement: Lexicon file per backlog
-Each backlog SHALL have at most one lexicon, a CSV file in the data folder's `lexicons` folder with the same file name as the backlog (the lexicon of `backlogs/IAM.csv` is `lexicons/IAM.csv`). The file API SHALL expose it through a `lexicons` store like the other stores. The lexicon of one backlog SHALL NOT be visible in or affect another backlog. A backlog without a lexicon file SHALL work without error, and the file SHALL be created when the first term is saved.
+Each backlog SHALL have at most one lexicon, the file `lexicon.csv` in its backlog folder. The file API SHALL expose it as the kind `lexicon`. The lexicon of one backlog SHALL NOT be visible in or affect another backlog. A backlog without a lexicon file SHALL work without error, and the file SHALL be created when the first term is saved.
 
 #### Scenario: Lexicon follows the backlog
-- **WHEN** the open backlog is `IAM.csv`
-- **THEN** the Lexicon tab shows the terms of `lexicons/IAM.csv`, and a backlog `Reports.csv` shows its own `lexicons/Reports.csv`
+- **WHEN** the open backlog is `IAM`
+- **THEN** the Lexicon tab shows the terms of `IAM/lexicon.csv`, and a backlog `Reports` shows its own `Reports/lexicon.csv`
 
 #### Scenario: No lexicon yet
 - **WHEN** the open backlog has no lexicon file
@@ -75,13 +75,6 @@ The story portal SHALL show a Lexicon tab for the open backlog, always present l
 #### Scenario: File locked
 - **WHEN** the lexicon file is held open by another program such as Excel
 - **THEN** the tab shows that the save is waiting and retries, as the other tabs do
-
-### Requirement: Lexicon is backed up with its backlog
-The lexicon of a backlog SHALL be part of that backlog's backup and of the Backups tab comparison, as described by the `csv-file-store` capability.
-
-#### Scenario: Backup includes the lexicon
-- **WHEN** the user presses Backup on a backlog that has a lexicon
-- **THEN** the backup holds `lexicons/<backlog name>` and the Backups tab can compare it
 
 ### Requirement: Lexicon tab shows suggestions
 When the open backlog has open lexicon suggestions, the Lexicon tab SHALL show them at the top of the tab, above the term form, with the count of open ones in the tab label, as described by `lexicon-suggestions`. A suggested rename, delete or edit SHALL change the lexicon only when the user applies it, and then through the same rules as renaming, deleting or editing a term by hand (`Term rules`). The tab SHALL otherwise behave as before when there are none.

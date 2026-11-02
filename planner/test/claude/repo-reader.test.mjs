@@ -20,9 +20,9 @@ function setup({ exclude = [] } = {}) {
   fs.writeFileSync(path.join(repo, 'logo.png'), Buffer.from([0x89, 0x50, 0x00, 0x47, 0x00]));
   fs.writeFileSync(path.join(repo, 'big.txt'), `signIn ${'x'.repeat(1024 * 1024 + 10)}`);
   fs.writeFileSync(path.join(elsewhere, 'outside.txt'), 'signIn outside the repo\n');
-  const diagrams = path.join(root, 'diagrams', 'data');
+  const diagrams = path.join(root, 'data');
   fs.mkdirSync(diagrams, { recursive: true });
-  fs.writeFileSync(path.join(diagrams, 'repo.json'), JSON.stringify({ path: '../../repo', exclude }));
+  fs.writeFileSync(path.join(diagrams, 'repo.json'), JSON.stringify({ path: '../repo', exclude }));
   const loaded = loadRepoConfig({ dataDir: root, backlog: 'data.csv' });
   assert.equal(loaded.ok, true);
   return { root, repo, elsewhere, loaded, config: path.join(diagrams, 'repo.json') };
@@ -42,7 +42,7 @@ test('repo.json: a relative path is relative to the file, a missing file or empt
 test('repo.json: a bad key, bad JSON and a path that is not a folder are reported', () => {
   const { root, config } = setup();
   const load = () => loadRepoConfig({ dataDir: root, backlog: 'data' });
-  fs.writeFileSync(config, JSON.stringify({ path: '../../repo', exclude: 'x' }));
+  fs.writeFileSync(config, JSON.stringify({ path: '../repo', exclude: 'x' }));
   assert.match(load().errors[0], /"exclude" must be a list/);
   fs.writeFileSync(config, '{ nope');
   assert.match(load().errors[0], /not valid JSON/);

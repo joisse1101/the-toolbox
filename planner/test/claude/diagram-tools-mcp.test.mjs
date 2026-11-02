@@ -8,6 +8,9 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { DESCRIPTIONS } from '../../claude/mcp/diagram-tools.mjs';
 import { tempConfig } from '../helpers/temp-config.mjs';
+import { sampleTree, slicesPath, backlogPath } from '../helpers/backlog-tree.mjs';
+import { createRequire } from 'node:module';
+const { repoFile } = createRequire(import.meta.url)('../../logic/storage/backlog-paths.cjs');
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SERVER = path.resolve(HERE, '../../claude/mcp/diagram-tools.mjs');
@@ -26,11 +29,9 @@ const MAP = {
 
 // A temp data folder holding the sample backlog and slice, and the sample repo that repo.json points at (outside diagrams/, so it is not a slice).
 function temp({ repoJson } = {}) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'diagram-tools-test-'));
-  fs.cpSync(path.join(SAMPLE, 'backlogs'), path.join(root, 'backlogs'), { recursive: true });
-  fs.cpSync(path.join(SAMPLE, 'diagrams'), path.join(root, 'diagrams'), { recursive: true });
+    const root = sampleTree({ withSlice: true, withMap: true });
   fs.cpSync(path.join(SAMPLE, 'repos'), path.join(root, 'repos'), { recursive: true });
-  if (repoJson !== undefined) fs.writeFileSync(path.join(root, 'diagrams', 'sample', 'repo.json'), repoJson);
+  fs.writeFileSync(repoFile(root, 'sample'), repoJson ?? JSON.stringify({ path: '../repos/sample', exclude: ['config/prod.*'] }));
   return root;
 }
 
@@ -42,7 +43,7 @@ async function connect(root, args = []) {
 const call = (client, name, args) => client.callTool({ name, arguments: args });
 const textOf = (r) => r.content.map((c) => c.text).join('\n');
 const sliceFiles = (root) => {
-  const dir = path.join(root, 'diagrams', 'sample', 'sign-in');
+  const dir = path.join(slicesPath(root, 'sample'), 'sign-in');
   return fs.readdirSync(dir).filter((f) => f !== 'source.json').map((name) => ({ name, content: fs.readFileSync(path.join(dir, name), 'utf8') }));
 };
 const sliceArgs = (root, over = {}) => ({ backlog: 'sample.csv', slice: 'sign-in', scope: SCOPE, stories: STORIES, files: sliceFiles(root), ...over });
@@ -72,7 +73,7 @@ test('the repo tools label what they return as data from the repo, the diagram t
 });
 
 test('no repo tools when repo.json is missing, has a bad key or points at no folder, and read_diagrams says why', async () => {
-  for (const [repoJson, why] of [['{ "path": "" }', /No repo is configured/], ['{ "path": "../../repos/sample", "exclude": "x" }', /"exclude" must be a list/], ['{ "path": "./missing" }', /"path" is not a folder/]]) {
+  for (const [repoJson, why] of [['{ "path": "" }', /No repo is configured/], ['{ "path": "../repos/sample", "exclude": "x" }', /"exclude" must be a list/], ['{ "path": "./missing" }', /"path" is not a folder/]]) {
     const client = await connect(temp({ repoJson }), ['--backlog', 'sample.csv']);
     try {
       assert.deepEqual((await client.listTools()).tools.map((t) => t.name).sort(), DIAGRAM_AND_MAP_TOOLS);
@@ -104,9 +105,9 @@ test('read_diagrams: the slices, one slice with its files, the conventions, bad 
 test('check_diagram writes nothing; write_diagram of the same files changes nothing; a bad diagram writes nothing', async () => {
   const root = temp();
   const client = await connect(root);
-  const dir = path.join(root, 'diagrams', 'sample');
+  const dir = backlogPath(root, 'sample');
   try {
-    const before = fs.readdirSync(path.join(dir, 'sign-in')).sort();
+    const before = fs.readdirSync(path.join(dir, 'slices', 'sign-in')).sort();
     assert.match(textOf(await call(client, 'check_diagram', sliceArgs(root))), /Check passed; nothing was written/);
     assert.match(textOf(await call(client, 'write_diagram', sliceArgs(root))), /Nothing changed/);
     const files = sliceFiles(root).map((f) => ({ ...f, content: f.content.replace('classDiagram', 'pie') }));
@@ -115,7 +116,7 @@ test('check_diagram writes nothing; write_diagram of the same files changes noth
     assert.match(textOf(bad), /^Nothing was written/);
     const checked = await call(client, 'check_diagram', sliceArgs(root, { files }));
     assert.equal(checked.isError, true);
-    assert.deepEqual(fs.readdirSync(path.join(dir, 'sign-in')).sort(), before);
+    assert.deepEqual(fs.readdirSync(path.join(dir, 'slices', 'sign-in')).sort(), before);
     const wrongTitle = await call(client, 'check_diagram', sliceArgs(root, { stories: [{ id: 'IAM-0001', title: 'Something else' }, STORIES[1]] }));
     assert.equal(wrongTitle.isError, true);
   } finally {
@@ -126,7 +127,7 @@ test('check_diagram writes nothing; write_diagram of the same files changes noth
 test('the map tools: read says none, check writes nothing, write is read back and repeated unchanged, a bad map writes nothing', async () => {
   const root = temp();
   const client = await connect(root);
-  const dir = path.join(root, 'diagrams', 'sample');
+  const dir = backlogPath(root, 'sample');
   for (const f of ['context-map.json', 'context-map.md']) fs.rmSync(path.join(dir, f)); // the sample ships a map; this test starts without one
   const mapFiles = () => fs.readdirSync(dir).filter((f) => f.startsWith('context-map')).sort();
   try {

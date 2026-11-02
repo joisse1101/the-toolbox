@@ -5,7 +5,7 @@ import { commitEpic, commitEpics, moveStory, moveGroup, gatherFeatures, recodedB
 import { applySuggestions, acceptAll } from '../../../../logic/review/review.js';
 import { useAutosave } from './useAutosave.js';
 
-const store = createFileStore('backlogs');
+const store = createFileStore('backlog');
 const NEW_BACKLOG_NAME = 'new-backlog';
 
 const initial = {
@@ -13,7 +13,7 @@ const initial = {
   current: null, // selected file name
   backlog: null, // { headers, stories, hasBom }
   selectedId: null,
-  view: 'editor', // 'editor' | 'stories' | 'graph' | 'proposed' | 'lexicon' | 'backups' | 'settings' | 'review'
+  view: 'editor', // 'editor' | 'stories' | 'graph' | 'proposed' | 'lexicon' | 'settings' | 'review'
   checked: new Set(), // story ids ticked in the Stories tab (separate from selectedId)
   lastChecked: null, // id of the last ticked row, for shift-click ranges
   edits: 0, // bumped by every change to the backlog; the auto-save runs when it changes

@@ -1,9 +1,9 @@
 # Starts an interactive Claude session that plans stories of a backlog into diagrams: a use-case specification, a class diagram and
-# sequence diagrams, written to planner/data/diagrams/<backlog>/<slice>/.
+# sequence diagrams, written to <data folder>/<backlog>/slices/<slice>/.
 # Usage: .\planner\claude\launchers\plan-stories.ps1 [backlog] [scope] [-Repo <path>]
-#   backlog  a backlog in planner/data/backlogs/, with or without .csv (data-portal or data-portal.csv); asked for from a numbered list when missing
+#   backlog  a backlog folder of the data folder, named with or without .csv (data-portal or data-portal.csv); asked for from a numbered list when missing
 #   scope    ONE argument: an Epic name, "Epic > Feature", a story ID of the backlog (IAM-0004) or free text; quote it when it has spaces; asked for when missing
-#   -Repo    the folder of the existing solution, read-only, to ground the diagrams in; stored in planner/data/diagrams/<backlog>/repo.json
+#   -Repo    the folder of the existing solution, read-only, to ground the diagrams in; stored in <data folder>/<backlog>/repo.json
 #            (git-ignored) and used again by later sessions that do not pass it. The "exclude" list of that file is yours to edit and is
 #            kept. Without a repo the session is still design-level and asks you for the detail.
 # It refuses an unknown backlog, an empty scope, a story ID that is not in the backlog and a -Repo that is not a folder before Claude starts.
@@ -32,7 +32,8 @@ function Stop-Launcher([string]$Message) {
   exit 1
 }
 
-$file = Select-Backlog $dataDir $Backlog
+$name = Select-Backlog $dataDir $Backlog
+$backlogDir = Join-Path $dataDir $name
 
 if (-not $Scope.Trim()) { $Scope = Read-Host 'What scope? (an Epic name, "Epic > Feature", a story ID like IAM-0004, or describe it)' }
 $Scope = $Scope.Trim()
@@ -42,8 +43,8 @@ if (-not $Scope) { Stop-Launcher 'No scope given.' }
 # from its first reply. A Title is one line; quotes inside it become apostrophes. Anything else goes in as typed.
 if ($Scope -match '^[A-Za-z]+-\d+$') {
   $Scope = $Scope.ToUpper()
-  $known = @(Import-Csv -LiteralPath (Join-Path (Join-Path $dataDir 'backlogs') $file) -Encoding UTF8 | Where-Object { $_.ID -eq $Scope })
-  if (-not $known.Count) { Stop-Launcher "$Scope is not in planner/data/backlogs/$file." }
+  $known = @(Import-Csv -LiteralPath (Join-Path $backlogDir 'user-stories.csv') -Encoding UTF8 | Where-Object { $_.ID -eq $Scope })
+  if (-not $known.Count) { Stop-Launcher "$Scope is not in $name/user-stories.csv." }
   $title = ([string]$known[0].Title -replace '\s+', ' ' -replace '"', "'").Trim()
   if ($title) { $Scope = "$Scope titled `"$title`"" }
 }
@@ -52,24 +53,23 @@ if ($Scope -match '^[A-Za-z]+-\d+$') {
 if ($Repo.Trim()) {
   if (-not (Test-Path -LiteralPath $Repo.Trim() -PathType Container)) { Stop-Launcher "-Repo '$Repo' is not an existing folder." }
   $repoPath = (Resolve-Path -LiteralPath $Repo.Trim()).ProviderPath
-  $folder = Join-Path (Join-Path $dataDir 'diagrams') ($file -replace '\.csv$', '')
-  $config = Join-Path $folder 'repo.json'
+  $config = Join-Path $backlogDir 'repo.json'
   $exclude = @()
   if (Test-Path -LiteralPath $config) {
     try { $existing = Get-Content -LiteralPath $config -Raw -Encoding UTF8 | ConvertFrom-Json } catch { Stop-Launcher "$config is not valid JSON; fix it or delete it, then run again." }
     if ($existing.PSObject.Properties['exclude']) { $exclude = @($existing.exclude) }
   }
-  New-Item -ItemType Directory -Force -Path $folder | Out-Null
+  New-Item -ItemType Directory -Force -Path $backlogDir | Out-Null
   $json = [ordered]@{ path = $repoPath; exclude = $exclude } | ConvertTo-Json
   [IO.File]::WriteAllText($config, $json + "`n", (New-Object Text.UTF8Encoding($false)))
-  Write-Host "Repo for $file set to $repoPath" -ForegroundColor Green
+  Write-Host "Repo for $name set to $repoPath" -ForegroundColor Green
 }
 
 # Windows PowerShell 5.1 does not escape quotes inside an argument for a native command.
-$prompt = "/plan-stories $file $Scope"
+$prompt = "/plan-stories $name $Scope"
 if ($PSVersionTable.PSVersion.Major -lt 7) { $prompt = $prompt.Replace('"', '\"') }
 
-$session = New-PlanStoriesConfig $root $file
+$session = New-PlanStoriesConfig $root $name
 
 try {
   claude $prompt `

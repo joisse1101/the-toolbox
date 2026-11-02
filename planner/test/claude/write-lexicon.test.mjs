@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { pathOf, decidedPath, logLines as treeLogLines } from '../helpers/backlog-tree.mjs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { writeLexicon, checkLexicon } from '../../../.claude/skills/propose-stories/write-lexicon.mjs';
@@ -14,28 +15,28 @@ const BACKLOG = 'Epic,Title\r\nIdentity,Login\r\n';
 
 function temp() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'lexicon-test-'));
-  fs.mkdirSync(path.join(root, 'backlogs'));
-  fs.writeFileSync(path.join(root, 'backlogs', 'data.csv'), BACKLOG);
+  fs.mkdirSync(path.dirname(pathOf(root, 'data', 'backlog')), { recursive: true });
+  fs.writeFileSync(pathOf(root, 'data', 'backlog'), BACKLOG);
   return root;
 }
 
 const run = (root, items, name = 'data.csv') => writeLexicon({ dataDir: root, name, input: JSON.stringify(items) });
-const lexiconPath = (root) => path.join(root, 'lexicons', 'data.csv');
+const lexiconPath = (root) => pathOf(root, 'data', 'lexicon');
 const load = (root) => parseLexicon(fs.readFileSync(lexiconPath(root), 'utf8'));
 const seed = (root, text) => {
-  fs.mkdirSync(path.join(root, 'lexicons'), { recursive: true });
+  fs.mkdirSync(path.dirname(pathOf(root, 'data', 'lexicon')), { recursive: true });
   fs.writeFileSync(lexiconPath(root), text);
 };
 
 test('valid input creates lexicons/<name> and leaves the backlog byte-for-byte unchanged', () => {
   const root = temp();
-  const before = fs.readFileSync(path.join(root, 'backlogs', 'data.csv'));
+  const before = fs.readFileSync(pathOf(root, 'data', 'backlog'));
   const result = run(root, [{ term: 'User', definition: 'A person with a login.', avoid: ['customer'] }]);
   assert.deepEqual([result.ok, result.added, result.count], [true, ['User'], 1]);
   assert.deepEqual(load(root).terms.map((t) => [t.name, t.avoid]), [['User', ['customer']]]);
   assert.ok(fs.readFileSync(lexiconPath(root), 'utf8').startsWith('﻿Term,Part of,Definition,Avoid,Notes\r\n'));
-  assert.deepEqual(fs.readFileSync(path.join(root, 'backlogs', 'data.csv')), before);
-  assert.deepEqual(fs.readdirSync(path.join(root, 'lexicons')), ['data.csv'], 'no temp file is left');
+  assert.deepEqual(fs.readFileSync(pathOf(root, 'data', 'backlog')), before);
+  assert.deepEqual(fs.readdirSync(path.dirname(pathOf(root, 'data', 'lexicon'))), ['lexicon.csv', 'user-stories.csv'], 'no temp file is left');
 });
 
 test('a parent and its child can be added in one run', () => {
@@ -92,8 +93,8 @@ test('a backlog that does not exist is refused', () => {
   const root = temp();
   const result = run(root, [{ term: 'User', definition: 'x' }], 'missing.csv');
   assert.equal(result.ok, false);
-  assert.match(result.errors[0], /backlogs\/missing\.csv was not found/);
-  assert.equal(fs.existsSync(path.join(root, 'lexicons')), false);
+  assert.match(result.errors[0], /missing\/user-stories\.csv was not found/);
+  assert.equal(fs.existsSync(pathOf(root, 'data', 'lexicon')), false);
 });
 
 test('file names follow the file store rules', () => {
@@ -101,7 +102,7 @@ test('file names follow the file store rules', () => {
   for (const bad of ['../x.csv', 'sub/x.csv', 'a:b.csv']) {
     assert.equal(run(root, [{ term: 'A', definition: 'b' }], bad).ok, false, bad);
   }
-  assert.equal(fs.existsSync(path.join(root, 'lexicons')), false);
+  assert.equal(fs.existsSync(pathOf(root, 'data', 'lexicon')), false);
 });
 
 test('invalid JSON is reported with a position and writes nothing', () => {
@@ -110,7 +111,7 @@ test('invalid JSON is reported with a position and writes nothing', () => {
   assert.equal(result.ok, false);
   assert.match(result.errors[0], /^The terms on stdin are not valid JSON/);
   assert.match(result.errors[0], /line 1, column/);
-  assert.equal(fs.existsSync(path.join(root, 'lexicons')), false);
+  assert.equal(fs.existsSync(pathOf(root, 'data', 'lexicon')), false);
 });
 
 test('the script reports what it did, and a refused run exits 1', () => {
@@ -118,7 +119,7 @@ test('the script reports what it did, and a refused run exits 1', () => {
   const env = { ...process.env, PLANNER_CONFIG: tempConfig(root) };
   const ok = spawnSync('node', [SCRIPT, 'data.csv'], { input: '[{"term":"User","definition":"A person."}]', env, encoding: 'utf8' });
   assert.equal(ok.status, 0);
-  assert.match(ok.stdout, /^Added 1 term to lexicons\/data\.csv \(User\); 1 in the lexicon now\./);
+  assert.match(ok.stdout, /^Added 1 term to the lexicon of data \(User\); 1 in the lexicon now\./);
   const again = spawnSync('node', [SCRIPT, 'data.csv'], { input: '[{"term":"User","definition":"A person."}]', env, encoding: 'utf8' });
   assert.equal(again.status, 1);
   assert.match(again.stderr, /"User" is already a term/);
@@ -133,7 +134,7 @@ test('a check reports the same problems and the terms it would add, and changes 
   const check = (items) => checkLexicon({ dataDir: root, name: 'data.csv', input: JSON.stringify(items) });
   const ok = check([{ term: 'User', definition: 'A person with a login.' }]);
   assert.deepEqual([ok.ok, ok.added], [true, ['User']]);
-  assert.equal(fs.existsSync(path.join(root, 'lexicons')), false, 'a check creates nothing');
+  assert.equal(fs.existsSync(pathOf(root, 'data', 'lexicon')), false, 'a check creates nothing');
 
   const bad = [{ term: 'User' }];
   assert.deepEqual(check(bad).errors, run(root, bad).errors, 'same problems as the writer');

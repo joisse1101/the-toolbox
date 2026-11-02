@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { pathOf, decidedPath, logLines as treeLogLines } from '../helpers/backlog-tree.mjs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { writeReview, checkReview } from '../../../.claude/skills/review-backlog/write-review.mjs';
@@ -17,8 +18,8 @@ const CSV =
 
 function temp() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'review-test-'));
-  fs.mkdirSync(path.join(root, 'backlogs'));
-  fs.writeFileSync(path.join(root, 'backlogs', 'data.csv'), CSV);
+  fs.mkdirSync(path.dirname(pathOf(root, 'data', 'backlog')), { recursive: true });
+  fs.writeFileSync(pathOf(root, 'data', 'backlog'), CSV);
   return root;
 }
 
@@ -27,19 +28,19 @@ const finding = (over = {}) => ({
   area: 'Hierarchy', confidence: 'ready', group: '', ...over,
 });
 const run = (root, findings, name = 'data.csv') => writeReview({ dataDir: root, name, input: JSON.stringify(findings) });
-const reviewPath = (root) => path.join(root, 'reviews', 'data.csv');
+const reviewPath = (root) => pathOf(root, 'data', 'review');
 
 test('valid input writes reviews/<name> and leaves the backlog untouched', () => {
   const root = temp();
-  const before = fs.readFileSync(path.join(root, 'backlogs', 'data.csv'));
+  const before = fs.readFileSync(pathOf(root, 'data', 'backlog'));
   const r = run(root, [finding(), finding({ storyId: 'IAM-0002', field: 'Sprint points', suggested: '8', confidence: 'confirm' })]);
   assert.deepEqual([r.ok, r.count], [true, 2]);
-  assert.deepEqual(fs.readFileSync(path.join(root, 'backlogs', 'data.csv')), before);
+  assert.deepEqual(fs.readFileSync(pathOf(root, 'data', 'backlog')), before);
   const rows = parseReview(fs.readFileSync(reviewPath(root), 'utf8')).rows;
   assert.equal(rows[0].current, 'Login');
   assert.equal(rows[1].current, '55');
   assert.equal(rows[0].status, 'open');
-  assert.deepEqual(fs.readdirSync(path.join(root, 'reviews')), ['data.csv'], 'no temp file left behind');
+  assert.deepEqual(fs.readdirSync(path.dirname(pathOf(root, 'data', 'review'))), ['review.csv'], 'no temp file left behind');
 });
 
 test('invalid input reports every problem and writes nothing, keeping an existing review', () => {
@@ -55,7 +56,7 @@ test('invalid input reports every problem and writes nothing, keeping an existin
 test('no review file is created when validation fails', () => {
   const root = temp();
   assert.equal(run(root, [finding({ field: 'Nope' })]).ok, false);
-  assert.equal(fs.existsSync(path.join(root, 'reviews')), false);
+  assert.equal(fs.existsSync(path.dirname(pathOf(root, 'data', 'review'))), false);
 });
 
 test('bad or missing backlog names are rejected', () => {
@@ -64,7 +65,7 @@ test('bad or missing backlog names are rejected', () => {
     const r = run(root, [finding()], name);
     assert.equal(r.ok, false, name);
   }
-  assert.equal(fs.existsSync(path.join(root, 'reviews')), false);
+  assert.equal(fs.existsSync(path.dirname(pathOf(root, 'data', 'review'))), false);
 });
 
 test('input that is not JSON is rejected', () => {
@@ -127,7 +128,7 @@ test('malformed JSON reports the parser message with line, column and an excerpt
   assert.match(r.errors[0], /not valid JSON/);
   assert.match(r.errors[0], /line 3, column 3/);
   assert.match(r.errors[0], /near ".*IAM-0002/);
-  assert.equal(fs.existsSync(path.join(root, 'reviews')), false);
+  assert.equal(fs.existsSync(path.dirname(pathOf(root, 'data', 'review'))), false);
 });
 
 test('validation errors say they refer to this batch and keep the finding number', () => {
@@ -150,10 +151,10 @@ test('three batches give all rows; an invalid middle batch keeps the first and t
 
 test('append creates the review when there is none and leaves the backlog alone', () => {
   const root = temp();
-  const before = fs.readFileSync(path.join(root, 'backlogs', 'data.csv'));
+  const before = fs.readFileSync(pathOf(root, 'data', 'backlog'));
   const r = appendRun(root, [finding()]);
   assert.deepEqual([r.ok, r.added, r.count], [true, 1, 1]);
-  assert.deepEqual(fs.readFileSync(path.join(root, 'backlogs', 'data.csv')), before);
+  assert.deepEqual(fs.readFileSync(pathOf(root, 'data', 'backlog')), before);
 });
 
 test('a Group already in the review is rejected on append and nothing changes', () => {
@@ -166,7 +167,7 @@ test('a Group already in the review is rejected on append and nothing changes', 
   const text = fs.readFileSync(reviewPath(root), 'utf8');
   const r = appendRun(root, grouped('SSO sign-on'));
   assert.equal(r.ok, false);
-  assert.match(r.errors.join('\n'), /Group "split-1" is already in reviews\/data.csv/);
+  assert.match(r.errors.join('\n'), /Group "split-1" is already in data\/user-stories\/review.csv/);
   assert.equal(fs.readFileSync(reviewPath(root), 'utf8'), text);
 });
 
@@ -187,9 +188,9 @@ test('decisions accumulate in .decided and are never listed as a review file', (
   run(root, [finding({ suggested: 'B' })]);
   setStatus(root, 0, 'dismissed');
   run(root, [finding({ suggested: 'C' })]);
-  const decided = parseReview(fs.readFileSync(path.join(root, 'reviews', 'data.csv.decided'), 'utf8')).rows;
+  const decided = parseReview(fs.readFileSync(decidedPath(root, 'data'), 'utf8')).rows;
   assert.deepEqual(decided.map((x) => [x.suggested, x.status]).sort(), [['A', 'applied'], ['B', 'dismissed']]);
-  assert.deepEqual(fs.readdirSync(path.join(root, 'reviews')).filter((f) => f.endsWith('.csv')), ['data.csv']);
+  assert.deepEqual(fs.readdirSync(path.dirname(pathOf(root, 'data', 'review'))).filter((f) => f.endsWith('.csv')), ['review.csv']);
 });
 
 test('only the review is a .csv file, so the file API (which lists *.csv) never shows .decided or .tmp', () => {
@@ -197,10 +198,10 @@ test('only the review is a .csv file, so the file API (which lists *.csv) never 
   run(root, [finding()]);
   setStatus(root, 0, 'applied');
   run(root, [finding({ suggested: 'New' })]);
-  fs.writeFileSync(path.join(root, 'reviews', 'data.csv.123.tmp'), '');
-  const files = fs.readdirSync(path.join(root, 'reviews'));
-  assert.ok(files.includes('data.csv.decided'));
-  assert.deepEqual(files.filter((f) => /.csv$/i.test(f)), ['data.csv']);
+  fs.writeFileSync(path.join(path.dirname(pathOf(root, 'data', 'review')), 'review.csv.123.tmp'), '');
+  const files = fs.readdirSync(path.dirname(pathOf(root, 'data', 'review')));
+  assert.ok(files.includes('review.csv.decided'));
+  assert.deepEqual(files.filter((f) => /.csv$/i.test(f)), ['review.csv']);
 });
 
 test('arguments: a name, or a name with --append; nothing else', () => {
@@ -221,7 +222,7 @@ test('CLI: --append prints the batch size and the total; unknown arguments exit 
 function tempLocked() {
   const root = temp();
   const csv = CSV.replace(/\r\n/, ',Locked\r\n').replace(/,,,\r\n$/, ',,,,Yes\r\n');
-  fs.writeFileSync(path.join(root, 'backlogs', 'data.csv'), csv);
+  fs.writeFileSync(pathOf(root, 'data', 'backlog'), csv);
   return root;
 }
 const unlock = (over = {}) => ({ storyId: 'IAM-0002', field: '', action: 'unlock', suggested: '', reason: 'Too big', area: 'INVEST', confidence: 'ready', group: '', ...over });
@@ -240,7 +241,7 @@ test('an unlock row for an unlocked story is rejected and nothing is written', (
   const r = run(root, [unlock({ storyId: 'IAM-0001' })]);
   assert.equal(r.ok, false);
   assert.ok(r.errors.some((e) => e.includes('not locked')));
-  assert.equal(fs.existsSync(path.join(root, 'reviews')), false);
+  assert.equal(fs.existsSync(path.dirname(pathOf(root, 'data', 'review'))), false);
 });
 
 test('a field edit on a locked story needs an unlock row: in the batch, or from an earlier batch', () => {
@@ -248,7 +249,7 @@ test('a field edit on a locked story needs an unlock row: in the batch, or from 
   const without = run(root, [lockedEdit()]);
   assert.equal(without.ok, false);
   assert.ok(without.errors.some((e) => e.includes('IAM-0002') && e.includes('locked')));
-  assert.equal(fs.existsSync(path.join(root, 'reviews')), false);
+  assert.equal(fs.existsSync(path.dirname(pathOf(root, 'data', 'review'))), false);
 
   assert.equal(run(root, [lockedEdit(), unlock()]).ok, true);
 
@@ -280,7 +281,7 @@ test('clarification rows are accepted, also with --append, and existing rows are
 
 test('a resolve row stores the question of its pair in Current and not the pair number', () => {
   const root = temp();
-  const p = path.join(root, 'backlogs', 'data.csv');
+  const p = pathOf(root, 'data', 'backlog');
   fs.writeFileSync(p, CSV.replace('"AC1: Given a, when b, then c",', '"AC1: Given a, when b, then c",,,"Q1: Who owns approvals?\nA1:\nQ2: Which format?\nA2: CSV"').replace('Notes\r\n', 'Notes,Locked,Clarifications\r\n'));
   const resolve = (over = {}) => finding({ field: 'Clarifications', action: 'resolve', pair: 2, suggested: 'Format is CSV', area: 'Clarification', ...over });
   const r = run(root, [resolve()]);
@@ -298,7 +299,7 @@ test('a check reports the same problems and the rows it would add, and changes n
   const check = (findings, append = false) => checkReview({ dataDir: root, name: 'data.csv', input: JSON.stringify(findings), append });
   const ok = check([finding(), finding({ field: 'Notes', suggested: 'n' })]);
   assert.deepEqual([ok.ok, ok.added], [true, 2]);
-  assert.equal(fs.existsSync(path.join(root, 'reviews')), false, 'a check creates nothing');
+  assert.equal(fs.existsSync(path.dirname(pathOf(root, 'data', 'review'))), false, 'a check creates nothing');
 
   const bad = [finding({ storyId: 'ZZ-0009' })];
   assert.deepEqual(check(bad).errors, run(root, bad).errors, 'same problems as the writer');
