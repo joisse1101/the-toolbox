@@ -40,7 +40,7 @@ You can still run the pieces yourself: `npm run build`, `node planner/portal/ser
 - `dataDir`: the folder holding your data, absolute or relative to the config file's folder. Default: `planner/data`, also used when there is no config file.
 - Both keys are optional. An unknown key or a bad value stops the server and the launchers with a message naming it.
 - `PLANNER_CONFIG` names another config file to use instead.
-- Settings tab: change the project name or the data folder while the portal runs. The switch is live, and it offers to create the folders in an empty folder or copy your data into it.
+- Settings tab: change the project name or the data folder while the portal runs. The data folder box is read-only: Change folder opens your system's folder dialog. The switch is live, and it offers to create the folders in an empty folder or copy your data into it.
 - Skill scripts and Claude sessions read the config when they start, so restart them after a switch. The three launchers print the data folder they use.
 
 Coming from the `PLANNER_DATA_DIR` or `TLT_DATA_DIR` variable?

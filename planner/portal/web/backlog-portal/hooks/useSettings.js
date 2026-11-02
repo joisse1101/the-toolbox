@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { getProject, saveProject, checkProjectFolder, initProjectFolder, copyProjectData } from '../../shared/files.js';
+import { getProject, saveProject, checkProjectFolder, pickProjectFolder, initProjectFolder, copyProjectData } from '../../shared/files.js';
 
 // Survives the page reload that follows a switch, so the Settings tab can still show the note about skill sessions.
 const SWITCHED_KEY = 'planner.dataDirSwitched';
@@ -52,16 +52,23 @@ export function useSettings(settleAll) {
     window.location.reload();
   };
 
-  const changeFolder = (dir) =>
+  const checkAndSwitch = async (dir) => {
+    setOffer(null);
+    setInitResult(null);
+    setCopyResult(null);
+    const check = await checkProjectFolder(dir);
+    if (check.status === 'refused') throw new Error(check.reason);
+    if (check.status === 'has-planner-files') return switchTo(check.dir);
+    setOffer({ dir: check.dir, status: check.status });
+    return undefined;
+  };
+
+  // Opens the server's folder dialog; a chosen folder goes through the same flow as any new folder, a cancel does nothing.
+  const pickFolder = () =>
     run(async () => {
-      setOffer(null);
-      setInitResult(null);
-      setCopyResult(null);
-      const check = await checkProjectFolder(dir);
-      if (check.status === 'refused') throw new Error(check.reason);
-      if (check.status === 'has-planner-files') return switchTo(check.dir);
-      setOffer({ dir: check.dir, status: check.status });
-      return undefined;
+      const picked = await pickProjectFolder();
+      if (picked.cancelled) return undefined;
+      return checkAndSwitch(picked.dir);
     });
 
   // choice: 'copy' or 'init', for the folder in `offer`.
@@ -81,5 +88,5 @@ export function useSettings(settleAll) {
       setInitResult(await initProjectFolder(settings.dataDir));
     });
 
-  return { settings, error, working, offer, initResult, copyResult, switched, actions: { saveName, changeFolder, chooseForNewFolder, retrySwitch, runInit, cancelOffer: () => setOffer(null) } };
+  return { settings, error, working, offer, initResult, copyResult, switched, actions: { saveName, pickFolder, chooseForNewFolder, retrySwitch, runInit, cancelOffer: () => setOffer(null) } };
 }

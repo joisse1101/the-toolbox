@@ -12,16 +12,13 @@ function FolderList({ title, names }) {
 export default function SettingsTab({ hidden, settingsState }) {
   const { settings, error, working, offer, initResult, copyResult, switched, actions } = settingsState;
   const [name, setName] = useState('');
-  const [dir, setDir] = useState('');
 
   useEffect(() => {
     if (!settings) return;
     setName(settings.projectName);
-    setDir(settings.dataDir);
   }, [settings]);
 
   const nameChanged = !!settings && name !== settings.projectName;
-  const dirChanged = !!settings && dir.trim() !== '' && dir.trim() !== settings.dataDir;
 
   return (
     <section id="settingsView" className="card" role="tabpanel" aria-labelledby="tabSettings" hidden={hidden}>
@@ -38,10 +35,10 @@ export default function SettingsTab({ hidden, settingsState }) {
           </div>
           <div className="row">
             <div className="grow">
-              <label htmlFor="dataDir">Data folder (absolute path)</label>
-              <input type="text" id="dataDir" autoComplete="off" spellCheck={false} value={dir} onChange={(e) => setDir(e.target.value)} />
+              <label htmlFor="dataDir">Data folder</label>
+              <input type="text" id="dataDir" disabled value={settings.dataDir} readOnly />
             </div>
-            <button type="button" id="changeFolderBtn" disabled={!dirChanged || working} onClick={() => actions.changeFolder(dir.trim())}>Change folder</button>
+            <button type="button" id="changeFolderBtn" disabled={working || !!offer} onClick={actions.pickFolder}>Change folder</button>
             <button type="button" id="initBtn" disabled={working || !!offer} onClick={actions.runInit}>Create missing folders</button>
           </div>
           <p className="muted">Config file: <code>{settings.configPath}</code></p>

@@ -72,6 +72,12 @@ export function checkProjectFolder(dir) {
   return call('POST', '/api/project/check', { json: { dir } });
 }
 
+// Opens the server's folder dialog. Resolves to { dir } for the chosen folder or { cancelled: true }; changes nothing.
+// Throws when the server cannot open the dialog.
+export function pickProjectFolder() {
+  return call('POST', '/api/project/pick');
+}
+
 // Resolves to { dir, createdDataDir, created, existing }.
 export function initProjectFolder(dir) {
   return call('POST', '/api/project/init', { json: { dir } });
