@@ -12,7 +12,7 @@ Two separate things live here.
 | `planner/portal/web/` | The React pages and the Vite config. Builds into `planner/portal/dist/`. |
 | `planner/portal/server/` | `server.cjs`: serves `planner/portal/dist/` and the CSV file API. |
 | `planner/logic/` | Pure logic with no UI or server, by domain: CSV parsing, the story model, IDs, reviews, proposals, the lexicon, storage paths. Used by the portal and by the skill scripts. |
-| `planner/data/` | Your private data (git-ignored): `backlogs/`, `reviews/`, `proposals/`, `lexicons/`, `lexicon-suggestions/`, `diagrams/`, `backups/`, `logs/` (`writes.jsonl`, one line per save by the portal or a writer, no contents: it shows who wrote a file last). Set `PLANNER_DATA_DIR` to keep it somewhere else, for example outside the repo. Coming from an older layout? Move `data/` to `planner/data/` and rename its `user-stories` folder to `backlogs`; the server and launchers print the commands. |
+| `planner/data/` | Your private data (git-ignored): `backlogs/`, `reviews/`, `proposals/`, `lexicons/`, `lexicon-suggestions/`, `diagrams/`, `backups/`, `logs/` (`writes.jsonl`, one line per save by the portal or a writer, no contents: it shows who wrote a file last). The folder is set in the project config (see [Project config](#project-config)). Coming from an older layout? Move `data/` to `planner/data/` and rename its `user-stories` folder to `backlogs`; the server and launchers print the commands. |
 | `planner/guidelines/` | Backlog standards and point sizing, read by the skills and shown in the portal. |
 | `planner/claude/` | The Claude side that is not a skill: `mcp/` (the `backlog-tools` MCP server) and `launchers/` (the `.ps1` session starters). Both call the skills. |
 | `.claude/skills/` | The skills, each with its `SKILL.md`, scripts, locked settings and command guard, plus `_shared/` (helpers the skill scripts share). Must stay here for Claude Code to find them. |
@@ -29,9 +29,23 @@ npm start        # builds if needed, runs the server, opens http://localhost:300
 npm start -- --dev   # server + Vite dev server with hot reload (http://localhost:5173/)
 ```
 
-Options after `--`: `--build` forces a rebuild, `--no-open` skips opening the browser. Set `PORT` to use another port and `PLANNER_DATA_DIR` to keep the data elsewhere. The server listens on `127.0.0.1` only. Stop everything with Ctrl+C.
+Options after `--`: `--build` forces a rebuild, `--no-open` skips opening the browser. Set `PORT` to use another port. The server listens on `127.0.0.1` only. Stop everything with Ctrl+C.
 
 You can still run the pieces yourself: `npm run build`, `node planner/portal/server/server.cjs`, `npm run dev` (needs the server running; it proxies `/api`).
+
+## Project config
+
+- The config file is `planner/planner.config.yaml`. It is git-ignored: copy `planner/planner.config.example.yaml` and edit it.
+- `projectName`: shown in the portal header. Default: empty.
+- `dataDir`: the folder holding your data, absolute or relative to the config file's folder. Default: `planner/data`, also used when there is no config file.
+- Both keys are optional. An unknown key or a bad value stops the server and the launchers with a message naming it.
+- `PLANNER_CONFIG` names another config file to use instead.
+- Settings tab: change the project name or the data folder while the portal runs. The switch is live, and it offers to create the folders in an empty folder or copy your data into it.
+- Skill scripts and Claude sessions read the config when they start, so restart them after a switch. The three launchers print the data folder they use.
+
+Coming from the `PLANNER_DATA_DIR` or `TLT_DATA_DIR` variable?
+- The variables are no longer read.
+- Create `planner/planner.config.yaml` once with `dataDir` set to the same path, then remove the variable.
 
 ## Tools
 
