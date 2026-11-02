@@ -342,13 +342,14 @@ Install both parts, then start the command in a Claude Code session:
 - Plain `/opsx:apply` is unchanged.
 - Nothing stops a session that runs it from implementing the tasks itself.
 - Inside the agent, three things are enforced: its tool list, its turn limit (`maxTurns`, 50) and two hooks.
-- The hooks block `git commit`, `git push`, `gh`, `rm -rf` and an edit of a change's `tasks.md`.
-- A blocked `rm -rf` fails at once with a message that the cleanup is left for the main session.
+- The hooks block `git commit`, `git push`, `gh`, a recursive and forced `rm` and an edit of a change's `tasks.md`.
+- The `rm` block covers `-rf`, `-fr`, `-r -f` and `--recursive --force`, in any mix of short and long flags.
+- A blocked `rm` fails at once with a message that the cleanup is left for the main session.
   - Without the block, the call waits on a permission prompt nobody sees.
   - The toolkit adds no allow rule for `rm`.
 - The agent's instructions also ask for one plain command per Bash call: no chained `cd`, absolute paths only.
 - The hooks look at the direct command, so a `gh` call hidden inside a script is not caught.
-- The `rm -rf` hook misses long forms such as `rm --recursive --force`. The instructions still forbid them.
+- The `rm` hook reads only the direct command, so an `rm -rf` hidden inside a script is not caught.
 - The commit stop is the backstop.
 - Groups run one at a time, never in parallel, because the agents share one checkout.
 

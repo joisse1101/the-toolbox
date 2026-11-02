@@ -903,11 +903,19 @@ The `opsx-task-applier` agent SHALL run one plain command per Bash call, SHALL N
 - **THEN** the agent SHALL NOT run `rm -rf` and its report SHALL say the cleanup is left for the main session
 
 ### Requirement: Task agent hook refuses rm -rf
-The frontmatter `PreToolUse` hook on `Bash` of `opsx-task-applier` SHALL also block a command that runs `rm -rf`, with an error saying the cleanup is left for the main session. The toolkit SHALL NOT add an allow rule for `rm`.
+The frontmatter `PreToolUse` hook on `Bash` of `opsx-task-applier` SHALL also block a command that runs `rm` with both a recursive and a force flag, in short or long form, with an error saying the cleanup is left for the main session. The toolkit SHALL NOT add an allow rule for `rm`.
 
 #### Scenario: rm -rf attempted
 - **WHEN** the agent runs a Bash command containing `rm -rf`
 - **THEN** the hook SHALL block it at once with an error naming the rule, and no permission prompt SHALL be raised
+
+#### Scenario: Split or long flags
+- **WHEN** the agent runs `rm -r -f x` or `rm --recursive --force x`
+- **THEN** the hook SHALL block it as it blocks `rm -rf`
+
+#### Scenario: One flag only
+- **WHEN** the agent runs `rm -r x` or `rm -f x`
+- **THEN** the hook SHALL NOT block it
 
 #### Scenario: No widened permissions
 - **WHEN** the toolkit files are read
