@@ -4,8 +4,8 @@ description: "Set OpenSpec up in this project: init when missing, check the glob
 allowed-tools: Bash(openspec:*), Bash(git status:*), Bash(git diff:*), Read, Edit, Write
 disable-model-invocation: true
 metadata:
-  version: "1.3.0"
-  last_updated: "2026-10-30"
+  version: "1.4.0"
+  last_updated: "2026-11-02"
 ---
 
 Set OpenSpec up in the project this runs in.
@@ -80,7 +80,7 @@ Set OpenSpec up in the project this runs in.
 
 ```yaml
       # jois-init:opsx begin (managed by /jois-init:opsx; edits here are overwritten)
-      - "At the end of each concern, stop and follow the jois-git-commit-hygiene rule: stage by explicit path, show the summary and message, name a confirmation word, and end the turn. Never commit in the turn you stage."
+      - "At the end of each concern, follow the jois-git-commit-hygiene rule. The one exception is /jois-code:apply, which commits a finished group under its own conditions, so this stop does not apply to it. Every other apply stops: stage by explicit path, show the summary and message, name a confirmation word, and end the turn. Never commit in the turn you stage."
       # jois-init:opsx end
 ```
 
