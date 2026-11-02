@@ -2,7 +2,7 @@
 name: jois-design-ui-principles
 description: Visual-design and code-structure rules for a user interface. Use when designing, building, styling, reviewing or polishing a page, component, form, dashboard, card, table or layout, including writing its HTML, CSS or React code, or when asked to "make it look better" or to critique a screenshot. Do not use for behaviour-only changes, command-line tools, backend code or any code with no visual output.
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
   last_updated: "2026-11-02"
 ---
 # UI design principles
@@ -35,6 +35,10 @@ Purpose: make an interface look designed and keep its frontend code grouped and 
 - **Colour:** blue is safe, gold is premium, pink is relaxed.
 - **Radius:** none is formal, small is neutral, large is playful. Never mix square and rounded corners.
 - **Copy tone:** impersonal reads official, casual reads friendly.
+
+## Small edits
+
+- When asked to change part of a UI, change only that part; leave the existing styling of other elements as it is.
 
 ## Visual rules by topic
 
