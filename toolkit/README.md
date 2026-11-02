@@ -293,6 +293,13 @@ list, and archive's git commands prompt for permission.
   - how to open the agent's transcript: its row in the agent panel then Enter, or `/tasks`
   - the agent's turn limit
 - After each report it says whether the group is done, failed or blocked.
+- While the agent works, the command watches the agent's transcript file with the `Monitor` tool.
+  - The transcript is `subagents/agent-<id>.jsonl`.
+  - If the file does not change for 3 minutes, the command says the agent looks stalled and is probably waiting for a permission approval.
+  - It shows the agent's last tool call and where to open the transcript, so you can approve the prompt there.
+  - A long test run or build looks the same, so the last tool call tells which it is.
+  - The watch never edits a permission rule.
+  - If the command cannot find the transcript, it says the watch did not start.
 - The ticks in `tasks.md` are the progress across groups.
 - The transcript is the view inside one group.
 - After each completed group it stops for a commit under the `jois-git-commit-hygiene` rule.
@@ -335,8 +342,14 @@ Install both parts, then start the command in a Claude Code session:
 - Plain `/opsx:apply` is unchanged.
 - Nothing stops a session that runs it from implementing the tasks itself.
 - Inside the agent, three things are enforced: its tool list, its turn limit (`maxTurns`, 50) and two hooks.
-- The hooks block `git commit`, `git push` and `gh`, and an edit of a change's `tasks.md`.
+- The hooks block `git commit`, `git push`, `gh`, a recursive and forced `rm` and an edit of a change's `tasks.md`.
+- The `rm` block covers `-rf`, `-fr`, `-r -f` and `--recursive --force`, in any mix of short and long flags.
+- A blocked `rm` fails at once with a message that the cleanup is left for the main session.
+  - Without the block, the call waits on a permission prompt nobody sees.
+  - The toolkit adds no allow rule for `rm`.
+- The agent's instructions also ask for one plain command per Bash call: no chained `cd`, absolute paths only.
 - The hooks look at the direct command, so a `gh` call hidden inside a script is not caught.
+- The `rm` hook reads only the direct command, so an `rm -rf` hidden inside a script is not caught.
 - The commit stop is the backstop.
 - Groups run one at a time, never in parallel, because the agents share one checkout.
 
