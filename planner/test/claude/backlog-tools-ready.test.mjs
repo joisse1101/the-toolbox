@@ -7,6 +7,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { tempConfig } from '../helpers/temp-config.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const SERVER = path.join(ROOT, 'planner/claude/mcp/backlog-tools.mjs');
@@ -36,7 +37,7 @@ test('the ready file appears only once the tool list has been sent, not at the h
   const client = new Client({ name: 'test', version: '0' });
   try {
     await client.connect(new StdioClientTransport({
-      command: process.execPath, args: [SERVER], env: { ...process.env, PLANNER_DATA_DIR: dir, PLANNER_MCP_READY_FILE: readyFile }, stderr: 'ignore',
+      command: process.execPath, args: [SERVER], env: { ...process.env, PLANNER_CONFIG: tempConfig(dir), PLANNER_MCP_READY_FILE: readyFile }, stderr: 'ignore',
     }));
     // connect() has completed the initialize handshake: a prompt released now would still find no tools.
     await new Promise((r) => setTimeout(r, 600));
@@ -51,7 +52,7 @@ test('the ready file appears only once the tool list has been sent, not at the h
 
 test('without PLANNER_MCP_READY_FILE the server writes nothing and still lists its tools', async () => {
   const dir = temp();
-  const env = { ...process.env, PLANNER_DATA_DIR: dir };
+  const env = { ...process.env, PLANNER_CONFIG: tempConfig(dir) };
   delete env.PLANNER_MCP_READY_FILE;
   const client = new Client({ name: 'test', version: '0' });
   try {
@@ -66,7 +67,7 @@ test('without PLANNER_MCP_READY_FILE the server writes nothing and still lists i
 test('the hook holds the prompt while the server is starting and releases it after the tools are listed', async () => {
   const dir = temp();
   const readyFile = path.join(dir, 'backlog-tools.ready');
-  const env = { PLANNER_DATA_DIR: dir, PLANNER_MCP_READY_FILE: readyFile };
+  const env = { PLANNER_CONFIG: tempConfig(dir), PLANNER_MCP_READY_FILE: readyFile };
   let released = false;
   const hook = runHook({ ...env, PLANNER_MCP_WAIT_MS: '20000' }).then((r) => { released = true; return r; });
   const client = new Client({ name: 'test', version: '0' });

@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { tempConfig } from '../helpers/temp-config.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const LAUNCHER = path.join(ROOT, 'planner/claude/launchers/plan-stories.ps1');
@@ -25,8 +26,9 @@ test('the launcher gives the session no Bash, Read or Grep, only the two servers
 });
 
 // The refusals happen before Claude starts, so they can run here; Windows PowerShell is how the launchers are run.
+// TODO(task 6.1): the launcher still reads PLANNER_DATA_DIR in PowerShell; drop that variable here once it asks paths.cjs.
 const run = (args) => spawnSync('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', LAUNCHER, ...args], {
-  encoding: 'utf8', input: '', env: { ...process.env, PLANNER_DATA_DIR: SAMPLE },
+  encoding: 'utf8', input: '', env: { ...process.env, PLANNER_CONFIG: tempConfig(SAMPLE), PLANNER_DATA_DIR: SAMPLE },
 });
 
 test('the launcher refuses an unknown backlog, an empty scope, a story ID not in the backlog and a -Repo that is not a folder', { skip: process.platform !== 'win32' }, () => {

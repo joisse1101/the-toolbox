@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { serializeReview } from '../../logic/review/review.js';
 import { composeSuggestions, emptySuggestions } from '../../logic/lexicon/lexicon-suggestions.js';
 import { readStoryContext, formatSection, formatMenu, formatStory, fileLines, SECTIONS, backlogIndex, listBacklogs, searchStories, readFile } from '../../../.claude/skills/explore-stories/read-story-context.mjs';
+import { tempConfig } from '../helpers/temp-config.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 // The committed sample data, so the CLI tests never read the real planner/data/ even when run without test/setup.mjs.
@@ -82,7 +83,7 @@ test('bad names and unknown backlogs are refused', () => {
 });
 
 test('CLI: lists backlogs, prints the menu, exits non-zero on a bad name or extra arguments', () => {
-  const run = (...args) => spawnSync(process.execPath, ['.claude/skills/explore-stories/read-story-context.mjs', ...args], { cwd: REPO, encoding: 'utf8', env: { ...process.env, PLANNER_DATA_DIR: SAMPLE_DATA } });
+  const run = (...args) => spawnSync(process.execPath, ['.claude/skills/explore-stories/read-story-context.mjs', ...args], { cwd: REPO, encoding: 'utf8', env: { ...process.env, PLANNER_CONFIG: tempConfig(SAMPLE_DATA) } });
   assert.equal(run().status, 0);
   assert.equal(run('..\\x.csv').status, 1);
   assert.equal(run('a.csv', 'b', 'c').status, 2);
@@ -93,7 +94,7 @@ test('CLI: lists backlogs, prints the menu, exits non-zero on a bad name or extr
 });
 
 test('CLI: --section prints just that section; the menu prints no section', () => {
-  const run = (...args) => spawnSync(process.execPath, ['.claude/skills/explore-stories/read-story-context.mjs', ...args], { cwd: REPO, encoding: 'utf8', env: { ...process.env, PLANNER_DATA_DIR: SAMPLE_DATA } });
+  const run = (...args) => spawnSync(process.execPath, ['.claude/skills/explore-stories/read-story-context.mjs', ...args], { cwd: REPO, encoding: 'utf8', env: { ...process.env, PLANNER_CONFIG: tempConfig(SAMPLE_DATA) } });
   const guidelines = run('sample.csv', '--section', 'guidelines');
   assert.equal(guidelines.status, 0);
   assert.match(guidelines.stdout, /^=== guidelines\/product-backlog.md ===/);
@@ -317,7 +318,7 @@ test('lexicon-suggestions: the open suggestions in full, the number decided, a n
 
 test('CLI: --section reviews takes story IDs, and IDs with another section are refused', () => {
   const root = withReview(ROWS);
-  const run = (...args) => spawnSync(process.execPath, ['.claude/skills/explore-stories/read-story-context.mjs', ...args], { cwd: REPO, encoding: 'utf8', env: { ...process.env, PLANNER_DATA_DIR: root } });
+  const run = (...args) => spawnSync(process.execPath, ['.claude/skills/explore-stories/read-story-context.mjs', ...args], { cwd: REPO, encoding: 'utf8', env: { ...process.env, PLANNER_CONFIG: tempConfig(root) } });
   const out = run('data.csv', '--section', 'reviews', 'IAM-0002');
   assert.equal(out.status, 0, out.stderr);
   assert.match(out.stdout, /open rows of IAM-0002/);
