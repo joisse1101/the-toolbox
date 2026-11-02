@@ -212,6 +212,8 @@ Creating the issue:
 - It hands the change's tasks to the `opsx-task-applier` agent, one group at a time.
 - It records each task's `result:` clause in `tasks.md`.
 - It commits each finished group by itself on a branch other than `main` or `master`, and otherwise stops for a commit.
+- It ignores the change's own folder `openspec/changes/<name>/` and never stages it: that folder is committed at archive.
+- It splits a group of several concerns and commits each in turn.
 - It never pushes.
 - It never implements a task itself.
 - Without a change name, it asks you to choose.
@@ -333,8 +335,19 @@ Install both parts, then start the command in a Claude Code session:
 - It commits by itself only when all of these hold:
   - The branch is a named branch other than `main` or `master`.
   - `opsx-test-runner` ran the tests for the group's files and every reported command shows exit code 0 (a passing command that shows no code is reported as `exit code 0 (the tool showed no error)`).
-  - The group is one concern, and nothing foreign is staged or edited.
+  - Nothing foreign is staged or edited. The change folder `openspec/changes/<name>/` is ignored in this check and never staged, because it is committed at archive.
+  - No single file holds two concerns.
 - The command judges the tests by exit codes, never by the agent's wording.
+- A fixable doubt gets one rerun before it asks.
+  - A fixable doubt is a missing exit code or a suite skipped for a folder problem.
+  - The rerun puts the exact commands in the prompt, once per group, and the stall watch covers it.
+  - A non-zero exit code, a protected branch, a missing agent and an unrelated change are not rerun.
+- A group of several concerns is split, not stopped on.
+  - It is cut by the hygiene rule's one-concern list and by task.
+  - The tests run once for the whole group before the first commit.
+  - Each concern is staged by explicit path and committed in turn with its own message, and each hash is printed.
+  - If a later commit fails, it stops and reports which commits were made.
+- A commit-stop line in the project's `operationGuidance` does not govern these commits.
 - Otherwise it stages the group, shows the summary and message, names a confirmation word and ends its turn, as the `jois-git-commit-hygiene` rule says.
   - A detached HEAD or an unreadable branch name counts as protected.
   - No test command, a suite that could not run or a missing agent also send it to the confirmation word.

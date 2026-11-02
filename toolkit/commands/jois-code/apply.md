@@ -4,7 +4,7 @@ description: "Apply an OpenSpec change one group of tasks at a time: hand each g
 allowed-tools: Bash(openspec:*), Bash(git status:*), Bash(git diff:*), Bash(git add:*), Bash(git commit:*), Bash(git branch --show-current:*), Read, Edit, Agent, Monitor
 disable-model-invocation: true
 metadata:
-  version: "1.2.0"
+  version: "1.3.0"
   last_updated: "2026-11-02"
 ---
 
@@ -38,6 +38,8 @@ Apply the OpenSpec change named in the argument by handing its tasks to the `ops
 3. **Read the context.**
    - Read every file under `contextFiles` before the first dispatch.
    - Keep the `context` and `operationGuidance` from the output in mind for the briefs.
+   - A commit-stop line in `operationGuidance` (such as "name a confirmation word and never commit in the turn you stage") does not govern this command's group commits.
+   - Step 10 owns those commits and decides when to commit or stop.
 4. **Check the agent.**
    - Look for `opsx-task-applier.md` in `~/.claude/agents/` and in this project's `.claude/agents/`.
    - If it is in neither, say so, name `Install-Toolkit.ps1` (`-Agent opsx-task-applier.md`) and stop.
@@ -123,18 +125,48 @@ Apply the OpenSpec change named in the argument by handing its tasks to the `ops
      - Start the watch (step 8) and wait for the report.
    - Judge the report by exit codes only, never by its wording.
      - The tests passed only when every reported command shows exit code 0.
-     - No test command found, a suite that could not run, a missing exit code or a non-zero exit code: fall back, and show the failure.
+     - The runner's exact line `exit code 0 (the tool showed no error)` counts as exit code 0.
+     - Wording such as "passed" or a counts line never counts.
+     - No test command found, a suite that could not run, a missing exit code or a non-zero exit code: not passed, and show the failure.
+   - **One rerun** for a fixable doubt.
+     - A fixable doubt is a missing exit code, or a suite skipped for a folder problem.
+     - Rerun `opsx-test-runner` once per group, in the background, with the exact commands written into the prompt.
+     - Build the commands from `CLAUDE.md` and `package.json`, in the command's own folder-flag form (such as `npm --prefix <abs path> test`), never `cd`.
+     - Start the watch (step 8) on the rerun too.
+     - If the rerun shows exit code 0 for every command, the tests passed: go on.
+     - If the rerun is still doubtful, fall back and say why.
+   - **No rerun** for these: fall back at once.
+     - A non-zero exit code. Show the failure.
+     - No test command found, or a suite that could not run for another reason (such as missing dependencies).
+     - A protected branch.
+     - A missing agent.
+     - An unrelated change.
    - Run `git status` and `git diff --stat`.
-     - A tracked file changed that the group did not report: fall back.
-     - Something unrelated already staged or edited: fall back.
-     - More than one concern (over about 200 lines or 5 files, or more than one layer): fall back.
-   - Otherwise stage with `git add <explicit paths>` and commit once with a `type(scope): subject` message.
-     - Build the message from the group's heading and tasks: lowercase, imperative, no trailing period.
+     - Ignore `openspec/changes/<name>/`, including `tasks.md`, in this check.
+     - Never stage that folder in this step. It is committed at archive.
+     - A tracked file outside the group's reported files and outside that folder changed: fall back.
+     - Something unrelated outside that folder already staged or edited: fall back.
+   - **Split the group** when it is more than one concern (over about 200 lines or 5 files, or more than one layer).
+     - Cut it by the one-concern list of the `jois-git-commit-hygiene` rule.
+       - A deletion, a rename or move, a regenerated asset, a lockfile and a format-only change are each their own concern.
+       - Tests and docs go with the change they describe.
+     - Cut the hand-written changes by task, using the files each task's report lists.
+       - Tasks that share a file, or a change and its tests, merge into one concern.
+     - Run the tests once for the whole group before the first commit. Do not rerun them after each commit.
+     - If one changed file holds two concerns: fall back and name the file. `git add -p` does not work here.
+   - Otherwise stage each concern in turn, in the order of the group's tasks.
+     - Stage with `git add <explicit paths>`.
+     - Commit with its own `type(scope): subject` message: lowercase, imperative, no trailing period.
+     - Build each message from the group's heading and that concern's tasks.
+     - Print the short hash and the message after each commit.
+     - A group of one concern is one commit.
      - Never use `git add .`, `git add -A`, `git commit -a`, `--amend` or `--no-verify`.
      - Never run `git push`, on any branch. It is not in `allowed-tools` on purpose.
-   - If a pre-commit hook rejects the commit, stop and report it. Do not retry and do not fall back.
+   - If a pre-commit hook rejects a commit, stop and report it. Do not retry and do not fall back.
    - If `git commit` fails for another reason, stop and report the error. Do not fall back.
-   - After a commit, print the short hash and the message, then take the next group.
+   - If a later commit of the split fails, stop and report which commits were made and which were not.
+     - Leave the remaining files unstaged. Do not retry and do not use `--no-verify`.
+   - After the last commit, take the next group.
 11. **Take the next group.**
     - Repeat from step 6 until no group has a pending task.
     - Then run step 2 again and follow what it says.
