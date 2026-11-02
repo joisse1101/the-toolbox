@@ -1,7 +1,7 @@
 ---
 metadata:
-  version: "1.2.1"
-  last_updated: "2026-10-29"
+  version: "1.3.0"
+  last_updated: "2026-11-02"
 ---
 # Commit hygiene
 
@@ -22,6 +22,12 @@ Applies only when you are about to commit.
 - "Commit this" still means stage, propose, then wait for the word.
 - A confirmation covers one commit.
 - After a change request, restage, present and ask again.
+
+## One exception
+
+- `/jois-code:apply` may commit a finished group without the word on a branch other than `main` or `master`.
+- The command sets the other conditions, so follow its text and do not restate them here.
+- No other command and no direct request shares this exception.
 
 ## One concern per commit
 

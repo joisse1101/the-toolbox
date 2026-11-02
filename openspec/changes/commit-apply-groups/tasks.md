@@ -10,8 +10,8 @@ Each group is one concern and one commit. Run the toolkit checks through the pro
 
 ## 2. Commit-hygiene rule exception
 
-- [ ] 2.1 In `toolkit/rules/jois-git-commit-hygiene.md`, add the one exception that names `/jois-code:apply` on a branch other than `main` or `master` and points to the command for its conditions without restating them. Raise `metadata.version` to `1.3.0` and set `last_updated` to `2026-11-02`. Verify that the rule's other text is unchanged (`git diff` shows additions only) and `python check_toolkit.py` passes.
-- [ ] 2.2 Verify the rule still lists `git add .`, `-A` and `-a` as forbidden and that no other command is named as an exception.
+- [x] 2.1 In `toolkit/rules/jois-git-commit-hygiene.md`, add the one exception that names `/jois-code:apply` on a branch other than `main` or `master` and points to the command for its conditions without restating them. Raise `metadata.version` to `1.3.0` and set `last_updated` to `2026-11-02`. Verify that the rule's other text is unchanged (`git diff` shows additions only) and `python check_toolkit.py` passes. (result: `git diff` -> additions only, plus the required version and date lines; `.venv/Scripts/python check_toolkit.py` -> "toolkit check passed"; `.venv/Scripts/python -m pytest -q` -> 61 passed)
+- [x] 2.2 Verify the rule still lists `git add .`, `-A` and `-a` as forbidden and that no other command is named as an exception. (result: checked by hand in `toolkit/rules/jois-git-commit-hygiene.md`: "Never use `git add .`, `git add -A` or `git commit -a`" is still present; `/jois-code:apply` is the only command named as an exception)
 
 ## 3. Apply command
 
