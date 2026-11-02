@@ -8,7 +8,8 @@ const SETTLE_FAILED = 'The latest changes could not be saved yet, so the folder 
 // The project settings (name, data folder, config file) and the flow that changes the folder:
 // check the folder, then switch at once when it has planner files, otherwise offer copy or init, then switch.
 // `settleAll` resolves true once every pending save is on disk; it runs before the switch and the reload.
-export function useSettings(settleAll) {
+// `onMigrated` runs after a migration so the backlog list and the open backlog show the copied folders.
+export function useSettings(settleAll, onMigrated) {
   const [settings, setSettings] = useState(null); // { projectName, dataDir, configPath }
   const [error, setError] = useState(null);
   const [working, setWorking] = useState(false);
@@ -90,11 +91,13 @@ export function useSettings(settleAll) {
       setInitResult(await initProjectFolder(settings.dataDir));
     });
 
-  // Only on the user's click. Reloads the settings afterwards so the older-layout notice follows what is left.
+  // Only on the user's click. Reloads the settings afterwards so the older-layout notice follows what is left,
+  // and asks the page to re-read the backlog list so the copied backlogs appear without a reload.
   const runMigration = () =>
     run(async () => {
       setMigrateResult(await migrateOlderLayout());
       setSettings(await getProject());
+      onMigrated?.();
     });
 
   return { settings, error, working, offer, initResult, copyResult, migrateResult, switched, actions: { saveName, pickFolder, chooseForNewFolder, retrySwitch, runInit, runMigration, cancelOffer: () => setOffer(null) } };

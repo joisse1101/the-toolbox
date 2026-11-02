@@ -157,7 +157,7 @@ export default function App() {
     return saved.every(Boolean);
   };
   // Project settings; the name goes in the header and the page title. Pending saves are settled before a folder switch.
-  const settingsState = useSettings(settleAll);
+  const settingsState = useSettings(settleAll, () => refreshAll());
   const projectName = settingsState.settings?.projectName ?? '';
   useEffect(() => {
     document.title = projectName ? `${projectName} - Backlog portal` : 'Backlog portal';
