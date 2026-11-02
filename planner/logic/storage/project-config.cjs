@@ -6,6 +6,7 @@
 const fs = require('fs');
 const path = require('path');
 const YAML = require('yaml');
+const { FOLDERS, confineDir, checkFolder, initFolders, copyData } = require('./project-folders.cjs');
 
 const ROOT = path.resolve(__dirname, '..', '..', '..');
 const DEFAULT_CONFIG_PATH = path.join(ROOT, 'planner', 'planner.config.yaml');
@@ -56,4 +57,39 @@ function loadConfig({ file = configPath() } = {}) {
   return { projectName: raw.projectName ?? '', dataDir, configPath: abs, exists: text !== null };
 }
 
-module.exports = { ROOT, DEFAULT_CONFIG_PATH, DEFAULT_DATA_DIR, KEYS, configPath, validateConfig, loadConfig };
+// Saves `changes` ({ projectName?, dataDir? }) into the config file through the YAML document API, so comments the user
+// wrote survive. Validates first and writes nothing when a value is refused. A new dataDir must be an absolute path that
+// passes confineDir and already exists (init or the copy creates it). Returns the loaded config; throws an Error with the reason.
+function saveConfig(changes, { file = configPath(), confine } = {}) {
+  const abs = path.resolve(file);
+  const next = {};
+  if (changes.projectName !== undefined) next.projectName = typeof changes.projectName === 'string' ? changes.projectName.trim() : changes.projectName;
+  if (changes.dataDir !== undefined) {
+    validateConfig({ dataDir: changes.dataDir }, abs);
+    const c = confineDir(changes.dataDir, confine);
+    if (!c.ok) throw new Error(c.reason);
+    if (!fs.existsSync(c.dir)) throw new Error('The folder does not exist: it must be created by init or the copy first.');
+    next.dataDir = changes.dataDir.trim();
+  }
+  validateConfig(next, abs);
+  let doc;
+  try {
+    doc = YAML.parseDocument(fs.existsSync(abs) ? fs.readFileSync(abs, 'utf8') : '');
+  } catch (err) {
+    throw new Error(`${abs}: cannot read the config file (${err.message})`);
+  }
+  if (doc.errors.length) throw new Error(`${abs}: not valid YAML (${String(doc.errors[0].message).split('\n')[0]})`);
+  if (doc.contents === null) doc.contents = doc.createNode({});
+  for (const [key, value] of Object.entries(next)) doc.set(key, value);
+  validateConfig(doc.toJS(), abs);
+  fs.mkdirSync(path.dirname(abs), { recursive: true });
+  const tmp = `${abs}.${process.pid}.tmp`;
+  fs.writeFileSync(tmp, String(doc));
+  fs.renameSync(tmp, abs);
+  return loadConfig({ file: abs });
+}
+
+module.exports = {
+  ROOT, DEFAULT_CONFIG_PATH, DEFAULT_DATA_DIR, KEYS, configPath, validateConfig, loadConfig, saveConfig,
+  FOLDERS, confineDir, checkFolder, initFolders, copyData,
+};
