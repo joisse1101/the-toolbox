@@ -13,9 +13,9 @@
 
 ## 3. Checks and docs
 
-- [ ] 3.1 Add a test to `toolkit/tests/test_check_toolkit.py` or a sibling test file that the agent file carries the `rm -rf` hook and the command lists `Monitor`; verify with `cd toolkit; python -m pytest` passing.
-- [ ] 3.2 Mention the stall watch and the `rm -rf` block in `toolkit/README.md` where the agent and command are described; verify the text matches the updated files.
-- [ ] 3.3 Run `openspec validate fix-stalled-subagents --strict` and `cd toolkit; python check_toolkit.py; python -m pytest`; verify all pass.
+- [x] 3.1 Add a test to `toolkit/tests/test_check_toolkit.py` or a sibling test file that the agent file carries the `rm -rf` hook and the command lists `Monitor`; verify with `cd toolkit; python -m pytest` passing. result: `cd toolkit; .venv/Scripts/python.exe -m pytest` -> 41 passed, including 4 new tests in `toolkit/tests/test_task_applier.py` for the `rm -rf` hook and `Monitor` in `allowed-tools`
+- [x] 3.2 Mention the stall watch and the `rm -rf` block in `toolkit/README.md` where the agent and command are described; verify the text matches the updated files. result: checked by hand: `toolkit/README.md` "The task agent" and "What is enforced" now describe the 3-minute stall watch and the `rm -rf` block, and match `opsx-task-applier.md` v1.3.0 and `apply.md` step 8
+- [x] 3.3 Run `openspec validate fix-stalled-subagents --strict` and `cd toolkit; python check_toolkit.py; python -m pytest`; verify all pass. result: `openspec validate fix-stalled-subagents --strict` -> "Change 'fix-stalled-subagents' is valid"; `cd toolkit; .venv/Scripts/python.exe check_toolkit.py` -> "toolkit check passed"; `.venv/Scripts/python.exe -m pytest` -> 41 passed
 
 ## Workflow follow-up
 
