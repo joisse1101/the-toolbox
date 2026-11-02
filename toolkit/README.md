@@ -47,9 +47,10 @@ item is for. Domains today:
 | `code` | writing source code | the `jois-code-*` rules, the `jois-code` command |
 | `git` | commits and pull requests | the `jois-git` commands, the `jois-git-commit-hygiene` rule |
 | `docs` | documents written from notes | the `jois-docs` command |
+| `design` | how a user interface looks and how its frontend code is structured | the `jois-design-ui-principles` skill |
 
 Skills and rules are `jois-<domain>-<thing>`; a command namespace folder is `jois-<domain>`, so
-`commands/jois-git/stage.md` is `/jois-git:stage`. A new domain (`design`, `comms`, `writing`) picks
+`commands/jois-git/stage.md` is `/jois-git:stage`. A new domain (`comms`, `writing`) picks
 its own word. The `/opsx:*` commands are the exception: the `openspec` CLI generates them, so they keep their name
 and are not stored here (see [OpenSpec setup](#openspec-setup)).
 
@@ -77,9 +78,51 @@ For a review, use the built-in `code-review` or `simplify` skills.
 
 ## Skills
 
-The toolkit currently ships no skills; the installer and the checks still support them. A skill is a
-folder `toolkit/skills/<name>/` with a `SKILL.md` (`name` and `description` frontmatter, then
-instructions) and any support files it needs. A folder is self-contained.
+A skill is a folder `toolkit/skills/<name>/` with a `SKILL.md` (`name` and `description` frontmatter,
+then instructions) and any support files it needs. A folder is self-contained.
+
+### The `jois-design-ui-principles` skill
+
+It gives Claude visual-design rules and frontend structure rules, so an interface looks designed and its code is grouped and easy to work with.
+
+- Folder: `toolkit/skills/jois-design-ui-principles/`.
+- Install it with `.\Install-Toolkit.ps1 -Skill jois-design-ui-principles`.
+
+When it fires:
+
+- Designing, building, styling, reviewing or polishing a page, component, form, dashboard, card, table or layout.
+- Writing the HTML, CSS or React code of such a screen.
+- A request such as "make it look better" or a critique of a screenshot.
+
+When it does not fire:
+
+- Behaviour-only changes.
+- Command-line tools and backend code.
+- Any code with no visual output.
+
+What it does:
+
+- `SKILL.md` holds three principles, the rules by topic in one line each and a review checklist.
+- Detail sits in `references/`, which Claude reads only when the task touches the topic.
+- It looks for the project's design tokens first. A design token is a named value, such as a colour or a spacing step, kept in one place.
+- It uses the project's tokens where they exist.
+- It fills only the gaps from the starter values in `references/tokens.md`, and tells you those values are defaults.
+
+The `references/` files:
+
+| File | Read it when |
+| --- | --- |
+| `tokens.md` | The project lacks spacing, type, radius or shadow tokens, or the starter values are needed. |
+| `color.md` | A palette, shades or text colours are chosen or built. |
+| `depth.md` | Shadows, raised or inset surfaces or overlapping layers are added. |
+| `images-and-polish.md` | The UI has images, icons or empty states, or needs finishing touches. |
+| `structure.md` | Markup or components are written or restructured. |
+
+Source and limits:
+
+- The visual rules are a paraphrase of *Refactoring UI* by Adam Wathan and Steve Schoger. No passage is copied.
+- The structure rules and every size limit are the toolkit's own, not the book's.
+- React mechanics stay in the `jois-code-typescript-react` rule, which the skill links to and does not restate.
 
 ## Commands
 
