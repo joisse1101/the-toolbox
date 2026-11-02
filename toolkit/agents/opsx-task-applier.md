@@ -9,15 +9,15 @@ hooks:
       hooks:
         - type: command
           command: >-
-            powershell -NoProfile -Command "if ([Console]::In.ReadToEnd() -match '\bgit\s+(commit|push)\b|[\s\x22;&|(]gh\s') { [Console]::Error.WriteLine('opsx-task-applier never commits, pushes or calls GitHub: report back and the main session handles it'); exit 2 }"
+            powershell -NoProfile -Command "Set-Variable In ([Console]::In.ReadToEnd()); if ((Get-Variable In -ValueOnly) -match '\bgit\s+(commit|push)\b|[\s\x22;&|(]gh\s') { [Console]::Error.WriteLine('opsx-task-applier never commits, pushes or calls GitHub: report back and the main session handles it'); exit 2 }; if ((Get-Variable In -ValueOnly) -match '\brm\s+-([a-z]*r[a-z]*f|[a-z]*f[a-z]*r)') { [Console]::Error.WriteLine('opsx-task-applier never runs rm -rf: leave the cleanup for the main session and say so in your report'); exit 2 }"
     - matcher: Edit|Write
       hooks:
         - type: command
           command: >-
             powershell -NoProfile -Command "if ([Console]::In.ReadToEnd() -match '\x22file_path\x22\s*:\s*\x22[^\x22]*openspec[\x5c/]+changes[\x5c/]+[^\x22]*tasks\.md\x22') { [Console]::Error.WriteLine('opsx-task-applier never edits tasks.md: put the result: clause in your report and the main session records it'); exit 2 }"
 metadata:
-  version: "1.2.2"
-  last_updated: "2026-10-30"
+  version: "1.3.0"
+  last_updated: "2026-11-02"
 ---
 
 # OpenSpec task applier
@@ -64,6 +64,17 @@ You apply **one group of tasks** of an OpenSpec change and report back.
 - Report a failing command as it is.
 - Report a skipped check as it is.
 - Report a result you did not see as unseen.
+
+## Bash discipline
+
+- A command that needs approval stalls you, because nobody sees the prompt.
+- Make one plain command per Bash call.
+- Never join commands with `;`, `&&` or `||`.
+- Never chain `cd` with another command.
+- Use the absolute paths you were given instead of changing folder.
+- Never run `rm -rf` (or `rm -fr`, `rm -Rf`).
+- A hook refuses `rm -rf` at once.
+- Leave any cleanup for the main session and say so in your report.
 
 ## Blocked
 
