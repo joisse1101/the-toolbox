@@ -188,6 +188,46 @@ function openFolder(folder) {
   child.unref();
 }
 
+// ---------- folder dialog ----------
+
+// A browser cannot return a folder's full path, so the server opens the system folder dialog (Windows only).
+// The start folder travels in an environment variable, never inside the script text.
+const PICK_SCRIPT = [
+  '[Console]::OutputEncoding = [System.Text.Encoding]::UTF8',
+  'Add-Type -AssemblyName System.Windows.Forms',
+  '$owner = New-Object System.Windows.Forms.Form',
+  '$owner.TopMost = $true',
+  '$dialog = New-Object System.Windows.Forms.FolderBrowserDialog',
+  '$dialog.SelectedPath = $env:PLANNER_PICK_START',
+  "if ($dialog.ShowDialog($owner) -eq 'OK') { [Console]::Out.Write($dialog.SelectedPath) }",
+].join('; ');
+
+// Resolves to the chosen folder, or null when the dialog is closed without a choice; rejects when it cannot open.
+// One replaceable function (see setFolderDialog) so tests never open a real window.
+let folderDialog = function windowsFolderDialog(startDir) {
+  return new Promise((resolve, reject) => {
+    if (process.platform !== 'win32') {
+      reject(new Error('The folder dialog is only available on Windows.'));
+      return;
+    }
+    const args = ['-NoProfile', '-NonInteractive', '-STA', '-Command', PICK_SCRIPT];
+    const child = spawn('powershell.exe', args, { env: { ...process.env, PLANNER_PICK_START: startDir }, stdio: ['ignore', 'pipe', 'pipe'] });
+    let out = '';
+    let err = '';
+    child.stdout.setEncoding('utf8').on('data', (d) => { out += d; });
+    child.stderr.setEncoding('utf8').on('data', (d) => { err += d; });
+    child.on('error', (e) => reject(new Error(`Could not open the folder dialog: ${e.message}`)));
+    child.on('close', (code) => {
+      if (code !== 0) reject(new Error(`Could not open the folder dialog: ${err.trim() || `PowerShell exited with ${code}`}`));
+      else resolve(out.trim() || null);
+    });
+  });
+};
+
+function setFolderDialog(fn) {
+  folderDialog = fn;
+}
+
 // ---------- backups ----------
 
 const CURRENT = 'current';
@@ -425,7 +465,7 @@ function confined(dir) {
   return c.dir;
 }
 
-// /api/project (GET reads, PUT saves and switches), /api/project/check, /api/project/init, /api/project/copy.
+// /api/project (GET reads, PUT saves and switches), /api/project/check, /api/project/init, /api/project/copy, /api/project/pick.
 // They reach the config file and the folders init and the copy create, nothing else.
 async function handleProject(req, res, segments) {
   const [, , sub, ...rest] = segments;
@@ -461,9 +501,21 @@ async function handleProject(req, res, segments) {
     throw new HttpError(405, 'Method not allowed');
   }
 
-  if (!['check', 'init', 'copy'].includes(sub)) throw new HttpError(404, 'Not found', 'not-found');
+  if (!['check', 'init', 'copy', 'pick'].includes(sub)) throw new HttpError(404, 'Not found', 'not-found');
   if (req.method !== 'POST') throw new HttpError(405, 'Method not allowed');
   requireHeader(req);
+
+  // Only asks for a folder: nothing is saved, switched or created here; the path then goes through check.
+  if (sub === 'pick') {
+    let dir;
+    try {
+      dir = await folderDialog(getDataDir());
+    } catch (err) {
+      throw new HttpError(500, err.message, 'picker-unavailable');
+    }
+    return send(res, 200, dir ? { dir } : { cancelled: true });
+  }
+
   const body = await readJson(req);
 
   if (sub === 'check') return send(res, 200, checkFolder(body.dir));
@@ -634,4 +686,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { server };
+module.exports = { server, setFolderDialog };

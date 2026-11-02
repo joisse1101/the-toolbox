@@ -21,7 +21,11 @@ for (const [dir, file] of [[dirA, 'one.csv'], [dirB, 'two.csv']]) {
 }
 const configFile = tempConfig(dirA, 'Alpha');
 process.env.PLANNER_CONFIG = configFile;
-const { server } = createRequire(import.meta.url)('../../portal/server/server.cjs');
+const { server, setFolderDialog } = createRequire(import.meta.url)('../../portal/server/server.cjs');
+// Tests never open the real folder dialog: every pick goes through this stub.
+setFolderDialog(async () => {
+  throw new Error('the real folder dialog must not open in a test');
+});
 
 const HEADERS = { 'X-Requested-With': 'the-toolbox', 'Content-Type': 'application/json' };
 let origin;
@@ -168,4 +172,61 @@ test('remote client: a request whose Host is not this machine is refused on the 
     req.end();
   });
   assert.equal(status, 403);
+});
+
+test('folder picker: a chosen folder is returned, started in the served folder, and nothing is saved or switched', async () => {
+  const before = fs.readFileSync(configFile, 'utf8');
+  const starts = [];
+  setFolderDialog(async (start) => {
+    starts.push(start);
+    return dirB;
+  });
+  const res = await call('POST', '/api/project/pick');
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { dir: dirB });
+  assert.deepEqual(starts, [dirA]);
+  assert.equal(fs.readFileSync(configFile, 'utf8'), before);
+  assert.deepEqual(await listed(), ['one.csv']);
+});
+
+test('folder picker: a cancelled dialog answers cancelled and changes nothing', async () => {
+  const before = fs.readFileSync(configFile, 'utf8');
+  setFolderDialog(async () => null);
+  const res = await call('POST', '/api/project/pick');
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { cancelled: true });
+  assert.equal(fs.readFileSync(configFile, 'utf8'), before);
+});
+
+test('folder picker: a dialog that cannot open answers a clear error and changes nothing', async () => {
+  const before = fs.readFileSync(configFile, 'utf8');
+  setFolderDialog(async () => {
+    throw new Error('Could not open the folder dialog: stubbed failure');
+  });
+  const res = await call('POST', '/api/project/pick');
+  assert.equal(res.status, 500);
+  const body = await res.json();
+  assert.equal(body.code, 'picker-unavailable');
+  assert.match(body.error, /stubbed failure/);
+  assert.equal(fs.readFileSync(configFile, 'utf8'), before);
+});
+
+test('folder picker: no request header and a remote Host are refused before the dialog opens', async () => {
+  let opened = 0;
+  setFolderDialog(async () => {
+    opened++;
+    return dirB;
+  });
+  const noHeader = await fetch(`${origin}/api/project/pick`, { method: 'POST' });
+  assert.equal(noHeader.status, 403);
+  const remote = await new Promise((resolve, reject) => {
+    const req = http.request(`${origin}/api/project/pick`, { method: 'POST', headers: { ...HEADERS, Host: 'planner.example.com' } }, (res) => {
+      res.resume();
+      res.on('end', () => resolve(res.statusCode));
+    });
+    req.on('error', reject);
+    req.end();
+  });
+  assert.equal(remote, 403);
+  assert.equal(opened, 0);
 });
