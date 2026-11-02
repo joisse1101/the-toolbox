@@ -5,7 +5,7 @@ Defines a backlog's context map: the bounded contexts, the Epics each holds, the
 ## Requirements
 
 ### Requirement: Map files
-A backlog's context map SHALL be two files at the backlog level of the diagrams folder, `planner/data/diagrams/<backlog>/context-map.json` (the source) and `context-map.md` (the document), and SHALL NOT be a folder. The map SHALL be optional: a backlog without one works as before. `read_diagrams` SHALL NOT list the map as a slice.
+A backlog's context map SHALL be two files in the backlog folder, `<backlog>/context-map.json` (the source) and `context-map.md` (the document), and SHALL NOT be a folder. The map SHALL be optional: a backlog without one works as before. `read_diagrams` SHALL NOT list the map as a slice.
 
 #### Scenario: No map
 - **WHEN** a backlog has no `context-map.json`
