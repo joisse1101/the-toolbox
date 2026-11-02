@@ -688,8 +688,7 @@ The guidance the command writes for `apply` and `archive` SHALL tell the agent t
 - **THEN** only `toolkit/rules/jois-git-commit-hygiene.md` SHALL need editing
 
 ### Requirement: Jois command files are versioned
-Each command file under `toolkit/commands/jois-git/`, `toolkit/commands/jois-init/` and
-`toolkit/commands/jois-code/` SHALL declare `metadata.version` (semver) and `metadata.last_updated`
+Each command file under `toolkit/commands/jois-git/`, `toolkit/commands/jois-init/`, `toolkit/commands/jois-code/` and `toolkit/commands/jois-docs/` SHALL declare `metadata.version` (semver) and `metadata.last_updated`
 (a date) in its frontmatter, and the docs check SHALL fail and name a file where either is missing or
 malformed.
 
@@ -703,6 +702,10 @@ malformed.
 
 #### Scenario: Orchestrator command is checked too
 - **WHEN** `toolkit/commands/jois-code/apply.md` has no `metadata.version`
+- **THEN** the docs check SHALL fail and name the file
+
+#### Scenario: Docs command is checked too
+- **WHEN** `toolkit/commands/jois-docs/meeting-minutes.md` has no `metadata.version`
 - **THEN** the docs check SHALL fail and name the file
 
 ### Requirement: Agents source of truth
