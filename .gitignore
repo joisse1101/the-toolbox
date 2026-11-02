@@ -1,4 +1,5 @@
 planner/data/*
+planner/planner.config.yaml
 node_modules/
 planner/portal/dist/
 .trees/
