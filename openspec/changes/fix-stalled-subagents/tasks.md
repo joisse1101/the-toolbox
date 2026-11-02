@@ -7,9 +7,9 @@
 
 ## 2. Apply orchestrator watch
 
-- [ ] 2.1 Add `Monitor` to `allowed-tools` in `toolkit/commands/jois-code/apply.md` and add a step that starts a watch on `subagents/agent-<id>.jsonl` right after the dispatch, stops it when the report arrives and says so when the file cannot be found; bump `metadata.version` to 1.1.0; verify with `python check_toolkit.py` passing.
-- [ ] 2.2 Write the stall alert in that step (3 minutes unchanged, "looks stalled, probably waiting for an approval", last tool call, where to open the transcript, no permission change); verify by reading the step against the "flags a stalled subagent" scenarios.
-- [ ] 2.3 Dry-run the watch loop against a scratch transcript file in the session scratchpad (one file left untouched, one appended to) with a shortened threshold; verify it prints only for the untouched file and that the loop itself raises no permission prompt.
+- [x] 2.1 Add `Monitor` to `allowed-tools` in `toolkit/commands/jois-code/apply.md` and add a step that starts a watch on `subagents/agent-<id>.jsonl` right after the dispatch, stops it when the report arrives and says so when the file cannot be found; bump `metadata.version` to 1.1.0; verify with `python check_toolkit.py` passing. result: `cd toolkit; python check_toolkit.py` -> "toolkit check passed"; `Monitor` added to `allowed-tools`, version 1.1.0, new step 8 "Watch the agent" after the dispatch, later steps renumbered
+- [x] 2.2 Write the stall alert in that step (3 minutes unchanged, "looks stalled, probably waiting for an approval", last tool call, where to open the transcript, no permission change); verify by reading the step against the "flags a stalled subagent" scenarios. result: read step 8 of `apply.md` against the "Transcript quiet for 3 minutes", "Transcript still changing" and "Permission rules untouched" scenarios -> each is covered by the step's text
+- [x] 2.3 Dry-run the watch loop against a scratch transcript file in the session scratchpad (one file left untouched, one appended to) with a shortened threshold; verify it prints only for the untouched file and that the loop itself raises no permission prompt. result: watch loop at a 5 s threshold, plain foreground Bash -> untouched mock file printed `QUIET 5s: .../quiet.jsonl`, exit 0; mock file appended to every second printed nothing until `timeout 10` ended it, exit 124; no permission prompt for these plain Bash runs; `Monitor` itself untested
 
 ## 3. Checks and docs
 
