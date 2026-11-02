@@ -18,7 +18,6 @@ const dirB = path.join(tmp, 'b');
 for (const [dir, name] of [[dirA, 'one'], [dirB, 'two']]) {
   fs.mkdirSync(path.join(dir, name), { recursive: true });
   fs.copyFileSync(SAMPLE, path.join(dir, name, 'user-stories.csv'));
-  fs.mkdirSync(path.join(dir, 'logs')); // the folder check (not yet changed to look for backlog folders) recognises a data folder by it
 }
 // A leftover backups folder from an earlier version: the copy leaves it out.
 fs.mkdirSync(path.join(dirA, 'backups', 'one.csv'), { recursive: true });
@@ -47,7 +46,7 @@ const switchBack = async () => assert.equal((await save({ dataDir: dirA })).stat
 
 test('read settings: the reply holds the project name, the data directory and the config file path', async () => {
   const body = await (await fetch(`${origin}/api/project`)).json();
-  assert.deepEqual(body, { projectName: 'Alpha', dataDir: dirA, configPath: path.resolve(configFile) });
+  assert.deepEqual(body, { projectName: 'Alpha', dataDir: dirA, configPath: path.resolve(configFile), olderLayout: [] });
 });
 
 test('switch while idle: the next list, read and write are answered from the new directory, and the log follows', async () => {
@@ -151,13 +150,44 @@ test('check, init and copy, then save and switch', async () => {
   fs.mkdirSync(empty);
   assert.equal((await (await call('POST', '/api/project/check', { dir: empty })).json()).status, 'empty');
   const init = await (await call('POST', '/api/project/init', { dir: empty })).json();
-  assert.equal(init.created.length, 8);
+  assert.deepEqual(init.created, ['logs']);
   assert.equal(init.existing.length, 0);
 
   assert.equal((await save({ dataDir: target, projectName: 'Beta' })).status, 200);
   assert.deepEqual(await listed(), ['one']);
   assert.equal((await (await fetch(`${origin}/api/project`)).json()).projectName, 'Beta');
   assert.equal((await save({ projectName: 'Alpha' })).status, 200);
+  await switchBack();
+});
+
+test('migrate: runs only on request, copies the older layout of the served folder and reports it', async () => {
+  const older = path.join(tmp, 'older-data');
+  fs.mkdirSync(path.join(older, 'backlogs'), { recursive: true });
+  fs.copyFileSync(SAMPLE, path.join(older, 'backlogs', 'one.csv'));
+  fs.mkdirSync(path.join(older, 'reviews'));
+  fs.writeFileSync(path.join(older, 'reviews', 'ghost.csv'), 'x');
+  fs.mkdirSync(path.join(older, 'backups', 'one.csv'), { recursive: true });
+  fs.writeFileSync(path.join(older, 'backups', 'one.csv', 'old.csv'), 'x');
+
+  assert.equal((await (await call('POST', '/api/project/check', { dir: older })).json()).status, 'older-layout');
+  assert.equal((await save({ dataDir: older })).status, 200);
+  assert.deepEqual(await listed(), [], 'the older layout is not read as data');
+  const settings = await (await fetch(`${origin}/api/project`)).json();
+  assert.deepEqual(settings.olderLayout, ['backlogs', 'reviews']);
+  assert.equal(fs.existsSync(path.join(older, 'one')), false, 'nothing is copied until asked');
+
+  const noHeader = await fetch(`${origin}/api/project/migrate`, { method: 'POST' });
+  assert.equal(noHeader.status, 403);
+  assert.equal((await fetch(`${origin}/api/project/migrate`, { headers: HEADERS })).status, 405);
+
+  const res = await call('POST', '/api/project/migrate');
+  assert.equal(res.status, 200);
+  const result = await res.json();
+  assert.deepEqual(result.copied, ['one/user-stories.csv']);
+  assert.deepEqual(result.skipped, [{ file: 'reviews/ghost.csv', reason: 'no backlog with this name in backlogs/' }]);
+  assert.deepEqual(result.failed, []);
+  assert.deepEqual(await listed(), ['one']);
+  assert.equal(fs.existsSync(path.join(older, 'backlogs', 'one.csv')), true, 'the older file is unchanged');
   await switchBack();
 });
 

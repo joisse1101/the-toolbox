@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 const { HttpError, validateBacklogName } = require('../../logic/storage/file-name.cjs');
-const { KINDS, BACKLOG_FILE, backlogDir, backlogFile, listBacklogs } = require('../../logic/storage/backlog-paths.cjs');
+const { KINDS, BACKLOG_FILE, backlogDir, backlogFile, listBacklogs, detectOlderLayout } =require('../../logic/storage/backlog-paths.cjs');
 // The config is read when paths.cjs loads. Run as the server, a bad config ends the process with the message that names the key.
 let paths;
 try {
@@ -19,7 +19,7 @@ try {
 }
 const { getDataDir, setDataDir, legacyDataHint } = paths;
 const { logWrite } = require('../../logic/storage/write-log.cjs');
-const { loadConfig, saveConfig, configPath, confineDir, checkFolder, initFolders, copyData } = require('../../logic/storage/project-config.cjs');
+const { loadConfig, saveConfig, configPath, confineDir, checkFolder, initFolders, copyData, migrateOlderLayout } = require('../../logic/storage/project-config.cjs');
 
 const HOST = '127.0.0.1';
 const PORT = Number(process.env.PORT) || 3000;
@@ -226,7 +226,9 @@ function requireHeader(req) {
 
 function settingsReply() {
   const config = loadConfig({ file: configPath() });
-  return { projectName: config.projectName, dataDir: getDataDir(), configPath: config.configPath };
+  const dataDir = getDataDir();
+  // `olderLayout`: the folders of the earlier layout still in the data folder; only detected, never read as data.
+  return { projectName: config.projectName, dataDir, configPath: config.configPath, olderLayout: detectOlderLayout(dataDir) };
 }
 
 // A folder named by the browser: refused with 400 unless confineDir accepts it. Returns the real path.
@@ -236,7 +238,7 @@ function confined(dir) {
   return c.dir;
 }
 
-// /api/project (GET reads, PUT saves and switches), /api/project/check, /api/project/init, /api/project/copy, /api/project/pick.
+// /api/project (GET reads, PUT saves and switches), /api/project/check, /api/project/init, /api/project/copy, /api/project/pick, /api/project/migrate.
 // They reach the config file and the folders init and the copy create, nothing else.
 async function handleProject(req, res, segments) {
   const [, , sub, ...rest] = segments;
@@ -272,9 +274,21 @@ async function handleProject(req, res, segments) {
     throw new HttpError(405, 'Method not allowed');
   }
 
-  if (!['check', 'init', 'copy', 'pick'].includes(sub)) throw new HttpError(404, 'Not found', 'not-found');
+  if (!['check', 'init', 'copy', 'pick', 'migrate'].includes(sub)) throw new HttpError(404, 'Not found', 'not-found');
   if (req.method !== 'POST') throw new HttpError(405, 'Method not allowed');
   requireHeader(req);
+
+  // Runs only when asked: copies the older layout of the served folder into backlog folders (no body).
+  if (sub === 'migrate') {
+    busy++;
+    try {
+      const result = migrateOlderLayout(getDataDir());
+      if (result.refused) throw new HttpError(400, result.refused, 'refused');
+      return send(res, 200, result);
+    } finally {
+      busy--;
+    }
+  }
 
   // Only asks for a folder: nothing is saved, switched or created here; the path then goes through check.
   if (sub === 'pick') {

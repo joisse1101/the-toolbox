@@ -7,7 +7,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 
 const pc = createRequire(import.meta.url)('../../logic/storage/project-config.cjs');
-const { initFolders, copyData, checkFolder, confineDir, saveConfig, loadConfig, FOLDERS, ROOT } = pc;
+const { initFolders, copyData, migrateOlderLayout, checkFolder, confineDir, saveConfig, loadConfig, FOLDERS, ROOT } = pc;
 
 function tmp() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'project-folders-'));
@@ -20,23 +20,23 @@ function put(dir, rel, text = 'x') {
 
 // ---- init (3.1)
 
-test('init on an empty folder creates all eight folders', () => {
+test('init on an empty folder creates the data folder and only logs', () => {
   const dir = path.join(tmp(), 'data');
   const r = initFolders(dir);
-  assert.equal(FOLDERS.length, 8);
-  assert.deepEqual(r.created, FOLDERS);
+  assert.deepEqual(FOLDERS, ['logs']);
+  assert.deepEqual(r.created, ['logs']);
   assert.deepEqual(r.existing, []);
   assert.equal(r.createdDataDir, true);
-  for (const f of FOLDERS) assert.ok(fs.statSync(path.join(dir, f)).isDirectory());
+  assert.deepEqual(fs.readdirSync(dir), ['logs']);
 });
 
-test('init on a partly prepared folder keeps what is there', () => {
+test('init on a folder that holds a backlog keeps it and creates logs', () => {
   const dir = tmp();
-  put(dir, 'backlogs/iam.csv', 'keep');
+  put(dir, 'iam/user-stories.csv', 'keep');
   const r = initFolders(dir);
-  assert.deepEqual(r.existing, ['backlogs']);
-  assert.equal(r.created.length, 7);
-  assert.equal(fs.readFileSync(path.join(dir, 'backlogs', 'iam.csv'), 'utf8'), 'keep');
+  assert.deepEqual(r.existing, []);
+  assert.deepEqual(r.created, ['logs']);
+  assert.equal(fs.readFileSync(path.join(dir, 'iam', 'user-stories.csv'), 'utf8'), 'keep');
 });
 
 test('init a second time creates nothing', () => {
@@ -141,19 +141,131 @@ test('copy stops naming a file it cannot read, and a second run resumes', () => 
   assert.deepEqual(second.copied, ['reviews/iam.csv']);
 });
 
+// ---- migration of the older layout (mock tree built here; temp folders only)
+
+function older() {
+  const d = tmp();
+  put(d, 'backlogs/iam.csv', 'backlog');
+  put(d, 'reviews/iam.csv', 'review');
+  put(d, 'reviews/iam.csv.decided', 'decided');
+  put(d, 'proposals/iam.csv', 'proposals');
+  put(d, 'lexicons/iam.csv', 'lexicon');
+  put(d, 'lexicon-suggestions/iam.csv', 'suggestions');
+  put(d, 'diagrams/iam/UC-login/UC-login.md', 'doc');
+  put(d, 'diagrams/iam/UC-login/source.json', '{}');
+  put(d, 'diagrams/iam/repo.json', '{"path":"x"}');
+  put(d, 'diagrams/iam/context-map.json', '{}');
+  put(d, 'diagrams/iam/context-map.md', 'map');
+  put(d, 'backlogs/pay.csv', 'pay');
+  return d;
+}
+const snapshot = (dir, names) => Object.fromEntries(names.map((n) => [n, fs.readFileSync(path.join(dir, n), 'utf8')]));
+
+test('migrate copies each backlog into its folder and leaves the older files unchanged', () => {
+  const d = older();
+  const before = fs.readdirSync(d, { recursive: true }).sort();
+  const r = migrateOlderLayout(d);
+  assert.deepEqual(r.failed, []);
+  assert.deepEqual(r.skipped, []);
+  assert.deepEqual(r.copied.sort(), [
+    'iam/context-map.json', 'iam/context-map.md', 'iam/lexicon.csv', 'iam/lexicon/lexicon-suggestions.csv', 'iam/repo.json',
+    'iam/slices/UC-login/UC-login.md', 'iam/slices/UC-login/source.json', 'iam/user-stories.csv',
+    'iam/user-stories/proposals.csv', 'iam/user-stories/review.csv', 'iam/user-stories/review.csv.decided', 'pay/user-stories.csv',
+  ]);
+  assert.deepEqual(snapshot(d, ['iam/user-stories.csv', 'iam/user-stories/review.csv.decided', 'iam/slices/UC-login/UC-login.md', 'iam/repo.json']),
+    { 'iam/user-stories.csv': 'backlog', 'iam/user-stories/review.csv.decided': 'decided', 'iam/slices/UC-login/UC-login.md': 'doc', 'iam/repo.json': '{"path":"x"}' });
+  assert.deepEqual(fs.readdirSync(d, { recursive: true }).filter((n) => before.includes(n)).sort(), before, 'every older path is still there');
+  assert.equal(fs.readFileSync(path.join(d, 'backlogs', 'iam.csv'), 'utf8'), 'backlog');
+  assert.deepEqual(checkFolder(d).status, 'has-planner-files');
+});
+
+test('migrate lists a file with no backlog as skipped and creates nothing for it', () => {
+  const d = older();
+  put(d, 'reviews/ghost.csv', 'g');
+  put(d, 'diagrams/ghost/UC-x/UC-x.md', 'g');
+  put(d, 'proposals/notes.txt', 'n');
+  const r = migrateOlderLayout(d);
+  assert.deepEqual(r.skipped.map((s) => s.file).sort(), ['diagrams/ghost/UC-x/UC-x.md', 'proposals/notes.txt', 'reviews/ghost.csv']);
+  assert.ok(r.skipped.every((s) => s.reason));
+  assert.equal(fs.existsSync(path.join(d, 'ghost')), false);
+  assert.equal(fs.existsSync(path.join(d, 'notes.txt')), false);
+});
+
+test('migrate keeps a file that already exists, lists it as skipped, and copies the rest of the backlog', () => {
+  const d = older();
+  put(d, 'iam/user-stories.csv', 'mine');
+  const r = migrateOlderLayout(d);
+  assert.deepEqual(r.skipped, [{ file: 'iam/user-stories.csv', reason: 'exists' }]);
+  assert.equal(fs.readFileSync(path.join(d, 'iam', 'user-stories.csv'), 'utf8'), 'mine');
+  assert.ok(r.copied.includes('iam/user-stories/review.csv'));
+  const again = migrateOlderLayout(d);
+  assert.deepEqual(again.copied, [], 'a second run copies nothing');
+  assert.deepEqual(again.failed, []);
+});
+
+test('migrate leaves out a backups folder at any depth without listing it', () => {
+  const d = older();
+  put(d, 'backups/iam.csv/2026-01-01_000000/backlogs/iam.csv', 'old');
+  put(d, 'diagrams/iam/Backups/x.md', 'old');
+  put(d, 'diagrams/iam/UC-login/backups/y.md', 'old');
+  const r = migrateOlderLayout(d);
+  assert.equal(r.copied.some((f) => /backups/i.test(f)), false);
+  assert.equal(r.skipped.some((s) => /backups/i.test(s.file)), false);
+  assert.equal(fs.existsSync(path.join(d, 'iam', 'slices', 'UC-login', 'backups')), false);
+  assert.equal(fs.existsSync(path.join(d, 'iam', 'Backups')), false);
+});
+
+test('migrate reports a copy that does not read back the same as failed, removes that copy and keeps the older file', () => {
+  const d = older();
+  const corrupt = (from, to, flags) => {
+    fs.copyFileSync(from, to, flags);
+    if (from.includes('reviews') && from.endsWith('iam.csv')) fs.writeFileSync(to, 'garbled');
+  };
+  const r = migrateOlderLayout(d, { copyFile: corrupt });
+  assert.equal(r.failed.length, 1);
+  assert.equal(r.failed[0].file, 'reviews/iam.csv');
+  assert.match(r.failed[0].message, /read back/);
+  assert.equal(r.copied.includes('iam/user-stories/review.csv'), false);
+  assert.equal(fs.existsSync(path.join(d, 'iam', 'user-stories', 'review.csv')), false, 'the bad copy is removed so a rerun can retry');
+  assert.equal(fs.readFileSync(path.join(d, 'reviews', 'iam.csv'), 'utf8'), 'review');
+  assert.ok(r.copied.includes('iam/user-stories.csv'), 'the other files are still copied');
+  const retry = migrateOlderLayout(d);
+  assert.deepEqual(retry.copied, ['iam/user-stories/review.csv']);
+});
+
+test('migrate reports a file it cannot copy as failed and keeps going', () => {
+  const d = older();
+  const locked = (from, to, flags) => {
+    if (from.includes('lexicons')) throw Object.assign(new Error('EBUSY: file is locked'), { code: 'EBUSY' });
+    return fs.copyFileSync(from, to, flags);
+  };
+  const r = migrateOlderLayout(d, { copyFile: locked });
+  assert.deepEqual(r.failed.map((f) => f.file), ['lexicons/iam.csv']);
+  assert.match(r.failed[0].message, /locked/);
+  assert.ok(r.copied.includes('pay/user-stories.csv'));
+});
+
+test('migrate refuses a data folder that does not exist', () => {
+  assert.ok(migrateOlderLayout(path.join(tmp(), 'nope')).refused);
+});
+
 // ---- folder check and confinement (3.3)
 
-test('check: missing, empty, has-planner-files', () => {
+test('check: missing, empty, older-layout, has-planner-files', () => {
   const base = tmp();
   assert.equal(checkFolder(path.join(base, 'nope')).status, 'missing');
   assert.equal(checkFolder(base).status, 'empty');
   put(base, 'notes.txt');
-  assert.equal(checkFolder(base).status, 'empty');
+  fs.mkdirSync(path.join(base, 'logs'));
+  put(base, 'plain-folder/x.csv');
+  assert.equal(checkFolder(base).status, 'empty', 'logs, a loose file and a folder without user-stories.csv are not planner files');
   fs.mkdirSync(path.join(base, 'lexicons'));
-  assert.equal(checkFolder(base).status, 'has-planner-files');
+  assert.equal(checkFolder(base).status, 'older-layout');
+  put(base, 'iam/user-stories.csv');
+  assert.equal(checkFolder(base).status, 'has-planner-files', 'a backlog folder wins over the older layout');
   const b2 = tmp();
   put(b2, 'backlogs/iam.csv');
-  assert.equal(checkFolder(b2).status, 'has-planner-files');
+  assert.equal(checkFolder(b2).status, 'older-layout');
 });
 
 test('check refuses a relative path, a drive root and a system folder with a reason', () => {

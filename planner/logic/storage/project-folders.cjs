@@ -7,9 +7,11 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
+const { KIND_FILES, listBacklogs, detectOlderLayout, validateBacklogName } = require('./backlog-paths.cjs');
+
 const ROOT = path.resolve(__dirname, '..', '..', '..');
-// The folders of a data directory, relative to it.
-const FOLDERS = ['backlogs', 'reviews', 'proposals', 'lexicons', 'lexicon-suggestions', 'diagrams', 'backups', 'logs'];
+// The folders init creates in a data directory, relative to it. Backlog folders are created with their backlog.
+const FOLDERS = ['logs'];
 
 function inside(parent, child) {
   const rel = path.relative(parent, child);
@@ -72,17 +74,18 @@ function isDir(p) {
   }
 }
 
-// One of: { status: 'refused', reason }, 'has-planner-files' (one of the eight folders, or a CSV file directly under
-// backlogs/), 'empty', 'missing'.
+// One of: { status: 'refused', reason }, 'has-planner-files' (a backlog folder: a subfolder with user-stories.csv),
+// 'older-layout' (no backlog folder, but a folder of the older layout, to migrate), 'empty', 'missing'.
 function checkFolder(dir, options) {
   const c = confineDir(dir, options);
   if (!c.ok) return { status: 'refused', reason: c.reason };
   if (!isDir(c.dir)) return { status: 'missing', dir: c.dir };
-  if (FOLDERS.some((f) => isDir(path.join(c.dir, f)))) return { status: 'has-planner-files', dir: c.dir };
+  if (listBacklogs(c.dir).length) return { status: 'has-planner-files', dir: c.dir };
+  if (detectOlderLayout(c.dir).length) return { status: 'older-layout', dir: c.dir };
   return { status: 'empty', dir: c.dir };
 }
 
-// Creates the data folder if missing and the eight folders in it. Returns { dir, createdDataDir, created, existing }.
+// Creates the data folder if missing and `logs` in it. Returns { dir, createdDataDir, created, existing }.
 function initFolders(dir) {
   const abs = path.resolve(dir);
   const createdDataDir = !fs.existsSync(abs);
@@ -143,4 +146,110 @@ function copyData(source, target, { copyFile = fs.copyFileSync } = {}) {
   return stopped ? { copied, skipped, stopped } : { copied, skipped };
 }
 
-module.exports = { ROOT, FOLDERS, inside, realResolve, confineDir, checkFolder, initFolders, copyData };
+// The files of the older layout that belong to a backlog, as [older path, path in the backlog folder] pairs (both relative).
+function olderFilesOf(name) {
+  const inFolder = (kind) => KIND_FILES[kind].join('/');
+  return [
+    [`backlogs/${name}.csv`, inFolder('backlog')],
+    [`reviews/${name}.csv`, inFolder('review')],
+    [`reviews/${name}.csv.decided`, `${inFolder('review')}.decided`],
+    [`proposals/${name}.csv`, inFolder('proposals')],
+    [`lexicons/${name}.csv`, inFolder('lexicon')],
+    [`lexicon-suggestions/${name}.csv`, inFolder('lexicon-suggestions')],
+  ];
+}
+
+// Files of the older diagrams/<name>/ folder kept at the backlog folder itself; every other folder there is a slice.
+const BACKLOG_LEVEL_DIAGRAM_FILES = ['repo.json', 'context-map.json', 'context-map.md'];
+
+// The regular files under `dir` (relative paths with `/`), skipping any `backups/` folder; links are reported apart.
+function filesUnder(dir, rel = '', out = { files: [], links: [] }) {
+  for (const name of fs.readdirSync(path.join(dir, rel)).sort()) {
+    const r = rel ? `${rel}/${name}` : name;
+    const st = fs.lstatSync(path.join(dir, r));
+    if (st.isSymbolicLink()) out.links.push(r);
+    else if (st.isDirectory()) { if (name.toLowerCase() !== 'backups') filesUnder(dir, r, out); }
+    else if (st.isFile()) out.files.push(r);
+  }
+  return out;
+}
+
+// Copies the data of the older layout in `dataDir` (backlogs/, reviews/, proposals/, lexicons/, lexicon-suggestions/ and
+// diagrams/) into one folder per backlog in the same data folder. Never overwrites a file, never changes or removes
+// anything in the older layout (the one removal is a copy this call made that did not read back the same), skips any
+// `backups/` folder without listing it. Each copied file is read back and compared with its source.
+// Returns { copied: [new path], skipped: [{file, reason}], failed: [{file, message}] } (paths relative to `dataDir`),
+// or { refused }. `copyFile` and `readFile` are only for tests.
+function migrateOlderLayout(dataDir, { copyFile = fs.copyFileSync, readFile = fs.readFileSync } = {}) {
+  const dir = realResolve(dataDir);
+  if (!isDir(dir)) return { refused: 'The data folder does not exist.' };
+  const copied = [];
+  const skipped = [];
+  const failed = [];
+  const claimed = new Set(); // older paths that went to a backlog; every other file of the older folders is reported
+
+  const copyOne = (from, to) => {
+    const target = path.join(dir, to);
+    try {
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      copyFile(path.join(dir, from), target, fs.constants.COPYFILE_EXCL);
+    } catch (err) {
+      if (err.code === 'EEXIST') return skipped.push({ file: to, reason: 'exists' });
+      try { fs.unlinkSync(target); } catch { /* not created */ }
+      return failed.push({ file: from, message: err.message });
+    }
+    let same = false;
+    let message = 'the copy does not read back the same as the original';
+    try {
+      same = Buffer.compare(readFile(path.join(dir, from)), readFile(target)) === 0;
+    } catch (err) {
+      message = `the copy could not be read back: ${err.message}`;
+    }
+    if (same) return copied.push(to);
+    fs.unlinkSync(target); // the copy this call just made
+    return failed.push({ file: from, message });
+  };
+
+  const backlogsDir = path.join(dir, 'backlogs');
+  const names = isDir(backlogsDir) ? fs.readdirSync(backlogsDir).sort() : [];
+  for (const entry of names) {
+    if (!entry.toLowerCase().endsWith('.csv') || !fs.lstatSync(path.join(backlogsDir, entry)).isFile()) continue;
+    let name;
+    try {
+      name = validateBacklogName(entry);
+    } catch (err) {
+      skipped.push({ file: `backlogs/${entry}`, reason: err.message });
+      claimed.add(`backlogs/${entry}`);
+      continue;
+    }
+    if (name !== entry.slice(0, -4)) { skipped.push({ file: `backlogs/${entry}`, reason: 'not a valid backlog name' }); claimed.add(`backlogs/${entry}`); continue; }
+    for (const [from, to] of olderFilesOf(name)) {
+      if (!fs.existsSync(path.join(dir, from))) continue;
+      claimed.add(from);
+      copyOne(from, `${name}/${to}`);
+    }
+    const diagrams = path.join(dir, 'diagrams', name);
+    if (isDir(diagrams) && !fs.lstatSync(diagrams).isSymbolicLink()) {
+      const { files, links } = filesUnder(diagrams);
+      for (const link of links) { skipped.push({ file: `diagrams/${name}/${link}`, reason: 'link' }); claimed.add(`diagrams/${name}/${link}`); }
+      for (const file of files) {
+        const from = `diagrams/${name}/${file}`;
+        claimed.add(from);
+        if (BACKLOG_LEVEL_DIAGRAM_FILES.includes(file)) copyOne(from, `${name}/${file}`);
+        else if (file.includes('/')) copyOne(from, `${name}/slices/${file}`);
+        else skipped.push({ file: from, reason: 'not in a slice folder' });
+      }
+    }
+  }
+
+  // Whatever is left in the older folders has no backlog: reported, never created.
+  for (const folder of detectOlderLayout(dir)) {
+    const { files, links } = filesUnder(dir, folder);
+    for (const file of [...files, ...links]) {
+      if (!claimed.has(file)) skipped.push({ file, reason: links.includes(file) ? 'link' : 'no backlog with this name in backlogs/' });
+    }
+  }
+  return { copied, skipped, failed };
+}
+
+module.exports = { ROOT, FOLDERS, inside, realResolve, confineDir, checkFolder, initFolders, copyData, migrateOlderLayout };
