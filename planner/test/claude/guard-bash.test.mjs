@@ -11,6 +11,9 @@ test('allowed forms', () => {
     `${R} data-portal.csv`,
     `${R} data-portal.csv checks`,
     `${R} data-portal.csv epic-12`,
+    `${R} data-portal`,
+    `${R} data-portal checks`,
+    `${W} data-portal --append <<'JSON'\n[]\nJSON`,
     `${W} data-portal.csv <<'JSON'\n[]\nJSON`,
     `${W} data-portal.csv --append <<'JSON'\n[{"a":1}]\nJSON`,
     `${W} data-portal.csv --append <<'JSON'\r\n[]\r\nJSON\r\n`,
@@ -45,8 +48,8 @@ test('denied commands, each with the allowed forms in the message', () => {
   for (const [label, c] of denied) {
     const err = check(c);
     assert.ok(err, label);
-    assert.match(err, /read-backlog\.mjs \[file \[section\]\]/, label);
-    assert.match(err, /write-review\.mjs <file> <<'JSON'/, label);
-    assert.match(err, /write-review\.mjs <file> --append <<'JSON'/, label);
+    assert.match(err, /read-backlog\.mjs \[backlog \[section\]\]/, label);
+    assert.match(err, /write-review\.mjs <backlog> <<'JSON'/, label);
+    assert.match(err, /write-review\.mjs <backlog> --append <<'JSON'/, label);
   }
 });

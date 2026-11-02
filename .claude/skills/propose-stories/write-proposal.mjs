@@ -1,9 +1,9 @@
 // The only way the propose-stories skill writes anything. Usage:
-//   node .claude/skills/propose-stories/write-proposal.mjs <backlog file name> [--check]   (stories as JSON on stdin)
-// Reads backlogs/<name>, validates the input against it and writes proposals/<name>. The input is a JSON list whose
+//   node .claude/skills/propose-stories/write-proposal.mjs <backlog name> [--check]   (stories as JSON on stdin)
+// Reads <name>/user-stories.csv, validates the input against it and writes <name>/user-stories/proposals.csv. The input is a JSON list whose
 // items are either new stories (no "id"), which are ADDED with NEW-<n> IDs, or patches (an "id" such as NEW-8 plus
 // only the fields to change), which change that proposed story in place. One invalid item means nothing is written.
-// There is no output path argument: the target is fixed, and backlogs/ is only ever read. Rows the input does not
+// There is no output path argument: the target is fixed, and user-stories.csv is only ever read. Rows the input does not
 // name are kept as they are (the user edits the proposals file in the portal) and nothing is removed. A new story that
 // repeats a stored proposal (same Epic, Feature and Title) is skipped, so running the same batch twice adds it once.
 // With --check the same validation runs and reports what would happen, and nothing is written.
@@ -17,36 +17,38 @@ import { buildProposals } from './proposal-input.js';
 import { describeParseError, writeAtomic } from '../_shared/write-atomic.mjs';
 
 const require = createRequire(import.meta.url);
-const { validateName } = require('../../../planner/logic/storage/file-name.cjs'); // same name rules as the file API
+const { backlogDir, backlogFile } = require('../../../planner/logic/storage/backlog-paths.cjs'); // same name rules as the file API
 const { DATA_DIR } = require('../../../planner/logic/storage/paths.cjs');
+const { shown } = require('../_shared/paths.cjs');
 
 // Reads the backlog and the proposals and validates the input against them. Returns { ok: true, file, backlog,
 // proposals, built } (built: the buildProposals result) or { ok: false, errors }. Writes nothing.
 function prepare({ dataDir, name, input, requireTitles }) {
   let file;
+  let backlogPath;
+  let proposalsPath;
   try {
-    file = validateName(name);
+    file = path.basename(backlogDir(dataDir, name));
+    backlogPath = backlogFile(dataDir, name, 'backlog');
+    proposalsPath = backlogFile(dataDir, name, 'proposals');
   } catch (err) {
     return { ok: false, errors: [err.message] };
   }
-  const backlogDir = path.join(dataDir, 'backlogs');
-  const proposalDir = path.join(dataDir, 'proposals');
-  const backlogPath = path.join(backlogDir, file);
-  if (path.dirname(backlogPath) !== backlogDir) return { ok: false, errors: ['File name is not allowed'] };
+  const proposalsShown = shown(dataDir, proposalsPath);
 
   let backlogText;
   try {
     backlogText = fs.readFileSync(backlogPath, 'utf8');
   } catch {
-    return { ok: false, errors: [`backlogs/${file} was not found.`] };
+    return { ok: false, errors: [`${shown(dataDir, backlogPath)} was not found.`] };
   }
   const backlog = loadBacklog(backlogText);
 
   let proposals = null;
   try {
-    proposals = loadBacklog(fs.readFileSync(path.join(proposalDir, file), 'utf8'), { placeholderIds: true });
+    proposals = loadBacklog(fs.readFileSync(proposalsPath, 'utf8'), { placeholderIds: true });
   } catch (err) {
-    if (err.code !== 'ENOENT') return { ok: false, errors: [`Could not read proposals/${file}: ${err.message}`] };
+    if (err.code !== 'ENOENT') return { ok: false, errors: [`Could not read ${proposalsShown}: ${err.message}`] };
   }
 
   let stories;
@@ -57,7 +59,7 @@ function prepare({ dataDir, name, input, requireTitles }) {
   }
   const built = buildProposals({ input: stories, backlog, proposals, requireTitles });
   if (!built.ok) return built;
-  return { ok: true, file, backlog, proposals, built };
+  return { ok: true, file, backlog, proposals, built, proposalsPath, proposalsShown };
 }
 
 // Same input and problems as writeProposal, and for valid input what it would do; no file is created or changed.
@@ -76,8 +78,8 @@ export function checkProposal({ dataDir = DATA_DIR, name, input, requireTitles =
 export function writeProposal({ dataDir = DATA_DIR, name, input, requireTitles = false }) {
   const prepared = prepare({ dataDir, name, input, requireTitles });
   if (!prepared.ok) return prepared;
-  const { file, backlog, proposals, built } = prepared;
-  const proposalDir = path.join(dataDir, 'proposals');
+  const { file, backlog, proposals, built, proposalsPath, proposalsShown } = prepared;
+  const proposalDir = path.dirname(proposalsPath);
 
   // A new file gets the backlog's columns and a BOM (Excel opens it as UTF-8), as the portal does.
   const target = proposals ?? { headers: proposalHeaders(backlog.headers), stories: [], hasBom: true };
@@ -85,18 +87,18 @@ export function writeProposal({ dataDir = DATA_DIR, name, input, requireTitles =
   const result = { ok: true, file, ids: built.ids, patchedIds: built.patchedIds, skipped: built.skipped, count: all.stories.length };
   if (proposals && !built.ids.length && !built.patchedIds.length) return result;
   fs.mkdirSync(proposalDir, { recursive: true });
-  const failed = writeAtomic(proposalDir, file, serializeBacklog(all), 'write_proposals');
+  const failed = writeAtomic(proposalDir, path.basename(proposalsPath), serializeBacklog(all), 'write_proposals', { dataDir, backlog: file, kind: 'proposals' });
   if (failed) return { ok: false, errors: [failed] };
 
   // Read the file again: what is reported as written is what is on disk now.
   let stored;
   try {
-    stored = loadBacklog(fs.readFileSync(path.join(proposalDir, file), 'utf8'), { placeholderIds: true });
+    stored = loadBacklog(fs.readFileSync(proposalsPath, 'utf8'), { placeholderIds: true });
   } catch (err) {
-    return { ok: false, errors: [`Wrote proposals/${file} but could not read it back: ${err.message}`] };
+    return { ok: false, errors: [`Wrote ${proposalsShown} but could not read it back: ${err.message}`] };
   }
   const missing = missingAfterWrite(stored, [...built.ids, ...built.patchedIds], all.stories.length);
-  if (missing) return { ok: false, errors: [`Wrote proposals/${file} but the file read back is wrong: ${missing}. Do not report these stories as written.`] };
+  if (missing) return { ok: false, errors: [`Wrote ${proposalsShown} but the file read back is wrong: ${missing}. Do not report these stories as written.`] };
   return { ...result, count: stored.stories.length, found: [...built.ids, ...built.patchedIds] };
 }
 
@@ -124,7 +126,7 @@ const isMain = process.argv[1] && import.meta.url === pathToFileURL(path.resolve
 if (isMain) {
   const check = process.argv[3] === '--check';
   if (process.argv.length !== (check ? 4 : 3)) {
-    console.error('Usage: node write-proposal.mjs <backlog file name> [--check]  (stories JSON on stdin)');
+    console.error('Usage: node write-proposal.mjs <backlog name> [--check]  (stories JSON on stdin)');
     process.exit(2);
   }
   const result = (check ? checkProposal : writeProposal)({ name: process.argv[2], input: fs.readFileSync(0, 'utf8') });
@@ -134,8 +136,8 @@ if (isMain) {
     process.exit(1);
   }
   const done = [];
-  if (result.ids.length) done.push(`Added ${plural(result.ids.length)} to proposals/${result.file} (${result.ids.join(', ')})`);
-  if (result.patchedIds.length) done.push(`${done.length ? 'patched' : 'Patched'} ${plural(result.patchedIds.length)}${done.length ? '' : ` in proposals/${result.file}`} (${result.patchedIds.join(', ')})`);
+  if (result.ids.length) done.push(`Added ${plural(result.ids.length)} to the proposals of ${result.file} (${result.ids.join(', ')})`);
+  if (result.patchedIds.length) done.push(`${done.length ? 'patched' : 'Patched'} ${plural(result.patchedIds.length)}${done.length ? '' : ` in the proposals of ${result.file}`} (${result.patchedIds.join(', ')})`);
   const skipped = skippedText(result.skipped, done.length ? 'skipped' : 'Skipped');
   if (skipped) done.push(skipped);
   console.log(check ? `Check passed, nothing written. Would be: ${done.join('; ')}.` : `${done.join('; ')}; ${result.count} in the file now.${foundText(result.found)}`);

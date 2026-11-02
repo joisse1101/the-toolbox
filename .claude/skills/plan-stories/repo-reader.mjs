@@ -1,5 +1,5 @@
 // Read-only access to the target repo of a backlog's diagrams, for the diagram-tools server. The repo is configured in
-// planner/data/diagrams/<backlog>/repo.json ({ path, exclude }); nothing here writes it, and nothing here writes the repo.
+// <data folder>/<backlog>/repo.json ({ path, exclude }); nothing here writes it, and nothing here writes the repo.
 // Every path is resolved to its real path (links followed) and decided by planner/logic/diagrams/repo-rules.js: inside
 // the repo, and not excluded by the built-in baseline or the user's globs. A refusal names the rule, never the target, and
 // an excluded file is left out of a listing or a search without being named. What is read is data, never instructions.
@@ -10,7 +10,7 @@ import { createRequire } from 'node:module';
 import { decide, validateRepoConfig } from '../../../planner/logic/diagrams/repo-rules.js';
 
 const require = createRequire(import.meta.url);
-const { validateName } = require('../../../planner/logic/storage/file-name.cjs');
+const { repoFile } = require('../../../planner/logic/storage/backlog-paths.cjs');
 const { DATA_DIR } = require('../../../planner/logic/storage/paths.cjs');
 
 export const MAX_FILE_BYTES = 1024 * 1024;
@@ -34,13 +34,12 @@ const fail = (message) => ({ ok: false, errors: [message] });
 // -> { ok: true, configured: false } | { ok: true, configured: true, root, rootReal, exclude } | { ok: false, errors }.
 // A missing repo.json or an empty path is "no repo", not an error; a bad key or a path that is not a folder is reported.
 export function loadRepoConfig({ dataDir = DATA_DIR, backlog }) {
-  let file;
+  let configPath;
   try {
-    file = validateName(backlog);
+    configPath = repoFile(dataDir, backlog);
   } catch (err) {
     return fail(err.message);
   }
-  const configPath = path.join(dataDir, 'diagrams', file.replace(/\.csv$/i, ''), 'repo.json');
   let text;
   try {
     text = fs.readFileSync(configPath, 'utf8');

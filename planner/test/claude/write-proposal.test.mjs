@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { pathOf, decidedPath, logLines as treeLogLines } from '../helpers/backlog-tree.mjs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { writeProposal, checkProposal, missingAfterWrite } from '../../../.claude/skills/propose-stories/write-proposal.mjs';
@@ -17,8 +18,8 @@ const CSV =
 
 function temp() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'proposal-test-'));
-  fs.mkdirSync(path.join(root, 'backlogs'));
-  fs.writeFileSync(path.join(root, 'backlogs', 'data.csv'), CSV);
+  fs.mkdirSync(path.dirname(pathOf(root, 'data', 'backlog')), { recursive: true });
+  fs.writeFileSync(pathOf(root, 'data', 'backlog'), CSV);
   return root;
 }
 
@@ -33,19 +34,19 @@ const story = (over = {}) => ({
   ...over,
 });
 const run = (root, stories, name = 'data.csv') => writeProposal({ dataDir: root, name, input: JSON.stringify(stories) });
-const proposalPath = (root) => path.join(root, 'proposals', 'data.csv');
+const proposalPath = (root) => pathOf(root, 'data', 'proposals');
 const load = (root) => loadBacklog(fs.readFileSync(proposalPath(root), 'utf8'), { placeholderIds: true });
 
 test('valid input creates proposals/<name> and leaves the backlog byte-for-byte unchanged', () => {
   const root = temp();
-  const before = fs.readFileSync(path.join(root, 'backlogs', 'data.csv'));
+  const before = fs.readFileSync(pathOf(root, 'data', 'backlog'));
   const r = run(root, [story(), story({ title: 'Two', dependsOn: ['NEW-1', 'IAM-0001'] })]);
   assert.deepEqual([r.ok, r.ids, r.count], [true, ['NEW-1', 'NEW-2'], 2]);
-  assert.deepEqual(fs.readFileSync(path.join(root, 'backlogs', 'data.csv')), before);
+  assert.deepEqual(fs.readFileSync(pathOf(root, 'data', 'backlog')), before);
   const p = load(root);
   assert.deepEqual(p.stories.map((s) => s.code), ['NEW-1', 'NEW-2']);
   assert.deepEqual(p.stories[1].dependsOn, ['NEW-1', 'IAM-0001']);
-  assert.deepEqual(fs.readdirSync(path.join(root, 'proposals')), ['data.csv'], 'no temp file left behind');
+  assert.deepEqual(fs.readdirSync(path.dirname(pathOf(root, 'data', 'proposals'))), ['proposals.csv'], 'no temp file left behind');
 });
 
 test('a new file has the backlog columns (extra ones too) and a BOM', () => {
@@ -62,7 +63,7 @@ test('unknown backlog and bad names write nothing', () => {
   const root = temp();
   assert.match(run(root, [story()], 'nope.csv').errors[0], /was not found/);
   for (const name of ['../x.csv', 'a/b.csv', 'x.txt', '']) assert.equal(run(root, [story()], name).ok, false, name);
-  assert.equal(fs.existsSync(path.join(root, 'proposals')), false);
+  assert.equal(fs.existsSync(path.dirname(pathOf(root, 'data', 'proposals'))), false);
 });
 
 test('invalid input reports every problem and writes nothing, keeping an existing file', () => {
@@ -80,7 +81,7 @@ test('invalid input reports every problem and writes nothing, keeping an existin
 test('no file is created when validation fails', () => {
   const root = temp();
   assert.equal(run(root, [story({ priority: 'High' })]).ok, false);
-  assert.equal(fs.existsSync(path.join(root, 'proposals')), false);
+  assert.equal(fs.existsSync(path.dirname(pathOf(root, 'data', 'proposals'))), false);
 });
 
 test('bad JSON reports line and column', () => {
@@ -127,7 +128,7 @@ test('CLI: prints the IDs on success; exits 1 with "Nothing was written" on inva
 
   const ok = cli(['data.csv'], [story()]);
   assert.equal(ok.status, 0, ok.stderr);
-  assert.match(ok.stdout, /Added 1 proposed story to proposals\/data\.csv \(NEW-1\); 1 in the file now\./);
+  assert.match(ok.stdout, /Added 1 proposed story to the proposals of data \(NEW-1\); 1 in the file now\./);
   const bad = cli(['data.csv'], [story({ points: 21 })]);
   assert.equal(bad.status, 1);
   assert.match(bad.stderr, /Nothing was written\. 1 problem:\n- Story 1 .*split/);
@@ -178,7 +179,7 @@ test('a mixed run adds and patches together; one invalid item writes neither', (
 test('a rejected patch writes nothing, and a patch against a missing file creates nothing', () => {
   const root = temp();
   assert.equal(run(root, [{ id: 'NEW-1', points: 2 }]).ok, false);
-  assert.equal(fs.existsSync(path.join(root, 'proposals')), false);
+  assert.equal(fs.existsSync(path.dirname(pathOf(root, 'data', 'proposals'))), false);
   run(root, [story()]);
   const before = fs.readFileSync(proposalPath(root));
   for (const item of [{ id: 'NEW-9', points: 2 }, { id: 'NEW-1' }, { id: 'NEW-1', priority: 'High' }]) {
@@ -195,9 +196,9 @@ test('CLI: reports patched IDs, with and without added ones', () => {
   cli([story()]);
   const patched = cli([{ id: 'NEW-1', points: 5 }]);
   assert.equal(patched.status, 0, patched.stderr);
-  assert.match(patched.stdout, /^Patched 1 proposed story in proposals\/data\.csv \(NEW-1\); 1 in the file now\./);
+  assert.match(patched.stdout, /^Patched 1 proposed story in the proposals of data \(NEW-1\); 1 in the file now\./);
   const both = cli([{ id: 'NEW-1', points: 2 }, story({ title: 'Two' })]);
-  assert.match(both.stdout, /^Added 1 proposed story to proposals\/data\.csv \(NEW-2\); patched 1 proposed story \(NEW-1\); 2 in the file now\./);
+  assert.match(both.stdout, /^Added 1 proposed story to the proposals of data \(NEW-2\); patched 1 proposed story \(NEW-1\); 2 in the file now\./);
 });
 
 // clarifications
@@ -344,7 +345,7 @@ test('a check leaves every file as it was, reports the same problems and what wo
   const check = (stories) => checkProposal({ dataDir: root, name: 'data.csv', input: JSON.stringify(stories) });
   const ok = check([story(), story({ title: 'Two' })]);
   assert.deepEqual([ok.ok, ok.ids, ok.patchedIds, ok.skipped], [true, ['NEW-1', 'NEW-2'], [], []]);
-  assert.equal(fs.existsSync(path.join(root, 'proposals')), false, 'a check creates nothing');
+  assert.equal(fs.existsSync(path.dirname(pathOf(root, 'data', 'proposals'))), false, 'a check creates nothing');
 
   const bad = check([story({ points: 21 })]);
   assert.deepEqual(bad.errors, run(root, [story({ points: 21 })]).errors, 'same problems as the writer');
@@ -384,14 +385,14 @@ test('CLI: --check prints what would happen and writes nothing; a repeat is repo
   });
   const checked = cli(['data.csv', '--check'], [story()]);
   assert.equal(checked.status, 0, checked.stderr);
-  assert.match(checked.stdout, /^Check passed, nothing written\. Would be: Added 1 proposed story to proposals\/data\.csv \(NEW-1\)\./);
-  assert.equal(fs.existsSync(path.join(root, 'proposals')), false);
+  assert.match(checked.stdout, /^Check passed, nothing written\. Would be: Added 1 proposed story to the proposals of data \(NEW-1\)\./);
+  assert.equal(fs.existsSync(path.dirname(pathOf(root, 'data', 'proposals'))), false);
   assert.equal(cli(['data.csv', '--check'], [story({ points: 21 })]).status, 1);
   assert.equal(cli(['data.csv', '--nope'], []).status, 2);
 
   cli(['data.csv'], [story()]);
   const again = cli(['data.csv'], [story(), story({ title: 'Two' })]);
-  assert.match(again.stdout, /^Added 1 proposed story to proposals\/data\.csv \(NEW-2\); skipped 1 already in the file \(Story 1 = NEW-1\); 2 in the file now\./);
+  assert.match(again.stdout, /^Added 1 proposed story to the proposals of data \(NEW-2\); skipped 1 already in the file \(Story 1 = NEW-1\); 2 in the file now\./);
   const none = cli(['data.csv'], [story()]);
   assert.match(none.stdout, /^Skipped 1 already in the file \(Story 1 = NEW-1\); 2 in the file now\./);
 });
@@ -447,7 +448,7 @@ test('a write is recorded in the write log under the tool name; a check and a sk
   run(root, [story()]); // a repeat: the file is not rewritten
   const lines = logLines();
   assert.equal(lines.length, 1);
-  assert.deepEqual([lines[0].writer, lines[0].store, lines[0].file], ['write_proposals', 'proposals', 'data.csv']);
+  assert.deepEqual([lines[0].writer, lines[0].backlog, lines[0].kind], ['write_proposals', 'data', 'proposals']);
   assert.equal(lines[0].bytes, fs.statSync(proposalPath(root)).size);
 });
 

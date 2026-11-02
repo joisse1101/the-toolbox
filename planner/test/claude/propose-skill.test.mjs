@@ -26,7 +26,7 @@ test('the examples in propose-stories/SKILL.md are the five tool calls, each wit
   const all = examples();
   assert.equal(all.length, 5, 'one example of new stories, one of a patch, one of a backlog edit, one of lexicon terms and one of lexicon suggestions');
   for (const call of all) {
-    assert.equal(call.backlog, 'data-portal.csv');
+    assert.equal(call.backlog, 'data-portal');
     assert.ok(Array.isArray(call.items) && call.items.length);
   }
 });
@@ -123,7 +123,7 @@ test('the lexicon example passes the lexicon writer\'s validation, and the lexic
   assert.deepEqual(r.added, ['Dataset', 'Dataset attribute', 'User']);
   const again = applyTermItems(r.lexicon, examples()[3].items);
   assert.match(again.errors[0], /is already a term: suggest a change to it with suggest_lexicon_change/, 'the example adds only');
-  assert.match(text, /`write_lexicon` with the backlog file name/);
+  assert.match(text, /`write_lexicon` with the backlog name/);
   assert.match(text, /run the lexicon writer first/);
   assert.doesNotMatch(text.split('---')[1], /write_/, 'the skill does not pre-approve the writers, so Claude Code asks');
 });

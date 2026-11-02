@@ -1,6 +1,6 @@
 // How the propose-stories skill suggests renaming, deleting or editing (definition, avoid, notes, part of) a lexicon term (used by the backlog-tools MCP server's
-// suggest_lexicon_change; there is no command line form). Reads backlogs/<name> (it must exist) and lexicons/<name>,
-// appends open rows to lexicon-suggestions/<name> and never touches the lexicon: the user applies a suggestion in the
+// suggest_lexicon_change; there is no command line form). Reads <name>/user-stories.csv (it must exist) and <name>/lexicon.csv,
+// appends open rows to <name>/lexicon/lexicon-suggestions.csv and never touches the lexicon: the user applies a suggestion in the
 // portal's Lexicon tab. The rules are planner/logic/lexicon/lexicon-suggestions.js's; one invalid item means nothing is written.
 
 import fs from 'node:fs';
@@ -11,15 +11,16 @@ import { composeSuggestions, emptySuggestions, FIELD_LABELS, impactOf, parseSugg
 import { writeAtomic } from '../_shared/write-atomic.mjs';
 
 const require = createRequire(import.meta.url);
-const { validateName } = require('../../../planner/logic/storage/file-name.cjs'); // same name rules as the file API
+const { backlogDir, backlogFile } = require('../../../planner/logic/storage/backlog-paths.cjs'); // same name rules as the file API
 const { DATA_DIR } = require('../../../planner/logic/storage/paths.cjs');
+const { shown } = require('../_shared/paths.cjs');
 
-const readIfThere = (dir, file, parse, empty) => {
+const readIfThere = (dataDir, target, parse, empty) => {
   try {
-    return { value: parse(fs.readFileSync(path.join(dir, file), 'utf8')) };
+    return { value: parse(fs.readFileSync(target, 'utf8')) };
   } catch (err) {
     if (err.code === 'ENOENT') return { value: empty() };
-    return { error: `Could not read ${path.basename(dir)}/${file}: ${err.message}` };
+    return { error: `Could not read ${shown(dataDir, target)}: ${err.message}` };
   }
 };
 
@@ -42,20 +43,23 @@ function impactLines(row, impact) {
 // Returns { ok: true, file, count, added, report } or { ok: false, errors }. Writes nothing unless everything is valid.
 export function suggestLexicon({ dataDir = DATA_DIR, name, items }) {
   let file;
+  let backlogPath;
+  let lexiconPath;
+  let suggestionsPath;
   try {
-    file = validateName(name);
+    file = path.basename(backlogDir(dataDir, name));
+    backlogPath = backlogFile(dataDir, name, 'backlog');
+    lexiconPath = backlogFile(dataDir, name, 'lexicon');
+    suggestionsPath = backlogFile(dataDir, name, 'lexicon-suggestions');
   } catch (err) {
     return { ok: false, errors: [err.message] };
   }
-  const backlogDir = path.join(dataDir, 'backlogs');
-  const backlogPath = path.join(backlogDir, file);
-  if (path.dirname(backlogPath) !== backlogDir) return { ok: false, errors: ['File name is not allowed'] };
-  if (!fs.existsSync(backlogPath)) return { ok: false, errors: [`backlogs/${file} was not found.`] };
+  if (!fs.existsSync(backlogPath)) return { ok: false, errors: [`${shown(dataDir, backlogPath)} was not found.`] };
 
-  const lexicon = readIfThere(path.join(dataDir, 'lexicons'), file, parseLexicon, emptyLexicon);
+  const lexicon = readIfThere(dataDir, lexiconPath, parseLexicon, emptyLexicon);
   if (lexicon.error) return { ok: false, errors: [lexicon.error] };
-  const suggestionsDir = path.join(dataDir, 'lexicon-suggestions');
-  const existing = readIfThere(suggestionsDir, file, parseSuggestions, emptySuggestions);
+  const suggestionsDir = path.dirname(suggestionsPath);
+  const existing = readIfThere(dataDir, suggestionsPath, parseSuggestions, emptySuggestions);
   if (existing.error) return { ok: false, errors: [existing.error] };
 
   const checked = validateItems(lexicon.value, existing.value, items);
@@ -63,7 +67,7 @@ export function suggestLexicon({ dataDir = DATA_DIR, name, items }) {
 
   const next = { ...existing.value, rows: [...existing.value.rows, ...checked.rows] };
   fs.mkdirSync(suggestionsDir, { recursive: true });
-  const failed = writeAtomic(suggestionsDir, file, composeSuggestions(next), 'suggest_lexicon_change');
+  const failed = writeAtomic(suggestionsDir, path.basename(suggestionsPath), composeSuggestions(next), 'suggest_lexicon_change', { dataDir, backlog: file, kind: 'lexicon-suggestions' });
   if (failed) return { ok: false, errors: [failed] };
   const report = checked.rows.map((row) => ({
     row, lines: impactLines(row, impactOf(lexicon.value, row.term, row.action, row.newName, row.edit)),

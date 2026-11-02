@@ -1,10 +1,10 @@
 // The only way the review-backlog skill reads anything. Usage:
-//   node .claude/skills/review-backlog/read-backlog.mjs                    lists the backlog file names in backlogs/
+//   node .claude/skills/review-backlog/read-backlog.mjs                    lists the backlog names (folders of the data folder that hold user-stories.csv)
 //   node .claude/skills/review-backlog/read-backlog.mjs <name>             prints the scope line and a menu of the sections below
 //   node .claude/skills/review-backlog/read-backlog.mjs <name> <section>   prints one section
 // Sections: guidelines, sizing, lexicon, proposals, checks, and epic-<n> (the stories of the n-th Epic). The review is read
 // in sections so that a large backlog never has to fit in one output. Nothing else is reachable: the guideline paths are
-// fixed, the lexicon and proposals are the named backlog's own files, and the name goes through the file API's name rules.
+// fixed, the lexicon and proposals are the named backlog's own files, and the name (a trailing .csv is dropped) goes through the file API's name rules.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -16,12 +16,12 @@ import { parseLexicon } from '../../../planner/logic/lexicon/lexicon.js';
 import { backlogChecks } from './backlog-checks.js';
 
 const require = createRequire(import.meta.url);
-const { validateName } = require('../../../planner/logic/storage/file-name.cjs');
+const { backlogDir, backlogFile, listBacklogs: listBacklogFolders } = require('../../../planner/logic/storage/backlog-paths.cjs');
 const { DATA_DIR } = require('../../../planner/logic/storage/paths.cjs');
-const { GUIDELINES_DIR } = require('../_shared/paths.cjs');
+const { GUIDELINES_DIR, shown } = require('../_shared/paths.cjs');
 
 export function listBacklogs({ dataDir = DATA_DIR } = {}) {
-  return fs.readdirSync(path.join(dataDir, 'backlogs')).filter((f) => /\.csv$/i.test(f)).sort();
+  return listBacklogFolders(dataDir);
 }
 
 // How many stories are up for review: { total, locked, submitted }, or null when the CSV cannot be read as a backlog
@@ -38,17 +38,16 @@ export function scopeOf(csv) {
 
 export const scopeLine = ({ submitted, total, locked }) => `${submitted} of ${total} stories submitted for review, ${locked} locked (reference only)`;
 
-// Returns { ok: true, file, guidelines, scope, csv } or { ok: false, errors: [...] }.
+// Returns { ok: true, file, guidelines, scope, csv } or { ok: false, errors: [...] }; `file` is the backlog's name (no .csv).
 export function readBacklog({ dataDir = DATA_DIR, guidelinesDir = GUIDELINES_DIR, name }) {
   let file;
+  let backlogPath;
   try {
-    file = validateName(name);
+    backlogPath = backlogFile(dataDir, name, 'backlog');
+    file = path.basename(backlogDir(dataDir, name));
   } catch (err) {
     return { ok: false, errors: [err.message] };
   }
-  const backlogDir = path.join(dataDir, 'backlogs');
-  const backlogPath = path.join(backlogDir, file);
-  if (path.dirname(backlogPath) !== backlogDir) return { ok: false, errors: ['File name is not allowed'] };
   try {
     const csv = fs.readFileSync(backlogPath, 'utf8');
     return {
@@ -59,7 +58,7 @@ export function readBacklog({ dataDir = DATA_DIR, guidelinesDir = GUIDELINES_DIR
       csv,
     };
   } catch {
-    return { ok: false, errors: [`backlogs/${file} was not found.`] };
+    return { ok: false, errors: [`${shown(dataDir, backlogPath)} was not found.`] };
   }
 }
 
@@ -77,8 +76,8 @@ const readOptional = (file) => {
 function openBacklog({ dataDir, guidelinesDir, name }) {
   const read = readBacklog({ dataDir, guidelinesDir, name });
   if (!read.ok) return read;
-  const lexiconText = readOptional(path.join(dataDir, 'lexicons', read.file));
-  const proposalsText = readOptional(path.join(dataDir, 'proposals', read.file));
+  const lexiconText = readOptional(backlogFile(dataDir, read.file, 'lexicon'));
+  const proposalsText = readOptional(backlogFile(dataDir, read.file, 'proposals'));
   const backlog = loadBacklog(read.csv);
   return {
     ...read,
@@ -153,7 +152,7 @@ export function readSection({ dataDir = DATA_DIR, guidelinesDir = GUIDELINES_DIR
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
 if (isMain) {
   if (process.argv.length > 4) {
-    console.error('Usage: node read-backlog.mjs [backlog file name [section]]');
+    console.error('Usage: node read-backlog.mjs [backlog name [section]]');
     process.exit(2);
   }
   const [name, section] = process.argv.slice(2);

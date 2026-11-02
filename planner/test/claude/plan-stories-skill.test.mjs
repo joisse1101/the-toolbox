@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import { sampleTree } from '../helpers/backlog-tree.mjs';
 import { fileURLToPath } from 'node:url';
 import { createServer } from '../../claude/mcp/diagram-tools.mjs';
 
@@ -28,7 +29,7 @@ test('the tools the skill names exist on the servers, and the writers it calls a
   const named = new Set(calls.match(/`(read_diagrams|check_diagram|write_diagram|read_context_map|check_context_map|write_context_map|repo_tree|repo_grep|repo_read|read_context|search_stories|read_file|write_[a-z_]+|suggest_[a-z_]+)`/g).map((s) => s.slice(1, -1)));
   const writers = [...named].filter((n) => /^(write|suggest)_/.test(n));
   assert.deepEqual(writers.sort(), ['write_context_map', 'write_diagram']);
-  const server = createServer({ backlog: 'sample.csv', dataDir: path.join(ROOT, 'planner/test/sample-data') });
+  const server = createServer({ backlog: 'sample.csv', dataDir: sampleTree({ withRepo: true }) });
   const registered = Object.keys(server._registeredTools);
   for (const name of named) {
     if (['read_context', 'search_stories', 'read_file'].includes(name)) continue; // backlog-tools

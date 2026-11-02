@@ -10,9 +10,9 @@ const SCRIPT = /^node \.claude\/skills\/review-backlog\/(read-backlog|write-revi
 const SECTION = /^ [a-z]+(?:-\d+)?$/;
 
 const ALLOWED = [
-  'node .claude/skills/review-backlog/read-backlog.mjs [file [section]]',
-  "node .claude/skills/review-backlog/write-review.mjs <file> <<'JSON' ... JSON",
-  "node .claude/skills/review-backlog/write-review.mjs <file> --append <<'JSON' ... JSON",
+  'node .claude/skills/review-backlog/read-backlog.mjs [backlog [section]]',
+  "node .claude/skills/review-backlog/write-review.mjs <backlog> <<'JSON' ... JSON",
+  "node .claude/skills/review-backlog/write-review.mjs <backlog> --append <<'JSON' ... JSON",
 ];
 const deny = (why) => `${why} Allowed commands: ${ALLOWED.join(' | ')}`;
 
@@ -25,14 +25,14 @@ export function check(command) {
   const tail = first.slice(m[0].length);
   if (m[1] === 'write-review') {
     const file = m[2];
-    if (!file || file.startsWith('-')) return deny('write-review.mjs needs the backlog file name as its first argument.');
-    if (tail !== " <<'JSON'" && tail !== " --append <<'JSON'") return deny('write-review.mjs takes only the file name, optionally --append, then the heredoc.');
+    if (!file || file.startsWith('-')) return deny('write-review.mjs needs the backlog name as its first argument.');
+    if (tail !== " <<'JSON'" && tail !== " --append <<'JSON'") return deny('write-review.mjs takes only the backlog name, optionally --append, then the heredoc.');
     // The heredoc ends at the first line that is exactly JSON; nothing may follow it.
     if (rest.indexOf('JSON') !== rest.length - 1) return deny('Nothing may follow the closing JSON line.');
     return null;
   }
   if (m[2]?.startsWith('-') || rest.length || (tail !== '' && !(m[2] && SECTION.test(tail)))) {
-    return deny('read-backlog.mjs takes a file name, then optionally a section such as checks or epic-2, and no other shell syntax.');
+    return deny('read-backlog.mjs takes a backlog name, then optionally a section such as checks or epic-2, and no other shell syntax.');
   }
   return null;
 }

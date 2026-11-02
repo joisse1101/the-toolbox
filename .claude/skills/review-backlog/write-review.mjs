@@ -1,11 +1,11 @@
 // The only way the review-backlog skill writes anything. Usage:
-//   node .claude/skills/review-backlog/write-review.mjs <backlog file name>            (findings as JSON on stdin)
-//   node .claude/skills/review-backlog/write-review.mjs <backlog file name> --append   (add a batch to the review)
-// Reads backlogs/<name>, validates the findings against it and writes reviews/<name>. There is no output
-// path argument: the target is fixed, and backlogs/ is only ever read. Without --append the run replaces the
+//   node .claude/skills/review-backlog/write-review.mjs <backlog name>            (findings as JSON on stdin)
+//   node .claude/skills/review-backlog/write-review.mjs <backlog name> --append   (add a batch to the review)
+// Reads <name>/user-stories.csv, validates the findings against it and writes <name>/user-stories/review.csv. There is no output
+// path argument: the target is fixed, and user-stories.csv is only ever read. Without --append the run replaces the
 // review; with it the batch is validated alone and its rows are added after the existing ones, so a long review
 // can be written as several small commands. Statuses the user already decided (applied/dismissed) are kept in
-// reviews/<name>.decided (not a .csv, so the file API never lists it) so later batches can restore them.
+// <name>/user-stories/review.csv.decided (not a .csv, so the file API never lists it) so later batches can restore them.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -18,8 +18,9 @@ import {
 import { describeParseError as describeJsonError, writeAtomic } from '../_shared/write-atomic.mjs';
 
 const require = createRequire(import.meta.url);
-const { validateName } = require('../../../planner/logic/storage/file-name.cjs'); // same name rules as the file API
+const { backlogDir, backlogFile, reviewDecidedFile } = require('../../../planner/logic/storage/backlog-paths.cjs'); // same name rules as the file API
 const { DATA_DIR } = require('../../../planner/logic/storage/paths.cjs');
+const { shown } = require('../_shared/paths.cjs');
 
 // Rows already decided by the user, keyed like mergeStatus does; later lists win.
 function mergeDecided(...lists) {
@@ -46,21 +47,24 @@ function readRows(filePath) {
 // { ok: false, errors }. Writes nothing.
 function prepare({ dataDir, name, input, append, requireTitles }) {
   let file;
+  let backlogPath;
+  let reviewPath;
+  let decidedPath;
   try {
-    file = validateName(name);
+    file = path.basename(backlogDir(dataDir, name));
+    backlogPath = backlogFile(dataDir, name, 'backlog');
+    reviewPath = backlogFile(dataDir, name, 'review');
+    decidedPath = reviewDecidedFile(dataDir, name);
   } catch (err) {
     return { ok: false, errors: [err.message] };
   }
-  const backlogDir = path.join(dataDir, 'backlogs');
-  const reviewDir = path.join(dataDir, 'reviews');
-  const backlogPath = path.join(backlogDir, file);
-  if (path.dirname(backlogPath) !== backlogDir) return { ok: false, errors: ['File name is not allowed'] };
+  const reviewShown = shown(dataDir, reviewPath);
 
   let backlogText;
   try {
     backlogText = fs.readFileSync(backlogPath, 'utf8');
   } catch {
-    return { ok: false, errors: [`backlogs/${file} was not found.`] };
+    return { ok: false, errors: [`${shown(dataDir, backlogPath)} was not found.`] };
   }
   const backlog = loadBacklog(backlogText);
 
@@ -70,17 +74,17 @@ function prepare({ dataDir, name, input, append, requireTitles }) {
   } catch (err) {
     return { ok: false, errors: [describeJsonError(err, input, 'findings')] };
   }
-  const old = readRows(path.join(reviewDir, file));
-  const earlier = readRows(path.join(reviewDir, `${file}.decided`));
+  const old = readRows(reviewPath);
+  const earlier = readRows(decidedPath);
   // A field edit on a locked story needs an unlock row in the resulting file: the rows this batch is added to count.
   const existingRows = append && old.ok ? old.rows : [];
   const errors = validateFindings(findings, backlog, { existingRows, requireTitles }).map((e) => e.replace(/^Finding (\d+)/, 'Finding $1 in this batch'));
 
-  if (append && !old.ok) errors.push(`reviews/${file} cannot be appended to: ${old.error}`);
+  if (append && !old.ok) errors.push(`${reviewShown} cannot be appended to: ${old.error}`);
   if (append && old.ok && Array.isArray(findings)) {
     const used = new Set(old.rows.map((r) => r.group).filter(Boolean));
     const reused = new Set(findings.map((f) => String(f?.group ?? '').trim()).filter((g) => used.has(g)));
-    for (const g of reused) errors.push(`Group "${g}" is already in reviews/${file}: keep all rows of a group in one batch.`);
+    for (const g of reused) errors.push(`Group "${g}" is already in ${reviewShown}: keep all rows of a group in one batch.`);
   }
   if (errors.length) return { ok: false, errors };
 
@@ -92,7 +96,7 @@ function prepare({ dataDir, name, input, append, requireTitles }) {
   );
   const batch = mergeStatus(fillCurrent(findings, backlog), decided);
   const rows = append && old.ok ? [...old.rows, ...batch] : batch;
-  return { ok: true, file, batch, rows, decided };
+  return { ok: true, file, batch, rows, decided, reviewPath, decidedPath, reviewShown };
 }
 
 // Same input and problems as writeReview, and for valid input the number of rows it would add; no file is created or
@@ -109,21 +113,23 @@ export function checkReview({ dataDir = DATA_DIR, name, input, append = false, r
 export function writeReview({ dataDir = DATA_DIR, name, input, append = false, requireTitles = false }) {
   const prepared = prepare({ dataDir, name, input, append, requireTitles });
   if (!prepared.ok) return prepared;
-  const { file, batch, rows, decided } = prepared;
-  const reviewDir = path.join(dataDir, 'reviews');
+  const { file, batch, rows, decided, reviewPath, decidedPath, reviewShown } = prepared;
+  const reviewDir = path.dirname(reviewPath);
+  const log = { dataDir, backlog: file, kind: 'review' };
 
   fs.mkdirSync(reviewDir, { recursive: true });
   if (!append && decided.length) {
-    const failed = writeAtomic(reviewDir, `${file}.decided`, serializeReview(decided), 'write_review');
+    // The sidecar is logged as a review write, marked as the decided rows.
+    const failed = writeAtomic(reviewDir, path.basename(decidedPath), serializeReview(decided), 'write_review', { ...log, extra: { sidecar: 'decided' } });
     if (failed) return { ok: false, errors: [failed] };
   }
-  const failed = writeAtomic(reviewDir, file, serializeReview(rows), 'write_review');
+  const failed = writeAtomic(reviewDir, path.basename(reviewPath), serializeReview(rows), 'write_review', log);
   if (failed) return { ok: false, errors: [failed] };
 
-  const stored = readRows(path.join(reviewDir, file));
+  const stored = readRows(reviewPath);
   if (!stored.ok || stored.rows.length !== rows.length) {
     const what = stored.ok ? `${stored.rows.length} rows on disk, ${rows.length} expected` : stored.error;
-    return { ok: false, errors: [`Wrote reviews/${file} but the file read back is wrong: ${what}. Do not report these suggestions as written.`] };
+    return { ok: false, errors: [`Wrote ${reviewShown} but the file read back is wrong: ${what}. Do not report these suggestions as written.`] };
   }
   return { ok: true, file, added: batch.length, count: stored.rows.length };
 }
@@ -140,7 +146,7 @@ const isMain = process.argv[1] && import.meta.url === pathToFileURL(path.resolve
 if (isMain) {
   const args = parseArgs(process.argv.slice(2));
   if (!args) {
-    console.error('Usage: node write-review.mjs <backlog file name> [--append]  (findings JSON on stdin)');
+    console.error('Usage: node write-review.mjs <backlog name> [--append]  (findings JSON on stdin)');
     process.exit(2);
   }
   const result = writeReview({ ...args, input: fs.readFileSync(0, 'utf8') });
@@ -149,5 +155,5 @@ if (isMain) {
     for (const e of result.errors) console.error(`- ${e}`);
     process.exit(1);
   }
-  console.log(`Wrote ${result.added} suggestion${result.added === 1 ? '' : 's'} to reviews/${result.file}; ${result.count} in the file now.`);
+  console.log(`Wrote ${result.added} suggestion${result.added === 1 ? '' : 's'} to the review of ${result.file}; ${result.count} in the file now.`);
 }

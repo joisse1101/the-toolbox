@@ -3,30 +3,25 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { sampleTree, pathOf, slicesPath, backlogPath, logLines, SAMPLE_SLICE } from '../helpers/backlog-tree.mjs';
 import { fileURLToPath } from 'node:url';
 import { readDiagrams, formatDiagrams, listSlices } from '../../../.claude/skills/plan-stories/read-diagrams.mjs';
 import { checkDiagram, writeDiagram } from '../../../.claude/skills/plan-stories/write-diagram.mjs';
 
-const SAMPLE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'sample-data');
-const FIXTURE_SLICE = path.join(SAMPLE, 'diagrams', 'sample', 'sign-in');
+const FIXTURE_SLICE = SAMPLE_SLICE;
 
 // A temp data folder holding the sample backlog and, with `withSlice`, the committed mock slice.
 function setup({ withSlice = false } = {}) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'diagram-scripts-test-'));
-  fs.mkdirSync(path.join(root, 'backlogs'));
-  fs.copyFileSync(path.join(SAMPLE, 'backlogs', 'sample.csv'), path.join(root, 'backlogs', 'sample.csv'));
-  if (withSlice) fs.cpSync(FIXTURE_SLICE, path.join(root, 'diagrams', 'sample', 'sign-in'), { recursive: true });
-  return root;
+  return sampleTree({ withSlice });
 }
-const sliceDir = (root, slice = 'sign-in') => path.join(root, 'diagrams', 'sample', slice);
+const sliceDir = (root, slice = 'sign-in') => path.join(slicesPath(root, 'sample'), slice);
 const snapshot = (dir) => Object.fromEntries(fs.readdirSync(dir).sort().map((f) => [f, fs.readFileSync(path.join(dir, f), 'utf8')]));
 const fixtureFiles = () => fs.readdirSync(FIXTURE_SLICE).filter((f) => f !== 'source.json').map((name) => ({ name, content: fs.readFileSync(path.join(FIXTURE_SLICE, name), 'utf8') }));
 const SCOPE = { type: 'feature', epic: 'Identity and access', feature: 'Sign in' };
 const PAIRS = [{ id: 'IAM-0001', title: 'Sign in with email' }, { id: 'IAM-0002', title: 'Reset a password' }];
 const input = (root, over = {}) => ({ dataDir: root, name: 'sample', slice: 'sign-in', scope: SCOPE, stories: PAIRS, files: fixtureFiles(), ...over });
-const logLines = (root) => (fs.existsSync(path.join(root, 'logs', 'writes.jsonl')) ? fs.readFileSync(path.join(root, 'logs', 'writes.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l)) : []);
 
-const csvPath = (root) => path.join(root, 'backlogs', 'sample.csv');
+const csvPath = (root) => pathOf(root, 'sample', 'backlog');
 const editCsv = (root, edit) => fs.writeFileSync(csvPath(root), edit(fs.readFileSync(csvPath(root), 'utf8')));
 
 // ---- read_diagrams ----
@@ -39,7 +34,7 @@ test('read: the committed mock is up to date and its files are returned', () => 
   assert.match(formatDiagrams(list), /sign-in \| Feature: Identity and access > Sign in \| 2 stories \| up to date/);
   const one = readDiagrams({ dataDir: root, name: 'sample', slice: 'sign-in' });
   assert.match(formatDiagrams(one), /--- UC-sign-in\.md ---[\s\S]*## Class diagram/);
-  assert.deepEqual(listSlices(path.join(root, 'diagrams', 'sample')), ['sign-in']);
+  assert.deepEqual(listSlices(slicesPath(root, 'sample')), ['sign-in']);
 });
 
 test('read: a renumber is healed in source.json and the specification list, and no diagram changes', () => {
@@ -78,7 +73,7 @@ test('read: a reworded story is changed and nothing is rewritten', () => {
 test('read: a slice that does not exist, a bad backlog and a missing source.json are reported', () => {
   const root = setup({ withSlice: true });
   assert.match(readDiagrams({ dataDir: root, name: 'sample', slice: 'nope' }).errors[0], /no slice "nope"/);
-  assert.match(readDiagrams({ dataDir: root, name: 'missing' }).errors[0], /no backlog missing\.csv/);
+  assert.match(readDiagrams({ dataDir: root, name: 'missing' }).errors[0], /no backlog missing: missing\/user-stories\.csv was not found/);
   fs.rmSync(path.join(sliceDir(root), 'source.json'));
   assert.match(formatDiagrams(readDiagrams({ dataDir: root, name: 'sample' })), /source\.json is missing/);
 });
@@ -90,7 +85,7 @@ test('check passes on the mock and writes nothing', async () => {
   const r = await checkDiagram(input(root));
   assert.equal(r.ok, true, r.errors?.join('\n'));
   assert.match(r.text, /nothing was written/);
-  assert.equal(fs.existsSync(path.join(root, 'diagrams')), false);
+  assert.equal(fs.existsSync(slicesPath(root, 'sample')), false);
 });
 
 test('write: the slice is written, read back, logged without contents, and the hashes are the writer\'s', async () => {
@@ -105,7 +100,7 @@ test('write: the slice is written, read back, logged without contents, and the h
   assert.deepEqual(source.stories.map((s) => [s.id, s.hash]), [['IAM-0001', 'baf514d489ee'], ['IAM-0002', 'ddf31b439280']]);
   assert.match(formatDiagrams(readDiagrams({ dataDir: root, name: 'sample' })), /up to date/);
   const [line] = logLines(root);
-  assert.deepEqual([line.writer, line.store, line.backlog, line.slice], ['write_diagram', 'diagrams', 'sample', 'sign-in']);
+  assert.deepEqual([line.writer, line.backlog, line.kind, line.slice], ['write_diagram', 'sample', 'slices', 'sign-in']);
   assert.ok(line.bytes > 0 && /^[0-9a-f]{12}$/.test(line.hash));
   assert.ok(!fs.readFileSync(path.join(root, 'logs', 'writes.jsonl'), 'utf8').includes('Sign in with email'), 'no diagram text in the log');
 });
@@ -129,7 +124,7 @@ test('write: a Title that does not match is refused and says what the ID holds',
   const r = await writeDiagram(input(root, { stories: [{ id: 'IAM-0001', title: 'Reset a password' }, PAIRS[1]] }));
   assert.equal(r.ok, false);
   assert.match(r.text, /IAM-0001 is now "Sign in with email" \(Identity and access > Sign in\), not "Reset a password"/);
-  assert.equal(fs.existsSync(path.join(root, 'diagrams')), false);
+  assert.equal(fs.existsSync(slicesPath(root, 'sample')), false);
   assert.match((await writeDiagram(input(root, { stories: [{ id: 'IAM-0001' }, PAIRS[1]] }))).text, /needs the story's current Title/);
 });
 
@@ -137,7 +132,7 @@ test('write: a story of the scope that was not listed, and a story outside the s
   const root = setup();
   assert.match((await writeDiagram(input(root, { stories: [PAIRS[0]] }))).text, /"Reset a password" is in the scope but was not listed/);
   assert.match((await writeDiagram(input(root, { stories: [...PAIRS, { id: 'R-0001', title: 'Export a list as CSV' }] }))).text, /"Export a list as CSV" is not in the scope/);
-  assert.match((await writeDiagram(input(root, { scope: { type: 'feature', epic: 'Identity and access', feature: 'Nowhere' } }))).text, /No story of sample\.csv is in the scope/);
+  assert.match((await writeDiagram(input(root, { scope: { type: 'feature', epic: 'Identity and access', feature: 'Nowhere' } }))).text, /No story of sample is in the scope/);
 });
 
 test('write: a slice name that would leave the backlog\'s diagrams folder writes nothing', async () => {
@@ -147,8 +142,8 @@ test('write: a slice name that would leave the backlog\'s diagrams folder writes
     assert.equal(r.ok, false, slice);
     assert.match(r.text, /must be a lowercase slug/);
   }
-  assert.equal(fs.existsSync(path.join(root, 'diagrams')), false);
-  assert.equal(fs.existsSync(path.join(root, 'escape')), false);
+  assert.equal(fs.existsSync(slicesPath(root, 'sample')), false);
+  assert.equal(fs.existsSync(path.join(root, 'sample', 'escape')), false);
 });
 
 test('write: one failing diagram writes nothing and every problem is listed', async () => {
@@ -159,7 +154,7 @@ test('write: one failing diagram writes nothing and every problem is listed', as
   assert.match(r.text, /2 problems/);
   assert.match(r.text, /GHOST/);
   assert.match(r.text, /## Class diagram: AuthService has no stereotype/);
-  assert.equal(fs.existsSync(path.join(root, 'diagrams')), false);
+  assert.equal(fs.existsSync(slicesPath(root, 'sample')), false);
 });
 
 test('write: a slice under the same name for another scope is refused and names the existing scope', async () => {
@@ -200,7 +195,7 @@ test('write: a document with a diagram that does not parse writes nothing and li
   const r = await writeDiagram(input(root, { files }));
   assert.equal(r.ok, false);
   assert.match(r.text, /UC-sign-in\.md:\d+: ### Sequence: reset: does not parse as Mermaid: Parse error on line \d+/);
-  assert.equal(fs.existsSync(path.join(root, 'diagrams')), false);
+  assert.equal(fs.existsSync(slicesPath(root, 'sample')), false);
 });
 
 test('write: a second document is refused, naming the rule', async () => {

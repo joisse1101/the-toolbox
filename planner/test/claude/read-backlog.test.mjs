@@ -3,14 +3,14 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { tempData, putFile, pathOf } from '../helpers/backlog-tree.mjs';
 import { readBacklog, readSection, listBacklogs, scopeOf, scopeLine } from '../../../.claude/skills/review-backlog/read-backlog.mjs';
 
 const HEAD = 'ID,Epic,Feature,Title,Locked\r\n';
 
 function temp(csv) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'read-backlog-test-'));
-  fs.mkdirSync(path.join(root, 'backlogs'));
-  fs.writeFileSync(path.join(root, 'backlogs', 'data.csv'), csv);
+  const root = tempData('read-backlog-test-');
+  putFile(root, 'data', 'backlog', csv);
   const guidelines = path.join(root, 'guidelines');
   fs.mkdirSync(guidelines);
   fs.writeFileSync(path.join(guidelines, 'product-backlog.md'), '# Guidelines');
@@ -45,10 +45,8 @@ const story = (id, epic, title, extra = '') => `${id},${epic},F,${title},"As a u
 // A data folder with a backlog of two Epics, a lexicon and a proposals file with one benched story.
 function full() {
   const dirs = temp(FULL + story('A-0001', 'A', 'One') + story('A-0002', 'A', 'Two', 'A-0099') + story('B-0001', 'B', 'Three'));
-  fs.mkdirSync(path.join(dirs.dataDir, 'lexicons'));
-  fs.writeFileSync(path.join(dirs.dataDir, 'lexicons', 'data.csv'), 'Term,Part of,Definition,Avoid,Notes\r\nDataset,,A set of rows,table,\r\n');
-  fs.mkdirSync(path.join(dirs.dataDir, 'proposals'));
-  fs.writeFileSync(path.join(dirs.dataDir, 'proposals', 'data.csv'), `${FULL.trim()},Benched\r\nNEW-1,A,F,Idea,"As a user, I want x, so that y",3,,,"AC1: Given a, when b, then c",,,,Yes\r\nNEW-2,A,F,Other,"As a user, I want x, so that y",3,,,"AC1: Given a, when b, then c",,,,\r\n`);
+  putFile(dirs.dataDir, 'data', 'lexicon', 'Term,Part of,Definition,Avoid,Notes\r\nDataset,,A set of rows,table,\r\n');
+  putFile(dirs.dataDir, 'data', 'proposals', `${FULL.trim()},Benched\r\nNEW-1,A,F,Idea,"As a user, I want x, so that y",3,,,"AC1: Given a, when b, then c",,,,Yes\r\nNEW-2,A,F,Other,"As a user, I want x, so that y",3,,,"AC1: Given a, when b, then c",,,,\r\n`);
   fs.writeFileSync(path.join(dirs.guidelinesDir, 'sprint-points-guideline.md'), 'SIZING');
   return dirs;
 }
@@ -104,14 +102,25 @@ test('an unknown section is an error listing the valid ones, and prints no file 
 });
 
 test('a section with a path separator or .. is rejected and reads nothing', () => {
-  for (const bad of ['../backlogs/data.csv', 'epic-1/..', '..', 'epic-3']) {
+  for (const bad of ['../data/user-stories.csv', 'epic-1/..', '..', 'epic-3']) {
     const r = section(full(), bad);
     assert.equal(r.ok, false, bad);
   }
 });
 
-test('listBacklogs lists the backlog file names', () => {
-  assert.deepEqual(listBacklogs({ dataDir: full().dataDir }), ['data.csv']);
+test('listBacklogs lists the backlog names, the folders that hold user-stories.csv', () => {
+  assert.deepEqual(listBacklogs({ dataDir: full().dataDir }), ['data']);
+});
+
+test('a name with or without .csv reads the same backlog, and a missing backlog names the file it looked for', () => {
+  const dirs = temp(`${HEAD}E-0001,E,F,One,\r\n`);
+  assert.equal(readBacklog({ ...dirs, name: 'data' }).csv, readBacklog({ ...dirs, name: 'data.csv' }).csv);
+  assert.equal(readBacklog({ ...dirs, name: 'data' }).file, 'data');
+  assert.equal(path.dirname(pathOf(dirs.dataDir, 'data', 'backlog')), path.join(dirs.dataDir, 'data'));
+  const missing = readBacklog({ ...dirs, name: 'nope' });
+  assert.equal(missing.ok, false);
+  assert.match(missing.errors[0], /nope\/user-stories\.csv was not found/);
+  assert.equal(readBacklog({ ...dirs, name: '../x' }).ok, false);
 });
 
 test('a CSV that cannot be read gives no scope (the line is left out)', () => {
