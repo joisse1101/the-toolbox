@@ -10,7 +10,7 @@ function FolderList({ title, names }) {
 // The project name, the data folder and the config file. Always shown, even with no backlog, because an empty new
 // folder is exactly when it is needed. `settingsState` is the useSettings hook's result.
 export default function SettingsTab({ hidden, settingsState }) {
-  const { settings, error, working, offer, initResult, copyResult, switched, actions } = settingsState;
+  const { settings, error, working, offer, initResult, copyResult, migrateResult, switched, actions } = settingsState;
   const [name, setName] = useState('');
 
   useEffect(() => {
@@ -69,6 +69,27 @@ export default function SettingsTab({ hidden, settingsState }) {
             </div>
           )}
           {copyResult && <p className="muted">Copied {copyResult.copied.length} file(s), skipped {copyResult.skipped.length}.</p>}
+
+          {settings.olderLayout?.length > 0 && (
+            <div id="migrateNotice" className="card">
+              <p>
+                This data folder still holds the older layout ({settings.olderLayout.join(', ')}). The portal reads backlog folders only.
+                Migrating copies it into one folder per backlog; the older files are left as they are.
+              </p>
+              <button type="button" id="migrateBtn" disabled={working || !!offer} onClick={actions.runMigration}>Migrate older layout</button>
+            </div>
+          )}
+          {migrateResult && (
+            <div id="migrateResult">
+              <p className="muted">Migrated {migrateResult.copied.length} file(s), skipped {migrateResult.skipped.length}, failed {migrateResult.failed.length}.</p>
+              {migrateResult.failed.length > 0 && (
+                <ul className="warning">{migrateResult.failed.map((f) => <li key={f.file}>{f.file}: {f.message}</li>)}</ul>
+              )}
+              {migrateResult.skipped.length > 0 && (
+                <ul className="muted">{migrateResult.skipped.map((s) => <li key={s.file}>{s.file}: {s.reason}</li>)}</ul>
+              )}
+            </div>
+          )}
         </>
       )}
     </section>

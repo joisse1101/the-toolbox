@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 // Backlog dropdown, rename, New, Backup, Open folder and Refresh, plus the message banners.
-export default function FileBar({ files, current, message, backupNote, backingUp, focusNameToken, onSelect, onRename, onNew, onBackup, onOpenFolder, onRefresh }) {
+export default function FileBar({ files, current, message, olderLayout = [], backupNote, backingUp, focusNameToken, onSelect, onRename, onNew, onBackup, onOpenFolder, onRefresh }) {
   const [draft, setDraft] = useState(current ?? '');
   const nameRef = useRef(null);
   const cancelled = useRef(false);
@@ -59,6 +59,11 @@ export default function FileBar({ files, current, message, backupNote, backingUp
           </svg>
         </button>
       </div>
+      {!files.length && olderLayout.length > 0 && (
+        <p id="olderLayoutNotice" className="warning" role="status">
+          No backlog folder here, but this data folder holds the older layout. Open the Settings tab and choose "Migrate older layout" to copy it.
+        </p>
+      )}
       <p id="message" className="warning" hidden={!message}>{message || ''}</p>
       {backupNote && <p id="backupNote" className={backupNote.kind === 'error' ? 'warning' : 'muted'} role="status">{backupNote.text}</p>}
     </section>

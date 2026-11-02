@@ -284,7 +284,7 @@ export default function App() {
         </header>
 
         <FileBar
-          files={files} current={current} message={message} backupNote={backupNote} backingUp={backingUp} focusNameToken={focusNameToken}
+          files={files} current={current} message={message} olderLayout={settingsState.settings?.olderLayout} backupNote={backupNote} backingUp={backingUp} focusNameToken={focusNameToken}
           onSelect={actions.selectFile} onRename={actions.renameFile} onNew={newBacklog} onBackup={backUp} onOpenFolder={actions.openFolder} onRefresh={refreshAll}
         />
 

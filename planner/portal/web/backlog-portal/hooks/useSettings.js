@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { getProject, saveProject, checkProjectFolder, pickProjectFolder, initProjectFolder, copyProjectData } from '../../shared/files.js';
+import { getProject, saveProject, checkProjectFolder, pickProjectFolder, initProjectFolder, copyProjectData, migrateOlderLayout } from '../../shared/files.js';
 
 // Survives the page reload that follows a switch, so the Settings tab can still show the note about skill sessions.
 const SWITCHED_KEY = 'planner.dataDirSwitched';
@@ -15,6 +15,7 @@ export function useSettings(settleAll) {
   const [offer, setOffer] = useState(null); // { dir, status } while the user chooses copy or init; { dir, ready: true } when only the switch is left
   const [initResult, setInitResult] = useState(null);
   const [copyResult, setCopyResult] = useState(null);
+  const [migrateResult, setMigrateResult] = useState(null); // { copied, skipped, failed } after the user runs the migration
   const [switched, setSwitched] = useState(() => sessionStorage.getItem(SWITCHED_KEY) === '1');
 
   useEffect(() => {
@@ -58,7 +59,8 @@ export function useSettings(settleAll) {
     setCopyResult(null);
     const check = await checkProjectFolder(dir);
     if (check.status === 'refused') throw new Error(check.reason);
-    if (check.status === 'has-planner-files') return switchTo(check.dir);
+    // A folder holding only the older layout is switched to as well; the Settings tab then offers the migration.
+    if (check.status === 'has-planner-files' || check.status === 'older-layout') return switchTo(check.dir);
     setOffer({ dir: check.dir, status: check.status });
     return undefined;
   };
@@ -88,5 +90,12 @@ export function useSettings(settleAll) {
       setInitResult(await initProjectFolder(settings.dataDir));
     });
 
-  return { settings, error, working, offer, initResult, copyResult, switched, actions: { saveName, pickFolder, chooseForNewFolder, retrySwitch, runInit, cancelOffer: () => setOffer(null) } };
+  // Only on the user's click. Reloads the settings afterwards so the older-layout notice follows what is left.
+  const runMigration = () =>
+    run(async () => {
+      setMigrateResult(await migrateOlderLayout());
+      setSettings(await getProject());
+    });
+
+  return { settings, error, working, offer, initResult, copyResult, migrateResult, switched, actions: { saveName, pickFolder, chooseForNewFolder, retrySwitch, runInit, runMigration, cancelOffer: () => setOffer(null) } };
 }

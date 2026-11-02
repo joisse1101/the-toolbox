@@ -67,7 +67,7 @@ export function saveProject(changes) {
   return call('PUT', '/api/project', { json: changes });
 }
 
-// Resolves to { status: 'refused' | 'has-planner-files' | 'empty' | 'missing', reason?, dir? }. Changes nothing.
+// Resolves to { status: 'refused' | 'has-planner-files' | 'older-layout' | 'empty' | 'missing', reason?, dir? }. Changes nothing.
 export function checkProjectFolder(dir) {
   return call('POST', '/api/project/check', { json: { dir } });
 }
@@ -86,6 +86,12 @@ export function initProjectFolder(dir) {
 // Copies the current data folder into `dir`. Resolves to { copied, skipped }.
 export function copyProjectData(dir) {
   return call('POST', '/api/project/copy', { json: { dir } });
+}
+
+// Copies the older layout of the served data folder into backlog folders; runs only when called.
+// Resolves to { copied, skipped: [{file, reason}], failed: [{file, message}] }.
+export function migrateOlderLayout() {
+  return call('POST', '/api/project/migrate');
 }
 
 export function createFileStore(store) {
