@@ -10,7 +10,7 @@ import { tempConfig } from '../helpers/temp-config.mjs';
 
 // Mock data only: temp folders holding a copy of the sample backlog. The config is a temp copy, never the real one.
 const here = path.dirname(fileURLToPath(import.meta.url));
-const SAMPLE = path.join(here, '..', 'sample-data', 'backlogs', 'sample.csv');
+const SAMPLE = path.join(here, '..', 'sample-data', 'sample', 'user-stories.csv');
 const REPO = path.resolve(here, '..', '..', '..');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'server-project-test-'));
 const dirA = path.join(tmp, 'a');

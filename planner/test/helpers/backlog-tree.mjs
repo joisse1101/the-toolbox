@@ -34,18 +34,20 @@ export function logLines(dataDir) {
   return fs.existsSync(file) ? fs.readFileSync(file, 'utf8').trim().split('\n').map((l) => JSON.parse(l)) : [];
 }
 
-// The committed sample data is still in the older layout (the sample moves in task 7.1); this is the one place that reads it.
-// It copies the sample into a new-layout temp data folder and returns that folder, so no test reads the older layout itself.
-const SAMPLE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'sample-data');
+// The committed sample data (`test/sample-data/`) is in the one-folder-per-backlog layout. This is the one place that reads it:
+// it copies the parts a test asks for into a temp data folder and returns that folder, so no test writes into the sample.
+export const SAMPLE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'sample-data');
+const SAMPLE_BACKLOG = path.join(SAMPLE, 'sample');
+export const SAMPLE_BACKLOG_CSV = path.join(SAMPLE_BACKLOG, bp.BACKLOG_FILE);
 export const SAMPLE_REPO_DIR = path.join(SAMPLE, 'repos', 'sample');
-export const SAMPLE_SLICE = path.join(SAMPLE, 'diagrams', 'sample', 'sign-in');
+export const SAMPLE_SLICE = path.join(SAMPLE_BACKLOG, 'slices', 'sign-in');
 export function sampleTree({ withSlice = false, withMap = false, withRepo = false } = {}) {
   const root = tempData('sample-tree-');
-  putFile(root, 'sample', 'backlog', fs.readFileSync(path.join(SAMPLE, 'backlogs', 'sample.csv'), 'utf8'));
+  putFile(root, 'sample', 'backlog', fs.readFileSync(SAMPLE_BACKLOG_CSV, 'utf8'));
   const dir = bp.backlogDir(root, 'sample');
   if (withSlice) fs.cpSync(SAMPLE_SLICE, path.join(bp.slicesDir(root, 'sample'), 'sign-in'), { recursive: true });
   if (withMap) {
-    for (const f of ['context-map.json', 'context-map.md']) fs.copyFileSync(path.join(SAMPLE, 'diagrams', 'sample', f), path.join(dir, f));
+    for (const f of ['context-map.json', 'context-map.md']) fs.copyFileSync(path.join(SAMPLE_BACKLOG, f), path.join(dir, f));
   }
   if (withRepo) {
     // The sample repo sits beside the backlog folders; repo.json names it relative to itself.
