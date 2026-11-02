@@ -103,7 +103,7 @@ function initFolders(dir) {
 }
 
 // Copies every file of `source` to the same relative path in `target`. An existing file is skipped, a link is
-// skipped, nothing in the source changes. Returns { copied, skipped: [{file, reason}] } plus `stopped: {file, message}`
+// skipped, a `backups/` folder at any depth is left out (not even listed as skipped), nothing in the source changes. Returns { copied, skipped: [{file, reason}] } plus `stopped: {file, message}`
 // when a file could not be read or written (the files already copied stay; run again to continue), or { refused }.
 // `copyFile` is only for tests.
 function copyData(source, target, { copyFile = fs.copyFileSync } = {}) {
@@ -123,6 +123,7 @@ function copyData(source, target, { copyFile = fs.copyFileSync } = {}) {
       const shown = r.split(path.sep).join('/');
       const st = fs.lstatSync(path.join(src, r));
       if (st.isSymbolicLink()) skipped.push({ file: shown, reason: 'link' });
+      else if (st.isDirectory() && name.toLowerCase() === 'backups') continue; // backups are no longer used: left out, not reported
       else if (st.isDirectory()) { const stop = walk(r); if (stop) return stop; }
       else if (st.isFile()) {
         const to = path.join(dst, r);

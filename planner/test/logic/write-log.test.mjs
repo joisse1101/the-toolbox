@@ -11,12 +11,14 @@ const { logWrite, LOG_FILE } = require('../../logic/storage/write-log.cjs');
 const temp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'write-log-test-'));
 const lines = (root) => fs.readFileSync(path.join(root, 'logs', LOG_FILE), 'utf8').trimEnd().split('\n').map((l) => JSON.parse(l));
 
-test('a write appends one line with the writer, store, file, size and a short hash, and no content', () => {
+test('a write appends one line with the writer, backlog, kind, size and a short hash, and no content', () => {
   const root = temp();
-  logWrite({ writer: 'portal', store: 'proposals', file: 'data.csv', text: 'héllo secret', dataDir: root });
-  logWrite({ writer: 'write_proposals', store: 'proposals', file: 'data.csv', text: 'other', dataDir: root });
+  logWrite({ writer: 'portal', backlog: 'data', kind: 'proposals', text: 'héllo secret', dataDir: root });
+  logWrite({ writer: 'write_proposals', backlog: 'data', kind: 'proposals', text: 'other', dataDir: root });
   const [first, second] = lines(root);
-  assert.deepEqual([first.writer, first.store, first.file, first.bytes], ['portal', 'proposals', 'data.csv', 13]);
+  assert.deepEqual([first.writer, first.backlog, first.kind, first.bytes], ['portal', 'data', 'proposals', 13]);
+  assert.equal(first.store, undefined);
+  assert.equal(first.file, undefined);
   assert.match(first.hash, /^[0-9a-f]{12}$/);
   assert.notEqual(first.hash, second.hash);
   assert.ok(!Number.isNaN(Date.parse(first.time)));
@@ -26,15 +28,15 @@ test('a write appends one line with the writer, store, file, size and a short ha
 
 test('extra fields are added to the line and never replace the standard ones', () => {
   const root = temp();
-  logWrite({ writer: 'write_diagram', store: 'diagrams', file: 'sample/sign-in', text: 'x', extra: { backlog: 'sample', slice: 'sign-in', writer: 'spoof', bytes: 0 }, dataDir: root });
+  logWrite({ writer: 'write_diagram', backlog: 'sample', kind: 'slices', text: 'x', extra: { slice: 'sign-in', writer: 'spoof', bytes: 0 }, dataDir: root });
   const [line] = lines(root);
   assert.deepEqual([line.backlog, line.slice, line.writer, line.bytes], ['sample', 'sign-in', 'write_diagram', 1]);
 });
 
 test('the same content has the same hash', () => {
   const root = temp();
-  logWrite({ writer: 'a', store: 's', file: 'f.csv', text: 'same', dataDir: root });
-  logWrite({ writer: 'b', store: 's', file: 'f.csv', text: 'same', dataDir: root });
+  logWrite({ writer: 'a', backlog: 's', kind: 'backlog', text: 'same', dataDir: root });
+  logWrite({ writer: 'b', backlog: 's', kind: 'backlog', text: 'same', dataDir: root });
   const [one, two] = lines(root);
   assert.equal(one.hash, two.hash);
 });
@@ -44,7 +46,7 @@ test('a log folder that cannot be written is reported on stderr and does not thr
   fs.writeFileSync(path.join(root, 'logs'), 'a file where the folder should be');
   const messages = [];
   t.mock.method(console, 'error', (m) => messages.push(m));
-  assert.doesNotThrow(() => logWrite({ writer: 'portal', store: 'proposals', file: 'data.csv', text: 'x', dataDir: root }));
+  assert.doesNotThrow(() => logWrite({ writer: 'portal', backlog: 'data', kind: 'proposals', text: 'x', dataDir: root }));
   assert.equal(messages.length, 1);
-  assert.match(messages[0], /could not log the write of proposals\/data\.csv/);
+  assert.match(messages[0], /could not log the write of data\/proposals/);
 });

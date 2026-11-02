@@ -15,10 +15,14 @@ const REPO = path.resolve(here, '..', '..', '..');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'server-project-test-'));
 const dirA = path.join(tmp, 'a');
 const dirB = path.join(tmp, 'b');
-for (const [dir, file] of [[dirA, 'one.csv'], [dirB, 'two.csv']]) {
-  fs.mkdirSync(path.join(dir, 'backlogs'), { recursive: true });
-  fs.copyFileSync(SAMPLE, path.join(dir, 'backlogs', file));
+for (const [dir, name] of [[dirA, 'one'], [dirB, 'two']]) {
+  fs.mkdirSync(path.join(dir, name), { recursive: true });
+  fs.copyFileSync(SAMPLE, path.join(dir, name, 'user-stories.csv'));
+  fs.mkdirSync(path.join(dir, 'logs')); // the folder check (not yet changed to look for backlog folders) recognises a data folder by it
 }
+// A leftover backups folder from an earlier version: the copy leaves it out.
+fs.mkdirSync(path.join(dirA, 'backups', 'one.csv'), { recursive: true });
+fs.writeFileSync(path.join(dirA, 'backups', 'one.csv', 'old.csv'), 'x');
 const configFile = tempConfig(dirA, 'Alpha');
 process.env.PLANNER_CONFIG = configFile;
 const { server, setFolderDialog } = createRequire(import.meta.url)('../../portal/server/server.cjs');
@@ -36,7 +40,7 @@ test.before(async () => {
 test.after(() => server.close());
 
 const call = (method, url, body) => fetch(`${origin}${url}`, { method, headers: HEADERS, body: body === undefined ? undefined : JSON.stringify(body) });
-const listed = async () => (await (await fetch(`${origin}/api/backlogs/files`)).json()).files;
+const listed = async () => (await (await fetch(`${origin}/api/backlog/files`)).json()).files;
 const save = (body) => call('PUT', '/api/project', body);
 const tree = (dir) => fs.readdirSync(dir, { recursive: true }).sort();
 const switchBack = async () => assert.equal((await save({ dataDir: dirA })).status, 200);
@@ -47,24 +51,22 @@ test('read settings: the reply holds the project name, the data directory and th
 });
 
 test('switch while idle: the next list, read and write are answered from the new directory, and the log follows', async () => {
-  assert.deepEqual(await listed(), ['one.csv']);
+  assert.deepEqual(await listed(), ['one']);
   const res = await save({ dataDir: dirB });
   assert.equal(res.status, 200);
   assert.equal((await res.json()).switched, true);
   assert.match(fs.readFileSync(configFile, 'utf8'), /dataDir/);
-  assert.deepEqual(await listed(), ['two.csv']);
+  assert.deepEqual(await listed(), ['two']);
 
-  const created = await call('POST', '/api/proposals/files', { name: 'p.csv', content: 'a\r\n' });
+  const created = await call('POST', '/api/proposals/files', { name: 'two', content: 'a\r\n' });
   assert.equal(created.status, 201);
-  assert.equal(fs.existsSync(path.join(dirB, 'proposals', 'p.csv')), true);
-  assert.equal(fs.existsSync(path.join(dirA, 'proposals', 'p.csv')), false);
+  assert.equal(fs.existsSync(path.join(dirB, 'two', 'user-stories', 'proposals.csv')), true);
+  assert.equal(fs.existsSync(path.join(dirA, 'two', 'user-stories', 'proposals.csv')), false);
   const log = fs.readFileSync(path.join(dirB, 'logs', 'writes.jsonl'), 'utf8').trimEnd().split('\n').map((l) => JSON.parse(l));
-  assert.deepEqual(log.map((l) => [l.store, l.file]), [['proposals', 'p.csv']]);
+  assert.deepEqual(log.map((l) => [l.backlog, l.kind]), [['two', 'proposals']]);
   assert.equal(fs.existsSync(path.join(dirA, 'logs', 'writes.jsonl')), false, 'nothing is logged in the old folder');
 
-  const backup = await call('POST', '/api/backup/two.csv');
-  assert.equal(backup.status, 201);
-  assert.equal(fs.existsSync(path.join(dirB, 'backups', 'two.csv')), true, 'backups follow the switch');
+  assert.equal((await call('POST', '/api/backup/two')).status, 404, 'the backup routes are gone');
   await switchBack();
 });
 
@@ -72,7 +74,7 @@ test('switch during a write: busy, config and served folder unchanged, nothing w
   const before = fs.readFileSync(configFile, 'utf8');
   const [treeA, treeB] = [tree(dirA), tree(dirB)];
   // A save whose body has not finished arriving is a write in progress.
-  const pending = http.request(`${origin}/api/backlogs/files/one.csv`, { method: 'PUT', headers: HEADERS });
+  const pending = http.request(`${origin}/api/backlog/files/one`, { method: 'PUT', headers: HEADERS });
   pending.on('error', () => {});
   pending.write('a,b\r\n');
   await new Promise((resolve) => setTimeout(resolve, 100));
@@ -81,7 +83,7 @@ test('switch during a write: busy, config and served folder unchanged, nothing w
   assert.equal(res.status, 409);
   assert.equal((await res.json()).code, 'busy');
   assert.equal(fs.readFileSync(configFile, 'utf8'), before);
-  assert.deepEqual(await listed(), ['one.csv']);
+  assert.deepEqual(await listed(), ['one']);
   assert.deepEqual(tree(dirA), treeA, 'nothing is written to the served folder');
   assert.deepEqual(tree(dirB), treeB, 'nothing is written to the refused folder');
 
@@ -125,7 +127,7 @@ test('refused directories: the config is unchanged and no folder is created', as
   assert.match((await direct.json()).error, /init or the copy/);
   assert.equal(fs.existsSync(missing), false);
   assert.equal(fs.readFileSync(configFile, 'utf8'), before);
-  assert.deepEqual(await listed(), ['one.csv']);
+  assert.deepEqual(await listed(), ['one']);
 });
 
 test('check, init and copy, then save and switch', async () => {
@@ -136,11 +138,13 @@ test('check, init and copy, then save and switch', async () => {
   const copy = await call('POST', '/api/project/copy', { dir: target });
   assert.equal(copy.status, 200);
   const copied = await copy.json();
-  assert.ok(copied.copied.includes('backlogs/one.csv'));
-  assert.equal(copied.skipped.length, 0);
+  assert.ok(copied.copied.includes('one/user-stories.csv'));
+  assert.equal(copied.skipped.length, 0, 'the backups folder is left out without being listed');
+  assert.equal(copied.copied.some((f) => f.startsWith('backups')), false);
+  assert.equal(fs.existsSync(path.join(target, 'backups')), false);
   const again = await (await call('POST', '/api/project/copy', { dir: target })).json();
   assert.deepEqual(again.copied, []);
-  assert.ok(again.skipped.some((f) => f.file === 'backlogs/one.csv' && f.reason === 'exists'));
+  assert.ok(again.skipped.some((f) => f.file === 'one/user-stories.csv' && f.reason === 'exists'));
   assert.equal((await call('POST', '/api/project/copy', { dir: dirA })).status, 400, 'the target is the source');
 
   const empty = path.join(tmp, 'empty-data');
@@ -151,7 +155,7 @@ test('check, init and copy, then save and switch', async () => {
   assert.equal(init.existing.length, 0);
 
   assert.equal((await save({ dataDir: target, projectName: 'Beta' })).status, 200);
-  assert.deepEqual(await listed(), ['one.csv']);
+  assert.deepEqual(await listed(), ['one']);
   assert.equal((await (await fetch(`${origin}/api/project`)).json()).projectName, 'Beta');
   assert.equal((await save({ projectName: 'Alpha' })).status, 200);
   await switchBack();
@@ -186,7 +190,7 @@ test('folder picker: a chosen folder is returned, started in the served folder, 
   assert.deepEqual(await res.json(), { dir: dirB });
   assert.deepEqual(starts, [dirA]);
   assert.equal(fs.readFileSync(configFile, 'utf8'), before);
-  assert.deepEqual(await listed(), ['one.csv']);
+  assert.deepEqual(await listed(), ['one']);
 });
 
 test('folder picker: a cancelled dialog answers cancelled and changes nothing', async () => {

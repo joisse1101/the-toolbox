@@ -71,6 +71,20 @@ test('copy into an empty target copies everything and leaves the source unchange
   assert.equal(fs.readFileSync(path.join(s, 'backlogs', 'iam.csv'), 'utf8'), 'backlog');
 });
 
+test('copy leaves out any backups folder, at any depth, without listing it as skipped', () => {
+  const s = source();
+  put(s, 'backups/iam.csv/2026-01-01_000000/backlogs/iam.csv', 'old');
+  put(s, 'iam/Backups/x.csv', 'old');
+  put(s, 'iam/user-stories.csv', 'kept');
+  const t = path.join(tmp(), 'new');
+  const r = copyData(s, t);
+  assert.deepEqual(r.copied.sort(), ['backlogs/iam.csv', 'diagrams/iam/slice/UC-slice.md', 'iam/user-stories.csv', 'reviews/iam.csv']);
+  assert.deepEqual(r.skipped, []);
+  assert.equal(fs.existsSync(path.join(t, 'backups')), false);
+  assert.equal(fs.existsSync(path.join(t, 'iam', 'Backups')), false);
+  assert.equal(fs.readFileSync(path.join(s, 'backups', 'iam.csv', '2026-01-01_000000', 'backlogs', 'iam.csv'), 'utf8'), 'old', 'the source is unchanged');
+});
+
 test('copy keeps a file that already exists in the target and lists it as skipped', () => {
   const s = source();
   const t = tmp();
