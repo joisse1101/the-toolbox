@@ -13,7 +13,7 @@ Purpose: make an interface look designed and keep its frontend code grouped and 
 
 - The visual rules are a paraphrased condensation of *Refactoring UI* by Adam Wathan and Steve Schoger.
 - The structure rules (section 5) and every size limit are **not from the book**. They are this toolkit's own defaults.
-- React mechanics (types, hooks, tokens, styles, breakpoints) live in [jois-code-typescript-react](../../rules/jois-code-typescript-react.md). This skill does not restate them.
+- React mechanics (types, hooks, tokens, styles, breakpoints) live in the toolkit rule `jois-code-typescript-react`. This skill does not restate them.
 
 ## Three principles
 
