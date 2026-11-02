@@ -19,8 +19,8 @@
 
 ## 4. Final checks
 
-- [ ] 4.1 Run `python check_toolkit.py` and `python -m pytest` in `toolkit/` and `npm test` in `planner/`, and verify all three pass
-- [ ] 4.2 Run `openspec validate move-meeting-minutes-to-toolkit --strict` and verify it passes
+- [x] 4.1 Run `python check_toolkit.py` and `python -m pytest` in `toolkit/` and `npm test` in `planner/`, and verify all three pass (result: `python check_toolkit.py` -> "toolkit check passed"; `python -m pytest` -> 38 passed; `npm test` -> 750 pass, 0 fail)
+- [x] 4.2 Run `openspec validate move-meeting-minutes-to-toolkit --strict` and verify it passes (result: `openspec validate move-meeting-minutes-to-toolkit --strict` -> "Change 'move-meeting-minutes-to-toolkit' is valid")
 
 ## Workflow follow-up
 
