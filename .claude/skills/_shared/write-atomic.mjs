@@ -1,4 +1,4 @@
-// Shared by the Claude writers (write-proposal, write-lexicon, suggest-lexicon, write-review, write-minutes).
+// Shared by the Claude writers (write-proposal, write-lexicon, suggest-lexicon, write-review).
 
 import fs from 'node:fs';
 import path from 'node:path';

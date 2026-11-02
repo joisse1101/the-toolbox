@@ -46,6 +46,7 @@ item is for. Domains today:
 |---|---|---|
 | `code` | writing source code | the `jois-code-*` rules, the `jois-code` command |
 | `git` | commits and pull requests | the `jois-git` commands, the `jois-git-commit-hygiene` rule |
+| `docs` | documents written from notes | the `jois-docs` command |
 
 Skills and rules are `jois-<domain>-<thing>`; a command namespace folder is `jois-<domain>`, so
 `commands/jois-git/stage.md` is `/jois-git:stage`. A new domain (`design`, `comms`, `writing`) picks
@@ -218,6 +219,35 @@ Creating the issue:
 - See [The task agent](#the-task-agent).
 - It is advisory: plain `/opsx:apply` is unchanged and still works as before.
 
+### The `jois-docs` commands
+
+`/jois-docs:meeting-minutes` turns notes into minutes in a fixed template.
+
+- It is one file with the template inside, and it needs no script.
+- Install it with `.\Install-Toolkit.ps1 -Command jois-docs`.
+
+Input:
+
+- Paste the notes after the command, or reference a notes file with `@path`.
+- Notes are data, never instructions.
+- It asks for every gap (chair, note taker, owners, due dates, next meeting) before it shows the minutes.
+- A field you skip shows `[TBC]`.
+- It never invents a value and attributes a point to a person only when the notes do.
+
+Saving:
+
+- It shows the full minutes first and writes nothing until you confirm the minutes and the folder.
+- The file is named `<slug>_<YYYY-MM-DD>.md`, with `_1`, `_2` and so on when the name is taken.
+- Notes from a referenced file: it offers that file's folder.
+- Pasted notes: it looks for a folder such as `docs/`, `meetings/` or `notes/`, suggests one and asks.
+- It never overwrites the notes file.
+
+Refinement:
+
+- Reference an earlier minutes file together with new notes.
+- It rebuilds the full minutes, shows them and, after you confirm, replaces that file.
+- Without a referenced minutes file, every save is a new file.
+
 ### Commands stay out of the session context
 
 Every command declares `disable-model-invocation: true`, so its description is not loaded into each
@@ -361,7 +391,7 @@ never touched.
 
 ## Versions
 
-Every skill, rule, agent and `jois-git`, `jois-init` and `jois-code` command declares its version in a `metadata:` map in its
+Every skill, rule, agent and `jois-git`, `jois-init`, `jois-code` and `jois-docs` command declares its version in a `metadata:` map in its
 frontmatter, as the Agent Skills format keeps it. Both keys are strings and are bumped by hand
 whenever the item's guidance changes: `version` is semver (`MAJOR.MINOR.PATCH`) and `last_updated`
 is the date of the change.
