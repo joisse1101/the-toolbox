@@ -353,7 +353,7 @@ The command `/story:re-read` SHALL make the session re-read, through `read_conte
 - **THEN** only the lexicon is re-read and compared
 
 ### Requirement: Review command
-The command `/story:review` SHALL audit, read-only, only what is under discussion: the stories shaped in the session (backlog or proposed), their dependencies in both directions, the lexicon terms they use or the session changed, and what the session wrote (proposal rows, review rows, lexicon entries and term suggestions). It SHALL re-read the context first, use `check_drafts` to validate drafts agreed but not yet written, and check at least: agreed drafts against what is written, `Avoid` words used in those stories, `Depends On` links to missing, benched or renumbered stories, size over the guidelines' cap, open Clarifications, stale review rows, field edits on a locked story without an `unlock` row, and suggestions still waiting to be applied in the portal. It SHALL end with a checklist grouped by who acts (the user in the portal, the session via `/story:propose`, a decision needed), or state that everything is in sync. It SHALL NOT review stories outside that scope, only point to `review-backlog` for a wider check, and SHALL NOT write any file.
+The command `/story:review` SHALL audit, read-only, only what is under discussion: the stories shaped in the session (backlog or proposed), their dependencies in both directions, the lexicon terms they use or the session changed, and what the session wrote (proposal rows, review rows, lexicon entries and term suggestions). It SHALL re-read the context first, use `check_drafts` to validate drafts agreed but not yet written when that tool is available, and check at least: agreed drafts against what is written, `Avoid` words used in those stories, `Depends On` links to missing, benched or renumbered stories, size over the guidelines' cap, open Clarifications, stale review rows, field edits on a locked story without an `unlock` row, and suggestions still waiting to be applied in the portal. When `check_drafts` is not available (a read-only session) it SHALL skip that step, say so in one line, and carry on with the rest. It SHALL end with a checklist grouped by who acts (the user in the portal, the session via `/story:propose`, a decision needed), or state that everything is in sync. It SHALL NOT review stories outside that scope, only point to `review-backlog` for a wider check, and SHALL NOT write any file.
 
 #### Scenario: Agreed edit not written
 - **WHEN** the session agreed a change to a backlog story but no review row exists for it
@@ -366,6 +366,10 @@ The command `/story:review` SHALL audit, read-only, only what is under discussio
 #### Scenario: Problem outside the scope
 - **WHEN** an unrelated story breaks a guideline
 - **THEN** it is not listed; at most one line suggests `review-backlog`
+
+#### Scenario: Read-only session
+- **WHEN** the session has no `check_drafts` tool
+- **THEN** the audit skips the draft check, says it did, and still reports the rest of the checklist
 
 ### Requirement: Skills find related stories by search
 The `explore-stories` and `propose-stories` skills and the `/story:*` commands SHALL be allowed to call `search_stories`, and SHALL use it to find stories related to the one under discussion (by its subject words, the terms it uses, or a story the user names loosely) instead of reading the whole `index` section for that purpose. Their input steps SHALL NOT list `index` among the sections read at the start of every use; it is read only when the task needs the whole backlog. They SHALL read a found backlog story in full with `read_context` using its ID and the Title the search returned, and SHALL read a found proposed story from the `proposals` section. They SHALL name stories to the user by Title. A search that finds nothing SHALL NOT be taken as proof that no related story exists: before telling the user a story is new, they SHALL try at least one other wording.
@@ -385,3 +389,14 @@ The `explore-stories` and `propose-stories` skills and the `/story:*` commands S
 #### Scenario: Found story is stale by the time it is read
 - **WHEN** the search returned an ID and Title and the backlog was renumbered before the read
 - **THEN** the Title check of `read_context` reports the mismatch and the skill follows the existing mismatch handling
+
+### Requirement: Writing needs the writer tools
+`propose-stories` and `/story:propose` SHALL check, before reading the context or drafting anything, that `check_drafts` and the four writers (`write_proposals`, `write_lexicon`, `suggest_lexicon_change`, `write_review`) are among the session's tools. When one is missing they SHALL stop, say that the session is read-only and which tools are missing, point to the launchers that start a session with them (`shape-stories.ps1` and `plan-stories.ps1`), draft nothing and write nothing.
+
+#### Scenario: Read-only session
+- **WHEN** `propose-stories` is invoked in a session with no `check_drafts` or writers (such as an `explore-stories` session)
+- **THEN** it stops at once, names the missing tools and the two launchers, and drafts nothing
+
+#### Scenario: Writers present
+- **WHEN** the session has `check_drafts` and the four writers, as `shape-stories` and `plan-stories` sessions do
+- **THEN** the skill continues as before

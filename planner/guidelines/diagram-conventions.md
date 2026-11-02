@@ -93,8 +93,11 @@ they are kept only here, healed by Title on read, and **never written in a diagr
 - **Sequence steps** carry ids `phase.step` in the message text: the first number is the number of the
   phase the step is in, the second increases within the phase and is unique in the diagram; a primed
   id (`1.6'`) is a variant of the step before it. Reference a step in prose as `<slice> 1.3`.
-- Every participant is declared (`actor`, `participant`) before a message names it. An ID is a short
-  name that is not a Mermaid keyword (`LINK`, `END`, `NOTE` and the like are refused by the parser).
+- Every participant is declared (`actor`, `participant`) before a message names it.
+- A participant ID is a short name that is not a reserved Mermaid word (a word the parser keeps for its own syntax).
+  - `END` and `NOTE` are examples; the parser refuses them.
+  - Matching ignores case, so `end` and `End` are refused too.
+  - The parser refuses a reserved word only once a message line uses it; `participant end` alone parses.
 - A failure path is an `alt` / `else` branch; its message states the outcome.
 - No text shaped like a story ID (`ABC-0001`) appears in a diagram.
 

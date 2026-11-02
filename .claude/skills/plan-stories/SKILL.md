@@ -6,7 +6,7 @@ allowed-tools: mcp__backlog-tools__read_context, mcp__backlog-tools__search_stor
 
 # Plan stories into diagrams
 
-Draw a **slice** with the user: one document with the use-case specification, the class diagram and the sequence diagrams (each a fenced Mermaid block) of the shaped stories of one Epic, one Feature or one story, and once they confirm, write it to `diagrams/<backlog file name>/<slice>/`. **Never write anything else**: not the backlog, the proposals, the reviews, the lexicon, `repo.json`, nor a file of the target repo. If the user asks to change a story or a term, say that the story skills (`explore-stories`, `propose-stories`) do that and change nothing. You have no shell. `read_context`, `search_stories` and `read_file` read the backlog, `read_diagrams` reads slices and the conventions, `check_diagram` checks a slice (structure and Mermaid syntax) and writes nothing, `write_diagram` writes one slice, `read_context_map` and `check_context_map` read and check the backlog's context map (writing nothing), `write_context_map` writes it, and `repo_tree`, `repo_grep` and `repo_read` read the target repo when the session has one. Each tool's description lists its keys and rules; follow it, and let the tool's error text tell you what to fix. Claude Code asks the user to allow each `write_diagram` and `write_context_map` call, on top of your yes/no question.
+Draw a **slice** with the user: one document with the use-case specification, the class diagram and the sequence diagrams (each a fenced Mermaid block) of the shaped stories of one Epic, one Feature or one story, and once they confirm, write it to `diagrams/<backlog file name>/<slice>/`. **You write only the slice and the context map**, and you never call a story writer (`write_proposals`, `write_lexicon`, `suggest_lexicon_change`, `write_review`), even when the session has them: not the backlog, the proposals, the reviews, the lexicon, `repo.json`, nor a file of the target repo. If the user asks to change a story or a term, do not change it yourself: offer `propose-stories` for the change and, once the user agrees, load it with the Skill tool (it runs its own checks and yes/no; see "Conflicts between stories"). You have no shell. `read_context`, `search_stories` and `read_file` read the backlog, `read_diagrams` reads slices and the conventions, `check_diagram` checks a slice (structure and Mermaid syntax) and writes nothing, `write_diagram` writes one slice, `read_context_map` and `check_context_map` read and check the backlog's context map (writing nothing), `write_context_map` writes it, and `repo_tree`, `repo_grep` and `repo_read` read the target repo when the session has one. Each tool's description lists its keys and rules; follow it, and let the tool's error text tell you what to fix. Claude Code asks the user to allow each `write_diagram` and `write_context_map` call, on top of your yes/no question.
 
 The rules for a slice (stereotypes, the one-document layout, the Mermaid subset, names, step ids, phases, the specification's sections, the acceptance-criteria table, the design level and the limits without a repo) are in `planner/guidelines/diagram-conventions.md`. **Do not restate or replace them from memory**: read them with `read_diagrams` section `conventions` at the start of every use, and let `check_diagram` tell you where a draft breaks them.
 
@@ -39,6 +39,19 @@ A backlog may have a **context map**: the bounded contexts of the product, the E
 - Tell the user which stories and what differs, and **redraw only when they ask**. Show what would change before any write.
 - A slice that already exists for the scope is the starting point of a redraw: keep what still holds and change only what the stories changed.
 - A slice of **another scope** is never overwritten: `write_diagram` refuses it. Choose another slice name.
+
+## Conflicts between stories
+
+A **conflict** is two stories in scope that contradict each other, or a story that clashes with the lexicon.
+
+- When you find one the user wants to settle, name the stories by Title and say what would change in each.
+- Offer two ways forward: the change through `propose-stories`, or an entry in the slice's `Open questions` section to decide later.
+- If the user defers, record the conflict in `Open questions` and change no story.
+- After the user agrees to a change and `propose-stories` has written it, say three things:
+  - A review row on a story already in the backlog takes effect only when the user applies it in the portal.
+  - A proposed story is added only when the user accepts it in the portal.
+  - The slice shows STALE once the story changes, and is redrawn after the user runs `/story:re-read`.
+- Draw the slice from the stories as the backlog holds them now, never as if the change were applied.
 
 ## Decide the scope first
 

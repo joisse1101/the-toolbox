@@ -7,9 +7,10 @@
 #            (git-ignored) and used again by later sessions that do not pass it. The "exclude" list of that file is yours to edit and is
 #            kept. Without a repo the session is still design-level and asks you for the detail.
 # It refuses an unknown backlog, an empty scope, a story ID that is not in the backlog and a -Repo that is not a folder before Claude starts.
-# Starts in /plan-stories with both filled in. Tools are limited to backlog-tools --read-only (read_context, search_stories, read_file),
+# Starts in /plan-stories with both filled in. Tools are limited to the full backlog-tools (read_context, search_stories, read_file, check_drafts,
+# and the four story writers write_proposals, write_lexicon, suggest_lexicon_change, write_review, so /propose-stories can fix a story conflict),
 # diagram-tools (read_diagrams, check_diagram, write_diagram, read_context_map, check_context_map, write_context_map, and repo_tree, repo_grep, repo_read when a repo is set), Skill and
-# AskUserQuestion: no Bash, Read or Grep. The readers and checks are pre-approved. write_diagram and write_context_map are not: Claude Code asks you before every write, on
+# AskUserQuestion: no Bash, Read or Grep. The readers and checks (including check_drafts) are pre-approved. The four story writers, write_diagram and write_context_map are not: Claude Code asks you before every write, on
 # top of the skill's yes/no question (--permission-mode default keeps that prompt on, whatever mode your settings use).
 param(
   [string]$Backlog = '',
@@ -75,7 +76,7 @@ try {
     --tools "Skill,AskUserQuestion" `
     --mcp-config $session.Path `
     --strict-mcp-config `
-    --allowedTools "mcp__backlog-tools__read_context" "mcp__backlog-tools__search_stories" "mcp__backlog-tools__read_file" "mcp__diagram-tools__read_diagrams" "mcp__diagram-tools__check_diagram" "mcp__diagram-tools__read_context_map" "mcp__diagram-tools__check_context_map" "mcp__diagram-tools__repo_tree" "mcp__diagram-tools__repo_grep" "mcp__diagram-tools__repo_read" `
+    --allowedTools "mcp__backlog-tools__read_context" "mcp__backlog-tools__search_stories" "mcp__backlog-tools__read_file" "mcp__backlog-tools__check_drafts" "mcp__diagram-tools__read_diagrams" "mcp__diagram-tools__check_diagram" "mcp__diagram-tools__read_context_map" "mcp__diagram-tools__check_context_map" "mcp__diagram-tools__repo_tree" "mcp__diagram-tools__repo_grep" "mcp__diagram-tools__repo_read" `
     --permission-mode default `
     --settings "$skill/locked-settings.json"
 } finally {

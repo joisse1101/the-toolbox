@@ -30,11 +30,12 @@ CODE_SCOPED_RULES = (
 SHARED_PR_SECTIONS = ("PR body template", "Author Verification")
 # Load in every session on purpose: a commit can contain no code (images, deletions, docs),
 # verification (a push, a deploy, a request for data) touches no code file either, and replies
-# happen without touching a file.
+# happen without touching a file. Installs (`pip`, `npm -g`) touch no code file either.
 UNSCOPED_RULES = (
     "jois-git-commit-hygiene.md",
     "jois-test-mock-data.md",
     "jois-comms-replies.md",
+    "jois-env-local-installs.md",
 )
 # The source-code file types the three code-scoped rules load for. Each of them declares exactly
 # this set, one `**/*.<ext>` glob per type, so they load together. Config and data extensions

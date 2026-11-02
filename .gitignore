@@ -1,6 +1,7 @@
 planner/data/*
 node_modules/
 planner/portal/dist/
+.trees/
 
 __pycache__/
 .pytest_cache/

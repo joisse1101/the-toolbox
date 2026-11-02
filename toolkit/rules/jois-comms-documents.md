@@ -1,7 +1,7 @@
 ---
 metadata:
-  version: "1.0.0"
-  last_updated: "2026-10-29"
+  version: "1.1.0"
+  last_updated: "2026-10-31"
 paths:
   - "**/*.md"
 ---
@@ -21,7 +21,7 @@ How to write markdown: specs, READMEs, skills, rules and notes. It applies to ev
 
 ## Words
 
-- Define a technical term on first use, or use a common word instead.
+- Define a technical term on first use unless the repo has a glossary or definitions page, then link to it.
 
 ## Next steps and certainty
 

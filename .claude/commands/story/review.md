@@ -8,7 +8,7 @@ Audit the work of this session now and end with what is left to do. You only rea
 **Scope: only what is under discussion.** The stories shaped in this session (backlog or proposed), the stories they depend on and the ones that depend on them, the lexicon terms they use or the session changed, and what the session wrote (proposal rows, review rows, lexicon entries, term suggestions). Do not report problems in other stories; at most end with one line that `review-backlog` checks a whole backlog.
 
 1. Re-read first, as `/story:re-read` does: `index`, the proposals and lexicon (with `read_file`, ignoring benched proposed stories), the counts of `reviews` and `lexicon-suggestions`, and each story in scope in full by `storyId` and `storyTitle` (find a backlog story by Title, since IDs shift). For the review rows of those stories, call `reviews` with `storyIds` as `{id, title}` pairs. Read `guidelines` for the size cap and the rules you cite.
-2. Run `check_drafts` on any draft, edit or term agreed in this conversation that you cannot find written; it writes nothing.
+2. Run `check_drafts` on any draft, edit or term agreed in this conversation that you cannot find written; it writes nothing. If `check_drafts` is not among your tools (a read-only session), skip this step, say so in one line and continue.
 3. Check, for the scope only:
    - **Agreed vs written:** every draft, patch, edit and term we agreed is in the proposals, the review file, the lexicon or the term suggestions, with the agreed text.
    - **Lexicon:** the stories use the terms by full name and no `Avoid` word; a term the session changed is used consistently by the stories that name it.

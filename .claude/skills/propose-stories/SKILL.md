@@ -8,6 +8,15 @@ allowed-tools: mcp__backlog-tools__read_context, mcp__backlog-tools__search_stor
 
 Draft new stories with the user and, once they confirm, write them to `proposals/<backlog file name>`; the same way, change a proposed story that is already there, and suggest edits to stories that are already in the backlog; add the backlog's agreed new terms to its lexicon, and suggest changes to terms it already has. **Never edit the backlog CSV or any other file.** You have seven tools and no shell: `read_context` reads, `search_stories` finds stories by words, `check_drafts` checks drafts against the writers' rules and writes nothing, and four writers each write one file: `write_proposals` (the proposals file), `write_review` (`reviews/<backlog file name>`, always appended), `write_lexicon` (`lexicons/<backlog file name>`, new terms only) and `suggest_lexicon_change` (`lexicon-suggestions/<backlog file name>`, appended; it never changes the lexicon). Each tool's description lists its keys and rules; follow it, and let the tool's error text tell you what to fix. The proposal writer adds new stories and patches the fields you name on an existing proposed story; it never removes one, and it leaves every other row as the user edited it in the portal. The user reviews and accepts proposed stories into the backlog from the portal's Proposed tab, and applies or dismisses edit suggestions from the story form. Claude Code asks the user to allow each writer call, on top of your yes/no question.
 
+## First step: check your tools
+
+Before you read anything or draft anything, check that your tools include `check_drafts` and all four writers: `write_proposals`, `write_lexicon`, `suggest_lexicon_change` and `write_review`.
+
+- If any is missing, stop. The session is read-only (an `explore-stories` session is).
+- Say that the session is read-only and name the tools that are missing.
+- Say that `shape-stories.ps1` and `plan-stories.ps1` start a session that has them.
+- Read nothing, draft nothing and write nothing.
+
 ## Input
 
 1. Read through `read_context`, and the backlog's lexicon and proposals with `read_file` (the `read_context` menu lists both files with their sizes); `read_file` opens only those two. If the user named a backlog, use it. Otherwise call `read_context` with no argument to list the backlog file names and ask which one the stories are for.
