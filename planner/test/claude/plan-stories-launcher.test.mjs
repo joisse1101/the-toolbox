@@ -6,17 +6,19 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { tempConfig } from '../helpers/temp-config.mjs';
+import { sampleTree } from '../helpers/backlog-tree.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const LAUNCHER = path.join(ROOT, 'planner/claude/launchers/plan-stories.ps1');
-const SAMPLE = path.join(ROOT, 'planner/test/sample-data');
+// A temp data folder in the one-folder-per-backlog layout holding the sample backlog, named `sample`.
+const SAMPLE = sampleTree();
 const launcher = fs.readFileSync(LAUNCHER, 'utf8');
 
 test('the launcher gives the session no Bash, Read or Grep, only the two servers, and pre-approves the readers and checks (check_drafts included) but no writer', () => {
   assert.match(launcher, /--tools "Skill,AskUserQuestion" `/);
   assert.match(launcher, /--strict-mcp-config/);
   assert.match(launcher, /--permission-mode default/);
-  assert.match(launcher, /New-PlanStoriesConfig \$root \$file/);
+  assert.match(launcher, /New-PlanStoriesConfig \$root \$name/);
   const approved = launcher.match(/--allowedTools (.*) `/)[1].match(/mcp__[a-z-]+__[a-z_]+/g);
   assert.deepEqual(approved.sort(), [
     'mcp__backlog-tools__check_drafts', 'mcp__backlog-tools__read_context', 'mcp__backlog-tools__read_file', 'mcp__backlog-tools__search_stories',
@@ -33,9 +35,11 @@ const run = (args) => spawnSync('powershell', ['-NoProfile', '-ExecutionPolicy',
 
 test('the launcher refuses an unknown backlog, an empty scope, a story ID not in the backlog and a -Repo that is not a folder', { skip: process.platform !== 'win32' }, () => {
   const cases = [
-    [['-Backlog', 'nope', '-Scope', 'x'], /No backlog 'nope\.csv'.*Found: sample\.csv/],
+    [['-Backlog', 'nope', '-Scope', 'x'], /No backlog 'nope'.*Found: sample/],
+    [['-Backlog', 'nope.csv', '-Scope', 'x'], /No backlog 'nope'.*Found: sample/],
     [['-Backlog', 'sample', '-Scope', ' '], /No scope given/],
-    [['-Backlog', 'sample', '-Scope', 'IAM-9999'], /IAM-9999 is not in planner\/data\/backlogs\/sample\.csv/],
+    [['-Backlog', 'sample.csv', '-Scope', ' '], /No scope given/],
+    [['-Backlog', 'sample', '-Scope', 'IAM-9999'], /IAM-9999 is not in sample\/user-stories\.csv/],
     [['-Backlog', 'sample', '-Scope', 'x', '-Repo', path.join(SAMPLE, 'no-such-folder')], /is not an existing folder/],
   ];
   for (const [args, message] of cases) {
@@ -43,6 +47,23 @@ test('the launcher refuses an unknown backlog, an empty scope, a story ID not in
     assert.equal(r.status, 1, args.join(' '));
     assert.match(r.stdout + r.stderr, message);
   }
+});
+
+test('-Repo writes <backlog>/repo.json beside user-stories.csv, keeps the exclude list and accepts the name with .csv', { skip: process.platform !== 'win32' }, () => {
+  const data = sampleTree();
+  const repoFolder = fs.mkdtempSync(path.join(os.tmpdir(), 'planner-repo-'));
+  const config = path.join(data, 'sample', 'repo.json');
+  fs.writeFileSync(config, JSON.stringify({ path: 'old', exclude: ['keep/*'] }));
+  const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'claude-stub-'));
+  fs.writeFileSync(path.join(bin, 'claude.cmd'), '@echo CLAUDE-STARTED\r\n');
+  const r = spawnSync('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', LAUNCHER, '-Backlog', 'sample.csv', '-Scope', 'x', '-Repo', repoFolder], {
+    encoding: 'utf8', input: '', env: { ...process.env, PLANNER_CONFIG: tempConfig(data), PATH: bin + path.delimiter + process.env.PATH },
+  });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  const written = JSON.parse(fs.readFileSync(config, 'utf8'));
+  assert.equal(path.resolve(written.path), path.resolve(repoFolder));
+  assert.deepEqual(written.exclude, ['keep/*']);
+  assert.ok(!fs.existsSync(path.join(data, 'diagrams')), 'nothing is written to the older diagrams folder');
 });
 
 // All three launchers take the data folder from paths.cjs. `claude` on the PATH is replaced by a stub that only prints a marker.
