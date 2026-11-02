@@ -12,7 +12,7 @@ hooks:
           command: >-
             powershell -NoProfile -Command "Set-Variable In ([Console]::In.ReadToEnd()); if ((Get-Variable In -ValueOnly) -match '\bgit\s+(commit|push)\b|[\s\x22;&|(]gh\s') { [Console]::Error.WriteLine('opsx-test-runner never commits, pushes or calls GitHub: report back and the main session handles it'); exit 2 }; if ((Get-Variable In -ValueOnly) -match '\brm\b(?=(?:[^;&|\x22\x5c]|\x5c[^n])*\s(?:-[a-z]*r[a-z]*|--recursive)\b)(?=(?:[^;&|\x22\x5c]|\x5c[^n])*\s(?:-[a-z]*f[a-z]*|--force)\b)') { [Console]::Error.WriteLine('opsx-test-runner never runs rm -rf: leave the cleanup for the main session and say so in your report'); exit 2 }"
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   last_updated: "2026-11-02"
 ---
 
@@ -45,7 +45,8 @@ You run the tests that cover a group's changed files and report what happened.
 - A hook (a check that runs before a tool call and can refuse it) blocks them and `rm -rf`.
 - Make one plain command per Bash call.
 - Never join commands with `;`, `&&` or `||`.
-- Never chain `cd` with another command.
+- Never use `cd`, alone or chained with another command.
+- To run a suite in another folder, use the command's own folder flag, such as `npm --prefix <folder>` or `git -C <folder>`.
 - Use absolute paths instead of changing folder.
 - Never run `rm` with both a recursive and a force flag.
 - Leave any cleanup for the main session and say so in your report.
@@ -58,7 +59,9 @@ Give these parts, in order.
 1. **Commands**
    - One entry per command you ran.
    - The exact command line.
-   - The exit code, as the shell returned it.
+   - The exit code, as the Bash result showed it.
+   - When the result shows no exit code and no error, write `exit code 0 (the tool showed no error)`.
+   - When it fails, give its exit code and the error line.
    - The counts line as the tool printed it, for example `12 passed, 0 failed`.
    - Write `no counts line printed` when there is none.
 2. **Could not run**

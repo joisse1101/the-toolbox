@@ -332,7 +332,7 @@ Install both parts, then start the command in a Claude Code session:
 - The purpose is to commit a checked group without a stop, and to ask only when something is doubtful.
 - It commits by itself only when all of these hold:
   - The branch is a named branch other than `main` or `master`.
-  - `opsx-test-runner` ran the tests for the group's files and every reported command shows exit code 0.
+  - `opsx-test-runner` ran the tests for the group's files and every reported command shows exit code 0 (a passing command that shows no code is reported as `exit code 0 (the tool showed no error)`).
   - The group is one concern, and nothing foreign is staged or edited.
 - The command judges the tests by exit codes, never by the agent's wording.
 - Otherwise it stages the group, shows the summary and message, names a confirmation word and ends its turn, as the `jois-git-commit-hygiene` rule says.
@@ -430,6 +430,9 @@ unit, so `-Agent opsx-task-applier.md` installs one. The toolkit ships two agent
 - `opsx-test-runner` runs the project's own test commands for a group's files and reports each command, exit code and counts.
   - It uses the Haiku model and has no edit tools.
   - It installs nothing and never commits, pushes or calls GitHub.
+  - It runs a suite in another folder with the command's own folder flag (`npm --prefix`, `git -C`), never `cd`.
+  - A passing command whose result shows no exit code and no error is reported as `exit code 0 (the tool showed no error)`.
+  - A failing command is reported with its exit code and error line.
   - Install it with `.\Install-Toolkit.ps1 -Agent opsx-test-runner.md`.
 
 ## Versions
