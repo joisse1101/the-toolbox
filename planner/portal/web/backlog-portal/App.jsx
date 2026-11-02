@@ -20,6 +20,8 @@ import ProposedTab from './components/ProposedTab.jsx';
 import { openRows } from '../../../logic/lexicon/lexicon-suggestions.js';
 import LexiconTab from './components/LexiconTab.jsx';
 import BackupsTab from './components/BackupsTab.jsx';
+import SettingsTab from './components/SettingsTab.jsx';
+import { useSettings } from './hooks/useSettings.js';
 import ResizeHandle from './components/ResizeHandle.jsx';
 import useListWidth from './hooks/useListWidth.js';
 import useCollapsed from './hooks/useCollapsed.js';
@@ -156,6 +158,13 @@ export default function App() {
     const saved = await Promise.all([actions.settle(), proposals.actions.settle(), review.settle(), lexicon.actions.settle(), lexiconSuggestions.settle()]);
     return saved.every(Boolean);
   };
+  // Project settings; the name goes in the header and the page title. Pending saves are settled before a folder switch.
+  const settingsState = useSettings(settleAll);
+  const projectName = settingsState.settings?.projectName ?? '';
+  useEffect(() => {
+    document.title = projectName ? `${projectName} - Backlog portal` : 'Backlog portal';
+  }, [projectName]);
+  const showSettings = view === 'settings' || !current; // with no backlog there is nothing else to show
   const [backupNote, setBackupNote] = useState(null);
   const [backingUp, setBackingUp] = useState(false);
   const [backupCount, setBackupCount] = useState(0); // lets the Backups tab reload its list
@@ -261,7 +270,7 @@ export default function App() {
     <>
       <main className="page">
         <header className="top">
-          <h1><a href="/" className="home" title="All tools">&larr;</a> Backlog portal</h1>
+          <h1><a href="/" className="home" title="All tools">&larr;</a> Backlog portal{projectName && <span className="muted"> - {projectName}</span>}</h1>
           <div className="top-right">
             <Info id="shortcuts" buttonId="shortcutsBtn" buttonClass="shortcuts-btn" label="Keyboard shortcuts" icon={KEYBOARD_ICON} popoverId="shortcutsText" popoverClass="right">
               <dl className="shortcut-list">
@@ -297,7 +306,8 @@ export default function App() {
           There are no backlogs in <code>planner/data/backlogs/</code> yet. Click <strong>New</strong> to create one.
         </p>
 
-        <div id="tabs" className="tabs" role="tablist" aria-label="Views" hidden={!current}>
+        <div id="tabs" className="tabs" role="tablist" aria-label="Views">
+          {current && <>
           <button type="button" role="tab" id="tabEditor" className="tab" aria-controls="editor" aria-selected={view === 'editor'} onClick={() => actions.setView('editor')}>Editor</button>
           <button type="button" role="tab" id="tabStories" className="tab" aria-controls="storiesView" aria-selected={view === 'stories'} onClick={() => actions.setView('stories')}>Stories</button>
           <button type="button" role="tab" id="tabGraph" className="tab" aria-controls="graphView" aria-selected={view === 'graph'} onClick={() => actions.setView('graph')}>Graph</button>
@@ -313,6 +323,8 @@ export default function App() {
               {openReviewCount ? `Review (${openReviewCount})` : 'Review'}
             </button>
           )}
+          </>}
+          <button type="button" role="tab" id="tabSettings" className="tab" aria-controls="settingsView" aria-selected={showSettings} onClick={() => actions.setView('settings')}>Settings</button>
         </div>
 
         <div id="editor" className="editor" style={editorList.style} role="tabpanel" aria-labelledby="tabEditor" hidden={!current || view !== 'editor'}>
@@ -364,6 +376,8 @@ export default function App() {
         )}
 
         <BackupsTab name={current} hidden={!current || view !== 'backups'} refreshToken={backupCount} settleAll={settleAll} />
+
+        <SettingsTab hidden={!showSettings} settingsState={settingsState} />
 
         <GraphTab
           stories={stories} problems={problems} current={current} hidden={!current || view !== 'graph'}

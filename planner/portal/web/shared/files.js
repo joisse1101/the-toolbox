@@ -56,6 +56,32 @@ export async function compareBackups(name, a, b) {
   return (await call('GET', `${backupUrl(name)}/diff?${query}`)).diff;
 }
 
+// Project settings: /api/project. A folder is sent as an absolute path; the server confines it.
+// getProject resolves to { projectName, dataDir, configPath }; saveProject takes { projectName?, dataDir? } and
+// resolves to the same plus `switched` (a refused value or a running save throws; code 'busy' means try again).
+export function getProject() {
+  return call('GET', '/api/project');
+}
+
+export function saveProject(changes) {
+  return call('PUT', '/api/project', { json: changes });
+}
+
+// Resolves to { status: 'refused' | 'has-planner-files' | 'empty' | 'missing', reason?, dir? }. Changes nothing.
+export function checkProjectFolder(dir) {
+  return call('POST', '/api/project/check', { json: { dir } });
+}
+
+// Resolves to { dir, createdDataDir, created, existing }.
+export function initProjectFolder(dir) {
+  return call('POST', '/api/project/init', { json: { dir } });
+}
+
+// Copies the current data folder into `dir`. Resolves to { copied, skipped }.
+export function copyProjectData(dir) {
+  return call('POST', '/api/project/copy', { json: { dir } });
+}
+
 export function createFileStore(store) {
   const base = `/api/${encodeURIComponent(store)}`;
   const file = (name) => `${base}/files/${encodeURIComponent(name)}`;
