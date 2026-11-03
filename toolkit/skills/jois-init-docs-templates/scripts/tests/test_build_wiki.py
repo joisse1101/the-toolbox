@@ -12,7 +12,7 @@ HOME_TEXT = "# Home\n\nWelcome, written by hand.\n"
 
 
 def _page(root, relative, text="# Title\n"):
-    path = root / "docs" / "wiki" / relative
+    path = root / "wiki" / relative
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
     return path
@@ -23,7 +23,7 @@ def _tree(root):
     _page(root, "Home.md", HOME_TEXT)
     _page(root, "architecture/billing/refunds.md", "# Refunds\n\nSee [states](../orders/lifecycle.md#states).\n")
     _page(root, "architecture/orders/lifecycle.md", "# Order lifecycle\n")
-    return root / "docs" / "wiki"
+    return root / "wiki"
 
 
 def test_lists_pages_at_any_depth(tmp_path):

@@ -1,5 +1,5 @@
 # jois-init:docs begin
-"""Builds the GitHub wiki from the nested pages under `docs/wiki/`.
+"""Builds the GitHub wiki from the nested pages under `wiki/`.
 
 Standard library only. The repo root is the parent of this script's folder (override with `--root`).
 
@@ -7,7 +7,7 @@ Standard library only. The repo root is the parent of this script's folder (over
   python scripts/build_wiki.py --write-nav  regenerate `_Sidebar.md` and the page list in `Home.md`
   python scripts/build_wiki.py --out DIR    write the flat wiki pages to DIR
 
-A page's flat name is its path under `docs/wiki/` with the folders joined by `-` and no `.md`.
+A page's flat name is its path under `wiki/` with the folders joined by `-` and no `.md`.
 Authors write links as relative `.md` paths; `--out` rewrites them to flat names and keeps anchors.
 """
 
@@ -19,7 +19,7 @@ import re
 import sys
 from pathlib import Path
 
-WIKI_DIR = Path("docs") / "wiki"
+WIKI_DIR = Path("wiki")
 HOME = "Home.md"
 SIDEBAR = "_Sidebar.md"
 NAV_PAGES = (HOME, SIDEBAR)
@@ -59,10 +59,10 @@ def split_link(link: str) -> tuple[str, str]:
 
 
 def resolve_link(page: str, link: str) -> tuple[str, str] | None:
-    """The target page (relative to `docs/wiki/`) and anchor of a relative `.md` link, else None.
+    """The target page (relative to `wiki/`) and anchor of a relative `.md` link, else None.
 
     None covers links that are not pages: web and mail links, anchors on the same page, and
-    non-markdown targets. A target outside `docs/wiki/` also gives None.
+    non-markdown targets. A target outside `wiki/` also gives None.
     """
     if SCHEME_RE.match(link) or link.startswith(("#", "/")):
         return None
@@ -173,7 +173,7 @@ def write_nav(wiki: Path) -> list[str]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Build the GitHub wiki from docs/wiki/.")
+    parser = argparse.ArgumentParser(description="Build the GitHub wiki from wiki/.")
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parent.parent,
                         help="the repo root (default: the parent of this script's folder)")
     parser.add_argument("--out", type=Path, help="write the flat wiki pages to this folder")
