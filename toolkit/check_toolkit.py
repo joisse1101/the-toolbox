@@ -7,10 +7,12 @@ one-line pass.
 Checks:
   1. code-scoped rules: present and scoped to source-code file types
   2. unscoped and technology rules: `paths:` frontmatter, one rule per file extension
-  3. `metadata.version` and `metadata.last_updated` on every skill, rule, agent and jois-git, jois-init, jois-code or jois-docs command
+  3. `metadata.version` and `metadata.last_updated` on every skill, rule, agent and jois-git, jois-init, jois-code, jois-docs or jois-story command
   4. every slash command carries `disable-model-invocation: true`
   5. the PR body template and Author Verification sections of write-pr and update-pr match
   6. every agent declares `tools` (an omitted list inherits every tool)
+  7. a skill may hold scripts, `lib/`, `references/` and a `package.json`; a `package.json` needs a
+     `package-lock.json` beside it, and no script imports a file outside its skill folder
 """
 
 from __future__ import annotations
@@ -146,6 +148,7 @@ def _versioned_items(toolkit: Path) -> list[Path]:
             *toolkit.glob("commands/jois-init/*.md"),
             *toolkit.glob("commands/jois-code/*.md"),
             *toolkit.glob("commands/jois-docs/*.md"),
+            *toolkit.glob("commands/jois-story/*.md"),
         ]
     )
 
@@ -196,6 +199,48 @@ def _check_agents_have_tools(root: Path) -> list[str]:
     return problems
 
 
+# Script files a skill may carry, and the import forms that name a file by path.
+SCRIPT_SUFFIXES = (".mjs", ".js", ".cjs")
+IMPORT_SPECIFIER_RE = re.compile(
+    r"""(?:\bfrom\s*|\bimport\s*\(?\s*|\brequire\s*\(\s*)["']([^"']+)["']"""
+)
+
+
+def _skill_script_files(skill: Path) -> list[Path]:
+    return sorted(
+        path
+        for path in skill.rglob("*")
+        if path.is_file() and path.suffix in SCRIPT_SUFFIXES and "node_modules" not in path.parts
+    )
+
+
+def _check_skill_packages(root: Path) -> list[str]:
+    """A skill with a `package.json` ships its lock file, so the installer's `npm ci` can run."""
+    problems = []
+    for package in sorted((root / "skills").glob("*/package.json")):
+        if not (package.parent / "package-lock.json").is_file():
+            problems.append(f"{_rel(root, package)}: `package.json` needs a `package-lock.json` beside it (the installer runs `npm ci`)")
+    return problems
+
+
+def _check_skill_imports(root: Path) -> list[str]:
+    """A skill runs from its own installed folder, so a script may not import a file outside it."""
+    problems = []
+    for skill in sorted(p for p in (root / "skills").glob("*") if p.is_dir()):
+        for script in _skill_script_files(skill):
+            text = script.read_text(encoding="utf-8")
+            for number, line in enumerate(text.splitlines(), start=1):
+                for specifier in IMPORT_SPECIFIER_RE.findall(line):
+                    if not specifier.startswith("."):
+                        continue
+                    target = (script.parent / specifier).resolve()
+                    if not target.is_relative_to(skill.resolve()):
+                        problems.append(
+                            f"{_rel(root, script)}:{number}: imports '{specifier}', which is outside the skill folder {_rel(root, skill)}"
+                        )
+    return problems
+
+
 def _h2_section(text: str, title: str) -> str | None:
     """The text under `## title` up to the next `## ` heading outside a code fence, or None."""
     body: list[str] = []
@@ -239,6 +284,8 @@ def check_toolkit(root: Path) -> list[str]:
         + _check_commands_hidden(root)
         + _check_shared_pr_sections(root)
         + _check_agents_have_tools(root)
+        + _check_skill_packages(root)
+        + _check_skill_imports(root)
     )
 
 
