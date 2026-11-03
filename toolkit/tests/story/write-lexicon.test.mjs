@@ -3,14 +3,14 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { pathOf, decidedPath, logLines as treeLogLines } from '../helpers/backlog-tree.mjs';
+import { pathOf, decidedPath } from './helpers/backlog-tree.mjs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { writeLexicon, checkLexicon } from '../../../.claude/skills/propose-stories/write-lexicon.mjs';
-import { parseLexicon } from '../../logic/lexicon/lexicon.js';
-import { tempConfig } from '../helpers/temp-config.mjs';
+import { writeLexicon, checkLexicon } from '../../skills/jois-story-propose/write-lexicon.mjs';
+import { parseLexicon } from '../../skills/jois-story-propose/lib/lexicon/lexicon.js';
+import { tempConfig } from './helpers/temp-config.mjs';
 
-const SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../.claude/skills/propose-stories/write-lexicon.mjs');
+const SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../skills/jois-story-propose/write-lexicon.mjs');
 const BACKLOG = 'Epic,Title\r\nIdentity,Login\r\n';
 
 function temp() {
@@ -161,4 +161,19 @@ test('a write that does not stick fails naming the missing term', () => {
   } finally {
     lossy.mock.restore();
   }
+});
+
+test('CLI: --check reports the terms it would add and writes no file; a bad item fails the check', () => {
+  const root = temp();
+  const env = { ...process.env, PLANNER_CONFIG: tempConfig(root) };
+  const before = fs.readdirSync(path.dirname(pathOf(root, 'data', 'lexicon')));
+  const ok = spawnSync('node', [SCRIPT, 'data.csv', '--check'], { input: '[{"term":"User","definition":"A person."}]', env, encoding: 'utf8' });
+  assert.equal(ok.status, 0);
+  assert.match(ok.stdout, /^Check passed, nothing written\. Would add 1 term to the lexicon of data \(User\)\./);
+  const bad = spawnSync('node', [SCRIPT, 'data.csv', '--check'], { input: '[{"term":"X"}]', env, encoding: 'utf8' });
+  assert.equal(bad.status, 1);
+  assert.match(bad.stderr, /Nothing was written\. 1 problem:/);
+  assert.equal(spawnSync('node', [SCRIPT, 'data.csv', '--oops'], { input: '[]', env, encoding: 'utf8' }).status, 2);
+  assert.deepEqual(fs.readdirSync(path.dirname(pathOf(root, 'data', 'lexicon'))), before, 'no file was created');
+  assert.equal(fs.existsSync(path.join(root, 'logs', 'writes.jsonl')), false, 'nothing was logged');
 });

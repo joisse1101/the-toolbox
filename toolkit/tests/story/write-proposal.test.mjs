@@ -3,14 +3,14 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { pathOf, decidedPath, logLines as treeLogLines } from '../helpers/backlog-tree.mjs';
+import { pathOf, decidedPath } from './helpers/backlog-tree.mjs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { writeProposal, checkProposal, missingAfterWrite } from '../../../.claude/skills/propose-stories/write-proposal.mjs';
-import { loadBacklog, serializeBacklog, proposalHeaders } from '../../logic/backlog/model.js';
-import { tempConfig } from '../helpers/temp-config.mjs';
+import { writeProposal, checkProposal, missingAfterWrite } from '../../skills/jois-story-propose/write-proposal.mjs';
+import { loadBacklog, serializeBacklog, proposalHeaders } from '../../skills/jois-story-propose/lib/backlog/model.js';
+import { tempConfig } from './helpers/temp-config.mjs';
 
-const SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../.claude/skills/propose-stories/write-proposal.mjs');
+const SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../skills/jois-story-propose/write-proposal.mjs');
 
 const CSV =
   'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes,Team\r\n' +

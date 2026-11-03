@@ -1,5 +1,6 @@
-// The only way the propose-stories skill writes anything. Usage:
-//   node .claude/skills/propose-stories/write-proposal.mjs <backlog name> [--check]   (stories as JSON on stdin)
+// The only way the jois-story-propose skill writes proposals. Usage:
+//   node <skill folder>/write-proposal.mjs <backlog name> [--check]   (stories as JSON on stdin)
+// The data folder comes from the PLANNER_CONFIG variable or a planner.config.yaml (see lib/skill-support/resolve-data-dir.mjs).
 // Reads <name>/user-stories.csv, validates the input against it and writes <name>/user-stories/proposals.csv. The input is a JSON list whose
 // items are either new stories (no "id"), which are ADDED with NEW-<n> IDs, or patches (an "id" such as NEW-8 plus
 // only the fields to change), which change that proposed story in place. One invalid item means nothing is written.
@@ -12,14 +13,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
-import { loadBacklog, serializeBacklog, proposalHeaders } from '../../../planner/logic/backlog/model.js';
+import { loadBacklog, serializeBacklog, proposalHeaders } from './lib/backlog/model.js';
 import { buildProposals } from './proposal-input.js';
-import { describeParseError, writeAtomic } from '../../../planner/logic/skill-support/write-atomic.mjs';
+import { describeParseError, writeAtomic } from './lib/skill-support/write-atomic.mjs';
+import { dataDirOrThrow } from './lib/skill-support/resolve-data-dir.mjs';
 
 const require = createRequire(import.meta.url);
-const { backlogDir, backlogFile } = require('../../../planner/logic/storage/backlog-paths.cjs'); // same name rules as the file API
-const { DATA_DIR } = require('../../../planner/logic/storage/paths.cjs');
-const { shown } = require('../../../planner/logic/skill-support/paths.cjs');
+const { backlogDir, backlogFile } = require('./lib/storage/backlog-paths.cjs'); // same name rules as the file API
+const { shown } = require('./lib/skill-support/paths.cjs');
 
 // Reads the backlog and the proposals and validates the input against them. Returns { ok: true, file, backlog,
 // proposals, built } (built: the buildProposals result) or { ok: false, errors }. Writes nothing.
@@ -64,7 +65,7 @@ function prepare({ dataDir, name, input, requireTitles }) {
 
 // Same input and problems as writeProposal, and for valid input what it would do; no file is created or changed.
 // Returns { ok: true, file, ids, patchedIds, skipped } or { ok: false, errors }.
-export function checkProposal({ dataDir = DATA_DIR, name, input, requireTitles = false }) {
+export function checkProposal({ dataDir = dataDirOrThrow(), name, input, requireTitles = false }) {
   const prepared = prepare({ dataDir, name, input, requireTitles });
   if (!prepared.ok) return prepared;
   const { file, built } = prepared;
@@ -75,7 +76,7 @@ export function checkProposal({ dataDir = DATA_DIR, name, input, requireTitles =
 // new stories that repeat a stored one) or { ok: false, errors: [...] }. Writes nothing unless everything is valid, and
 // leaves the file alone when there is nothing to add or patch. After the write the file is read again: `count` and `found`
 // (the added and patched IDs) are what was read from disk, and a file that does not hold them is an error.
-export function writeProposal({ dataDir = DATA_DIR, name, input, requireTitles = false }) {
+export function writeProposal({ dataDir = dataDirOrThrow(), name, input, requireTitles = false }) {
   const prepared = prepare({ dataDir, name, input, requireTitles });
   if (!prepared.ok) return prepared;
   const { file, backlog, proposals, built, proposalsPath, proposalsShown } = prepared;
@@ -129,7 +130,13 @@ if (isMain) {
     console.error('Usage: node write-proposal.mjs <backlog name> [--check]  (stories JSON on stdin)');
     process.exit(2);
   }
-  const result = (check ? checkProposal : writeProposal)({ name: process.argv[2], input: fs.readFileSync(0, 'utf8') });
+  let result;
+  try {
+    result = (check ? checkProposal : writeProposal)({ dataDir: dataDirOrThrow(), name: process.argv[2], input: fs.readFileSync(0, 'utf8') });
+  } catch (err) {
+    console.error(`Nothing was written. ${err.message}`);
+    process.exit(1);
+  }
   if (!result.ok) {
     console.error(`Nothing was written. ${result.errors.length} problem${result.errors.length > 1 ? 's' : ''}:`);
     for (const e of result.errors) console.error(`- ${e}`);
