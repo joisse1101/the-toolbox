@@ -20,6 +20,13 @@ anything. -Uninstall removes only items that exist in the toolkit; anything else
 left alone. Nothing outside the skills, commands, rules and agents folders is touched (settings.json
 and hooks included).
 
+A skill that carries a package.json (and its package-lock.json) gets `npm ci` run in its installed
+folder when the installer installs or replaces it, never when it is up to date. A `node_modules`
+folder is left out of the copy and of the hash. If `npm` is missing or `npm ci` fails, the skill's
+files stay installed, the folder and the command are printed, the other items continue and the exit
+code is 1. -NoPackages skips the step. -Force replaces the whole folder and reinstalls; -Uninstall
+removes the whole folder, `node_modules` included.
+
 Copy by hand instead if you prefer - see toolkit\README.md.
 
 .PARAMETER Scope
@@ -54,6 +61,10 @@ Remove the toolkit's items (or just the named ones) from the destination.
 .PARAMETER Force
 Overwrite a destination item that differs from the toolkit's copy.
 
+.PARAMETER NoPackages
+Skip `npm ci` for a skill that carries a package.json. The installer prints the skill folder and the
+command to run by hand instead.
+
 .PARAMETER Help
 Show this help and exit (-h works too).
 
@@ -83,6 +94,7 @@ param(
     [switch]$List,
     [switch]$Uninstall,
     [switch]$Force,
+    [switch]$NoPackages,
     [switch]$Help
 )
 
@@ -110,6 +122,51 @@ function Get-ItemState($Item) {
     if (-not (Test-Path -LiteralPath $Item.Dest)) { return 'missing' }
     if ((Get-ItemHash $Item.Source) -eq (Get-ItemHash $Item.Dest)) { return 'up to date' }
     return 'differs'
+}
+
+function Copy-ToolkitItem($Item) {
+    # A folder is copied without its top-level node_modules (a developer may have run npm there);
+    # a single file is copied as it is.
+    if (-not (Get-Item -LiteralPath $Item.Source).PSIsContainer) {
+        Copy-Item -LiteralPath $Item.Source -Destination $Item.Dest
+        return
+    }
+    New-Item -ItemType Directory -Force -Path $Item.Dest | Out-Null
+    Get-ChildItem -LiteralPath $Item.Source -Force |
+        Where-Object { $_.Name -ne 'node_modules' } |
+        ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $Item.Dest -Recurse }
+}
+
+$script:packageFailures = 0
+
+function Install-SkillPackages($Item) {
+    # Runs `npm ci` in an installed skill folder that declares a package.json. A failure is
+    # reported and counted, never thrown, so the other items still install.
+    if ($Item.Kind -ne 'skill') { return }
+    if (-not (Test-Path -LiteralPath (Join-Path $Item.Dest 'package.json'))) { return }
+    $command = "npm ci (run in $($Item.Dest))"
+    if ($NoPackages) {
+        Write-Host "  skipped     packages for $($Item.Name): run npm ci in $($Item.Dest)"
+        return
+    }
+    if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
+        Write-Host "  FAILED      packages for $($Item.Name): npm was not found. Install Node.js, then run npm ci in $($Item.Dest)"
+        $script:packageFailures++
+        return
+    }
+    Push-Location -LiteralPath $Item.Dest
+    try {
+        & npm ci
+        $code = $LASTEXITCODE
+    }
+    finally { Pop-Location }
+    if ($code -ne 0) {
+        Write-Host "  FAILED      packages for $($Item.Name): npm ci exited $code. Fix the cause, then run npm ci in $($Item.Dest)"
+        $script:packageFailures++
+    }
+    else {
+        Write-Host "  packages    $($Item.Name): $command"
+    }
 }
 
 # Available items per kind. A skill is a folder holding a SKILL.md; a command item is any folder or
@@ -250,8 +307,9 @@ foreach ($item in $items) {
         'differs' {
             if ($Force) {
                 Remove-Item -LiteralPath $item.Dest -Recurse -Force
-                Copy-Item -LiteralPath $item.Source -Destination $item.Dest -Recurse
+                Copy-ToolkitItem $item
                 Write-Host "  overwritten $label"
+                Install-SkillPackages $item
             }
             else {
                 Write-Host "  differs     $label (left unchanged; re-run with -Force to overwrite)"
@@ -259,8 +317,14 @@ foreach ($item in $items) {
         }
         'missing' {
             New-Item -ItemType Directory -Force -Path $item.DestRoot | Out-Null
-            Copy-Item -LiteralPath $item.Source -Destination $item.Dest -Recurse
+            Copy-ToolkitItem $item
             Write-Host "  installed   $label"
+            Install-SkillPackages $item
         }
     }
+}
+
+if ($script:packageFailures -gt 0) {
+    Write-Host "$($script:packageFailures) skill(s) need their packages installed (see FAILED above)."
+    exit 1
 }

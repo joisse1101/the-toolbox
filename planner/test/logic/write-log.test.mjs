@@ -14,7 +14,7 @@ const lines = (root) => fs.readFileSync(path.join(root, 'logs', LOG_FILE), 'utf8
 test('a write appends one line with the writer, backlog, kind, size and a short hash, and no content', () => {
   const root = temp();
   logWrite({ writer: 'portal', backlog: 'data', kind: 'proposals', text: 'héllo secret', dataDir: root });
-  logWrite({ writer: 'write_proposals', backlog: 'data', kind: 'proposals', text: 'other', dataDir: root });
+  logWrite({ writer: 'write-proposal.mjs', backlog: 'data', kind: 'proposals', text: 'other', dataDir: root });
   const [first, second] = lines(root);
   assert.deepEqual([first.writer, first.backlog, first.kind, first.bytes], ['portal', 'data', 'proposals', 13]);
   assert.equal(first.store, undefined);
@@ -23,14 +23,14 @@ test('a write appends one line with the writer, backlog, kind, size and a short 
   assert.notEqual(first.hash, second.hash);
   assert.ok(!Number.isNaN(Date.parse(first.time)));
   assert.ok(!fs.readFileSync(path.join(root, 'logs', LOG_FILE), 'utf8').includes('secret'), 'the log holds no content');
-  assert.equal(second.writer, 'write_proposals', 'lines keep the order of the writes');
+  assert.equal(second.writer, 'write-proposal.mjs', 'lines keep the order of the writes');
 });
 
 test('extra fields are added to the line and never replace the standard ones', () => {
   const root = temp();
-  logWrite({ writer: 'write_diagram', backlog: 'sample', kind: 'slices', text: 'x', extra: { slice: 'sign-in', writer: 'spoof', bytes: 0 }, dataDir: root });
+  logWrite({ writer: 'write-diagram.mjs', backlog: 'sample', kind: 'slices', text: 'x', extra: { slice: 'sign-in', writer: 'spoof', bytes: 0 }, dataDir: root });
   const [line] = lines(root);
-  assert.deepEqual([line.backlog, line.slice, line.writer, line.bytes], ['sample', 'sign-in', 'write_diagram', 1]);
+  assert.deepEqual([line.backlog, line.slice, line.writer, line.bytes], ['sample', 'sign-in', 'write-diagram.mjs', 1]);
 });
 
 test('the same content has the same hash', () => {

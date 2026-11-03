@@ -185,7 +185,7 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
             </label>
           )}
           {onBench && (
-            <label className="lock-toggle" title="Bench this story: the explore and propose skills ignore it. Nothing else changes.">
+            <label className="lock-toggle" title="Bench this story: the jois-story-explore and jois-story-propose skills ignore it. Nothing else changes.">
               <input type="checkbox" id="benchToggle" checked={!!s.benched} onChange={(e) => onBench(s.id, e.target.checked)} />
               {' '}Benched
             </label>

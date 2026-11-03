@@ -69,7 +69,7 @@ export default function LexiconTab({ hidden, lexicon, selected, error, message, 
                 </li>
               ))}
             </ul>
-            {!lexicon.terms.length && <p className="muted">No terms yet. Add one, or use propose-stories to draft some.</p>}
+            {!lexicon.terms.length && <p className="muted">No terms yet. Add one, or use the jois-story-propose skill to draft some.</p>}
             {lexicon.terms.length > 0 && !shown.length && <p className="muted">No term matches “{query}”.</p>}
           </div>
           <div>
@@ -197,7 +197,7 @@ function EditDiff({ edit }) {
   );
 }
 
-// The open suggestions to rename, delete or edit a term (written by propose-stories). Nothing changes until Apply, which follows the
+// The open suggestions to rename, delete or edit a term (written by jois-story-propose). Nothing changes until Apply, which follows the
 // same rules as renaming or deleting by hand; a refusal is shown here and the suggestion stays open.
 function LexiconSuggestions({ lexicon, file, onApply, onDismiss }) {
   const open = file.rows.map((row, index) => ({ row, index })).filter(({ row }) => isOpen(row));

@@ -330,3 +330,55 @@ def test_shared_pr_check_is_skipped_when_a_command_is_absent(tmp_path):
     _toolkit_tree(tmp_path)
     _write(tmp_path, "commands/jois-git/write-pr.md", _pr_command("same"))
     assert _problems(tmp_path) == []
+
+
+def _skill_tree(root, name="jois-story-demo"):
+    _toolkit_tree(root)
+    _write(root, f"skills/{name}/SKILL.md", f"---\nname: {name}\n{VERSION}\n---\nSkill\n")
+    return name
+
+
+def test_skill_may_hold_scripts_lib_references_and_a_lock_file(tmp_path):
+    name = _skill_tree(tmp_path)
+    _write(tmp_path, f"skills/{name}/read.mjs", "import { a } from './lib/a.mjs';\nimport fs from 'node:fs';\n")
+    _write(tmp_path, f"skills/{name}/lib/a.mjs", "import { b } from './b.mjs';\nexport const a = 1;\n")
+    _write(tmp_path, f"skills/{name}/references/guide.md", "guide")
+    _write(tmp_path, f"skills/{name}/package.json", "{}")
+    _write(tmp_path, f"skills/{name}/package-lock.json", "{}")
+    assert _problems(tmp_path) == []
+
+
+def test_package_json_without_a_lock_file_fails(tmp_path):
+    name = _skill_tree(tmp_path)
+    _write(tmp_path, f"skills/{name}/package.json", "{}")
+    problems = _problems(tmp_path)
+    assert any(f"skills/{name}/package.json" in p and "package-lock.json" in p for p in problems)
+
+
+def test_script_importing_outside_its_skill_folder_fails(tmp_path):
+    name = _skill_tree(tmp_path)
+    _write(tmp_path, f"skills/{name}/read.mjs", "import { x } from '../../../planner/logic/x.js';\n")
+    problems = _problems(tmp_path)
+    assert any(f"skills/{name}/read.mjs:1" in p and "outside the skill folder" in p for p in problems)
+
+
+def test_script_importing_a_sibling_skill_fails(tmp_path):
+    name = _skill_tree(tmp_path)
+    _skill_tree(tmp_path, "jois-story-other")
+    _write(tmp_path, f"skills/{name}/read.mjs", "const m = await import('../jois-story-other/lib.mjs');\n")
+    assert any("outside the skill folder" in p for p in _problems(tmp_path))
+
+
+def test_node_modules_are_not_scanned(tmp_path):
+    name = _skill_tree(tmp_path)
+    _write(tmp_path, f"skills/{name}/node_modules/pkg/index.js", "require('../../../../../outside');\n")
+    assert _problems(tmp_path) == []
+
+
+def test_jois_story_command_needs_a_version(tmp_path):
+    _toolkit_tree(tmp_path)
+    _write(tmp_path, "commands/jois-story/propose.md", f"---\n{HIDDEN}\n---\nbody\n")
+    problems = _problems(tmp_path)
+    assert any("commands/jois-story/propose.md" in p and "metadata.version" in p for p in problems)
+    _write(tmp_path, "commands/jois-story/propose.md", f"---\n{HIDDEN}\n{VERSION}\n---\nbody\n")
+    assert _problems(tmp_path) == []

@@ -157,7 +157,7 @@ export function deleteTerm(lexicon, name) {
 }
 
 // The writer's input: a list of { term, definition, avoid?, notes?, partOf? }. Every item adds a term and needs a
-// definition; a term that already exists is refused (a change to it is a suggestion, see planner/logic/lexicon/lexicon-suggestions.js).
+// definition; a term that already exists is refused (a change to it is a suggestion, see lexicon-suggestions.js in this folder).
 // Everything is checked on the lexicon as it will be, so a parent added earlier in the list is fine. Returns
 // { ok, lexicon, added } or { ok: false, errors }, each error naming its item (1-based).
 export function applyTermItems(lexicon, items) {
@@ -177,7 +177,7 @@ export function applyTermItems(lexicon, items) {
     if ('avoid' in item && !(Array.isArray(item.avoid) && item.avoid.every((w) => typeof w === 'string'))) problem('"avoid" must be a list of words');
     if (unknown.length || errors.some((e) => e.startsWith(`${at}:`))) return;
     if (terms.some((t) => key(t.name) === key(item.term))) {
-      return problem(`"${item.term.trim()}" is already a term: suggest a change to it with suggest_lexicon_change (action "edit")`);
+      return problem(`"${item.term.trim()}" is already a term: suggest a change to it with suggest-lexicon.mjs (action "edit")`);
     }
     if (!String(item.definition ?? '').trim()) return problem(`new term "${item.term.trim()}" needs a definition`);
     terms.push(clean({ ...item, name: item.term }));

@@ -30,10 +30,7 @@ const starts = (file, folder) => file === folder || file.startsWith(`${folder}/`
 function allowed(file) {
   if (starts(file, 'planner/logic')) return ['planner/logic'];
   if (starts(file, 'planner/portal')) return ['planner/portal', 'planner/logic', 'planner/guidelines'];
-  if (starts(file, 'planner/claude')) return ['planner/claude', 'planner/logic', '.claude/skills'];
-  if (starts(file, '.claude/skills/_shared')) return ['.claude/skills/_shared', 'planner/logic'];
-  const skill = file.match(/^\.claude\/skills\/([^/]+)\//);
-  if (skill) return [`.claude/skills/${skill[1]}`, '.claude/skills/_shared', 'planner/logic', 'planner/guidelines'];
+  // The story skills are toolkit items; the toolkit may import nothing outside itself.
   if (starts(file, 'toolkit')) return ['toolkit'];
   return null;
 }
@@ -43,7 +40,7 @@ function imports(file) {
   return [...text.matchAll(IMPORT)].map((m) => rel(path.resolve(path.dirname(path.join(REPO, file)), m[1])));
 }
 
-const files = [...sources(path.join(REPO, 'planner')), ...sources(path.join(REPO, '.claude')), ...sources(path.join(REPO, 'toolkit'))]
+const files = [...sources(path.join(REPO, 'planner')), ...sources(path.join(REPO, 'toolkit'))]
   .map(rel).filter((f) => allowed(f) && !starts(f, 'planner/test'));
 
 test('every source file imports only from the zones its own zone may depend on', () => {
@@ -57,17 +54,19 @@ test('every source file imports only from the zones its own zone may depend on',
   assert.deepEqual(breaches, []);
 });
 
-test('the zone rules cover the layout: logic, portal, claude, skills and toolkit all have source files', () => {
-  for (const folder of ['planner/logic', 'planner/logic/diagrams', 'planner/portal', 'planner/claude', '.claude/skills/_shared', '.claude/skills/review-backlog']) {
+test('the zone rules cover the layout: logic, portal, skills and toolkit all have source files', () => {
+  for (const folder of ['planner/logic', 'planner/portal', 'planner/logic/skill-support', 'toolkit/skills/jois-story-review', 'toolkit/skills/jois-story-plan']) {
     assert.ok(files.some((f) => starts(f, folder)), `no source files under ${folder}`);
   }
 });
 
 test('the rules reject what they are for', () => {
   assert.equal(allowed('planner/logic/backlog/ids.js').some((f) => starts('planner/portal/web/lib/word-diff.js', f)), false);
-  assert.equal(allowed('planner/logic/diagrams/source.js').some((f) => starts('planner/portal/web/lib/word-diff.js', f)), false);
-  assert.equal(allowed('planner/logic/diagrams/checks.js').some((f) => starts('.claude/skills/plan-stories/read-diagrams.mjs', f)), false);
-  assert.equal(allowed('planner/portal/web/main.jsx').some((f) => starts('.claude/skills/_shared/paths.cjs', f)), false);
-  assert.equal(allowed('.claude/skills/review-backlog/write-review.mjs').some((f) => starts('planner/portal/server/flatten.js', f)), false);
-  assert.equal(allowed('.claude/skills/review-backlog/write-review.mjs').some((f) => starts('.claude/skills/propose-stories/write-proposal.mjs', f)), false);
+  assert.equal(allowed('toolkit/skills/jois-story-plan/diagrams/checks.js').some((f) => starts('planner/logic/backlog/model.js', f)), false);
+  assert.equal(allowed('planner/portal/web/main.jsx').some((f) => starts('toolkit/skills/jois-story-review/write-review.mjs', f)), false);
+  assert.equal(allowed('toolkit/skills/jois-story-review/read-backlog.mjs').some((f) => starts('planner/logic/backlog/model.js', f)), false);
+  assert.equal(allowed('toolkit/skills/jois-story-review/lib/backlog/model.js').some((f) => starts('planner/logic/backlog/ids.js', f)), false);
+  assert.equal(allowed('toolkit/skills/jois-story-review/write-review.mjs').some((f) => starts('planner/guidelines/product-backlog.md', f)), false);
+  assert.equal(allowed('toolkit/skills/jois-story-review/write-review.mjs').some((f) => starts('planner/portal/server/flatten.js', f)), false);
+  assert.equal(allowed('toolkit/skills/jois-story-propose/write-proposal.mjs').some((f) => starts('planner/logic/backlog/model.js', f)), false);
 });

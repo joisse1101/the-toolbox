@@ -7,17 +7,22 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { getDataDir } = require('./paths.cjs');
 const { logFile } = require('./backlog-paths.cjs');
 
 const LOG_FILE = 'writes.jsonl';
+
+// The served data folder, read only when a caller gives no dataDir. The require is inside the function so a copy of
+// this file in a skill (which always passes dataDir) does not need paths.cjs and the config reader behind it.
+function currentDataDir() {
+  return require('./paths.cjs').getDataDir();
+}
 
 // writer: 'portal' or the name of the script or tool; backlog: the backlog's name; kind: the kind of file written
 // (`backlog`, `review`, `proposals`, `lexicon`, `lexicon-suggestions`); text: the new content;
 // extra: more short fields for the line (the diagram writer adds slice), which never replace the fields above.
 // `store` and `file` are the earlier form of backlog and kind: callers not yet moved to the backlog folder layout still
 // pass them, and they are logged as given.
-function logWrite({ writer, backlog, kind, store, file, text, extra = {}, dataDir = getDataDir() }) {
+function logWrite({ writer, backlog, kind, store, file, text, extra = {}, dataDir = currentDataDir() }) {
   try {
     const target = logFile(dataDir);
     fs.mkdirSync(path.dirname(target), { recursive: true });

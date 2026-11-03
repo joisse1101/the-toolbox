@@ -1,0 +1,4 @@
+ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes,Locked,Clarifications
+IAM-0001,Identity and access,Sign in,Sign in with email,"As a member, I want to sign in with my email, so that I can reach my account.",3,High,,"AC1: Given a registered member, when they sign in with the right password, then they see their dashboard.",,Yes,
+IAM-0002,Identity and access,Sign in,Reset a password,"As a member, I want to reset my password, so that I can regain access.",5,Medium,IAM-0001,"AC1: Given a registered member, when they ask for a reset, then they are sent a reset link.",,,
+RPT-0001,Reporting,Exports,Export a list as CSV,"As an analyst, I want to export a list as CSV, so that I can open it in a spreadsheet.",2,Low,,"AC1: Given a list with rows, when the analyst exports it, then a CSV file holds every row.",,,

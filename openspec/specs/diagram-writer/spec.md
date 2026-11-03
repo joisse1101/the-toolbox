@@ -4,26 +4,15 @@ Defines the diagram tools that read, check and write slices under the diagrams f
 
 ## Requirements
 
-### Requirement: Diagram tools server
-The repository SHALL contain a stdio MCP server, `planner/claude/mcp/diagram-tools.mjs`, with typed tools `read_diagrams`, `check_diagram` and `write_diagram`, the map tools of the `context-map` capability, and `repo_tree`, `repo_grep` and `repo_read` when the backlog has a valid `repo.json`. It SHALL change nothing except through `write_diagram`, the map write and the repair that `read_diagrams` makes to a slice's `source.json` and generated story list (see Healing shifted IDs), and each SHALL write only under `<backlog>/slices/<slice>/`, or, for the map, under `<backlog>/`. `read_diagrams`, `check_diagram` and the map's read and check SHALL never change a diagram, or a specification outside its generated story list. `slices` SHALL NOT be a kind of the file API.
-
-#### Scenario: Path outside the diagrams folder
-- **WHEN** `write_diagram` is called with a slice name that would resolve outside the backlog's slices folder
-- **THEN** nothing is written and the reply names the rule
-
-#### Scenario: Not reachable from the portal
-- **WHEN** the file API is asked for the kind `slices`
-- **THEN** it is refused as unknown
-
 ### Requirement: Links to stories
-`source.json` SHALL record the slice's scope (Epic, Feature or story) and, for each story in scope, its `id`, `title` and a hash of its text. The diagrams SHALL hold no story ID; only the specification's generated story list does. `write_diagram` SHALL take the stories as `{id, title}` pairs, require the Title to match the backlog as the backlog tools do, and write the hashes itself.
+`source.json` SHALL record the slice's scope (Epic, Feature or story) and, for each story in scope, its `id`, `title` and a hash of its text. The diagrams SHALL hold no story ID; only the specification's generated story list does. The slice writer SHALL take the stories as `{id, title}` pairs, require the Title to match the backlog as the other story writers do, and write the hashes itself.
 
 #### Scenario: Title does not match
-- **WHEN** `write_diagram` is given an ID whose story now has another Title
+- **WHEN** the slice writer is given an ID whose story now has another Title
 - **THEN** nothing is written and the reply says what the ID holds and which stories have that Title
 
 ### Requirement: Healing shifted IDs
-`read_diagrams` SHALL match each story of a slice to the backlog by Title and scope. When the Title matches exactly one story whose ID differs, it SHALL update that `id` in `source.json`, regenerate the specification's story list and report the change, and every other byte of the document, the diagrams included, SHALL stay as it was. When two stories share the Title, it SHALL use Epic and Feature to choose and SHALL report the story as ambiguous when it cannot.
+The slice read script SHALL match each story of a slice to the backlog by Title and scope. When the Title matches exactly one story whose ID differs, it SHALL update that `id` in `source.json`, regenerate the specification's story list and report the change, and every other byte of the document, the diagrams included, SHALL stay as it was. When two stories share the Title, it SHALL use Epic and Feature to choose and SHALL report the story as ambiguous when it cannot.
 
 #### Scenario: Story moved by a renumber
 - **WHEN** a story's ID changed because another story was added before it
@@ -38,7 +27,7 @@ The repository SHALL contain a stdio MCP server, `planner/claude/mcp/diagram-too
 - **THEN** the slice is reported ambiguous for that story and `source.json` is not changed for it
 
 ### Requirement: Stale detection
-`read_diagrams` SHALL report a slice stale when a story's hash differs from the one recorded, a story is missing from the backlog, or the Epic or Feature now holds a story the slice does not list. It SHALL name each story by Title and say which of the three applies, and SHALL NOT change the diagram files.
+The slice read script SHALL report a slice stale when a story's hash differs from the one recorded, a story is missing from the backlog, or the Epic or Feature now holds a story the slice does not list. It SHALL name each story by Title and say which of the three applies, and SHALL NOT change the diagram files.
 
 #### Scenario: Story reworded
 - **WHEN** a story's User Story or criteria changed since the slice was written
@@ -49,7 +38,7 @@ The repository SHALL contain a stdio MCP server, `planner/claude/mcp/diagram-too
 - **THEN** the read lists the story as new
 
 ### Requirement: Validation before writing
-`check_diagram` and `write_diagram` SHALL apply the same checks of `diagram-conventions`, including Mermaid's own parser on every `mermaid` block, and report every problem found, each naming the document and the heading, line or story. `check_diagram` writes nothing. One failing diagram or section SHALL write nothing of the slice.
+The slice writer SHALL apply the same checks of `diagram-conventions` with and without `--check`, including Mermaid's own parser on every `mermaid` block, and report every problem found, each naming the document and the heading, line or story. With `--check` it writes nothing. One failing diagram or section SHALL write nothing of the slice. When the packages the Mermaid parser needs are not installed in the skill's folder, the writer SHALL refuse, name the folder and say to run `npm ci` there, and SHALL NOT skip the check.
 
 #### Scenario: One bad file
 - **WHEN** the document fails a check, in one diagram or in one section
@@ -60,19 +49,37 @@ The repository SHALL contain a stdio MCP server, `planner/claude/mcp/diagram-too
 - **THEN** the reply carries the parser's message and the line within the block
 
 ### Requirement: Atomic and idempotent writes
-`write_diagram` SHALL write each file atomically and re-read the slice afterwards, failing and naming what is missing if the folder does not hold what was sent. Sending the same slice again SHALL leave the files byte-for-byte unchanged. It SHALL NOT overwrite a slice of another scope under the same name, and SHALL NOT delete files it did not write.
+The slice writer SHALL write each file atomically and re-read the slice afterwards, failing and naming what is missing if the folder does not hold what was sent. Sending the same slice again SHALL leave the files byte-for-byte unchanged. It SHALL NOT overwrite a slice of another scope under the same name, and SHALL NOT delete files it did not write.
 
 #### Scenario: Repeated write
 - **WHEN** the same slice is written twice
-- **THEN** the second call changes no byte and says nothing changed
+- **THEN** the second run changes no byte and says nothing changed
 
 #### Scenario: Same name, different scope
 - **WHEN** a slice with that name exists for another Epic or Feature
 - **THEN** the write is refused and names the existing scope
 
 ### Requirement: Write log
-Every `write_diagram` SHALL append one line to `planner/data/logs/writes.jsonl` with the time, writer, backlog, slice, bytes and a short hash and no contents, as the other writers do.
+Every run of the slice writer that writes SHALL append one line to `planner/data/logs/writes.jsonl` with the time, writer, backlog, slice, bytes and a short hash and no contents, as the other writers do.
 
 #### Scenario: Log line
 - **WHEN** a slice is written
 - **THEN** `writes.jsonl` gains one line for it and the line holds no diagram text
+
+### Requirement: Diagram scripts of the plan skill
+`jois-story-plan` SHALL carry scripts that read slices, check and write a slice, and read, check and write the context map, run with Bash from the installed skill folder. A check is the writer's `--check` and writes nothing.
+
+#### Scenario: Check writes nothing
+- **WHEN** the slice writer is run with `--check` on a valid slice
+- **THEN** it reports what it would write and no file changes
+
+### Requirement: Diagram scripts change only their own targets
+A plan script SHALL change nothing except the slice writer, the map writer and the repair that the slice read script makes to a slice's `source.json` and generated story list (see Healing shifted IDs). The slice writer SHALL write only under `<backlog>/slices/<slice>/` and the map writer only under `<backlog>/`. The read scripts and `--check` SHALL never change a diagram, or a specification outside its generated story list. `slices` SHALL NOT be a kind of the file API.
+
+#### Scenario: Path outside the diagrams folder
+- **WHEN** the slice writer is given a slice name that would resolve outside the backlog's slices folder
+- **THEN** nothing is written and the reply names the rule
+
+#### Scenario: Not reachable from the portal
+- **WHEN** the file API is asked for the kind `slices`
+- **THEN** it is refused as unknown

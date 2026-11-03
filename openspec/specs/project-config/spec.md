@@ -55,7 +55,7 @@ The system SHALL NOT read `PLANNER_DATA_DIR` or `TLT_DATA_DIR`. The config file 
 - **THEN** the config's folder is used and the variable is ignored
 
 ### Requirement: Every consumer uses the config
-The portal server, the skill scripts, the Claude tool servers and the launchers SHALL take the data directory from the same config, through one shared resolution.
+The portal server SHALL take the data directory from the project config through the planner's own resolution. The story skills SHALL take the same directory from the same config, found as the `toolkit-story-skills` capability describes, reading the `dataDir` key only. A story skill's script SHALL NOT import the planner's resolution.
 
 #### Scenario: Config changed, script run
 - **WHEN** the config's `dataDir` is changed and a skill script is started afterwards
