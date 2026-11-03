@@ -1,0 +1,10 @@
+{
+  "name": "jois-story-plan",
+  "private": true,
+  "type": "module",
+  "description": "Mermaid's own parser, used by the slice and context map writers to refuse a diagram that does not parse. The installer runs `npm ci` here.",
+  "dependencies": {
+    "jsdom": "30.1.3",
+    "mermaid": "12.2.0"
+  }
+}
