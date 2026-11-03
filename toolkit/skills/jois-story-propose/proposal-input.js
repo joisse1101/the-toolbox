@@ -1,4 +1,4 @@
-// Turns drafted stories (the JSON the propose-stories skill sends to write-proposal.mjs) into proposed stories.
+// Turns drafted stories (the JSON the jois-story-propose skill sends to write-proposal.mjs) into proposed stories.
 // Pure: no file access. `backlog` and `proposals` are loadBacklog results (`proposals` is null when the file does not
 // exist yet). The rules for the story text come from planner/guidelines/product-backlog.md; this only checks that the
 // cells will be stored in the formats the portal reads.

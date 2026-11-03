@@ -10,10 +10,10 @@ const quoted = (t) => `"${String(t ?? '').trim()}"`;
 
 // { id, title } -> { ok: true, story } (story is undefined when the ID is not in the list and no Title was required or given)
 // or { ok: false, message }.
-//   required: a missing Title is refused (the MCP tools); otherwise it is not checked (the CLI scripts), and a Title that is
+//   required: a missing Title is refused (the skills ask for it when they pass a Title with every ID); otherwise it is not checked (the CLI scripts), and a Title that is
 //             given is always checked.
 //   key:      the name of the Title in the caller's input, used in the "add the Title" message.
-//   hint:     where to look when no story has the Title, e.g. "the index section of read_context".
+//   hint:     where to look when no story has the Title, e.g. "the index section of read-story-context.mjs".
 export function resolveStoryRef(stories, { id, title }, { required = false, key = 'storyTitle', hint = 'the index section of read_context' } = {}) {
   const held = stories.filter((s) => s.code === id);
   const given = typeof title === 'string' && title.trim() !== '';
