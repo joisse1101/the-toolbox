@@ -1,7 +1,7 @@
 ---
 metadata:
-  version: "1.0.0"
-  last_updated: "2026-10-31"
+  version: "1.1.0"
+  last_updated: "2026-11-03"
 ---
 # Local installs only
 
@@ -23,6 +23,12 @@ and never changes the user's machine.
 - Install the requirements file inside it, or the named package when there is no requirements file.
 - Run `pip`, `pytest` and other Python tools through the `.venv`'s interpreter, never the system Python.
 
+## A missing environment
+
+- A missing `.venv`, or a missing project-local environment of another ecosystem, is never a reason to stop or to ask.
+- Create it and carry on.
+- This holds also when you need it only to run tests or checks.
+
 ## Worktrees
 
 - Each git worktree uses its own `.venv`.
@@ -32,7 +38,7 @@ and never changes the user's machine.
 ## When there is no local way
 
 - If an install would land outside the project, make it local first.
-- If the tool has no project-local way to install, stop and ask the user before installing.
+- Ask the user only when the tool has no project-local way to install. Stop and ask before installing.
 
 ## One-off runs
 
