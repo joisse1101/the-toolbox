@@ -1,6 +1,6 @@
 ---
 metadata:
-  version: "1.0.0"
+  version: "1.0.1"
   last_updated: "2026-11-03"
 ---
 # Stay in the repo
@@ -23,6 +23,7 @@ all of it inside the project folder.
 - Never read subagent transcripts.
 - Point a tool whose default temp folder lies outside the project at `.scratch/`, where the tool allows it.
 - Examples: `pytest --basetemp .scratch/pytest`, a `TMPDIR` variable.
+- Do not do this for a test that asks git whether a path is ignored: git ignores `.scratch/`, so that test fails. Leave that run on the tool's default temp folder.
 
 ## Worktrees
 
