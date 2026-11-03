@@ -1,7 +1,7 @@
 ---
 metadata:
-  version: "1.0.0"
-  last_updated: "2026-10-29"
+  version: "1.1.0"
+  last_updated: "2026-11-03"
 ---
 # Test with mock data
 
@@ -15,6 +15,9 @@ that tests never touch real user state from test code to your own verification s
 - When test data is needed, build it from the codebase first. Reuse existing fixtures and sample
   data, derive the shape from schemas, types, models and existing tests, create mock data from
   that shape and test on it.
+- Create mock repos and mock data under the project's `.scratch/`, as `jois-env-stay-in-repo` says.
+- Verify through the project's own `.venv` or `node_modules`. Create a missing `.venv` as
+  `jois-env-local-installs` says, without asking.
 - Only when the codebase does not give enough to build mock data, ask the user for mock data or
   for the shape of the data (schema or fields). Never ask for real data.
 - Use real data or a real system only when the user explicitly asks for it in the current request.

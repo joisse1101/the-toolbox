@@ -1,7 +1,7 @@
 ---
 metadata:
-  version: "1.3.0"
-  last_updated: "2026-11-02"
+  version: "1.4.0"
+  last_updated: "2026-11-03"
 ---
 # Commit hygiene
 
@@ -48,6 +48,9 @@ Applies only when you are about to commit.
 ## Checks and message
 
 - Do not commit while the build, type-check or tests fail, unless the commit is the fix.
+- A check that cannot run because the project environment is missing is not a failing check.
+- Set the environment up as `jois-env-local-installs` says, then run the checks.
+- Do not skip them, and do not stop to ask.
 - Write the message as `type(scope): subject`.
 - The type is one of feat, fix, refactor, perf, style, docs, test, build, ci, chore or revert.
 - The subject is lowercase, imperative, and has no trailing period.
