@@ -3,37 +3,63 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildProposals } from '../../../.claude/skills/propose-stories/proposal-input.js';
-import { loadBacklog } from '../../logic/backlog/model.js';
-import { validateFindings } from '../../logic/review/review.js';
-import { applyTermItems, parseLexicon } from '../../logic/lexicon/lexicon.js';
-import { emptySuggestions, validateItems } from '../../logic/lexicon/lexicon-suggestions.js';
+import { buildProposals } from '../../skills/jois-story-propose/proposal-input.js';
+import { loadBacklog } from '../../skills/jois-story-propose/lib/backlog/model.js';
+import { validateFindings } from '../../skills/jois-story-propose/lib/review/review.js';
+import { applyTermItems, parseLexicon } from '../../skills/jois-story-propose/lib/lexicon/lexicon.js';
+import { emptySuggestions, validateItems } from '../../skills/jois-story-propose/lib/lexicon/lexicon-suggestions.js';
 
-const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
-const read = (...parts) => fs.readFileSync(path.join(REPO, ...parts), 'utf8').replace(/\r\n/g, '\n');
-const skill = (name) => read('.claude', 'skills', name, 'SKILL.md');
-// The tool-call examples in propose-stories/SKILL.md: json blocks of { backlog, items }, in file order
-// (new stories, a patch, a backlog edit, lexicon terms, lexicon suggestions).
-const examples = () => [...skill('propose-stories').matchAll(/```json\n([\s\S]*?)\n```/g)].map((m) => JSON.parse(m[1]));
+const TOOLKIT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+const SKILLS = path.join(TOOLKIT, 'skills');
+const read = (...parts) => fs.readFileSync(path.join(SKILLS, ...parts), 'utf8').replace(/\r\n/g, '\n');
+const text = read('jois-story-propose', 'SKILL.md');
+const front = text.split('---')[1];
+// The JSON examples in SKILL.md, in file order: new stories, a patch, a backlog edit, lexicon terms, lexicon suggestions.
+// Each one is the list a writer takes on standard input.
+const examples = () => [...text.matchAll(/```json\n([\s\S]*?)\n```/g)].map((m) => JSON.parse(m[1]));
 
 const HEAD = 'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes\r\n';
 const BACKLOG =
   HEAD +
   'IAM-0001,Identity & Access Management,Auth,Log in with a password,"As a user, I want to log in, so that I can access the portal",5,High,,"AC1: Given a, when b, then c",\r\n';
 const PROPOSALS = HEAD + 'NEW-3,Identity & Access Management,Auth,Send a welcome email,,,,,,\r\n';
+const FULL = (code, title) => `${code},Identity & Access Management,Auth,${title},"As a user, I want x, so that y",3,,,"AC1: Given a, when b, then c",\r\n`;
 
-test('the examples in propose-stories/SKILL.md are the five tool calls, each with a backlog and items', () => {
+test('the skill is named jois-story-propose, versioned, and may run only its five scripts', () => {
+  assert.match(front, /^name: jois-story-propose$/m);
+  assert.match(front, /version: "1\.0\.0"/);
+  assert.match(front, /last_updated: "2026-11-03"/);
+  assert.match(front, /^allowed-tools: Bash\(node \*read-story-context\.mjs\*\), Bash\(node \*write-proposal\.mjs\*\), Bash\(node \*write-lexicon\.mjs\*\), Bash\(node \*suggest-lexicon\.mjs\*\), Bash\(node \*write-review\.mjs\*\)$/m);
+  assert.doesNotMatch(front, /mcp__/);
+});
+
+test('every script the skill names ships in its folder, and every writer is run with --check', () => {
+  for (const script of ['read-story-context.mjs', 'write-proposal.mjs', 'write-lexicon.mjs', 'suggest-lexicon.mjs', 'write-review.mjs']) {
+    assert.ok(fs.existsSync(path.join(SKILLS, 'jois-story-propose', script)), script);
+    assert.match(text, new RegExp(script.replace('.', '\\.')), script);
+  }
+  const check = text.split('## Confirm before writing')[1].split('1. Show everything')[0];
+  for (const writer of ['write-lexicon.mjs <backlog> --check', 'suggest-lexicon.mjs <backlog> --check', 'write-proposal.mjs <backlog> --check', 'write-review.mjs <backlog> --append --check']) {
+    assert.ok(check.includes(writer), writer);
+  }
+});
+
+test('the skill names no retired tool, launcher or old skill name, and has a Data folder section', () => {
+  assert.doesNotMatch(text, /mcp__|read_context|read_file|search_stories|check_drafts|write_proposals|write_lexicon|write_review|suggest_lexicon_change|shape-stories|plan-stories|explore-stories|propose-stories|\/story:|planner\/guidelines|planner\/data|lexicon-suggestions\/<backlog name>/);
+  assert.match(text, /## Data folder/);
+  assert.match(text, /PLANNER_CONFIG/);
+  assert.match(text, /`<skill folder>`/);
+});
+
+test('the examples are the five lists of the writers', () => {
   const all = examples();
   assert.equal(all.length, 5, 'one example of new stories, one of a patch, one of a backlog edit, one of lexicon terms and one of lexicon suggestions');
-  for (const call of all) {
-    assert.equal(call.backlog, 'data-portal');
-    assert.ok(Array.isArray(call.items) && call.items.length);
-  }
+  for (const list of all) assert.ok(Array.isArray(list) && list.length);
 });
 
 test('the new-stories example passes the writer\'s validation', () => {
   const r = buildProposals({
-    input: examples()[0].items,
+    input: examples()[0],
     backlog: loadBacklog(BACKLOG),
     proposals: loadBacklog(PROPOSALS, { placeholderIds: true }),
     requireTitles: true,
@@ -44,51 +70,8 @@ test('the new-stories example passes the writer\'s validation', () => {
   assert.deepEqual(r.stories.map((s) => s.dependsOn), [['IAM-0001'], ['NEW-4'], ['NEW-3']]);
 });
 
-test('propose-stories does not copy the guidelines definitions', () => {
-  const text = skill('propose-stories');
-  assert.match(text, /guidelines\/product-backlog\.md/);
-  assert.doesNotMatch(text, /INVEST (stands|means)|Independent, Negotiable/i);
-});
-
-test('only the readers are pre-approved: check_drafts for the propose session, never a writer', () => {
-  const WRITERS = ['write_proposals', 'write_lexicon', 'write_review', 'suggest_lexicon_change'];
-  const front = (text) => text.split('---')[1];
-  for (const text of [skill('propose-stories'), read('.claude', 'commands', 'story', 'propose.md')]) {
-    assert.match(front(text), /allowed-tools: mcp__backlog-tools__read_context, mcp__backlog-tools__search_stories, mcp__backlog-tools__read_file, mcp__backlog-tools__check_drafts\n$/);
-    for (const writer of WRITERS) assert.doesNotMatch(front(text), new RegExp(writer));
-  }
-  const allowed = (script) => read('planner', 'claude', 'launchers', script).match(/--allowedTools ([^\n]*?)\s*`?\n/)[1];
-  // read_file is a reader too; the sessions have no Read or Grep.
-  assert.equal(allowed('shape-stories.ps1'), '"mcp__backlog-tools__read_context" "mcp__backlog-tools__search_stories" "mcp__backlog-tools__read_file" "mcp__backlog-tools__check_drafts"');
-});
-
-test('the propose skill and command check before asking, read every write back and recover from a mismatch', () => {
-  const text = skill('propose-stories');
-  const command = read('.claude', 'commands', 'story', 'propose.md');
-  assert.match(text, /\*\*Check the drafts first\.\*\* Before you show anything for confirmation, call `check_drafts`/);
-  assert.ok(text.indexOf('Check the drafts first') < text.indexOf('Ask one direct yes/no question'), 'the check comes before the question');
-  assert.match(text, /## Verify every write/);
-  const verify = text.split('## Verify every write')[1].split('## Report')[0];
-  for (const reader of ['reviews', 'lexicon-suggestions']) assert.match(verify, new RegExp(`section \`${reader}\``));
-  // The proposals and the lexicon are files now: read back with read_file, not a read_context section.
-  for (const file of ['proposals', 'lexicon']) assert.match(verify, new RegExp(`\\| \`write_${file === 'proposals' ? 'proposals' : 'lexicon'}\` \\| the ${file}, with \`read_file\``));
-  assert.doesNotMatch(verify, /section `(proposals|lexicon)`/);
-  assert.match(text, /only on the strength of a read made in the current turn/);
-  assert.match(text, /send again \*\*only the missing part\*\*/);
-  assert.match(text, /If the second read-back still does not match, stop and tell the user/);
-  assert.match(text, /"As an approver, I want/);
-  assert.doesNotMatch(text, /Run each call \*\*once\*\*/);
-  assert.doesNotMatch(text, /new stories are added again|new stories would be added twice/);
-  assert.match(command, /`check_drafts`/);
-  assert.match(command, /read that file back in the same turn \(`read_context` for the review and the lexicon suggestions, `read_file` for the proposals and the lexicon\)/);
-  assert.match(command, /send again only the missing part/);
-  assert.doesNotMatch(command, /run each call once/);
-});
-
-const FULL = (code, title) => `${code},Identity & Access Management,Auth,${title},"As a user, I want x, so that y",3,,,"AC1: Given a, when b, then c",\r\n`;
-
 test('the patch example passes the writer\'s validation', () => {
-  const input = examples()[1].items;
+  const input = examples()[1];
   assert.ok(input.every((item) => /^NEW-\d+$/.test(item.id)));
   const r = buildProposals({
     input,
@@ -101,86 +84,86 @@ test('the patch example passes the writer\'s validation', () => {
 });
 
 test('the backlog edit example passes the review writer\'s validation, and the skill only appends', () => {
-  const text = skill('propose-stories');
-  const findings = examples()[2].items;
+  const findings = examples()[2];
   assert.deepEqual(validateFindings(findings, loadBacklog(BACKLOG), { requireTitles: true }), []);
   assert.ok(findings.every((f) => f.action !== 'add-story' && !f.group), 'edits never create stories or groups');
-  assert.match(text, /`write_review` always appends/);
-  assert.match(text, /do not run an earlier call again once its read-back matched/);
-  assert.doesNotMatch(text, /review-backlog\/SKILL\.md/, 'the row rules are in the tool description, not in a file the session cannot read');
+  assert.match(text, /Always `--append`/);
+  assert.match(text, /do not run an earlier command again once its read-back matched/);
 });
 
 test('the lexicon example passes the lexicon writer\'s validation, and the lexicon is written first', () => {
-  const text = skill('propose-stories');
   const lexicon = parseLexicon('Term,Definition,Avoid\r\nRole,A set of privileges.,\r\n');
-  const r = applyTermItems(lexicon, examples()[3].items);
+  const r = applyTermItems(lexicon, examples()[3]);
   assert.deepEqual(r.errors, undefined);
   assert.deepEqual(r.added, ['Dataset', 'Dataset attribute', 'User']);
-  const again = applyTermItems(r.lexicon, examples()[3].items);
+  const again = applyTermItems(r.lexicon, examples()[3]);
   assert.match(again.errors[0], /is already a term: suggest a change to it with suggest_lexicon_change/, 'the example adds only');
-  assert.match(text, /`write_lexicon` with the backlog name/);
-  assert.match(text, /run the lexicon writer first/);
-  assert.doesNotMatch(text.split('---')[1], /write_/, 'the skill does not pre-approve the writers, so Claude Code asks');
+  assert.match(text, /run the lexicon writer first \(so the stories can use the terms\), then `suggest-lexicon\.mjs`, then the proposal writer, then the review writer/);
 });
 
-test('propose-stories uses the lexicon terms and flags gaps', () => {
-  const text = skill('propose-stories');
-  assert.match(text, /lexicon/i);
-  assert.match(text, /`Avoid` column/);
-  assert.match(text, /full name/);
+test('the lexicon suggestion example passes the validation and the skill says the user applies it', () => {
+  const lexicon = parseLexicon('Term,Definition,Avoid\r\nRole,A set of privileges.,\r\nDataset,A table.,\r\nUser,A person with a login.,customer;member\r\n');
+  const r = validateItems(lexicon, emptySuggestions(), examples()[4]);
+  assert.deepEqual(r.errors, undefined);
+  assert.deepEqual(r.rows.map((x) => [x.action, x.avoid]), [['rename', ['Role', 'function']], ['delete', []], ['edit', []]]);
+  assert.deepEqual(r.rows[2].edit.avoid.to, ['customer', 'member', 'account holder']);
+  assert.match(text, /only a suggestion the user applies in the Lexicon tab/);
+  assert.match(text, /A delete is refused on Apply while another term is part of it/);
 });
 
-test('propose-stories says to re-read first, to show old and new values, to prefer a patch and to size by the guideline', () => {
-  const text = skill('propose-stories');
-  assert.match(text, /At the start of every use, \*\*even if `explore-stories` already read the context/);
-  for (const section of ['guidelines', 'index']) assert.match(text, new RegExp(`\`${section}\``), section);
-  // The proposals and the lexicon are files read with read_file; benched proposed stories are ignored, not filtered out by the reader.
+test('the skill checks before asking, asks one yes/no, reads every write back and recovers from a mismatch', () => {
+  assert.match(text, /\*\*Check the drafts first\.\*\* Before you show anything for confirmation, run each writer you are about to use with `--check`/);
+  assert.ok(text.indexOf('Check the drafts first') < text.indexOf('Ask one direct yes/no question'), 'the check comes before the question');
+  assert.match(text, /Ask one direct yes\/no question that covers everything shown/);
+  assert.match(text, /Write only after the user answers yes in a separate message/);
+  assert.match(text, /## Verify every write/);
+  const verify = text.split('## Verify every write')[1].split('## Report')[0];
+  assert.match(verify, /`write-proposal\.mjs` \| the proposals, with `--file proposals --pattern <NEW-ID>`/);
+  assert.match(verify, /`write-lexicon\.mjs` \| the lexicon, with `--file lexicon --pattern <term>`/);
+  assert.match(verify, /`write-review\.mjs` \| `--section reviews <ID>=<Title> \.\.\.`/);
+  assert.match(verify, /`suggest-lexicon\.mjs` \| `--section lexicon-suggestions`/);
+  assert.match(verify, /only on the strength of a read made in the current turn/);
+  assert.match(verify, /send again \*\*only the missing part\*\*/);
+  assert.match(verify, /If the second read-back still does not match, stop and tell the user/);
+  assert.match(text, /"As an approver, I want/);
+});
+
+test('the skill reads the context at the start, shows old and new values, prefers a patch and sizes by the guideline', () => {
+  assert.match(text, /At the start of every use, \*\*even if `jois-story-explore` already read the context/);
+  for (const section of ['guidelines', 'index', 'reviews', 'lexicon-suggestions']) assert.match(text, new RegExp(`--section ${section}`), section);
   assert.match(text, /The proposals and the lexicon are not sections: they are files/);
   assert.match(text, /\*\*Ignore every proposed story whose `Benched` column is `Yes`\*\*/);
   assert.match(text, /old value/);
   assert.match(text, /Prefer a patch to a second story/);
-  assert.match(text, /sprint-points-guideline\.md/);
+  assert.match(text, /references\/product-backlog\.md/);
+  assert.match(text, /references\/sprint-points-guideline\.md/);
+  assert.doesNotMatch(text, /INVEST (stands|means)|Independent, Negotiable/i);
   assert.match(text, /added and patched/);
 });
 
-test('propose-stories carries the process rules: term check, numbering, one complete text', () => {
-  const propose = skill('propose-stories');
-  assert.match(propose, /Check terms before drafting/);
-  assert.match(propose, /Number the new stories in the order they will be written/);
-  assert.match(propose, /one complete final text/);
-  assert.match(propose, /Never refer to an earlier draft \("as before"/);
-  assert.match(propose, /Print the drafts again, in the same turn and right before the call/);
-  assert.match(propose, /split it by writer/);
+test('the skill carries the process rules: term check, numbering, one complete text, split by writer', () => {
+  assert.match(text, /Check terms before drafting/);
+  assert.match(text, /Number the new stories in the order they will be written/);
+  assert.match(text, /one complete final text/);
+  assert.match(text, /Never refer to an earlier draft \("as before"/);
+  assert.match(text, /Print the drafts again, in the same turn and right before the command/);
+  assert.match(text, /split it by writer/);
+  assert.match(text, /`<backlog>\/lexicon\.csv`/);
 });
 
-test('the story skills and /story:propose mention no shell, heredoc, script or guard', () => {
-  for (const text of [skill('propose-stories'), read('.claude', 'commands', 'story', 'propose.md')]) {
-    assert.doesNotMatch(text, /Bash|heredoc|<<'JSON'|read-story-context\.mjs|write-\w+\.mjs|guard/i);
-  }
-});
-
-test('the lexicon suggestion example passes the tool validation and the skill orders the writers', () => {
-  const text = skill('propose-stories');
-  const lexicon = parseLexicon('Term,Definition,Avoid\r\nRole,A set of privileges.,\r\nDataset,A table.,\r\nUser,A person with a login.,customer;member\r\n');
-  const r = validateItems(lexicon, emptySuggestions(), examples()[4].items);
-  assert.deepEqual(r.errors, undefined);
-  assert.deepEqual(r.rows.map((x) => [x.action, x.avoid]), [['rename', ['Role', 'function']], ['delete', []], ['edit', []]]);
-  assert.deepEqual(r.rows[2].edit.avoid.to, ['customer', 'member', 'account holder']);
-  assert.match(text, /run the lexicon writer first \(so the stories can use the terms\), then `suggest_lexicon_change`, then the proposal writer, then the review writer/);
-  assert.match(text, /only a suggestion the user applies in the Lexicon tab/);
-  assert.doesNotMatch(text, /tell the user to use the Lexicon tab/);
-  assert.doesNotMatch(text.split('---')[1], /suggest_lexicon_change/, 'the skill does not pre-approve the tool, so Claude Code asks');
-  assert.match(read('.claude', 'commands', 'story', 'propose.md'), /suggest_lexicon_change/);
-});
-
-test('the story skills and the command name stories by Title, and say what to do on a mismatch', () => {
-  const propose = skill('propose-stories');
-  assert.match(propose, /## Name stories by Title/);
-  const section = propose.split('## Name stories by Title')[1].split('## Draft the stories')[0];
+test('the skill names stories by Title, passes the Title with every ID and says what to do on a mismatch', () => {
+  assert.match(text, /## Name stories by Title/);
+  const section = text.split('## Name stories by Title')[1].split('## Draft the stories')[0];
   assert.match(section, /never the only name/);
-  assert.match(section, /When a tool answers with a mismatch/);
-  assert.match(section, /never send a pair the tool refused again/);
-  assert.match(propose, /storyTitle/);
-  assert.match(read('.claude', 'commands', 'story', 'propose.md'), /`storyTitle`/);
-  assert.match(read('toolkit', 'skills', 'jois-story-review', 'SKILL.md'), /by Title/);
+  assert.match(section, /\*\*Pass the Title with every story ID\*\*/);
+  assert.match(section, /--title "<Title>"/);
+  assert.match(section, /When a script answers with a mismatch/);
+  assert.match(section, /never send a pair the script refused again/);
+  assert.match(text, /storyTitle/);
+  assert.match(read('jois-story-review', 'SKILL.md'), /by Title/);
+});
+
+test('the bundled copies of the explore reader and the review writer are the originals, byte for byte', () => {
+  assert.equal(read('jois-story-propose', 'read-story-context.mjs'), read('jois-story-explore', 'read-story-context.mjs'));
+  assert.equal(read('jois-story-propose', 'write-review.mjs'), read('jois-story-review', 'write-review.mjs'));
 });
