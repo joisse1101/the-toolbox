@@ -46,10 +46,10 @@ export const SKILLS = {
     guidelines: STORY_GUIDELINES,
   },
   'jois-story-propose': {
-    // proposal-input, write-proposal, write-lexicon, suggest-lexicon
+    // proposal-input, write-proposal, write-lexicon, suggest-lexicon, and read-story-context (a copy of the explore skill's reader)
     logic: [
-      'backlog/model.js', 'backlog/proposals.js', 'backlog/ids.js', 'backlog/story-ref.js', 'backlog/story-text.js',
-      'lexicon/lexicon.js', 'lexicon/lexicon-suggestions.js', 'storage/backlog-paths.cjs', ...SUPPORT,
+      'backlog/csv.js', 'backlog/model.js', 'backlog/proposals.js', 'backlog/ids.js', 'backlog/story-ref.js', 'backlog/story-search.js',
+      'backlog/story-text.js', 'review/review.js', 'lexicon/lexicon.js', 'lexicon/lexicon-suggestions.js', 'storage/backlog-paths.cjs', ...SUPPORT,
     ],
     guidelines: STORY_GUIDELINES,
   },
