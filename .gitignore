@@ -3,6 +3,7 @@ planner/planner.config.yaml
 node_modules/
 planner/portal/dist/
 .trees/
+.scratch/
 
 __pycache__/
 .pytest_cache/
