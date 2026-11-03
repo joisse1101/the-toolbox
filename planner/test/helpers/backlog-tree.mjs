@@ -39,16 +39,5 @@ export function logLines(dataDir) {
 export const SAMPLE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'sample-data');
 const SAMPLE_BACKLOG = path.join(SAMPLE, 'sample');
 export const SAMPLE_BACKLOG_CSV = path.join(SAMPLE_BACKLOG, bp.BACKLOG_FILE);
-// The mock slice and context map live with the plan skill's tests (toolkit/tests/story/fixtures/); only the diagram-tools server's tests still read them here.
+// The mock slice and context map live with the plan skill's tests (toolkit/tests/story/fixtures/); the older-layout migration test reads them from here.
 export const PLAN_FIXTURES = path.resolve(SAMPLE, '..', '..', '..', 'toolkit', 'tests', 'story', 'fixtures', 'sample');
-export const SAMPLE_SLICE = path.join(PLAN_FIXTURES, 'slices', 'sign-in');
-export function sampleTree({ withSlice = false, withMap = false } = {}) {
-  const root = tempData('sample-tree-');
-  putFile(root, 'sample', 'backlog', fs.readFileSync(SAMPLE_BACKLOG_CSV, 'utf8'));
-  const dir = bp.backlogDir(root, 'sample');
-  if (withSlice) fs.cpSync(SAMPLE_SLICE, path.join(bp.slicesDir(root, 'sample'), 'sign-in'), { recursive: true });
-  if (withMap) {
-    for (const f of ['context-map.json', 'context-map.md']) fs.copyFileSync(path.join(PLAN_FIXTURES, f), path.join(dir, f));
-  }
-  return root;
-}

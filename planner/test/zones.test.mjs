@@ -30,11 +30,7 @@ const starts = (file, folder) => file === folder || file.startsWith(`${folder}/`
 function allowed(file) {
   if (starts(file, 'planner/logic')) return ['planner/logic'];
   if (starts(file, 'planner/portal')) return ['planner/portal', 'planner/logic', 'planner/guidelines'];
-  if (starts(file, 'planner/claude')) return ['planner/claude', 'planner/logic', '.claude/skills', 'toolkit/skills']; // toolkit/skills: until 8.1 deletes the MCP servers that still call the moved writers
-  // The story skills are toolkit items, not planner zones. Until each one moves into toolkit/skills/, its copy under
-  // .claude/skills/ may still import planner/logic (including skill-support/); the toolkit may import nothing outside itself.
-  const skill = file.match(/^\.claude\/skills\/([^/]+)\//);
-  if (skill) return [`.claude/skills/${skill[1]}`, 'planner/logic'];
+  // The story skills are toolkit items; the toolkit may import nothing outside itself.
   if (starts(file, 'toolkit')) return ['toolkit'];
   return null;
 }
@@ -44,7 +40,7 @@ function imports(file) {
   return [...text.matchAll(IMPORT)].map((m) => rel(path.resolve(path.dirname(path.join(REPO, file)), m[1])));
 }
 
-const files = [...sources(path.join(REPO, 'planner')), ...sources(path.join(REPO, '.claude')), ...sources(path.join(REPO, 'toolkit'))]
+const files = [...sources(path.join(REPO, 'planner')), ...sources(path.join(REPO, 'toolkit'))]
   .map(rel).filter((f) => allowed(f) && !starts(f, 'planner/test'));
 
 test('every source file imports only from the zones its own zone may depend on', () => {
@@ -58,8 +54,8 @@ test('every source file imports only from the zones its own zone may depend on',
   assert.deepEqual(breaches, []);
 });
 
-test('the zone rules cover the layout: logic, portal, claude, skills and toolkit all have source files', () => {
-  for (const folder of ['planner/logic', 'planner/portal', 'planner/logic/skill-support', 'planner/claude', 'toolkit/skills/jois-story-review', 'toolkit/skills/jois-story-plan']) {
+test('the zone rules cover the layout: logic, portal, skills and toolkit all have source files', () => {
+  for (const folder of ['planner/logic', 'planner/portal', 'planner/logic/skill-support', 'toolkit/skills/jois-story-review', 'toolkit/skills/jois-story-plan']) {
     assert.ok(files.some((f) => starts(f, folder)), `no source files under ${folder}`);
   }
 });
