@@ -54,7 +54,7 @@ The four story skills are global toolkit items in `toolkit/skills/`: `jois-story
 
 ### The generated copy
 
-- `node planner/scripts/sync-skill-logic.mjs` copies the shared logic into each skill's `lib/` and the guidelines into its `references/`. Each copy starts with a `GENERATED from ...` line. The map of what each skill gets is `SKILLS` in that script.
+- `node planner/scripts/sync-skill-logic.mjs` copies the shared logic into each skill's `lib/` and the guidelines into its `references/`. Each copy starts with a `GENERATED. Do not edit this copy.` line. The map of what each skill gets is `SKILLS` in that script.
 - `planner/test/skill-sync.test.mjs` runs the script into a temp folder and fails when a committed copy differs. After changing `planner/logic/` or `planner/guidelines/`, run the script and commit the copies.
 - `planner/logic/diagrams/` was moved into `toolkit/skills/jois-story-plan/diagrams/` and is not copied. Only that skill imports the `mermaid` and `jsdom` packages (`parse-mermaid.mjs`); the portal build and `planner/logic/` never see them.
 

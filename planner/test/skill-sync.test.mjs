@@ -67,7 +67,8 @@ test('every skill present gets its logic, support helpers and guidelines, each c
     assert.equal(files.some((f) => f.startsWith('lib/diagrams/')), false, `${skill} copies diagram logic`);
     for (const f of files) {
       const first = fs.readFileSync(path.join(out, skill, f), 'utf8').split('\n')[0];
-      assert.match(first, /GENERATED from planner\/.+ Do not edit/, `${skill}/${f} has no generated header`);
+      assert.match(first, /^(\/\/|<!--) GENERATED\. Do not edit this copy\.( -->)?$/, `${skill}/${f} has no generated header`);
+      assert.doesNotMatch(first, /planner\//, `${skill}/${f} header names a path of this repo`);
     }
   }
 });

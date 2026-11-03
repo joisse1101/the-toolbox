@@ -99,8 +99,7 @@ export function rewriteImports(text, sourceFile, destFile, destOf) {
   });
 }
 
-const sourceName = (file) => posix(path.relative(REPO, file));
-const NOTE = 'by planner/scripts/sync-skill-logic.mjs. Do not edit this copy: change the source and run the script.';
+const NOTE = 'Do not edit this copy.';
 
 // All generated files of one skill as Map<path relative to the skill folder, text>.
 export function generateSkill(skill) {
@@ -111,11 +110,11 @@ export function generateSkill(skill) {
   for (const file of files) {
     const dest = destOf.get(file);
     const body = rewriteImports(fs.readFileSync(file, 'utf8'), file, dest, destOf);
-    out.set(posix(dest), `// GENERATED from ${sourceName(file)} ${NOTE}\n${body}`);
+    out.set(posix(dest), `// GENERATED. ${NOTE}\n${body}`);
   }
   for (const name of spec.guidelines) {
     const file = path.join(GUIDELINES, name);
-    out.set(`references/${name}`, `<!-- GENERATED from ${sourceName(file)} ${NOTE} -->\n\n${fs.readFileSync(file, 'utf8')}`);
+    out.set(`references/${name}`, `<!-- GENERATED. ${NOTE} -->\n\n${fs.readFileSync(file, 'utf8')}`);
   }
   return out;
 }
