@@ -7,7 +7,7 @@ Defines the only way the story skills write: a script that validates drafted sto
 ## Requirements
 
 ### Requirement: Writer script
-The repository SHALL contain `.claude/skills/propose-stories/write-proposal.mjs`, run as `node .claude/skills/propose-stories/write-proposal.mjs <backlog file name>` with the stories as a JSON array on standard input. It SHALL accept the file name only (validated by the file store's name rules) and no output path: the target is always `proposals/<backlog file name>`, and `backlogs/` is only read. It SHALL write nothing unless every story in the input is valid, and SHALL report all problems found in one run, naming each story by its position in the input. A failed run SHALL leave `proposals/` unchanged, and a successful write SHALL not leave a partly written file.
+The toolkit SHALL contain `toolkit/skills/jois-story-propose/write-proposal.mjs`, run with Node from the skill's own folder as `node <skill folder>/write-proposal.mjs <backlog file name>` with the stories as a JSON array on standard input. It SHALL accept the file name only (validated by the file store's name rules) and no output path: the target is always `proposals/<backlog file name>`, and `backlogs/` is only read. It SHALL write nothing unless every story in the input is valid, and SHALL report all problems found in one run, naming each story by its position in the input. A failed run SHALL leave `proposals/` unchanged, and a successful write SHALL not leave a partly written file.
 
 #### Scenario: Valid input
 - **WHEN** valid stories are sent for `data-portal.csv`
@@ -178,7 +178,7 @@ The writer's validation SHALL be available as a check that takes the same input 
 - **THEN** it reports that they would be `NEW-5` to `NEW-7`, and the proposals file is unchanged
 
 ### Requirement: Patches and dependencies name the story's Title
-When the writer is called through the `backlog-tools` server, a patch SHALL carry `storyTitle`, the current Title of the proposal it changes, and an entry of Depends On that names a story of the backlog or `proposed:NEW-<n>` SHALL be an object `{id, title}`; the pair SHALL be checked as the `backlog-tools-mcp` capability describes, and a mismatch SHALL be reported without writing anything. The key `title` of a patch keeps its meaning (the new Title). A `NEW-<k>` entry inside the input stays a bare string. When the script is run from the command line these keys are optional: an entry given as a bare ID, or a patch without `storyTitle`, is accepted as before, and a Title that is given is checked. The check form of the writer SHALL report the same mismatches.
+The `jois-story-propose` skill SHALL give, with every patch, `storyTitle`, the current Title of the proposal it changes, and SHALL give every entry of Depends On that names a story of the backlog or `proposed:NEW-<n>` as an object `{id, title}`. The writer SHALL check each pair when one is given and SHALL report a mismatch without writing anything; the report SHALL say what the ID holds now and list the stories that have the given Title (ID, Epic and Feature). The key `title` of a patch keeps its meaning (the new Title). A `NEW-<k>` entry inside the input stays a bare string. The writer SHALL accept an entry given as a bare ID, or a patch without `storyTitle`, as before, and check a Title only when one is given; giving the Title is therefore the skill's duty and checking it is the script's. The check form of the writer (`--check`) SHALL report the same mismatches.
 
 #### Scenario: Patch for a renamed proposal
 - **WHEN** a patch names `NEW-8` with `storyTitle` `Export audit log` and `NEW-8` has since been retitled `Export audit trail`
@@ -195,6 +195,10 @@ When the writer is called through the `backlog-tools` server, a patch SHALL carr
 #### Scenario: Script from the command line
 - **WHEN** the script is run with a bare ID in Depends On and no `storyTitle` on a patch
 - **THEN** the input is accepted exactly as before
+
+#### Scenario: Skill supplies the Title
+- **WHEN** the skill sends a patch or a dependency on an existing story
+- **THEN** it includes that story's current Title next to the ID
 
 ### Requirement: Patch resolves clarifications
 A patch's `clarifications` key MAY carry `resolve`, a list of `{ n, note }`. For each item the writer SHALL append `note` to the story's Notes on a new line (as the whole Notes when it is empty) and remove pair `n`, the later pairs being renumbered by position. `n` SHALL name an existing pair as stored before the patch; the pair's answer MAY be empty or filled. `note` SHALL be non-empty text and MAY have several lines. The same `n` SHALL NOT appear twice in `resolve`, and `resolve` SHALL NOT name a pair that `answer` also names. When the patch also gives `notes`, the resolve notes are appended to that value. `add` is applied after `resolve`. The result is validated as the merged story, the call is all-or-nothing, and a benched story or a Clarifications cell that is free text is refused.

@@ -68,27 +68,31 @@ A split SHALL be written as a group of rows sharing one non-empty `Group` value 
 - **THEN** the review CSV has `replace` rows for IAM-0005 and `add-story` rows for `NEW-1` and `NEW-2`, all with the same Group
 
 ### Requirement: Single write path for reviews
-Review files SHALL be written only by running the Node script `.claude/skills/review-backlog/write-review.mjs`. The `review-backlog` skill and the `propose-stories` skill (for edits to backlog stories) MAY run it, and each skill's tool permissions SHALL allow only that command to write review files. Neither skill SHALL modify the backlog CSV or any file other than the review CSV (`propose-stories` additionally writes `proposals/<backlog file name>` through its own writer). The script SHALL take the backlog file name as its argument, optionally followed by the flag `--append`, and the findings as JSON on standard input. It SHALL always write to `reviews/<backlog file name>` and SHALL NOT accept an output path or any other argument. When a command is refused, the refusal message SHALL list the command forms that are allowed.
+Review files SHALL be written only by running the writer script `write-review.mjs` that ships with the `jois-story-review` skill, with Bash. The `jois-story-review` skill and the `jois-story-propose` skill (for edits to backlog stories) MAY run it. Neither skill SHALL modify the backlog CSV or any file other than the review CSV (`jois-story-propose` additionally writes the backlog's proposals file through its own writer). The script SHALL take the backlog name as its argument, optionally followed by the flag `--append` or the flag `--check`, and the findings as JSON on standard input. It SHALL always write to `<backlog>/user-stories/review.csv` in the data folder and SHALL NOT accept an output path or any other argument. With `--check` it SHALL validate the findings exactly as for a write, report the result and write nothing. When it is run with any other argument it SHALL refuse and its message SHALL list the allowed command forms.
 
 #### Scenario: Backlog untouched
-- **WHEN** a review is written for `data-portal.csv`
-- **THEN** `backlogs/data-portal.csv` is byte-for-byte unchanged and `reviews/data-portal.csv` exists
+- **WHEN** a review is written for the backlog `data-portal`
+- **THEN** `data-portal/user-stories.csv` is byte-for-byte unchanged and `data-portal/user-stories/review.csv` exists
 
 #### Scenario: Bad file name
-- **WHEN** the script is run with a backlog name such as `..\x.csv` or one that does not exist in `backlogs/`
+- **WHEN** the script is run with a backlog name such as `..\x` or one that does not exist in the data folder
 - **THEN** it exits with an error and writes nothing
 
 #### Scenario: Append flag allowed
-- **WHEN** the skill runs `write-review.mjs data-portal.csv --append` with findings on standard input
-- **THEN** the command is permitted
+- **WHEN** the skill runs `write-review.mjs data-portal --append` with findings on standard input
+- **THEN** the command is accepted
+
+#### Scenario: Check writes nothing
+- **WHEN** the skill runs `write-review.mjs data-portal --check` with valid findings on standard input
+- **THEN** the script reports that the findings are valid and no file changes
 
 #### Scenario: Other arguments refused
-- **WHEN** the script or the skill's permission check is given an output path or any argument other than the file name and `--append`
+- **WHEN** the script is given an output path or any argument other than the backlog name, `--append` and `--check`
 - **THEN** it is refused and the message lists the allowed command forms
 
 #### Scenario: Edits written from a propose session
-- **WHEN** `propose-stories` writes edits to backlog stories with `write-review.mjs data-portal.csv --append`
-- **THEN** the rows are added after the existing rows of `reviews/data-portal.csv`, the rows already there are unchanged, and the portal shows the new rows as open suggestions
+- **WHEN** `jois-story-propose` writes edits to backlog stories with `write-review.mjs data-portal --append`
+- **THEN** the rows are added after the existing rows of `data-portal/user-stories/review.csv`, the rows already there are unchanged, and the portal shows the new rows as open suggestions
 
 ### Requirement: Script validates findings
 The script SHALL reject the whole input, write nothing, and report every problem found when any finding: names a Story ID that is not in the backlog (other than `NEW-<n>` on an `add-story` row); uses a Field, Action, Area or Confidence outside the allowed values; has an empty `Suggested` (except an `unlock` row, which SHALL have an empty `Field` and `Suggested`); uses an Action that does not fit the Field (for example `add` on `Title`, `remove` on a Field other than `Depends On` and `User Acceptance Criteria`, or `add` on a Field other than `Depends On` and `User Acceptance Criteria`); has an `add-story` row without a Group or a `NEW-<n>` ID, or a new story without a Title; belongs to a Group whose rows do not all have `Confidence` = `confirm`; or is a `Depends On` `add` row whose entry is not a story ID in the backlog, is the story itself, or is a `NEW-<n>` that is not in the same Group. A `Depends On` `remove` row SHALL be accepted when the story lists the entry in its `Depends On`, whether or not a story holds that entry, and SHALL be rejected when the story does not list it; the entry may be a code no story holds, the story's own code or a `NEW-<n>`. It SHALL also reject an `unlock` row for a story that is not locked, and a batch that leaves a field-edit row for a locked story without an `unlock` row for the same story in the resulting review file (an `unlock` row written by an earlier batch counts). Each problem about a finding SHALL name the finding by its position in the input. When the input is not valid JSON, the script SHALL report the parser's message and the position of the failure. The script SHALL ignore any `Current` or `Status` the caller supplies.
@@ -396,7 +400,7 @@ A field-edit suggestion (any row other than `unlock`) for a locked story SHALL b
 - **THEN** the group cannot be applied until the story is unlocked
 
 ### Requirement: Clarification suggestions
-A review file MAY hold rows that suggest a question for a story's `Clarifications`, written by `review-backlog` through `write-review.mjs`. Such a row SHALL have `Field` = `Clarifications`, `Action` = `append`, `Suggested` = the question text, a `Reason` saying why the question matters, and `Group` empty; `Area` MAY be any Area, including `Clarification`, which is added to the allowed Areas, and `Confidence` MAY be `ready` or `confirm`. These values are allowed in addition to those of the Review CSV requirement. Both `review-backlog` and `propose-stories` MAY write `resolve` rows (see "Resolve clarification suggestions"); `review-backlog` writes one only for a question that the story's own text already answers. Such rows SHALL be shown in the story form and the Review tab like any other suggestion (the Review tab SHALL list the `Clarification` Area with the others). **Apply** SHALL add a new pair at the end of the story's `Clarifications` with the suggested text as the question and an empty answer, set the row to `applied`, and be autosaved like any edit; the story's "N open" badge SHALL then count it. **Dismiss** SHALL behave as for any suggestion. A row SHALL be stale when its story is no longer found or the story already has a question with the same text (ignoring case and extra spaces). A clarification suggestion on a locked story SHALL follow the lock rules of the other suggestions.
+A review file MAY hold rows that suggest a question for a story's `Clarifications`, written by `jois-story-review` through `write-review.mjs`. Such a row SHALL have `Field` = `Clarifications`, `Action` = `append`, `Suggested` = the question text, a `Reason` saying why the question matters, and `Group` empty; `Area` MAY be any Area, including `Clarification`, which is added to the allowed Areas, and `Confidence` MAY be `ready` or `confirm`. These values are allowed in addition to those of the Review CSV requirement. Both `jois-story-review` and `jois-story-propose` MAY write `resolve` rows (see "Resolve clarification suggestions"); `jois-story-review` writes one only for a question that the story's own text already answers. Such rows SHALL be shown in the story form and the Review tab like any other suggestion (the Review tab SHALL list the `Clarification` Area with the others). **Apply** SHALL add a new pair at the end of the story's `Clarifications` with the suggested text as the question and an empty answer, set the row to `applied`, and be autosaved like any edit; the story's "N open" badge SHALL then count it. **Dismiss** SHALL behave as for any suggestion. A row SHALL be stale when its story is no longer found or the story already has a question with the same text (ignoring case and extra spaces). A clarification suggestion on a locked story SHALL follow the lock rules of the other suggestions.
 
 #### Scenario: Apply a suggested question
 - **WHEN** the user applies an open clarification suggestion on story `IAM-0003`
@@ -411,8 +415,8 @@ A review file MAY hold rows that suggest a question for a story's `Clarification
 - **THEN** Apply is disabled as for any suggestion on a locked story
 
 #### Scenario: Review skill writes a resolve row
-- **WHEN** `review-backlog` finds that a story's Notes already state the answer to an open question
-- **THEN** it may write a `resolve` row for that question, and the row is applied and shown like one written by `propose-stories`
+- **WHEN** `jois-story-review` finds that a story's Notes already state the answer to an open question
+- **THEN** it may write a `resolve` row for that question, and the row is applied and shown like one written by `jois-story-propose`
 
 ### Requirement: Accept all in the Review tab
 The Review tab SHALL offer an **Accept all** button in its header, which applies the open suggestions of every Area section, and an **Accept all** button on each Area section, which applies only the open suggestions of that section. A button SHALL be disabled when its scope has no open suggestion. Before anything is applied the tool SHALL ask the user to confirm, saying how many suggestions will be applied; declining SHALL change nothing.
@@ -454,7 +458,7 @@ The backlog edits of one run and the `applied` status of the rows it applied SHA
 - **THEN** nothing is applied and the summary says so, with the reasons
 
 ### Requirement: Rows written through the tool name the story's Title
-When the review writer is called through the `backlog-tools` server, each row SHALL carry `storyTitle`, the story's current Title, and a `Depends On` row SHALL carry `targetTitle`, the Title of the story named in `suggested`. A `Depends On` `remove` row whose entry no story holds (a code that does not exist, the story itself or a `NEW-<n>`) has no story to name and SHALL NOT need `targetTitle`; when a story does hold the code, `targetTitle` is required and checked as for an `add` row. The pairs SHALL be checked against the backlog as the `backlog-tools-mcp` capability describes, and a mismatch SHALL be reported without writing any row. The Titles are used only for this check: they SHALL NOT be stored, the review file's columns SHALL NOT change, and the portal SHALL read and apply the rows as before. When the script is run from the command line these keys are optional, and a Title that is given is checked.
+When a story skill runs the review writer, each row SHALL carry `storyTitle`, the story's current Title, and a `Depends On` row SHALL carry `targetTitle`, the Title of the story named in `suggested`. A `Depends On` `remove` row whose entry no story holds (a code that does not exist, the story itself or a `NEW-<n>`) has no story to name and SHALL NOT need `targetTitle`; when a story does hold the code, `targetTitle` is required and checked as for an `add` row. The pairs SHALL be checked against the backlog, and a mismatch SHALL be reported without writing any row, saying what the ID holds now and which stories have the Title. The Titles are used only for this check: they SHALL NOT be stored, the review file's columns SHALL NOT change, and the portal SHALL read and apply the rows as before. When the script is run by hand without the Titles, rows without them SHALL be accepted as before and a Title that is given SHALL be checked.
 
 #### Scenario: Row for a renumbered story
 - **WHEN** a row names `IAM-0004` with `storyTitle` `Reset password by email` and the backlog has since been renumbered so that `IAM-0004` is another story
@@ -465,11 +469,11 @@ When the review writer is called through the `backlog-tools` server, each row SH
 - **THEN** nothing is written and the message names the row
 
 #### Scenario: Removing a link whose code a story holds
-- **WHEN** a `Depends On` `remove` row has `suggested` `IAM-0002`, a story holds `IAM-0002`, and the row has no `targetTitle`
+- **WHEN** a story skill runs the writer with a `Depends On` `remove` row that has `suggested` `IAM-0002`, a story holds `IAM-0002`, and the row has no `targetTitle`
 - **THEN** nothing is written and the message says to add the Title
 
 #### Scenario: Removing a link no story holds
-- **WHEN** a `Depends On` `remove` row through the tool has `suggested` `IAM-0099`, no story holds `IAM-0099`, and the row has no `targetTitle`
+- **WHEN** a story skill runs the writer with a `Depends On` `remove` row that has `suggested` `IAM-0099`, no story holds `IAM-0099`, and the row has no `targetTitle`
 - **THEN** the row is accepted
 
 #### Scenario: Stored row unchanged
@@ -477,11 +481,11 @@ When the review writer is called through the `backlog-tools` server, each row SH
 - **THEN** the review file holds the same columns and values as a row written without it
 
 #### Scenario: Script from the command line
-- **WHEN** the script is run with rows that have no `storyTitle`
+- **WHEN** the script is run by hand with rows that have no `storyTitle`
 - **THEN** they are written as before
 
 ### Requirement: Resolve clarification suggestions
-A review file MAY hold rows that settle a question of a backlog story, written by `propose-stories` through `write_review`. Such a row SHALL have `Field` = `Clarifications` and `Action` = `resolve`, no Group, and `Suggested` the note to add to Notes (non-empty, MAY have several lines, not starting with a `Q<n>:` or `A<n>:` label). The finding names the pair by its number in a `pair` key (a number, as the story read shows it); the writer SHALL fill `Current` with that pair's question text from the backlog, as it fills `Current` for a criterion, and the stored row finds its pair by that text afterwards, ignoring case and surrounding blank space. It SHALL reject a finding without `pair`, one whose `pair` does not exist, and one on a story whose Clarifications cell is free text. The pair MAY have an empty or a filled answer. **Apply** SHALL, in one edit, append `Suggested` to the story's Notes on a new line (as the whole Notes when empty) and remove the pair, the later pairs being renumbered; **Dismiss** leaves both unchanged. The row is **stale** when no pair has the question text any more, when the Clarifications cell is free text, or when Notes already contain the suggested text. A resolve row on a locked story SHALL follow the lock rules of the other field edits, and Accept all SHALL apply it as it applies other rows.
+A review file MAY hold rows that settle a question of a backlog story, written by `jois-story-propose` through `write-review.mjs`. Such a row SHALL have `Field` = `Clarifications` and `Action` = `resolve`, no Group, and `Suggested` the note to add to Notes (non-empty, MAY have several lines, not starting with a `Q<n>:` or `A<n>:` label). The finding names the pair by its number in a `pair` key (a number, as the story read shows it); the writer SHALL fill `Current` with that pair's question text from the backlog, as it fills `Current` for a criterion, and the stored row finds its pair by that text afterwards, ignoring case and surrounding blank space. It SHALL reject a finding without `pair`, one whose `pair` does not exist, and one on a story whose Clarifications cell is free text. The pair MAY have an empty or a filled answer. **Apply** SHALL, in one edit, append `Suggested` to the story's Notes on a new line (as the whole Notes when empty) and remove the pair, the later pairs being renumbered; **Dismiss** leaves both unchanged. The row is **stale** when no pair has the question text any more, when the Clarifications cell is free text, or when Notes already contain the suggested text. A resolve row on a locked story SHALL follow the lock rules of the other field edits, and Accept all SHALL apply it as it applies other rows.
 
 #### Scenario: Apply resolves the pair
 - **WHEN** the user applies an open resolve row on story `IAM-0003` for the question "Who owns approvals?" with the note "Approvals are owned by Finance"
