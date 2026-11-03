@@ -272,6 +272,22 @@ def test_jois_docs_command_without_a_version_fails(tmp_path):
     assert any(p.startswith("commands/jois-docs/minutes.md: missing `metadata.version`") for p in problems)
 
 
+def test_template_script_without_a_test_file_fails_and_names_both(tmp_path):
+    _toolkit_tree(tmp_path)
+    scripts = "skills/jois-init-docs-templates/scripts"
+    _write(tmp_path, f"{scripts}/build_wiki.py", "")
+    problems = _problems(tmp_path)
+    assert f"{scripts}/build_wiki.py: no test file at {scripts}/tests/test_build_wiki.py" in problems
+
+
+def test_template_script_with_a_test_file_passes(tmp_path):
+    _toolkit_tree(tmp_path)
+    scripts = "skills/jois-init-docs-templates/scripts"
+    _write(tmp_path, f"{scripts}/build_wiki.py", "")
+    _write(tmp_path, f"{scripts}/tests/test_build_wiki.py", "")
+    assert _problems(tmp_path) == []
+
+
 def _pr_command(body):
     return (
         f"---\n{HIDDEN}\n{VERSION}\n---\n# Steps\nown steps\n\n"
