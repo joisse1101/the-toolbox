@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import { parseLimits } from '../../../planner/logic/diagrams/limits.js';
 import { checkContextMap as findProblems, composeContextMap, epicNames } from '../../../planner/logic/diagrams/context-map.js';
-import { writeAtomic } from '../_shared/write-atomic.mjs';
+import { writeAtomic } from '../../../planner/logic/skill-support/write-atomic.mjs';
 import { loadStories, readConventions } from './read-diagrams.mjs';
 import { readMapFiles, MAP_SOURCE_FILE, MAP_DOCUMENT_FILE } from './read-context-map.mjs';
 import { parseMermaid } from './parse-mermaid.mjs';
@@ -15,7 +15,7 @@ import { parseMermaid } from './parse-mermaid.mjs';
 const require = createRequire(import.meta.url);
 const { logWrite } = require('../../../planner/logic/storage/write-log.cjs');
 const { DATA_DIR } = require('../../../planner/logic/storage/paths.cjs');
-const { GUIDELINES_DIR } = require('../_shared/paths.cjs');
+const { GUIDELINES_DIR } = require('../../../planner/logic/skill-support/paths.cjs');
 
 const norm = (s) => String(s ?? '').trim().toLowerCase();
 const trimmed = (s) => String(s ?? '').trim();

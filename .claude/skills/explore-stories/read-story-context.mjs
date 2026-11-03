@@ -28,7 +28,7 @@ import { parseSuggestions, composeSuggestions, isOpen } from '../../../planner/l
 const require = createRequire(import.meta.url);
 const { backlogDir, backlogFile, listBacklogs: listBacklogFolders, KIND_FILES } = require('../../../planner/logic/storage/backlog-paths.cjs');
 const { DATA_DIR } = require('../../../planner/logic/storage/paths.cjs');
-const { GUIDELINES_DIR } = require('../_shared/paths.cjs');
+const { GUIDELINES_DIR } = require('../../../planner/logic/skill-support/paths.cjs');
 
 // A file of a backlog as the replies name it: `<name>/user-stories/review.csv`.
 const label = (name, kind) => `${name}/${KIND_FILES[kind].join('/')}`;

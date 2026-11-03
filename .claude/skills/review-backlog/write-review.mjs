@@ -15,12 +15,12 @@ import { loadBacklog } from '../../../planner/logic/backlog/model.js';
 import {
   parseReview, serializeReview, validateFindings, fillCurrent, mergeStatus,
 } from '../../../planner/logic/review/review.js';
-import { describeParseError as describeJsonError, writeAtomic } from '../_shared/write-atomic.mjs';
+import { describeParseError as describeJsonError, writeAtomic } from '../../../planner/logic/skill-support/write-atomic.mjs';
 
 const require = createRequire(import.meta.url);
 const { backlogDir, backlogFile, reviewDecidedFile } = require('../../../planner/logic/storage/backlog-paths.cjs'); // same name rules as the file API
 const { DATA_DIR } = require('../../../planner/logic/storage/paths.cjs');
-const { shown } = require('../_shared/paths.cjs');
+const { shown } = require('../../../planner/logic/skill-support/paths.cjs');
 
 // Rows already decided by the user, keyed like mergeStatus does; later lists win.
 function mergeDecided(...lists) {

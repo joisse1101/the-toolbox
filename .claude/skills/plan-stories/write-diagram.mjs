@@ -11,14 +11,14 @@ import { resolveStoryRef } from '../../../planner/logic/backlog/story-ref.js';
 import { parseLimits } from '../../../planner/logic/diagrams/limits.js';
 import { buildSource, scopeStories, applyStoriesBlock } from '../../../planner/logic/diagrams/source.js';
 import { checkSlice, formatProblems } from '../../../planner/logic/diagrams/checks.js';
-import { writeAtomic } from '../_shared/write-atomic.mjs';
+import { writeAtomic } from '../../../planner/logic/skill-support/write-atomic.mjs';
 import { loadStories, slicePath, readSliceFolder, readConventions, scopeText, SOURCE_FILE } from './read-diagrams.mjs';
 import { parseMermaid } from './parse-mermaid.mjs';
 
 const require = createRequire(import.meta.url);
 const { logWrite } = require('../../../planner/logic/storage/write-log.cjs');
 const { DATA_DIR } = require('../../../planner/logic/storage/paths.cjs');
-const { GUIDELINES_DIR } = require('../_shared/paths.cjs');
+const { GUIDELINES_DIR } = require('../../../planner/logic/skill-support/paths.cjs');
 
 const MAX_FILE_CHARS = 200000;
 const norm = (s) => String(s ?? '').trim().toLowerCase();

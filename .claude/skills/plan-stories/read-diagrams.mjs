@@ -9,13 +9,13 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { loadBacklog } from '../../../planner/logic/backlog/model.js';
 import { compareSource, applyStoriesBlock } from '../../../planner/logic/diagrams/source.js';
-import { writeAtomic } from '../_shared/write-atomic.mjs';
+import { writeAtomic } from '../../../planner/logic/skill-support/write-atomic.mjs';
 
 const require = createRequire(import.meta.url);
 const { backlogDir, backlogFile, slicesDir } = require('../../../planner/logic/storage/backlog-paths.cjs');
 const { DATA_DIR } = require('../../../planner/logic/storage/paths.cjs');
 const { logWrite } = require('../../../planner/logic/storage/write-log.cjs');
-const { GUIDELINES_DIR, shown } = require('../_shared/paths.cjs');
+const { GUIDELINES_DIR, shown } = require('../../../planner/logic/skill-support/paths.cjs');
 
 export const SLICE_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export const SOURCE_FILE = 'source.json';

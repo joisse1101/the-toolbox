@@ -11,12 +11,12 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import { applyTermItems, composeLexicon, emptyLexicon, parseLexicon } from '../../../planner/logic/lexicon/lexicon.js';
-import { describeParseError, writeAtomic } from '../_shared/write-atomic.mjs';
+import { describeParseError, writeAtomic } from '../../../planner/logic/skill-support/write-atomic.mjs';
 
 const require = createRequire(import.meta.url);
 const { backlogDir, backlogFile } = require('../../../planner/logic/storage/backlog-paths.cjs'); // same name rules as the file API
 const { DATA_DIR } = require('../../../planner/logic/storage/paths.cjs');
-const { shown } = require('../_shared/paths.cjs');
+const { shown } = require('../../../planner/logic/skill-support/paths.cjs');
 
 // Reads the backlog and the lexicon and validates the input against them. Returns { ok: true, file, result } (result: the
 // applyTermItems result, with the lexicon as it will be) or { ok: false, errors }. Writes nothing.

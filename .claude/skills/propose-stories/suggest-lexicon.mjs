@@ -8,12 +8,12 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { emptyLexicon, parseLexicon } from '../../../planner/logic/lexicon/lexicon.js';
 import { composeSuggestions, emptySuggestions, FIELD_LABELS, impactOf, parseSuggestions, validateItems } from '../../../planner/logic/lexicon/lexicon-suggestions.js';
-import { writeAtomic } from '../_shared/write-atomic.mjs';
+import { writeAtomic } from '../../../planner/logic/skill-support/write-atomic.mjs';
 
 const require = createRequire(import.meta.url);
 const { backlogDir, backlogFile } = require('../../../planner/logic/storage/backlog-paths.cjs'); // same name rules as the file API
 const { DATA_DIR } = require('../../../planner/logic/storage/paths.cjs');
-const { shown } = require('../_shared/paths.cjs');
+const { shown } = require('../../../planner/logic/skill-support/paths.cjs');
 
 const readIfThere = (dataDir, target, parse, empty) => {
   try {

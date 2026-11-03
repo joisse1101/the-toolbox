@@ -18,7 +18,7 @@ import { backlogChecks } from './backlog-checks.js';
 const require = createRequire(import.meta.url);
 const { backlogDir, backlogFile, listBacklogs: listBacklogFolders } = require('../../../planner/logic/storage/backlog-paths.cjs');
 const { DATA_DIR } = require('../../../planner/logic/storage/paths.cjs');
-const { GUIDELINES_DIR, shown } = require('../_shared/paths.cjs');
+const { GUIDELINES_DIR, shown } = require('../../../planner/logic/skill-support/paths.cjs');
 
 export function listBacklogs({ dataDir = DATA_DIR } = {}) {
   return listBacklogFolders(dataDir);
