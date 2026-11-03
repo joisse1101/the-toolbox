@@ -162,6 +162,19 @@ def test_unscoped_env_local_installs_rule_must_not_have_paths(tmp_path):
     assert "rules/jois-env-local-installs.md: unscoped rule must not have `paths:` frontmatter" in problems
 
 
+def test_unscoped_env_stay_in_repo_rule_is_accepted_without_paths(tmp_path):
+    _toolkit_tree(tmp_path)
+    _write(tmp_path, "rules/jois-env-stay-in-repo.md", f"---\n{VERSION}\n---\n# Stay in the repo\n")
+    assert _problems(tmp_path) == []
+
+
+def test_unscoped_env_stay_in_repo_rule_must_not_have_paths(tmp_path):
+    _toolkit_tree(tmp_path)
+    _write(tmp_path, "rules/jois-env-stay-in-repo.md", _scoped("py"))
+    problems = _problems(tmp_path)
+    assert "rules/jois-env-stay-in-repo.md: unscoped rule must not have `paths:` frontmatter" in problems
+
+
 def _item(version='"1.0.0"',last_updated='"2026-10-14"', extra=""):
     lines = ["---"]
     if version is not None or last_updated is not None:

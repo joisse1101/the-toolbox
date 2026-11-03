@@ -510,7 +510,7 @@ session start, in every project. A rule with `paths:` frontmatter (a list of glo
 `"**/*.java"`) loads once a matching file is read or created. Tested on Claude Code 2.1.299: a
 scoped rule is not present before any matching file is touched, so a change planned before any
 file is opened has no rules yet. Every coding rule here is scoped, so sessions that never touch
-code (tickets, workflows) load none of them. Four rules are unscoped on purpose:
+code (tickets, workflows) load none of them. Five rules are unscoped on purpose:
 
 - `jois-git-commit-hygiene`: commits of images, deletions, renames and docs touch no code file, so a
   scoped rule would be missing exactly when those commits grow. It asks nothing unless Claude is
@@ -524,6 +524,9 @@ code (tickets, workflows) load none of them. Four rules are unscoped on purpose:
 - `jois-env-local-installs`: installing a package, such as `pip install` or `npm install -g`, touches
   no code file, so a scoped rule would be missing exactly when it matters. It asks nothing unless
   Claude is about to install something.
+- `jois-env-stay-in-repo`: the files Claude creates for its own work and the places it reads and
+  writes apply before any code file is touched, so a scoped rule would load too late.
+  - It keeps mock repos, mock data, scratch files and agent progress notes under `.scratch/`.
 
 `jois-comms-documents` is scoped to `**/*.md`: it loads when a markdown file is read or created, and
 not in sessions that never touch markdown. It covers headers, one idea per bullet, and owners and
@@ -541,6 +544,9 @@ How the standards are split:
   - It never uses real systems or real data unless the user asks in the current request.
 - The unscoped `jois-env-local-installs` rule lets Claude install packages only inside the project, such as through a project `.venv`.
   - It never installs globally and asks the user when no project-local way exists.
+- The unscoped `jois-env-stay-in-repo` rule keeps every file Claude creates for its own work under `.scratch/` in the project.
+  - It never reads or writes outside the project, and never reads subagent transcripts.
+  - Each worktree has its own `.scratch/`, and the folder is git-ignored.
 - Use `-Scope project` to keep the rules out of unrelated projects.
 - A project's own `CLAUDE.md` takes precedence.
 
@@ -579,7 +585,7 @@ metadata:
 ```
 
 A rule's frontmatter holds the same `metadata:` block next to its `paths:`; an unscoped rule such
-as `jois-git-commit-hygiene`, `jois-test-mock-data` or `jois-env-local-installs` has only the `metadata:` block and still loads in every session. A top-level
+as `jois-git-commit-hygiene`, `jois-test-mock-data`, `jois-env-local-installs` or `jois-env-stay-in-repo` has only the `metadata:` block and still loads in every session. A top-level
 `version:` key is not accepted. `python check_toolkit.py` (run from `toolkit/`) fails on a missing or
 malformed version.
 
