@@ -1,4 +1,4 @@
-// GENERATED from planner/logic/review/review.js by planner/scripts/sync-skill-logic.mjs. Do not edit this copy: change the source and run the script.
+// GENERATED. Do not edit this copy.
 // Review suggestions: the review CSV format, validation (used by the write script) and the pure logic that
 // decides whether a suggestion is still current and applies it to the stories (used by the portal).
 // No DOM and no file access. One row = one field edit; rows that share a Group are applied together.

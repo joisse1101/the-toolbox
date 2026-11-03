@@ -1,4 +1,4 @@
-// GENERATED from planner/logic/storage/backlog-paths.cjs by planner/scripts/sync-skill-logic.mjs. Do not edit this copy: change the source and run the script.
+// GENERATED. Do not edit this copy.
 'use strict';
 // Where each file of a backlog lives. A backlog is one folder in the data folder, named by the backlog's name, and every
 // file has a fixed name inside it. This is the one place that builds those paths; callers pass a name and a kind.

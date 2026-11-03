@@ -1,8 +1,8 @@
-<!-- GENERATED from planner/guidelines/product-backlog.md by planner/scripts/sync-skill-logic.mjs. Do not edit this copy: change the source and run the script. -->
+<!-- GENERATED. Do not edit this copy. -->
 
 # Product backlog guidelines
 
-The standards for every backlog in `backlogs/`. They are used both to write stories and to review them, and this file is the only place the rules are defined. Other files (such as the review skill) cite it.
+The standards for every backlog (the folders of the data folder that hold `user-stories.csv`). They are used both to write stories and to review them, and this file is the only place the rules are defined. Other files (such as the review skill) cite it.
 
 ```
 Epic -> Feature -> User Story -> Acceptance criteria

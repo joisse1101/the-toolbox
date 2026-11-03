@@ -1,4 +1,4 @@
-<!-- GENERATED from planner/guidelines/sprint-points-guideline.md by planner/scripts/sync-skill-logic.mjs. Do not edit this copy: change the source and run the script. -->
+<!-- GENERATED. Do not edit this copy. -->
 
 SPRINT POINTS GUIDELINE
 

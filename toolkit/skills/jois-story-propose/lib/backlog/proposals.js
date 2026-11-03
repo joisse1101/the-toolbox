@@ -1,4 +1,4 @@
-// GENERATED from planner/logic/backlog/proposals.js by planner/scripts/sync-skill-logic.mjs. Do not edit this copy: change the source and run the script.
+// GENERATED. Do not edit this copy.
 // Proposed stories: the pure logic behind the Proposed tab. No DOM.
 // A proposals file has the backlog's columns, but its stories are identified by placeholder IDs `NEW-<n>` that are
 // never derived from epic and position, so editing, moving or deleting a proposed story never changes its ID.

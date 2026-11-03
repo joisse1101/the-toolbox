@@ -1,7 +1,7 @@
-// GENERATED from planner/logic/lexicon/lexicon-suggestions.js by planner/scripts/sync-skill-logic.mjs. Do not edit this copy: change the source and run the script.
+// GENERATED. Do not edit this copy.
 // Suggested renames, deletes and edits of lexicon terms, in a CSV file (lexicon-suggestions/<backlog file name>), one per row:
 //   Term, Action, New name, Add to Avoid, Reason, Status, Edit
-// The agent writes them (suggest_lexicon_change), the user applies or dismisses them in the Lexicon tab. Columns are
+// The agent writes them (suggest-lexicon.mjs), the user applies or dismisses them in the Lexicon tab. Columns are
 // matched by header name, ignoring case; `Add to Avoid` is `;`-separated; any other column round-trips in `cells`.
 // `Edit` (an edit row only) is JSON: { <field>: { from, to } } for the fields definition, avoid (word lists), notes and partOf
 // that the edit changes. `from` is the term as it was when the edit was suggested; an edit is stale once the term differs.

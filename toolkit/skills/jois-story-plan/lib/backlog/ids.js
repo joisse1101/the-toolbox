@@ -1,4 +1,4 @@
-// GENERATED from planner/logic/backlog/ids.js by planner/scripts/sync-skill-logic.mjs. Do not edit this copy: change the source and run the script.
+// GENERATED. Do not edit this copy.
 // Story IDs and dependencies. Pure functions over the stories array, no DOM.
 // A story ID is <PREFIX>-<NNNN>: the prefix comes from the epic, the number is the story's position among the
 // stories of that epic in array (file) order. IDs are therefore derived: `renumber` recomputes every ID and rewrites

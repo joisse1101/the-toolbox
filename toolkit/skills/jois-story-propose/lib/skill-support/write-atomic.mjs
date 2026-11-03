@@ -1,4 +1,4 @@
-// GENERATED from planner/logic/skill-support/write-atomic.mjs by planner/scripts/sync-skill-logic.mjs. Do not edit this copy: change the source and run the script.
+// GENERATED. Do not edit this copy.
 // Shared by the Claude writers (write-proposal, write-lexicon, suggest-lexicon, write-review).
 
 import fs from 'node:fs';

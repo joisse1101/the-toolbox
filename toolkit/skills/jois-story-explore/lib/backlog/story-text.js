@@ -1,4 +1,4 @@
-// GENERATED from planner/logic/backlog/story-text.js by planner/scripts/sync-skill-logic.mjs. Do not edit this copy: change the source and run the script.
+// GENERATED. Do not edit this copy.
 // Compose and parse the two text-syntax CSV cells:
 //   User Story:          As <a>, I want <w>, so that <s>   (<a> is the role with its article: "a team lead", "an approver")
 //   User Acceptance Criteria: AC<n>: Given <g>, when <w>, then <t>   (one per line)

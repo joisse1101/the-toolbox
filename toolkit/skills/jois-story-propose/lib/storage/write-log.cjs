@@ -1,4 +1,4 @@
-// GENERATED from planner/logic/storage/write-log.cjs by planner/scripts/sync-skill-logic.mjs. Do not edit this copy: change the source and run the script.
+// GENERATED. Do not edit this copy.
 'use strict';
 // One line of JSON per write to a data file, appended to <data dir>/logs/writes.jsonl by the portal's file API and by the
 // writer scripts, so the order of writes from both can be read in one place. It holds no file contents, only the size and

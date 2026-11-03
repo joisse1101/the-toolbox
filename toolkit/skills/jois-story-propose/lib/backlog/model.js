@@ -1,4 +1,4 @@
-// GENERATED from planner/logic/backlog/model.js by planner/scripts/sync-skill-logic.mjs. Do not edit this copy: change the source and run the script.
+// GENERATED. Do not edit this copy.
 // CSV <-> story model for the user story tool. Pure functions, no DOM.
 // Recognised columns are matched by header name; every other column is carried through in
 // `story.cells` untouched. Unparseable User Story / User Acceptance Criteria cells keep their raw text.

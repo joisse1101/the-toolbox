@@ -1,4 +1,4 @@
-// GENERATED from planner/logic/backlog/csv.js by planner/scripts/sync-skill-logic.mjs. Do not edit this copy: change the source and run the script.
+// GENERATED. Do not edit this copy.
 // Small RFC 4180 CSV parser/serializer. Rows are arrays of strings.
 
 export function parseCsv(text) {

@@ -1,4 +1,4 @@
-// GENERATED from planner/logic/lexicon/lexicon.js by planner/scripts/sync-skill-logic.mjs. Do not edit this copy: change the source and run the script.
+// GENERATED. Do not edit this copy.
 // The lexicon of one backlog: terms with definitions, in a CSV file (lexicons/<backlog file name>), one term per row.
 //   Term, Part of, Definition, Avoid, Notes
 // Columns are matched by header name, ignoring case. `Avoid` is a `;`-separated list (like Depends On). Any other column
@@ -178,7 +178,7 @@ export function applyTermItems(lexicon, items) {
     if ('avoid' in item && !(Array.isArray(item.avoid) && item.avoid.every((w) => typeof w === 'string'))) problem('"avoid" must be a list of words');
     if (unknown.length || errors.some((e) => e.startsWith(`${at}:`))) return;
     if (terms.some((t) => key(t.name) === key(item.term))) {
-      return problem(`"${item.term.trim()}" is already a term: suggest a change to it with suggest_lexicon_change (action "edit")`);
+      return problem(`"${item.term.trim()}" is already a term: suggest a change to it with suggest-lexicon.mjs (action "edit")`);
     }
     if (!String(item.definition ?? '').trim()) return problem(`new term "${item.term.trim()}" needs a definition`);
     terms.push(clean({ ...item, name: item.term }));

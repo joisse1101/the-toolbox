@@ -1,4 +1,4 @@
-// GENERATED from planner/logic/backlog/story-search.js by planner/scripts/sync-skill-logic.mjs. Do not edit this copy: change the source and run the script.
+// GENERATED. Do not edit this copy.
 import { COLUMNS, BENCHED_COLUMN, NO_EPIC, NO_FEATURE, clarificationsCellText, criteriaCellText, storyCellText } from './model.js';
 
 const KNOWN = new Set([...COLUMNS, BENCHED_COLUMN].map((c) => c.toLowerCase()));

@@ -1,4 +1,4 @@
-// GENERATED from planner/logic/storage/file-name.cjs by planner/scripts/sync-skill-logic.mjs. Do not edit this copy: change the source and run the script.
+// GENERATED. Do not edit this copy.
 'use strict';
 // Backlog-name rules for every file the tools read or write: the backend's file API and the AI skill scripts share them.
 

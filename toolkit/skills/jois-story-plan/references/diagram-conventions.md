@@ -1,4 +1,4 @@
-<!-- GENERATED from planner/guidelines/diagram-conventions.md by planner/scripts/sync-skill-logic.mjs. Do not edit this copy: change the source and run the script. -->
+<!-- GENERATED. Do not edit this copy. -->
 
 # Diagram conventions
 

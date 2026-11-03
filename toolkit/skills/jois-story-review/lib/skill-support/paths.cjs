@@ -1,4 +1,4 @@
-// GENERATED from planner/logic/skill-support/paths.cjs by planner/scripts/sync-skill-logic.mjs. Do not edit this copy: change the source and run the script.
+// GENERATED. Do not edit this copy.
 'use strict';
 // The guidelines are shared content (the portal shows one of them too); only the Claude scripts read them from disk.
 // The data paths of a backlog come from storage/backlog-paths.cjs; `shown` is how the scripts name one to a person.
