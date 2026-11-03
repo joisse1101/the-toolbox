@@ -17,7 +17,7 @@ import { listBacklogs, readStoryContext, searchStories, readFile as readStoryFil
 import { writeProposal, checkProposal, skippedText, foundText } from '../../../.claude/skills/propose-stories/write-proposal.mjs';
 import { writeLexicon, checkLexicon } from '../../../.claude/skills/propose-stories/write-lexicon.mjs';
 import { suggestLexicon } from '../../../.claude/skills/propose-stories/suggest-lexicon.mjs';
-import { writeReview, checkReview } from '../../../.claude/skills/review-backlog/write-review.mjs';
+import { writeReview, checkReview } from '../../../toolkit/skills/jois-story-review/write-review.mjs';
 import { ACTIONS, AREAS, CONFIDENCES, FIELDS } from '../../logic/review/review.js';
 
 const backlog = z.string().min(1).describe('Backlog name: the name of its folder in the data folder, e.g. data-portal (a trailing .csv is accepted and dropped)');

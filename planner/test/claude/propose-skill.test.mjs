@@ -216,5 +216,5 @@ test('the story skills and the command name stories by Title, and say what to do
   assert.match(skill('explore-stories'), /\*\*Name stories by Title\.\*\*/);
   assert.match(skill('explore-stories'), /Do not repeat a refused pair/);
   assert.match(read('.claude', 'commands', 'story', 'propose.md'), /`storyTitle`/);
-  assert.match(skill('review-backlog'), /by Title/);
+  assert.match(read('toolkit', 'skills', 'jois-story-review', 'SKILL.md'), /by Title/);
 });

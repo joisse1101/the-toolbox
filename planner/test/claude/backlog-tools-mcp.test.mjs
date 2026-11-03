@@ -7,7 +7,7 @@ import { pathOf } from '../helpers/backlog-tree.mjs';
 import { fileURLToPath } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { writeReview } from '../../../.claude/skills/review-backlog/write-review.mjs';
+import { writeReview } from '../../../toolkit/skills/jois-story-review/write-review.mjs';
 import { writeProposal } from '../../../.claude/skills/propose-stories/write-proposal.mjs';
 import { ACTIONS, AREAS, CONFIDENCES, FIELDS } from '../../logic/review/review.js';
 import { tempConfig } from '../helpers/temp-config.mjs';
