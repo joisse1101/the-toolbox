@@ -56,10 +56,6 @@ function slicesDir(dataDir, name) {
   return path.join(backlogDir(dataDir, name), 'slices');
 }
 
-function repoFile(dataDir, name) {
-  return path.join(backlogDir(dataDir, name), 'repo.json');
-}
-
 function contextMapFiles(dataDir, name) {
   const dir = backlogDir(dataDir, name);
   return { json: path.join(dir, 'context-map.json'), md: path.join(dir, 'context-map.md') };
@@ -111,6 +107,6 @@ function detectOlderLayout(dataDir) {
 
 module.exports = {
   BACKLOG_FILE, KINDS, KIND_FILES, OLDER_LAYOUT_FOLDERS,
-  validateBacklogName, backlogDir, backlogFile, reviewDecidedFile, slicesDir, repoFile, contextMapFiles, logFile,
+  validateBacklogName, backlogDir, backlogFile, reviewDecidedFile, slicesDir, contextMapFiles, logFile,
   listBacklogs, detectOlderLayout,
 };
