@@ -1,34 +1,40 @@
-// The only way the explore-stories and propose-stories skills read anything. Usage:
-//   node .claude/skills/explore-stories/read-story-context.mjs            lists the backlog names (folders of the data folder that hold user-stories.csv)
-//   node .claude/skills/explore-stories/read-story-context.mjs <name>     prints a menu: the sections, the size of each in characters and the command for each
-//   node .claude/skills/explore-stories/read-story-context.mjs <name> --section <section>   prints one section, so a result stays under the Bash output cap:
-//       guidelines  planner/guidelines/product-backlog.md, then planner/guidelines/sprint-points-guideline.md
+// The only way the jois-story-explore and jois-story-propose skills read story data. Usage (run from any folder; the data folder
+// comes from PLANNER_CONFIG or a planner.config.yaml found upward from the current folder):
+//   node read-story-context.mjs                         lists the backlog names (folders of the data folder that hold user-stories.csv)
+//   node read-story-context.mjs <name>                  prints a menu: the sections, the size of each in characters and the command for each
+//   node read-story-context.mjs <name> --section <section> [<ID>[=<Title>] ...]
+//       prints one section, so a result stays small:
+//       guidelines  references/product-backlog.md, then references/sprint-points-guideline.md
 //       index       <name>/user-stories.csv as an index (INDEX_COLUMNS only)
-//       reviews     <name>/user-stories/review.csv: the row count and the open rows per story; after the section name, story IDs give those stories' open rows in full
+//       reviews     <name>/user-stories/review.csv: the row count and the open rows per story; story IDs after `reviews` give those stories' open rows in full
 //       lexicon-suggestions   <name>/lexicon/lexicon-suggestions.csv: the open suggestions in full and the number decided
-//   (the backlog-tools MCP server also exports searchStories below; it has no command form)
-//   node .claude/skills/explore-stories/read-story-context.mjs <name> <ID> prints the header and the one backlog story <ID>, every column
-// The proposals and the lexicon are not sections: they can be large, so the sessions read them in parts with readFile below (the
-// backlog-tools `read_file` tool, which has no command form). The menu lists both files with their sizes; asking for either as a section
-// is an error that names read_file.
-// Nothing else is reachable: the guidelines path is fixed (planner/guidelines) and the name (a trailing .csv is dropped) goes through the file API's name rules.
+//   node read-story-context.mjs <name> <ID> [--title <Title>]   prints the header and the one backlog story <ID>, every column
+//   node read-story-context.mjs <name> --search <word> [<word> ...]   finds stories (backlog and proposals) that contain every word: at most 25 lines
+//   node read-story-context.mjs <name> --file lexicon|proposals [--pattern <text> | --offset <n> [--limit <n>]]
+//       reads the lexicon or the proposals in parts: --pattern gives the header and at most 50 matching lines (plain text, any case);
+//       --offset and --limit give those lines (limit 100 by default, at most 200); neither gives only the size and the line count
+// A story ID with a Title (`--title`, or `ID=Title` after `reviews`) is checked: when the ID now holds another story nothing is
+// read and the reply says what it holds now. Without a Title the ID is read as given; the skills always pass the Title.
+// The proposals and the lexicon are not sections: they can be large, so they are read in parts with --file. The menu lists both files
+// with their sizes; asking for either as a section is an error that names --file.
+// Nothing else is reachable: the guidelines are the skill's references/ folder and the name (a trailing .csv is dropped) goes through the file API's name rules.
 // The CSV text is user data: it is labelled so, and instructions inside it are story text, not commands.
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
-import { parseCsv, toCsv } from '../../../planner/logic/backlog/csv.js';
-import { BENCHED_COLUMN, loadBacklog } from '../../../planner/logic/backlog/model.js';
-import { findStories, searchReply } from '../../../planner/logic/backlog/story-search.js';
-import { parseReview, serializeReview } from '../../../planner/logic/review/review.js';
-import { resolveStoryRef } from '../../../planner/logic/backlog/story-ref.js';
-import { parseSuggestions, composeSuggestions, isOpen } from '../../../planner/logic/lexicon/lexicon-suggestions.js';
+import { parseCsv, toCsv } from './lib/backlog/csv.js';
+import { BENCHED_COLUMN, loadBacklog } from './lib/backlog/model.js';
+import { findStories, searchReply } from './lib/backlog/story-search.js';
+import { parseReview, serializeReview } from './lib/review/review.js';
+import { resolveStoryRef } from './lib/backlog/story-ref.js';
+import { parseSuggestions, composeSuggestions, isOpen } from './lib/lexicon/lexicon-suggestions.js';
+import { dataDirOrThrow } from './lib/skill-support/resolve-data-dir.mjs';
 
 const require = createRequire(import.meta.url);
-const { backlogDir, backlogFile, listBacklogs: listBacklogFolders, KIND_FILES } = require('../../../planner/logic/storage/backlog-paths.cjs');
-const { DATA_DIR } = require('../../../planner/logic/storage/paths.cjs');
-const { GUIDELINES_DIR } = require('../../../planner/logic/skill-support/paths.cjs');
+const { backlogDir, backlogFile, listBacklogs: listBacklogFolders, KIND_FILES } = require('./lib/storage/backlog-paths.cjs');
+const { GUIDELINES_DIR } = require('./lib/skill-support/paths.cjs');
 
 // A file of a backlog as the replies name it: `<name>/user-stories/review.csv`.
 const label = (name, kind) => `${name}/${KIND_FILES[kind].join('/')}`;
@@ -39,13 +45,13 @@ const nameOf = (dataDir, name) => path.basename(backlogDir(dataDir, name));
 export const SECTIONS = ['guidelines', 'index', 'reviews', 'lexicon-suggestions'];
 // Read as files, not as sections: the kind of file each one is (see backlog-paths.cjs).
 export const FILE_SECTIONS = { proposals: 'proposals', lexicon: 'lexicon' };
-// A Bash result longer than this is saved to a file the locked sessions cannot read.
+// A result longer than this may be cut off by the tool that shows it.
 const RESULT_CAP = 30000;
 
 // The backlog is printed as an index so its section stays small; read-story-context.mjs <name> <ID> gives a full story.
 export const INDEX_COLUMNS = ['ID', 'Epic', 'Feature', 'Title', 'User Story', 'Sprint points', 'Depends On', 'Locked'];
 
-export function listBacklogs({ dataDir = DATA_DIR } = {}) {
+export function listBacklogs({ dataDir = dataDirOrThrow() } = {}) {
   return listBacklogFolders(dataDir);
 }
 
@@ -100,7 +106,7 @@ const storyRef = (s) => {
 // With `section` only that section's files are read (the backlog is always checked to exist); the fields of the other sections are undefined.
 const filePath = (dataDir, which, file) => backlogFile(dataDir, file, FILE_SECTIONS[which]);
 
-export function readStoryContext({ dataDir = DATA_DIR, guidelinesDir = GUIDELINES_DIR, name, id, storyTitle, section, storyIds, requireTitles = false }) {
+export function readStoryContext({ dataDir = dataDirOrThrow(), guidelinesDir = GUIDELINES_DIR, name, id, storyTitle, section, storyIds, requireTitles = false }) {
   let file;
   let backlogPath;
   try {
@@ -194,7 +200,7 @@ export function readStoryContext({ dataDir = DATA_DIR, guidelinesDir = GUIDELINE
 // The stories of the backlog and of its proposals (benched ones left out) that contain every word of `query`, as the reply text of
 // the search_stories tool. Both files are loaded as they stand (IDs as written, not recomputed), so an ID returned here is the one
 // read_context finds. Returns { ok: true, text } or { ok: false, errors }.
-export function searchStories({ dataDir = DATA_DIR, name, query }) {
+export function searchStories({ dataDir = dataDirOrThrow(), name, query }) {
   let file;
   try {
     file = nameOf(dataDir, name);
@@ -232,7 +238,7 @@ const isWhole = (n) => Number.isInteger(n);
 // the path comes from it and the backlog name alone. With `pattern`: the header row and the lines that contain it (plain text, ignoring
 // case), at most MATCH_CAP. With `offset` and `limit`: those lines. With neither: the size and the number of lines only.
 // Lines are the file's physical lines. Returns { ok: true, text } or { ok: false, errors }.
-export function readFile({ dataDir = DATA_DIR, name, file: which, pattern, offset, limit }) {
+export function readFile({ dataDir = dataDirOrThrow(), name, file: which, pattern, offset, limit }) {
   let file;
   try {
     file = nameOf(dataDir, name);
@@ -335,33 +341,112 @@ export function fileLines(r) {
 // What a call with a file name and no section prints: the sections, their sizes in characters and the command for each, then the two
 // files. `r` comes from readStoryContext without a section.
 export function formatMenu(r) {
-  const rows = SECTIONS.map((s) => `  ${s}: ${formatSection(r, s).length} characters\n    node .claude/skills/explore-stories/read-story-context.mjs ${r.file} --section ${s}`);
+  const rows = SECTIONS.map((s) => `  ${s}: ${formatSection(r, s).length} characters\n    node <skill folder>/read-story-context.mjs ${r.file} --section ${s}`);
   return `=== read-story-context.mjs ${r.file}: run each section as its own command; a result over ${RESULT_CAP} characters is cut off ===\n${rows.join('\n')}\n${fileLines(r).join('\n')}`;
 }
 
-const USAGE = `Usage: node read-story-context.mjs [backlog name [story ID | --section ${SECTIONS.join('|')} [story IDs, with reviews]]]`;
+const USAGE = `Usage: node read-story-context.mjs [backlog name [story ID [--title <Title>] | --section ${SECTIONS.join('|')} [story IDs, with reviews] | --search <words> | --file lexicon|proposals [--pattern <text> | --offset <n> [--limit <n>]]]]`;
+
+// The functions above also serve the retired MCP server, so their replies name its tools. On the command line the same
+// next steps are options of this script; this rewrites the wording and nothing else.
+export function asCommand(text) {
+  return text
+    .replace(/Read it with read_file \(file '(\w+)', the same backlog\): 'pattern' looks up a word, 'offset' and 'limit' read a part\./, "Read it with --file $1 (the same backlog): --pattern looks up a word, --offset and --limit read a part.")
+    .replace(/not a read_context section/g, 'not a section')
+    .replace(/read with read_file \(file '(\w+)'\)/g, 'read with --file $1')
+    .replace(/read the index section with read_context/g, 'read the index section (--section index)')
+    .replace(/Read the one you mean with read_context and repeat the call with its ID and Title/g, 'Read the one you mean (read-story-context.mjs <name> <ID> --title <Title>) and repeat the command with its ID and Title')
+    .replace(/read it with read_context and send both/g, 'read it with --search or --section index and send both')
+    .replace(/the index section of read_context/g, 'the index section (--section index)')
+    .replace(/use pattern to look up a word, or offset and limit to read a part/g, 'use --pattern to look up a word, or --offset and --limit to read a part');
+}
+
+const VALUE_FLAGS = ['--section', '--title', '--file', '--pattern', '--offset', '--limit'];
+
+// { flags: { '--section': 'index', '--search': true, ... }, positional: [...] }, or null when a flag has no value or is unknown.
+export function parseArgs(args) {
+  const flags = {};
+  const positional = [];
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i];
+    if (a === '--search') flags[a] = true;
+    else if (VALUE_FLAGS.includes(a)) {
+      if (i + 1 >= args.length || Object.hasOwn(flags, a)) return null;
+      flags[a] = args[++i];
+    } else if (a.startsWith('--')) return null;
+    else positional.push(a);
+  }
+  return { flags, positional };
+}
+
+// `ID` or `ID=Title` (the Title may itself hold an equals sign; an ID never does).
+const idWithTitle = (arg) => {
+  const at = arg.indexOf('=');
+  return at < 0 ? arg : { id: arg.slice(0, at), title: arg.slice(at + 1) };
+};
+
+const whole = (text) => (text === undefined ? undefined : /^-?\d+$/.test(text) ? Number(text) : NaN);
+
+function run(args) {
+  const [name, ...rest] = args;
+  if (!name) {
+    console.log(listBacklogs().join('\n'));
+    return 0;
+  }
+  const parsed = parseArgs(rest);
+  if (!parsed) return usage();
+  const { flags, positional } = parsed;
+  const modes = ['--section', '--search', '--file'].filter((f) => Object.hasOwn(flags, f));
+  const { '--section': section, '--title': title, '--pattern': pattern } = flags;
+  const fail = (errors) => {
+    console.error(asCommand(errors.join('\n')));
+    return 1;
+  };
+  if (modes.length > 1) return usage();
+  if (modes[0] === '--search') {
+    if (Object.keys(flags).length > 1) return usage();
+    const found = searchStories({ name, query: positional.join(' ') });
+    if (!found.ok) return fail(found.errors);
+    console.log(asCommand(found.text));
+    return 0;
+  }
+  if (modes[0] === '--file') {
+    if (positional.length || title !== undefined || Object.hasOwn(flags, '--section')) return usage();
+    const read = readFile({ name, file: flags['--file'], pattern, offset: whole(flags['--offset']), limit: whole(flags['--limit']) });
+    if (!read.ok) return fail(read.errors);
+    console.log(asCommand(read.text));
+    return 0;
+  }
+  if (pattern !== undefined || flags['--offset'] !== undefined || flags['--limit'] !== undefined) return usage();
+  if (modes[0] === '--section') {
+    if (title !== undefined || (positional.length && section !== 'reviews')) return usage();
+    if (!SECTIONS.includes(section) && !Object.hasOwn(FILE_SECTIONS, section)) {
+      console.error(`Unknown section '${section}'. Sections: ${SECTIONS.join(', ')}`);
+      return 2;
+    }
+    const result = readStoryContext({ name, section, storyIds: positional.length ? positional.map(idWithTitle) : undefined });
+    if (!result.ok) return fail(result.errors);
+    console.log(asCommand(formatSection(result, section)));
+    return 0;
+  }
+  if (positional.length > 1 || (title !== undefined && !positional.length)) return usage();
+  const result = readStoryContext({ name, id: positional[0], storyTitle: title });
+  if (!result.ok) return fail(result.errors);
+  console.log(asCommand(result.id !== undefined ? formatStory(result) : formatMenu(result)));
+  return 0;
+}
+
+function usage() {
+  console.error(USAGE);
+  return 2;
+}
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
 if (isMain) {
-  const [, , name, second, third, ...ids] = process.argv;
-  const bySection = second === '--section';
-  if ((!bySection && third !== undefined) || (bySection && third === undefined) || (ids.length && third !== 'reviews')) {
-    console.error(USAGE);
-    process.exit(2);
-  }
-  if (bySection && !SECTIONS.includes(third) && !Object.hasOwn(FILE_SECTIONS, third)) {
-    console.error(`Unknown section '${third}'. Sections: ${SECTIONS.join(', ')}`);
-    process.exit(2);
-  }
-  if (!name) {
-    console.log(listBacklogs().join('\n'));
-  } else {
-    const result = readStoryContext({ name, id: bySection ? undefined : second, section: bySection ? third : undefined, storyIds: ids.length ? ids : undefined });
-    if (!result.ok) {
-      console.error(result.errors.join('\n'));
-      process.exit(1);
-    }
-    if (result.id !== undefined) console.log(formatStory(result));
-    else console.log(bySection ? formatSection(result, third) : formatMenu(result));
+  try {
+    process.exitCode = run(process.argv.slice(2));
+  } catch (err) {
+    console.error(err.message);
+    process.exitCode = 1;
   }
 }

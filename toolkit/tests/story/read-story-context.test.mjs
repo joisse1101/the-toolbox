@@ -3,15 +3,24 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { pathOf, putFile, sampleTree } from '../helpers/backlog-tree.mjs';
+import { pathOf, putFile } from './helpers/backlog-tree.mjs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { serializeReview } from '../../logic/review/review.js';
-import { composeSuggestions, emptySuggestions } from '../../logic/lexicon/lexicon-suggestions.js';
-import { readStoryContext, formatSection, formatMenu, formatStory, fileLines, SECTIONS, backlogIndex, listBacklogs, searchStories, readFile } from '../../../.claude/skills/explore-stories/read-story-context.mjs';
-import { tempConfig } from '../helpers/temp-config.mjs';
+import { serializeReview } from '../../skills/jois-story-explore/lib/review/review.js';
+import { composeSuggestions, emptySuggestions } from '../../skills/jois-story-explore/lib/lexicon/lexicon-suggestions.js';
+import { readStoryContext, formatSection, formatMenu, formatStory, fileLines, SECTIONS, backlogIndex, listBacklogs, searchStories, readFile } from '../../skills/jois-story-explore/read-story-context.mjs';
 
-const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+const SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'skills', 'jois-story-explore', 'read-story-context.mjs');
+
+// The CLI finds its data folder through PLANNER_CONFIG, as an installed skill does. The config sits in its own temp folder.
+function tempConfig(dataDir) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'story-config-'));
+  const file = path.join(dir, 'planner.config.yaml');
+  fs.writeFileSync(file, `dataDir: ${JSON.stringify(path.resolve(dataDir))}
+`);
+  return file;
+}
+const cliIn = (root) => (...args) => spawnSync(process.execPath, [SCRIPT, ...args], { encoding: 'utf8', env: { ...process.env, PLANNER_CONFIG: tempConfig(root) } });
 
 function temp() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'context-test-'));
@@ -22,6 +31,13 @@ function temp() {
   fs.writeFileSync(pathOf(root, 'data', 'backlog'), 'ID,Epic\r\nIAM-0001,IAM\r\n');
   putFile(root, 'other', 'backlog', 'ID\r\n');
   fs.writeFileSync(path.join(root, 'notes.txt'), 'x');
+  return root;
+}
+
+// A data folder with a backlog named sample (two stories), for the command-line tests.
+function sampleRoot() {
+  const root = temp();
+  putFile(root, 'sample', 'backlog', 'ID,Epic,Feature,Title\r\nIAM-0001,IAM,Auth,Login\r\nIAM-0002,IAM,Auth,Logout\r\n');
   return root;
 }
 
@@ -82,7 +98,7 @@ test('bad names and unknown backlogs are refused', () => {
 });
 
 test('CLI: lists backlogs, prints the menu, exits non-zero on a bad name or extra arguments', () => {
-  const run = (...args) => spawnSync(process.execPath, ['.claude/skills/explore-stories/read-story-context.mjs', ...args], { cwd: REPO, encoding: 'utf8', env: { ...process.env, PLANNER_CONFIG: tempConfig(sampleTree()) } });
+  const run = cliIn(sampleRoot());
   assert.equal(run().status, 0);
   assert.equal(run('..\\x.csv').status, 1);
   assert.equal(run('a.csv', 'b', 'c').status, 2);
@@ -93,7 +109,7 @@ test('CLI: lists backlogs, prints the menu, exits non-zero on a bad name or extr
 });
 
 test('CLI: --section prints just that section; the menu prints no section', () => {
-  const run = (...args) => spawnSync(process.execPath, ['.claude/skills/explore-stories/read-story-context.mjs', ...args], { cwd: REPO, encoding: 'utf8', env: { ...process.env, PLANNER_CONFIG: tempConfig(sampleTree()) } });
+  const run = cliIn(sampleRoot());
   const guidelines = run('sample.csv', '--section', 'guidelines');
   assert.equal(guidelines.status, 0);
   assert.match(guidelines.stdout, /^=== guidelines\/product-backlog.md ===/);
@@ -105,7 +121,7 @@ test('CLI: --section prints just that section; the menu prints no section', () =
   assert.equal(run('sample.csv', 'IAM-0001', '--section', 'index').status, 2);
   const refused = run('sample.csv', '--section', 'lexicon');
   assert.equal(refused.status, 1);
-  assert.match(refused.stderr, /not a read_context section.*read_file \(file 'lexicon'/);
+  assert.match(refused.stderr, /not a section.*--file lexicon/);
 });
 
 test('the menu counts the benched rows of the proposals file and names both files with their size and how to read them', () => {
@@ -317,7 +333,7 @@ test('lexicon-suggestions: the open suggestions in full, the number decided, a n
 
 test('CLI: --section reviews takes story IDs, and IDs with another section are refused', () => {
   const root = withReview(ROWS);
-  const run = (...args) => spawnSync(process.execPath, ['.claude/skills/explore-stories/read-story-context.mjs', ...args], { cwd: REPO, encoding: 'utf8', env: { ...process.env, PLANNER_CONFIG: tempConfig(root) } });
+  const run = cliIn(root);
   const out = run('data.csv', '--section', 'reviews', 'IAM-0002');
   assert.equal(out.status, 0, out.stderr);
   assert.match(out.stdout, /open rows of IAM-0002/);
@@ -475,4 +491,84 @@ test('read_file: the proposals reply says how many rows are benched and leaves e
   assert.match(r.text, /2: NEW-1,IAM,Yes\n3: NEW-2,IAM,$/);
   const none = readFile({ dataDir: root, name: 'data.csv', file: 'lexicon', pattern: 'x' });
   assert.doesNotMatch(none.text, /benched/);
+});
+
+// --- the command-line forms: the same functions, called through the script ---
+
+test('CLI: --search lists matches with the caps of the search, and a blank query is refused', () => {
+  const root = searchRoot();
+  const run = cliIn(root);
+  const found = run('data.csv', '--search', 'CSV');
+  assert.equal(found.status, 0, found.stderr);
+  assert.equal(found.stdout.trim(), '1 story matches (ID | Title | Epic > Feature | source):\nIAM-0001 | Export report | Reporting > Export | backlog');
+  assert.equal(run('data.csv', '--search', 'zebra').stdout.trim(), 'No story matches.');
+  const blank = run('data.csv', '--search');
+  assert.equal(blank.status, 1);
+  assert.match(blank.stderr, /index section \(--section index\)/);
+  assert.equal(run('data.csv', '--search', 'csv', '--section', 'index').status, 2);
+});
+
+test('CLI: --search stops at 25 lines and counts the rest', () => {
+  const root = temp();
+  const rows = Array.from({ length: 30 }, (_, i) => `IAM-${String(i + 1).padStart(4, '0')},E,F,Widget ${i + 1}`);
+  fs.writeFileSync(pathOf(root, 'data', 'backlog'), ['ID,Epic,Feature,Title', ...rows, ''].join('\r\n'));
+  const out = cliIn(root)('data.csv', '--search', 'widget');
+  assert.equal(out.status, 0, out.stderr);
+  assert.equal(out.stdout.match(/^IAM-\d+ \|/gm).length, 25);
+  assert.match(out.stdout, /5 more/);
+});
+
+test('CLI: --file reads the lexicon by pattern or by lines, with the caps of 50 matches and 200 lines', () => {
+  const root = lexiconRoot(300);
+  const run = cliIn(root);
+  const hit = run('data.csv', '--file', 'lexicon', '--pattern', 'DATASET');
+  assert.equal(hit.status, 0, hit.stderr);
+  assert.match(hit.stdout, /150 lines containing "DATASET":\n1: Term,Definition,Avoid\n3: Term2,A dataset thing,/);
+  assert.equal(hit.stdout.match(/^\d+: Term\d+,/gm).length, 50);
+  assert.match(hit.stdout, /100 more lines match: use a narrower pattern\.\s*$/);
+  const part = run('data.csv', '--file', 'lexicon', '--offset', '101', '--limit', '200');
+  assert.match(part.stdout, /Lines 101 to 300:\n101: Term100,/);
+  assert.equal(run('data.csv', '--file', 'lexicon', '--offset', '1', '--limit', '201').status, 1);
+  const none = run('data.csv', '--file', 'lexicon');
+  assert.match(none.stdout, /No content returned: use --pattern to look up a word, or --offset and --limit to read a part/);
+});
+
+test('CLI: --file refuses other files, mixed options and a bad number; the menu names the command', () => {
+  const root = lexiconRoot();
+  const run = cliIn(root);
+  assert.equal(run('data.csv', '--file', 'backups', '--pattern', 'x').status, 1);
+  assert.equal(run('data.csv', '--file', 'lexicon', '--pattern', 'a', '--offset', '1').status, 1);
+  assert.equal(run('data.csv', '--file', 'lexicon', '--offset', 'x').status, 1);
+  assert.equal(run('data.csv', '--file', 'lexicon', '--pattern').status, 2);
+  assert.equal(run('data.csv', '--pattern', 'a').status, 2);
+  assert.match(run('data.csv').stdout, /lexicon: \d+ characters; read with --file lexicon$/m);
+});
+
+test('CLI: a story ID with --title is checked, and a mismatch says what the ID holds now', () => {
+  const run = cliIn(withFull());
+  const ok = run('data.csv', 'IAM-0001', '--title', ' login ');
+  assert.equal(ok.status, 0, ok.stderr);
+  assert.equal(ok.stdout, run('data.csv', 'IAM-0001').stdout);
+  const bad = run('data.csv', 'IAM-0001', '--title', 'Logout');
+  assert.equal(bad.status, 1);
+  assert.match(bad.stderr, /IAM-0001 is now "Login" \(IAM > Auth\), not "Logout"\. Stories titled "Logout": IAM-0002/);
+  assert.equal(run('data.csv', '--title', 'Login').status, 2);
+});
+
+test('CLI: story IDs after reviews take ID=Title, checked, with every mismatch reported', () => {
+  const run = cliIn(withReview(ROWS));
+  const ok = run('data.csv', '--section', 'reviews', 'IAM-0001=Login');
+  assert.equal(ok.status, 0, ok.stderr);
+  assert.match(ok.stdout, /open rows of IAM-0001/);
+  const bad = run('data.csv', '--section', 'reviews', 'IAM-0001=Logout', 'IAM-0002=Login');
+  assert.equal(bad.status, 1);
+  assert.doesNotMatch(bad.stderr, /read_context/);
+  assert.match(bad.stderr, /storyIds\[1\]: IAM-0001 is now "Login".*\nstoryIds\[2\]: IAM-0002 is now "Logout"/);
+});
+
+test('CLI: without a data folder the script says so and exits non-zero', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'no-config-'));
+  const r = spawnSync(process.execPath, [SCRIPT, 'data.csv'], { encoding: 'utf8', cwd: dir, env: { ...process.env, PLANNER_CONFIG: '' } });
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /No data folder is set/);
 });
