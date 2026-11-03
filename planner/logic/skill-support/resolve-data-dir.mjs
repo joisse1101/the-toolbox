@@ -67,3 +67,13 @@ export function resolveDataDir({ env = process.env, cwd = process.cwd() } = {}) 
   if (!keys.dataDir) return { status: 'error', configFile, problem: 'has no `dataDir` key' };
   return { status: 'found', dataDir: path.resolve(path.dirname(configFile), keys.dataDir), configFile };
 }
+
+// The data folder for a script, or throws an Error whose message a person can act on (never a guessed folder).
+export function dataDirOrThrow(options) {
+  const found = resolveDataDir(options);
+  if (found.status === 'found') return found.dataDir;
+  if (found.status === 'error') {
+    throw new Error(`The data folder config ${found.configFile} ${found.problem}. Fix that file, or set PLANNER_CONFIG to another config file.`);
+  }
+  throw new Error(`No data folder is set: no PLANNER_CONFIG variable and no ${CONFIG_NAME} in this folder or a parent. Ask the user for the path of their ${CONFIG_NAME}, then run the script again with PLANNER_CONFIG set to it.`);
+}

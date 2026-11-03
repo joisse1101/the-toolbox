@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { resolveDataDir, parseFlatConfig } from '../../logic/skill-support/resolve-data-dir.mjs';
+import { resolveDataDir, dataDirOrThrow, parseFlatConfig } from '../../logic/skill-support/resolve-data-dir.mjs';
 
 // The scenarios of "The data folder is found without the planner" in the toolkit-story-skills spec.
 const TEST_DIR = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -84,4 +84,11 @@ test('unreadable config: PLANNER_CONFIG naming a missing file is an error, not a
 test('parseFlatConfig skips comments and blank lines, trims trailing comments and unquotes', () => {
   const keys = parseFlatConfig('# top\n\nprojectName: "My: App" # name\ndataDir: ./d # folder\nempty:\n');
   assert.deepEqual(keys, { projectName: 'My: App', dataDir: './d', empty: '' });
+});
+
+test('dataDirOrThrow returns the folder, and otherwise throws a message that says what to do', () => {
+  assert.equal(dataDirOrThrow({ env: { PLANNER_CONFIG: SAMPLE_CONFIG }, cwd: temp() }), SAMPLE_DATA);
+  assert.throws(() => dataDirOrThrow({ env: {}, cwd: temp() }), /No data folder is set.*Ask the user.*PLANNER_CONFIG/);
+  const cwd = withConfig('projectName: P\n');
+  assert.throws(() => dataDirOrThrow({ env: {}, cwd }), (err) => err.message.includes(path.join(cwd, 'planner.config.yaml')) && /no `dataDir` key/.test(err.message));
 });
