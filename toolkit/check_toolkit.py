@@ -13,6 +13,7 @@ Checks:
   6. every agent declares `tools` (an omitted list inherits every tool)
   7. a skill may hold scripts, `lib/`, `references/` and a `package.json`; a `package.json` needs a
      `package-lock.json` beside it, and no script imports a file outside its skill folder
+  8. every script in the jois-init-docs-templates folder has a test file
 """
 
 from __future__ import annotations
@@ -47,6 +48,9 @@ CODE_EXTENSIONS = (
     "html", "css", "scss", "vue", "svelte",
     "go", "rs", "cs", "kt", "rb", "php", "c", "h", "cpp", "swift", "sql",
 )
+
+# The scripts `/jois-init:docs` ships; each needs a test file in the `tests` folder beside it.
+TEMPLATE_SCRIPTS = Path("skills") / "jois-init-docs-templates" / "scripts"
 
 # `metadata.version` in frontmatter: a semantic version, bumped by hand with `last_updated`.
 SEMVER_RE = re.compile(r"\d+\.\d+\.\d+")
@@ -272,6 +276,17 @@ def _check_shared_pr_sections(root: Path) -> list[str]:
     ]
 
 
+def _check_template_scripts_tested(root: Path) -> list[str]:
+    """Every script the docs command ships needs `scripts/tests/test_<script>.py` beside it."""
+    scripts = root / TEMPLATE_SCRIPTS
+    problems = []
+    for script in sorted(scripts.glob("*.py")):
+        test = scripts / "tests" / f"test_{script.name}"
+        if not test.is_file():
+            problems.append(f"{_rel(root, script)}: no test file at {_rel(root, test)}")
+    return problems
+
+
 def check_toolkit(root: Path) -> list[str]:
     rules = root / "rules"
     if not rules.is_dir():
@@ -286,6 +301,7 @@ def check_toolkit(root: Path) -> list[str]:
         + _check_agents_have_tools(root)
         + _check_skill_packages(root)
         + _check_skill_imports(root)
+        + _check_template_scripts_tested(root)
     )
 
 
