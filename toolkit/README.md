@@ -52,6 +52,13 @@ These rules keep it installable on its own:
 - `node_modules` is left out of the content hash, so a skill with installed packages is still `up to date`.
 - `-Force` replaces the whole folder and reinstalls. `-Uninstall` removes the whole folder, `node_modules` included.
 
+#### Node version for the story skills
+
+- The story skills need Node 20.19 or later, or Node 22.7 or later.
+- Their `lib/*.js` files use ES module syntax (`import`/`export`) and no `package.json` marks them as modules.
+- Node loads such a file as a module only through syntax detection, which is on by default from those versions.
+- Unchecked: these two version numbers come from memory of the Node release notes. They were not confirmed against the Node docs, because the docs were not reachable. The tests were run only on Node 24.19.0.
+
 ## Naming
 
 Every item is named `jois-<domain>-<thing>`. `jois` is the owner, so the names never collide with a
