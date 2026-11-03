@@ -121,10 +121,10 @@ export function writeReview({ dataDir = dataDirOrThrow(), name, input, append = 
   fs.mkdirSync(reviewDir, { recursive: true });
   if (!append && decided.length) {
     // The sidecar is logged as a review write, marked as the decided rows.
-    const failed = writeAtomic(reviewDir, path.basename(decidedPath), serializeReview(decided), 'write_review', { ...log, extra: { sidecar: 'decided' } });
+    const failed = writeAtomic(reviewDir, path.basename(decidedPath), serializeReview(decided), 'write-review.mjs', { ...log, extra: { sidecar: 'decided' } });
     if (failed) return { ok: false, errors: [failed] };
   }
-  const failed = writeAtomic(reviewDir, path.basename(reviewPath), serializeReview(rows), 'write_review', log);
+  const failed = writeAtomic(reviewDir, path.basename(reviewPath), serializeReview(rows), 'write-review.mjs', log);
   if (failed) return { ok: false, errors: [failed] };
 
   const stored = readRows(reviewPath);

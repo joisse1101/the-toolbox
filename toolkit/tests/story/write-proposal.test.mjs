@@ -448,7 +448,7 @@ test('a write is recorded in the write log under the tool name; a check and a sk
   run(root, [story()]); // a repeat: the file is not rewritten
   const lines = logLines();
   assert.equal(lines.length, 1);
-  assert.deepEqual([lines[0].writer, lines[0].backlog, lines[0].kind], ['write_proposals', 'data', 'proposals']);
+  assert.deepEqual([lines[0].writer, lines[0].backlog, lines[0].kind], ['write-proposal.mjs', 'data', 'proposals']);
   assert.equal(lines[0].bytes, fs.statSync(proposalPath(root)).size);
 });
 

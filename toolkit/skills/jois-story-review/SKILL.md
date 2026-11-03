@@ -15,7 +15,7 @@ Review one backlog CSV, write the suggestions to a review CSV and write a report
 
 ## Data folder
 
-The scripts find the backlog data folder themselves: the config file named by the `PLANNER_CONFIG` variable, else a `planner.config.yaml` in the current folder or the nearest parent, reading its `dataDir` line only. If a script says no data folder is set or the config cannot be read, show the user its message and ask for the path of their `planner.config.yaml`. Then run the same command again with `PLANNER_CONFIG=<that path>` in front. Never guess a folder, and write nothing until you have one.
+The scripts find the backlog data folder themselves: the config file named by the `PLANNER_CONFIG` variable, else a `planner.config.yaml` in the current folder or the nearest parent, reading its `dataDir` line only. If a script says no data folder is set or the config cannot be read, show the user its message and ask the user to set the `PLANNER_CONFIG` variable to the path of their `planner.config.yaml` in their shell, or to start the session from the folder that holds that file, then run the same command again. Do not prefix the command with the variable: every command you run starts with `node`. Never guess a folder, and write nothing until you have one.
 
 ## Input
 
@@ -149,7 +149,7 @@ Build a JSON array, one object per row, with exactly these keys (no `current` an
 - `Sprint points` must be 1, 2, 3, 5, 8, 13, 21, 34 or 55.
 - Ignore Priority: do not review it, report it as missing, or suggest a value for it.
 - A suggested rewording must not grow the story. Keep it to what the story already implies: do not add a capability, a user group, a permission or a rule (for example "only sees what they are entitled to" implies role-based access). If a better benefit would need new scope, use a modest benefit and raise the larger idea as a separate question in Clarifications.
-- Use story IDs exactly as they appear in the CSV.
+- Use story IDs exactly as `read-backlog.mjs` prints them: it prints the form the portal derives (epic initials and position, such as `R-0001`), which is the only form `write-review.mjs` accepts, even when the CSV file on disk holds another one.
 
 Write the findings in **batches of about 8-10 rows**, one or more per Epic, not as one large command (a long heredoc can fail). The first batch replaces the review; every later batch adds `--append`. Each command takes the findings on standard input and the backlog name, with `--append` (and `--check`) as the only other arguments:
 

@@ -71,7 +71,7 @@ export function writeLexicon({ dataDir = dataDirOrThrow(), name, input }) {
   const lexiconShown = shown(dataDir, lexiconPath);
 
   fs.mkdirSync(lexiconDir, { recursive: true });
-  const failed = writeAtomic(lexiconDir, path.basename(lexiconPath), composeLexicon(result.lexicon), 'write_lexicon', { dataDir, backlog: file, kind: 'lexicon' });
+  const failed = writeAtomic(lexiconDir, path.basename(lexiconPath), composeLexicon(result.lexicon), 'write-lexicon.mjs', { dataDir, backlog: file, kind: 'lexicon' });
   if (failed) return { ok: false, errors: [failed] };
 
   let stored;

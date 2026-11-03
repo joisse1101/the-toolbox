@@ -97,7 +97,7 @@ test('the lexicon example passes the lexicon writer\'s validation, and the lexic
   assert.deepEqual(r.errors, undefined);
   assert.deepEqual(r.added, ['Dataset', 'Dataset attribute', 'User']);
   const again = applyTermItems(r.lexicon, examples()[3]);
-  assert.match(again.errors[0], /is already a term: suggest a change to it with suggest_lexicon_change/, 'the example adds only');
+  assert.match(again.errors[0], /is already a term: suggest a change to it with suggest-lexicon.mjs/, 'the example adds only');
   assert.match(text, /run the lexicon writer first \(so the stories can use the terms\), then `suggest-lexicon\.mjs`, then the proposal writer, then the review writer/);
 });
 

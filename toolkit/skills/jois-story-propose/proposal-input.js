@@ -242,7 +242,7 @@ export function buildProposals({ input, backlog, proposals = null, requireTitles
       fail(i, 'id must be a proposed story ID like NEW-8');
       return null;
     }
-    const ref = resolveStoryRef(proposedRefs, { id: code, title: storyTitle }, { required: requireTitles, hint: 'the proposals section of read_context' });
+    const ref = resolveStoryRef(proposedRefs, { id: code, title: storyTitle }, { required: requireTitles, hint: 'the proposals (read-story-context.mjs <backlog> --file proposals --pattern <text>)' });
     if (!ref.ok) {
       fail(i, ref.message);
       return null;
@@ -355,7 +355,7 @@ export function buildProposals({ input, backlog, proposals = null, requireTitles
         if (!code) continue; // a repeat inside the input, already reported
       } else if (proposed) {
         code = proposed[1];
-        if (!named(proposedRefs, code, 'the proposals section of read_context')) continue;
+        if (!named(proposedRefs, code, 'the proposals (read-story-context.mjs <backlog> --file proposals --pattern <text>)')) continue;
         if (!proposedCodes.has(code)) {
           fail(i, `Depends On lists ${entry}, but the proposals file has no ${code}`);
           continue;
@@ -365,7 +365,7 @@ export function buildProposals({ input, backlog, proposals = null, requireTitles
           continue;
         }
       } else if (backlogCodes.has(entry) || title !== undefined) {
-        if (!named(backlogRefs, entry, 'the index section of read_context')) continue;
+        if (!named(backlogRefs, entry, 'the index section (read-story-context.mjs <backlog> --section index)')) continue;
         code = entry;
       } else {
         fail(i, `Depends On lists ${entry || '(empty)'}, which is not a story in the backlog`);

@@ -88,7 +88,7 @@ export function writeProposal({ dataDir = dataDirOrThrow(), name, input, require
   const result = { ok: true, file, ids: built.ids, patchedIds: built.patchedIds, skipped: built.skipped, count: all.stories.length };
   if (proposals && !built.ids.length && !built.patchedIds.length) return result;
   fs.mkdirSync(proposalDir, { recursive: true });
-  const failed = writeAtomic(proposalDir, path.basename(proposalsPath), serializeBacklog(all), 'write_proposals', { dataDir, backlog: file, kind: 'proposals' });
+  const failed = writeAtomic(proposalDir, path.basename(proposalsPath), serializeBacklog(all), 'write-proposal.mjs', { dataDir, backlog: file, kind: 'proposals' });
   if (failed) return { ok: false, errors: [failed] };
 
   // Read the file again: what is reported as written is what is on disk now.

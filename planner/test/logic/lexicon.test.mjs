@@ -159,7 +159,7 @@ test('applyTermItems refuses a term that exists and points to the suggestion too
   const lex = sample();
   const r = applyTermItems(lex, [{ term: 'user', definition: 'x', avoid: ['customer', 'account holder'] }]);
   assert.equal(r.ok, false);
-  assert.match(r.errors[0], /^item 1: "user" is already a term: suggest a change to it with suggest_lexicon_change/);
+  assert.match(r.errors[0], /^item 1: "user" is already a term: suggest a change to it with suggest-lexicon.mjs/);
   assert.equal(composeLexicon(lex), before);
 });
 

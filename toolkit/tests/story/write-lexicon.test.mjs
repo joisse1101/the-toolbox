@@ -55,7 +55,7 @@ test('a term that exists is refused and the file is untouched', () => {
   seed(root, seeded);
   const result = run(root, [{ term: 'user', definition: 'x', avoid: ['customer', 'member'] }]);
   assert.equal(result.ok, false);
-  assert.match(result.errors[0], /^item 1: "user" is already a term: suggest a change to it with suggest_lexicon_change/);
+  assert.match(result.errors[0], /^item 1: "user" is already a term: suggest a change to it with suggest-lexicon.mjs/);
   assert.equal(fs.readFileSync(lexiconPath(root), 'utf8'), seeded);
 });
 

@@ -75,5 +75,5 @@ export function dataDirOrThrow(options) {
   if (found.status === 'error') {
     throw new Error(`The data folder config ${found.configFile} ${found.problem}. Fix that file, or set PLANNER_CONFIG to another config file.`);
   }
-  throw new Error(`No data folder is set: no PLANNER_CONFIG variable and no ${CONFIG_NAME} in this folder or a parent. Ask the user for the path of their ${CONFIG_NAME}, then run the script again with PLANNER_CONFIG set to it.`);
+  throw new Error(`No data folder is set: no PLANNER_CONFIG variable and no ${CONFIG_NAME} in this folder or a parent. Ask the user for the path of their ${CONFIG_NAME} and to set PLANNER_CONFIG to it in their shell (or to start the session from the folder that holds it), then run the script again.`);
 }

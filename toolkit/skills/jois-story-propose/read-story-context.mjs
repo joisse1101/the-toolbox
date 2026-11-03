@@ -25,7 +25,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import { parseCsv, toCsv } from './lib/backlog/csv.js';
-import { BENCHED_COLUMN, loadBacklog } from './lib/backlog/model.js';
+import { BENCHED_COLUMN, loadBacklog, serializeBacklog } from './lib/backlog/model.js';
 import { findStories, searchReply } from './lib/backlog/story-search.js';
 import { parseReview, serializeReview } from './lib/review/review.js';
 import { resolveStoryRef } from './lib/backlog/story-ref.js';
@@ -50,6 +50,16 @@ const RESULT_CAP = 30000;
 
 // The backlog is printed as an index so its section stays small; read-story-context.mjs <name> <ID> gives a full story.
 export const INDEX_COLUMNS = ['ID', 'Epic', 'Feature', 'Title', 'User Story', 'Sprint points', 'Depends On', 'Locked'];
+
+// The backlog file with its IDs as the portal and the writers derive them (epic initials + position, `Depends On` links following),
+// so a hand-edited file whose stored IDs differ is read under the IDs every writer accepts. Text that cannot be loaded is returned as it is.
+export function withDerivedIds(text) {
+  try {
+    return serializeBacklog(loadBacklog(text));
+  } catch {
+    return text;
+  }
+}
 
 export function listBacklogs({ dataDir = dataDirOrThrow() } = {}) {
   return listBacklogFolders(dataDir);
@@ -116,7 +126,7 @@ export function readStoryContext({ dataDir = dataDirOrThrow(), guidelinesDir = G
     return { ok: false, errors: [err.message] };
   }
   if (Object.hasOwn(FILE_SECTIONS, section ?? '')) {
-    return { ok: false, errors: [`'${section}' is not a read_context section: the file can be large. Read it with read_file (file '${section}', the same backlog): 'pattern' looks up a word, 'offset' and 'limit' read a part.`] };
+    return { ok: false, errors: [`'${section}' is not a section: the file can be large. Read it with --file ${section} (the same backlog): --pattern looks up a word, --offset and --limit read a part.`] };
   }
   if (section !== undefined && !SECTIONS.includes(section)) return { ok: false, errors: [`Unknown section '${section}'. Sections: ${SECTIONS.join(', ')}`] };
   if (section !== undefined && id !== undefined) return { ok: false, errors: ['A story ID and --section cannot be combined.'] };
@@ -126,7 +136,7 @@ export function readStoryContext({ dataDir = dataDirOrThrow(), guidelinesDir = G
   }
   let csv;
   try {
-    csv = fs.readFileSync(backlogPath, 'utf8');
+    csv = withDerivedIds(fs.readFileSync(backlogPath, 'utf8'));
   } catch {
     return { ok: false, errors: [`${label(file, 'backlog')} was not found.`] };
   }
@@ -198,8 +208,8 @@ export function readStoryContext({ dataDir = dataDirOrThrow(), guidelinesDir = G
 }
 
 // The stories of the backlog and of its proposals (benched ones left out) that contain every word of `query`, as the reply text of
-// the search_stories tool. Both files are loaded as they stand (IDs as written, not recomputed), so an ID returned here is the one
-// read_context finds. Returns { ok: true, text } or { ok: false, errors }.
+// the --search form. The backlog is loaded with its derived IDs and the proposals as they stand, so an ID returned here is the one
+// the other forms and the writers accept. Returns { ok: true, text } or { ok: false, errors }.
 export function searchStories({ dataDir = dataDirOrThrow(), name, query }) {
   let file;
   try {
@@ -208,7 +218,7 @@ export function searchStories({ dataDir = dataDirOrThrow(), name, query }) {
     return { ok: false, errors: [err.message] };
   }
   if (typeof query !== 'string' || !query.trim()) {
-    return { ok: false, errors: ['Give at least one word to search for. To see every story, read the index section with read_context.'] };
+    return { ok: false, errors: ['Give at least one word to search for. To see every story, read the index section (--section index).'] };
   }
   const lines = [];
   for (const [kind, source] of [['backlog', 'backlog'], ['proposals', 'proposed']]) {
@@ -219,7 +229,7 @@ export function searchStories({ dataDir = dataDirOrThrow(), name, query }) {
       if (err.code === 'ENOENT' && kind === 'proposals') continue;
       return { ok: false, errors: [err.code === 'ENOENT' ? `${label(file, 'backlog')} was not found.` : `Could not read ${label(file, kind)}: ${err.message}`] };
     }
-    const { headers, stories } = loadBacklog(csv, { placeholderIds: true });
+    const { headers, stories } = loadBacklog(csv, { placeholderIds: kind === 'proposals' });
     lines.push(...findStories(stories, query, headers, source));
   }
   return { ok: true, text: searchReply(lines) };
@@ -234,7 +244,7 @@ export const SLICE_MAX = 200;
 
 const isWhole = (n) => Number.isInteger(n);
 
-// The lexicon or the proposals of a backlog, read in parts, as the reply text of the read_file tool. `which` is 'lexicon' or 'proposals';
+// The lexicon or the proposals of a backlog, read in parts, as the reply text of the --file form. `which` is 'lexicon' or 'proposals';
 // the path comes from it and the backlog name alone. With `pattern`: the header row and the lines that contain it (plain text, ignoring
 // case), at most MATCH_CAP. With `offset` and `limit`: those lines. With neither: the size and the number of lines only.
 // Lines are the file's physical lines. Returns { ok: true, text } or { ok: false, errors }.
@@ -246,7 +256,7 @@ export function readFile({ dataDir = dataDirOrThrow(), name, file: which, patter
     return { ok: false, errors: [err.message] };
   }
   if (!Object.hasOwn(FILE_SECTIONS, which ?? '')) return { ok: false, errors: [`file must be one of: ${Object.keys(FILE_SECTIONS).join(', ')}`] };
-  if (pattern !== undefined && (offset !== undefined || limit !== undefined)) return { ok: false, errors: ["pattern cannot be combined with offset or limit: use pattern to look up a word, or offset and limit to read a part."] };
+  if (pattern !== undefined && (offset !== undefined || limit !== undefined)) return { ok: false, errors: ["pattern cannot be combined with offset or limit: use --pattern to look up a word, or --offset and --limit to read a part."] };
   if (pattern !== undefined && (typeof pattern !== 'string' || !pattern.trim())) return { ok: false, errors: ['pattern must contain at least one character that is not a space.'] };
   if (offset !== undefined && (!isWhole(offset) || offset < 1)) return { ok: false, errors: ['offset must be a whole number of 1 or more (the first line is 1).'] };
   if (limit !== undefined && (!isWhole(limit) || limit < 1 || limit > SLICE_MAX)) return { ok: false, errors: [`limit must be a whole number from 1 to ${SLICE_MAX}.`] };
@@ -276,7 +286,7 @@ export function readFile({ dataDir = dataDirOrThrow(), name, file: which, patter
     return { ok: true, text: `${head}\nHeader row, then ${hits.length} ${hits.length === 1 ? 'line' : 'lines'} containing "${pattern.trim()}":\n${numbered(0)}\n${shown.join('\n')}${more}` };
   }
   if (offset === undefined && limit === undefined) {
-    return { ok: true, text: `${head}\nNo content returned: use pattern to look up a word, or offset and limit to read a part (limit at most ${SLICE_MAX}, default ${SLICE_DEFAULT}).` };
+    return { ok: true, text: `${head}\nNo content returned: use --pattern to look up a word, or --offset and --limit to read a part (limit at most ${SLICE_MAX}, default ${SLICE_DEFAULT}).` };
   }
   const start = offset ?? 1;
   if (start > lines.length) return { ok: true, text: `${head}\nThe file has ${lines.length} lines; offset ${start} is past its end.` };
@@ -329,12 +339,12 @@ export function formatSection(r, section) {
 }
 
 // The proposals and lexicon files of the menu, one line each: size in characters (or that the file does not exist yet), for the proposals
-// how many rows are benched (to be ignored), and how to read it with read_file. `r` comes from readStoryContext without a section.
+// how many rows are benched (to be ignored), and how to read it with --file. `r` comes from readStoryContext without a section.
 export function fileLines(r) {
   const { proposals, lexicon } = r.files;
   const line = (name, f, note = '') => (f.size === null
     ? `  ${name}: does not exist yet`
-    : `  ${name}: ${f.size} characters${note}; read with read_file (file '${name}')`);
+    : `  ${name}: ${f.size} characters${note}; read with --file ${name}`);
   return [line('proposals', proposals, proposals.benched ? `, ${proposals.benched} benched (ignore them)` : ''), line('lexicon', lexicon)];
 }
 
@@ -346,20 +356,6 @@ export function formatMenu(r) {
 }
 
 const USAGE = `Usage: node read-story-context.mjs [backlog name [story ID [--title <Title>] | --section ${SECTIONS.join('|')} [story IDs, with reviews] | --search <words> | --file lexicon|proposals [--pattern <text> | --offset <n> [--limit <n>]]]]`;
-
-// The functions above also serve the retired MCP server, so their replies name its tools. On the command line the same
-// next steps are options of this script; this rewrites the wording and nothing else.
-export function asCommand(text) {
-  return text
-    .replace(/Read it with read_file \(file '(\w+)', the same backlog\): 'pattern' looks up a word, 'offset' and 'limit' read a part\./, "Read it with --file $1 (the same backlog): --pattern looks up a word, --offset and --limit read a part.")
-    .replace(/not a read_context section/g, 'not a section')
-    .replace(/read with read_file \(file '(\w+)'\)/g, 'read with --file $1')
-    .replace(/read the index section with read_context/g, 'read the index section (--section index)')
-    .replace(/Read the one you mean with read_context and repeat the call with its ID and Title/g, 'Read the one you mean (read-story-context.mjs <name> <ID> --title <Title>) and repeat the command with its ID and Title')
-    .replace(/read it with read_context and send both/g, 'read it with --search or --section index and send both')
-    .replace(/the index section of read_context/g, 'the index section (--section index)')
-    .replace(/use pattern to look up a word, or offset and limit to read a part/g, 'use --pattern to look up a word, or --offset and --limit to read a part');
-}
 
 const VALUE_FLAGS = ['--section', '--title', '--file', '--pattern', '--offset', '--limit'];
 
@@ -399,7 +395,7 @@ function run(args) {
   const modes = ['--section', '--search', '--file'].filter((f) => Object.hasOwn(flags, f));
   const { '--section': section, '--title': title, '--pattern': pattern } = flags;
   const fail = (errors) => {
-    console.error(asCommand(errors.join('\n')));
+    console.error(errors.join('\n'));
     return 1;
   };
   if (modes.length > 1) return usage();
@@ -407,14 +403,14 @@ function run(args) {
     if (Object.keys(flags).length > 1) return usage();
     const found = searchStories({ name, query: positional.join(' ') });
     if (!found.ok) return fail(found.errors);
-    console.log(asCommand(found.text));
+    console.log(found.text);
     return 0;
   }
   if (modes[0] === '--file') {
     if (positional.length || title !== undefined || Object.hasOwn(flags, '--section')) return usage();
     const read = readFile({ name, file: flags['--file'], pattern, offset: whole(flags['--offset']), limit: whole(flags['--limit']) });
     if (!read.ok) return fail(read.errors);
-    console.log(asCommand(read.text));
+    console.log(read.text);
     return 0;
   }
   if (pattern !== undefined || flags['--offset'] !== undefined || flags['--limit'] !== undefined) return usage();
@@ -426,13 +422,13 @@ function run(args) {
     }
     const result = readStoryContext({ name, section, storyIds: positional.length ? positional.map(idWithTitle) : undefined });
     if (!result.ok) return fail(result.errors);
-    console.log(asCommand(formatSection(result, section)));
+    console.log(formatSection(result, section));
     return 0;
   }
   if (positional.length > 1 || (title !== undefined && !positional.length)) return usage();
   const result = readStoryContext({ name, id: positional[0], storyTitle: title });
   if (!result.ok) return fail(result.errors);
-  console.log(asCommand(result.id !== undefined ? formatStory(result) : formatMenu(result)));
+  console.log(result.id !== undefined ? formatStory(result) : formatMenu(result));
   return 0;
 }
 
