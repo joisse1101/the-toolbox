@@ -73,5 +73,5 @@ test('the rules reject what they are for', () => {
   assert.equal(allowed('toolkit/skills/jois-story-review/lib/backlog/model.js').some((f) => starts('planner/logic/backlog/ids.js', f)), false);
   assert.equal(allowed('toolkit/skills/jois-story-review/write-review.mjs').some((f) => starts('planner/guidelines/product-backlog.md', f)), false);
   assert.equal(allowed('toolkit/skills/jois-story-review/write-review.mjs').some((f) => starts('planner/portal/server/flatten.js', f)), false);
-  assert.equal(allowed('toolkit/skills/jois-story-review/write-review.mjs').some((f) => starts('.claude/skills/propose-stories/write-proposal.mjs', f)), false);
+  assert.equal(allowed('toolkit/skills/jois-story-propose/write-proposal.mjs').some((f) => starts('planner/logic/backlog/model.js', f)), false);
 });

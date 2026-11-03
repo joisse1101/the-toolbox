@@ -131,12 +131,12 @@ test('PLANNER_MCP_READY_FILES: the hook waits for every file, and names how many
 });
 
 test('the story launchers are wired to the hook: settings name an existing script, and each launcher builds the config it relies on', () => {
-  const settings = JSON.parse(fs.readFileSync(path.join(ROOT, '.claude/skills/propose-stories/locked-settings.json'), 'utf8'));
+  const settings = JSON.parse(fs.readFileSync(path.join(ROOT, '.claude/skills/plan-stories/locked-settings.json'), 'utf8'));
   const commands = settings.hooks.UserPromptSubmit.flatMap((g) => g.hooks.map((h) => h.command));
   assert.deepEqual(commands, ['node planner/claude/mcp/wait-for-backlog-tools.mjs']);
   assert.ok(fs.existsSync(HOOK));
   // The sessions read the two files with read_file, so no hook guards Read and Grep any more.
-  for (const skill of ['propose-stories']) {
+  for (const skill of ['plan-stories']) {
     const s = JSON.parse(fs.readFileSync(path.join(ROOT, `.claude/skills/${skill}/locked-settings.json`), 'utf8'));
     assert.deepEqual(Object.keys(s.hooks), ['UserPromptSubmit'], skill);
   }
@@ -146,15 +146,6 @@ test('the story launchers are wired to the hook: settings name an existing scrip
   assert.match(config, /function New-BacklogToolsConfig/);
   assert.match(config, /planner\/claude\/mcp\/backlog-tools\.mjs/);
   assert.match(config, /PLANNER_MCP_READY_FILE/);
-  for (const name of ['shape-stories.ps1']) {
-    const launcher = fs.readFileSync(path.join(ROOT, 'planner/claude/launchers', name), 'utf8');
-    assert.match(launcher, /backlog-tools-config\.ps1/, `${name} loads the config helper`);
-    assert.match(launcher, /New-BacklogToolsConfig \$root/, `${name} writes the MCP config`);
-    assert.match(launcher, /--strict-mcp-config/, `${name} uses only that config`);
-    assert.match(launcher, /locked-settings\.json/, `${name} loads the settings that carry the hook`);
-    assert.match(launcher, /--tools "Skill,AskUserQuestion" `/, `${name} gives the session neither Read nor Grep`);
-    assert.doesNotMatch(launcher, /guard-read|Confirm-ReadLimit|Test-ReadGuard|Get-ReadFiles|append-system-prompt/, `${name} has no read gate left`);
-  }
   // The plan-stories session has two servers: each its own ready file, all listed for the hook.
   assert.match(config, /function New-PlanStoriesConfig/);
   assert.match(config, /planner\/claude\/mcp\/diagram-tools\.mjs/);

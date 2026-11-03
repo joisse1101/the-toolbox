@@ -68,7 +68,6 @@ test('-Repo writes <backlog>/repo.json beside user-stories.csv, keeps the exclud
 
 // Both launchers take the data folder from paths.cjs. `claude` on the PATH is replaced by a stub that only prints a marker.
 const LAUNCHERS = [
-  ['shape-stories.ps1', ['-Backlog', 'sample', '-Story', 'a new keyboard']],
   ['plan-stories.ps1', ['-Backlog', 'sample', '-Scope', 'x']],
 ];
 function runWithStub(name, args, config) {

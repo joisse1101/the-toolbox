@@ -14,9 +14,9 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { listBacklogs, readStoryContext, searchStories, readFile as readStoryFile, formatSection, formatStory, fileLines, SECTIONS, FILE_SECTIONS } from '../../../toolkit/skills/jois-story-explore/read-story-context.mjs';
-import { writeProposal, checkProposal, skippedText, foundText } from '../../../.claude/skills/propose-stories/write-proposal.mjs';
-import { writeLexicon, checkLexicon } from '../../../.claude/skills/propose-stories/write-lexicon.mjs';
-import { suggestLexicon } from '../../../.claude/skills/propose-stories/suggest-lexicon.mjs';
+import { writeProposal, checkProposal, skippedText, foundText } from '../../../toolkit/skills/jois-story-propose/write-proposal.mjs';
+import { writeLexicon, checkLexicon } from '../../../toolkit/skills/jois-story-propose/write-lexicon.mjs';
+import { suggestLexicon } from '../../../toolkit/skills/jois-story-propose/suggest-lexicon.mjs';
 import { writeReview, checkReview } from '../../../toolkit/skills/jois-story-review/write-review.mjs';
 import { ACTIONS, AREAS, CONFIDENCES, FIELDS } from '../../logic/review/review.js';
 
