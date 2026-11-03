@@ -2,8 +2,8 @@
 
 Two separate things live here.
 
-- **`planner/`** is the backlog planner, for this repo only. Claude skills draft, review and propose user stories; the portal (a React page built with Vite) shows and edits the results as plain CSV files in `planner/data/`. The two meet only in those files. The local server uses Node built-ins only.
-- **`toolkit/`** is a set of Claude skills, commands and rules you install globally and use anywhere. It shares nothing with `planner/`: see [`toolkit/README.md`](toolkit/README.md).
+- **`planner/`** is the backlog planner, for this repo only. The portal (a React page built with Vite) shows and edits user stories as plain CSV files in a data folder. The local server uses Node built-ins only.
+- **`toolkit/`** is a set of Claude skills, commands and rules you install globally and use anywhere, including the four story skills that fill the planner's data folder (see [Story skills](#story-skills)). The toolkit imports nothing from `planner/`: see [`toolkit/README.md`](toolkit/README.md).
 
 ## Layout
 
@@ -11,14 +11,13 @@ Two separate things live here.
 | --- | --- |
 | `planner/portal/web/` | The React pages and the Vite config. Builds into `planner/portal/dist/`. |
 | `planner/portal/server/` | `server.cjs`: serves `planner/portal/dist/` and the CSV file API. |
-| `planner/logic/` | Pure logic with no UI or server, by domain: CSV parsing, the story model, IDs, reviews, proposals, the lexicon, storage paths. Used by the portal and by the skill scripts. |
+| `planner/logic/` | Pure logic with no UI or server, by domain: CSV parsing, the story model, IDs, reviews, proposals, the lexicon, storage paths. Used by the portal and copied into the story skills by the sync script. |
 | `planner/data/` | Your private data (git-ignored): one folder per backlog (see [Data layout](#data-layout)) and `logs/` (`writes.jsonl`, one line per save by the portal or a writer, no contents: it shows who wrote a file last). The folder is set in the project config (see [Project config](#project-config)). Coming from the older layout (`backlogs/`, `reviews/`, ...)? See [Data layout](#data-layout). |
-| `planner/guidelines/` | Backlog standards and point sizing, read by the skills and shown in the portal. |
-| `planner/claude/` | The Claude side that is not a skill: `mcp/` (the `backlog-tools` MCP server) and `launchers/` (the `.ps1` session starters). Both call the skills. |
-| `.claude/skills/` | The skills, each with its `SKILL.md`, scripts, locked settings and command guard, plus `_shared/` (helpers the skill scripts share). Must stay here for Claude Code to find them. |
+| `planner/guidelines/` | Backlog standards, point sizing and diagram conventions, shown in the portal and copied into the story skills. |
+| `planner/scripts/` | `sync-skill-logic.mjs`: writes the shared logic and guidelines into each story skill (see [Story skills](#story-skills)). |
 | `openspec/` | Specs and change history (must stay at the root for the OpenSpec CLI). |
-| `toolkit/` | Reusable Claude skills, slash commands and rules, with an installer. Separate from the portal: it shares no code with it. How to install and use it: [`toolkit/README.md`](toolkit/README.md). |
-| `planner/test/` | Tests, in `logic/`, `portal/` and `claude/`. |
+| `toolkit/` | Reusable Claude skills, slash commands and rules, with an installer, including the story skills. How to install and use it: [`toolkit/README.md`](toolkit/README.md). |
+| `planner/test/` | Tests, in `logic/` and `portal/`, plus the zone and sync checks. The story skills' own tests are in `toolkit/tests/story/`. |
 
 ## Run
 
@@ -38,10 +37,10 @@ You can still run the pieces yourself: `npm run build`, `node planner/portal/ser
 - The config file is `planner/planner.config.yaml`. It is git-ignored: copy `planner/planner.config.example.yaml` and edit it.
 - `projectName`: shown in the portal header. Default: empty.
 - `dataDir`: the folder holding your data, absolute or relative to the config file's folder. Default: `planner/data`, also used when there is no config file.
-- Both keys are optional. An unknown key or a bad value stops the server and the launchers with a message naming it.
+- Both keys are optional. An unknown key or a bad value stops the server with a message naming it.
 - `PLANNER_CONFIG` names another config file to use instead.
 - Settings tab: change the project name or the data folder while the portal runs. The data folder box is read-only: Change folder opens your system's folder dialog. The switch is live, and it offers to create the data folder and `logs/` in an empty folder or copy your data into it. When the folder still holds the older layout, the tab offers **Migrate** (see [Data layout](#data-layout)).
-- Skill scripts and Claude sessions read the config when they start, so restart them after a switch. The three launchers print the data folder they use.
+- The story skills find the data folder in this order: the file `PLANNER_CONFIG` names, else a `planner.config.yaml` in the current folder or the nearest parent, else they ask you. They read only the `dataDir` line, from a flat `key: value` file. Restart a Claude session after you switch the data folder.
 
 Coming from the `PLANNER_DATA_DIR` or `TLT_DATA_DIR` variable?
 - The variables are no longer read.
@@ -57,13 +56,13 @@ Each backlog is one folder in the data folder, named by the backlog's name (no `
 <dataDir>/<backlog>/user-stories/proposals.csv            proposed stories
 <dataDir>/<backlog>/lexicon.csv                           defined terms
 <dataDir>/<backlog>/lexicon/lexicon-suggestions.csv       suggested term changes
-<dataDir>/<backlog>/slices/<slice>/                       plan-stories documents
-<dataDir>/<backlog>/repo.json, context-map.json, context-map.md
+<dataDir>/<backlog>/slices/<slice>/                       jois-story-plan documents
+<dataDir>/<backlog>/context-map.json, context-map.md
 <dataDir>/logs/writes.jsonl                               the write log
 ```
 
 - A folder is a backlog when it holds `user-stories.csv`. `logs` is reserved and cannot be a backlog name.
-- Older layout: `backlogs/`, `reviews/`, `proposals/`, `lexicons/`, `lexicon-suggestions/` and `diagrams/` (one file per backlog in each).
+- Older layout (it may also hold a `repo.json` per backlog, which is copied but no longer used): `backlogs/`, `reviews/`, `proposals/`, `lexicons/`, `lexicon-suggestions/` and `diagrams/` (one file per backlog in each).
   - The portal shows a notice when the data folder holds it. **Migrate** in the Settings tab copies it into the new layout on request only.
   - It never changes or deletes the old files, never overwrites a new file, reads each copy back, and reports the files it could not match.
   - Remove the old folders by hand when you are satisfied.
@@ -75,32 +74,74 @@ Each backlog is one folder in the data folder, named by the backlog's name (no `
 | --- | --- | --- |
 | Backlog portal | `/backlog-portal/` | `planner/data/<backlog>/` |
 
-The `/review-backlog` skill writes its suggestions to `planner/data/<backlog>/user-stories/review.csv` (kind `review`), only through `.claude/skills/review-backlog/write-review.mjs`. The story form shows them next to the field they concern, with Apply and Dismiss. Open questions are suggested as `Clarifications` rows; Apply adds them as unanswered questions. A review run without `--append` replaces the whole review, these rows included.
+The `jois-story-review` skill writes its suggestions to `planner/data/<backlog>/user-stories/review.csv` (kind `review`), only through its `write-review.mjs`. The story form shows them next to the field they concern, with Apply and Dismiss. Open questions are suggested as `Clarifications` rows; Apply adds them as unanswered questions. A review run without `--append` replaces the whole review, these rows included.
 
 Proposed stories live in `planner/data/<backlog>/user-stories/proposals.csv` (kind `proposals`): same columns as the backlog, with placeholder IDs `NEW-<n>`. The **Proposed** tab edits them; **Accept story** / **Accept all** move them to the end of their Epic in the backlog. A **benched** story (a checkbox in its form) is parked: it cannot be accepted until you un-bench it, and the skills do not see it. Every story has a **Clarifications** section (questions and answers; a question without an answer is open and shows as "N open" in the lists). Open questions block nothing, and the text moves with the story when it is accepted or moved back to Proposed.
 
-The **Lexicon** tab keeps one list of defined terms per backlog, in `planner/data/<backlog>/lexicon.csv` (kind `lexicon`; it opens in Excel). Each term has a **Definition**, an optional **Part of** parent (so "Dataset attribute" sits under "Dataset"), an **Avoid** list of words stories must not use for it (separated by `;`) and **Notes**. The tab lists terms with children indented, searches names, definitions and avoided words, and saves a term when you leave a field. It refuses a term with no definition, a parent that is not a term or makes a cycle, an avoided word that is itself a term, and deleting a term that others are part of; renaming a term updates its children. When `/propose-stories` suggests renaming or deleting a term, the suggestions are listed at the top of the tab (`planner/data/<backlog>/lexicon/lexicon-suggestions.csv`, kind `lexicon-suggestions`) with their impact: terms that use the old name in their wording, and terms that are part of it. **Apply** does the same rename or delete as by hand; a rename also adds the old name (and any other suggested word, each a checkbox) to the term's Avoid list in the same save, so the old name can be an Avoid word at once. A delete is refused while the term has children. A suggestion whose term is gone, or whose new name is now taken, can only be dismissed. The two skills below read the lexicon and use its terms; `/propose-stories` can add or change terms too (see below).
+The **Lexicon** tab keeps one list of defined terms per backlog, in `planner/data/<backlog>/lexicon.csv` (kind `lexicon`; it opens in Excel). Each term has a **Definition**, an optional **Part of** parent (so "Dataset attribute" sits under "Dataset"), an **Avoid** list of words stories must not use for it (separated by `;`) and **Notes**. The tab lists terms with children indented, searches names, definitions and avoided words, and saves a term when you leave a field. It refuses a term with no definition, a parent that is not a term or makes a cycle, an avoided word that is itself a term, and deleting a term that others are part of; renaming a term updates its children. When `jois-story-propose` suggests renaming or deleting a term, the suggestions are listed at the top of the tab (`planner/data/<backlog>/lexicon/lexicon-suggestions.csv`, kind `lexicon-suggestions`) with their impact: terms that use the old name in their wording, and terms that are part of it. **Apply** does the same rename or delete as by hand; a rename also adds the old name (and any other suggested word, each a checkbox) to the term's Avoid list in the same save, so the old name can be an Avoid word at once. A delete is refused while the term has children. A suggestion whose term is gone, or whose new name is now taken, can only be dismissed. The two skills below read the lexicon and use its terms; `jois-story-propose` can add or change terms too (see [Story skills](#story-skills)).
 
-Two skills fill the Proposed tab. `/explore-stories` talks new stories through against the guidelines, the backlog and the proposals, and never writes a file. `/propose-stories` shows full drafts, asks yes/no, and only after you confirm writes them through the `write_proposals` tool, which validates them and **adds** new stories to `planner/data/<backlog>/user-stories/proposals.csv` with the next free `NEW-<n>` IDs, or **patches** a proposed story (an `id` such as `NEW-8` plus only the fields to change) in place; both can carry `clarifications` (new questions, answers to questions that are still empty, and, in a patch, `resolve` to move a question the user answered into Notes as a decision and remove it); it never removes a proposal and never touches the backlog's `user-stories.csv` (a new story whose Epic, Feature and Title are already in the proposals is skipped, so sending a batch again is safe). The writer reads the file back after writing and the skill reads every file back before it says anything is written. The same skill (and `/story:propose`, which skips the yes/no) also turns an agreed change to a story already in the backlog into a suggestion in the story editor: one review row appended to `planner/data/<backlog>/user-stories/review.csv` through the `write_review` tool (it always appends, so the review's other suggestions are kept), which you apply or dismiss on that story; an edit to a locked story comes with an `unlock` row and cannot be applied until you unlock it. The same skill (and `/story:propose`) also adds or patches lexicon terms through the `write_lexicon` tool, shown in the same reply and covered by the same yes/no; terms go straight into `planner/data/<backlog>/lexicon.csv`, are written before the stories so a story can use a term defined in the same run, and are never removed or renamed by that tool: a rename or delete goes through `suggest_lexicon_change`, which only adds a suggestion for you to apply in the Lexicon tab. The eight tools (`read_context`, `search_stories`, `read_file`, `check_drafts`, `write_proposals`, `write_lexicon`, `suggest_lexicon_change`, `write_review`) are the `backlog-tools` MCP server, `planner/claude/mcp/backlog-tools.mjs`; their descriptions carry the rules, so the agent needs no shell. `check_drafts` validates drafts with the writers' rules and writes nothing, so a rejected story is found before you are asked to confirm. Both skills read through `read_context`, which also returns the sprint-points guideline for sizing and (to check what a writer wrote) the review rows and the open lexicon suggestions. The backlog's lexicon and its proposals can be large, so the sessions read those two files in parts with the `read_file` tool, which opens only those two files of the backlog. Start them with `.\ai\launchers\explore-stories.ps1 [backlog]` (discussion only, cannot write) or `.\ai\launchers\shape-stories.ps1 [backlog] [story]` (for example `data-portal NEW-57`, `data-portal IAM-0004` for a story already in the backlog, or `data-portal "a new keyboard"`; the script asks for whatever you leave out; starts in `/explore-stories`; run `/propose-stories` in the same session to save the drafts or apply a fix). Both limit the session to the `backlog-tools` server (`--read-only`, so `read_context`, `search_stories` and `read_file` only, for `explore-stories.ps1`), Skill and AskUserQuestion, with no Bash, Read or Grep, and pin `--permission-mode default`; the readers (`read_context`, `search_stories`, `read_file`) and `check_drafts` (none writes) are pre-approved and the writers are not, so Claude Code asks before each write. The old scripts (`write-proposal.mjs` and the others) still work from the command line. The Proposed tab refreshes from disk when the browser tab is focused, so check it after a batch is written.
+## Story skills
 
-`/plan-stories` turns the shaped stories of one Epic, one Feature or one story into diagrams: one markdown document holding a use-case specification, a class diagram and sequence diagrams (Mermaid), written to a **slice** folder `planner/data/<backlog>/slices/<slice>/` (git-ignored with the rest of `planner/data/`; `slices` is deliberately not a kind, so the portal's file API cannot reach it). It decides the scope with you first (an Epic when its stories share one domain model and one class diagram stays small, otherwise a Feature, a single story only for a flow the Feature's slice lacks), shows the complete document, asks yes/no and only after you confirm writes them through the `write_diagram` tool, then reads the slice back. The rules (stereotypes, layout, the Mermaid subset, step ids, what a specification holds) are in `planner/guidelines/diagram-conventions.md`, and `check_diagram` enforces them, Mermaid's own parser included, without writing. A slice records its stories in `source.json` by Title and a hash of their text, so `read_diagrams` follows a story whose ID shifted and reports a slice as stale when a story was reworded, removed or added; it redraws only when you ask. Without a repo the diagrams are at analysis level (what the stories say, nothing invented); with `-Repo <folder>` the session can also read the existing code, read-only (`repo_tree`, `repo_grep`, `repo_read`), and fills a traceability table only with files it has read. The folder is stored in `planner/data/<backlog>/repo.json` (`path` and an `exclude` list of globs you can edit; `.git/`, `node_modules/`, `.env*`, keys and credentials are always excluded; a path outside the repo, also through a link, is refused). Start it with `.\planner\claude\launchers\plan-stories.ps1 [backlog] [scope] [-Repo <folder>]` (for example `data-portal "Identity and access > Sign in"` or `data-portal IAM-0004`; the script asks for what you leave out). The session has Skill, AskUserQuestion, `backlog-tools --read-only` and the `diagram-tools` server (`planner/claude/mcp/diagram-tools.mjs`), with no Bash, Read or Grep; the readers and checks are pre-approved and `write_diagram` and `write_context_map` are not, so Claude Code asks before each write. Open a slice's `UC-<slice>.md` on GitHub or in the built-in VS Code markdown preview (section 7 of the conventions). The session can also draw a **context map** of the backlog with you (the bounded contexts, the Epics each holds, who owns each and how they link; every Epic in exactly one context): ask for it, or accept it when the skill offers it for a backlog without one. It is written as `context-map.json` and `context-map.md` next to `repo.json`, and when it exists a slice's stub of another context's entity also names the link type.
+The four story skills are global toolkit items, so they run in any folder once installed (see [`toolkit/README.md`](toolkit/README.md)). They find your data folder as in [Project config](#project-config).
+
+| Skill | What it does | Writes |
+| --- | --- | --- |
+| `jois-story-explore` | Talks new stories through against the guidelines, the backlog and the proposals. | Nothing. |
+| `jois-story-propose` | Shows full drafts, asks yes/no, then saves them. | `proposals.csv`, `lexicon.csv`, `review.csv`, `lexicon-suggestions.csv` |
+| `jois-story-review` | Reviews the whole backlog against the guidelines and reports. | `review.csv` suggestions only; never the backlog. |
+| `jois-story-plan` | Turns the shaped stories of one Epic, Feature or story into a use-case specification and Mermaid diagrams. | `slices/<slice>/`, `context-map.json` and `.md` |
+
+### Commands
+
+- `/jois-story:propose`: the propose skill without the yes/no.
+- `/jois-story:re-read`: re-reads the backlog, proposals, lexicon and the stories under discussion after you changed them yourself.
+- `/jois-story:review`: audits only what is under discussion, ending in a checklist of what to do in the portal, with `/jois-story:propose` or by decision.
+
+### How the skills write
+
+- Each writer is a script the skill runs with Bash, for example `node <skill folder>/write-proposal.mjs`. It checks everything first, writes nothing when one item is invalid, writes atomically and reads the file back.
+- `--check` on a writer validates without writing.
+- The skills read with ordinary file tools and their own reader scripts. Nothing confines reading.
+- Stories are named by Title as well as ID, because IDs shift when the backlog is renumbered. A script refuses an ID whose Title does not match.
+- `jois-story-propose` adds new stories to `proposals.csv` with the next free `NEW-<n>` ID, or patches a proposed story in place. It never removes a proposal and never writes `user-stories.csv`. A new story whose Epic, Feature and Title are already in the proposals is skipped, so sending a batch again is safe.
+- The same skill turns an agreed change to a story already in the backlog into one review row (it always appends), which you apply or dismiss in the story editor. An edit to a locked story comes with an `unlock` row.
+- It also adds lexicon terms (`write-lexicon.mjs`) and suggests renames, deletes and edits (`suggest-lexicon.mjs`), which you apply in the Lexicon tab.
+- A **benched** story (a checkbox in the Proposed form) is skipped by the skills and cannot be accepted until you un-bench it.
+- The Proposed tab refreshes from disk when the browser tab is focused.
+
+### The generated copy and the sync script
+
+- The planner's logic and guidelines are the source for what the portal and the skills share. Each skill carries a generated copy in its own `lib/` and `references/` folders, so it needs nothing from `planner/`.
+- `node planner/scripts/sync-skill-logic.mjs` writes the copies. Every copied file starts with a line naming its source and saying not to edit it.
+- `planner/test/skill-sync.test.mjs` (the drift test) fails when a committed copy differs from its source. Run the script after changing `planner/logic/` or `planner/guidelines/`.
+- `planner/logic/diagrams/` no longer exists: the diagram logic belongs to `jois-story-plan`.
+
+### Plan skill details
+
+- A slice folder holds `UC-<slice>.md` (specification, class diagram, one sequence diagram per flow, design sections) and `source.json` (the stories by Title and a hash of their text, so it can report a slice as stale).
+- `slices` is not a kind, so the portal's file API cannot reach it.
+- The rules are in `planner/guidelines/diagram-conventions.md`, copied into the skill as `references/diagram-conventions.md`.
+- Its writer checks Mermaid's syntax with the `mermaid` and `jsdom` packages in the skill's own folder. The installer runs `npm ci` there; the writer says to run it when the packages are missing.
+- The skill reads the code base in the current folder with ordinary file tools. There is no repo setting.
+- The skill can also draw a **context map** of the backlog with you (`context-map.json` and `context-map.md` in the backlog's folder).
+- Open a slice's `UC-<slice>.md` on GitHub or in the VS Code markdown preview.
 
 The CSV files open directly in Excel. Close the file in Excel (or accept that the tool shows "Save failed" and keeps retrying) before editing the same backlog in the tool.
 
-### Story IDs and dependencies
+## Story IDs and dependencies
 
 - Each story with an Epic has an ID such as `IAM-0003` in the `ID` column: the initials of the epic's words, then the story's position within its epic (row order). A new story goes to the bottom of its epic. If two epics have the same initials, the later one gets a longer prefix (`DD`, `DDI`).
 - IDs are not fixed. They are recomputed when stories are added, deleted, reordered or moved to another epic, and when a file is opened, so reordering rows in Excel also renumbers them. Links in `Depends On` (IDs separated by `;`) are rewritten to follow their story, so they keep pointing at the same story. IDs quoted outside the file (chat, tickets) can go stale.
 - Reorder stories by dragging them in the Stories panel of the Editor tab. Drop onto another epic's group to move the story to that epic.
 - The Graph tab draws the dependencies, each story to the right of the stories it depends on. Stories linked to each other form a cluster, drawn in its own labelled band (largest first), and arrows never pass through a story box. Drag from a story's dot onto the story it depends on to add a link (or select a story and use Link); select an arrow and press Delete to remove one. Ctrl+wheel zooms, the wheel and dragging the background pan, and Fit shows the whole graph.
-- **Lock** a story (the Locked toggle in the story form, or **Lock selected** in the Stories tab; it needs an ID) to make it reference only: it is not submitted for review (`/review-backlog` still reads it for context), keeps its ID and Epic, cannot be dragged, moved to Proposed or deleted. Its title, points, dependencies and the other fields stay editable. Unlocked stories take the lowest free numbers around locked IDs, so numbering can have gaps. The lock is stored in the `Locked` column (`Yes`). When the review has a strong objection to a locked story it writes an `unlock` row; the story form then shows a banner with **Unlock** and **Dismiss**, and the review's other suggestions for that story cannot be applied until you unlock it.
+- **Lock** a story (the Locked toggle in the story form, or **Lock selected** in the Stories tab; it needs an ID) to make it reference only: it is not submitted for review (`jois-story-review` still reads it for context), keeps its ID and Epic, cannot be dragged, moved to Proposed or deleted. Its title, points, dependencies and the other fields stay editable. Unlocked stories take the lowest free numbers around locked IDs, so numbering can have gaps. The lock is stored in the `Locked` column (`Yes`). When the review has a strong objection to a locked story it writes an `unlock` row; the story form then shows a banner with **Unlock** and **Dismiss**, and the review's other suggestions for that story cannot be applied until you unlock it.
 - The first time an older backlog is opened, IDs are added and the file is saved with the new `ID` and `Depends On` columns.
 
 ## Tests
 
-```
-npm test
-```
+- `npm test`, from `planner/`: the portal, the logic, the zone rules and the sync drift test.
+- `node --test toolkit/tests/story/*.test.mjs`: the story skills' scripts.
+- `python -m pytest` and `python check_toolkit.py`, from `toolkit/`: the toolkit items and installer.
 
 ## Add a new tool
 
