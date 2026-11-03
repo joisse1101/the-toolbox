@@ -27,6 +27,7 @@ Other things the script does:
 .\Install-Toolkit.ps1 -Agent opsx-task-applier.md             # just one agent
 .\Install-Toolkit.ps1 -Scope project -Path C:\code\my-app     # into a project instead of globally
 .\Install-Toolkit.ps1 -Force                                  # overwrite a copy that differs
+.\Install-Toolkit.ps1 -NoPackages                            # skip `npm ci` for skills with a package.json
 .\Install-Toolkit.ps1 -Uninstall                              # remove toolkit items (only those)
 ```
 
@@ -35,6 +36,21 @@ installed that differs from the toolkit's copy is never overwritten unless you p
 shows it as `differs`. The script writes only inside the skills, commands, rules and agents folders — it
 never touches `settings.json` or hooks. Uninstall removes only items the toolkit holds, so the other
 agents in `~/.claude/agents/` stay.
+
+### Skills that carry scripts
+
+A skill is a folder, so it may hold scripts, a `lib/` folder, a `references/` folder and a `package.json`.
+These rules keep it installable on its own:
+
+- A script imports only files inside its own skill folder. `check_toolkit.py` fails on an import that leaves it.
+- A `package.json` needs a `package-lock.json` beside it, so the install is repeatable.
+- The installer runs `npm ci` in the installed skill folder when it installs or replaces such a skill.
+  It does not run it for a skill that is `up to date`.
+- `-NoPackages` skips that step and prints the folder and the command to run by hand.
+- If `npm` is missing or `npm ci` fails, the skill's files stay installed, the installer prints the folder
+  and the command, the other items continue, and the exit code is 1.
+- `node_modules` is left out of the content hash, so a skill with installed packages is still `up to date`.
+- `-Force` replaces the whole folder and reinstalls. `-Uninstall` removes the whole folder, `node_modules` included.
 
 ## Naming
 
@@ -48,6 +64,7 @@ item is for. Domains today:
 | `git` | commits and pull requests | the `jois-git` commands, the `jois-git-commit-hygiene` rule |
 | `docs` | documents written from notes | the `jois-docs` command |
 | `design` | how a user interface looks and how its frontend code is structured | the `jois-design-ui-principles` skill |
+| `story` | user-story backlogs: exploring, proposing, reviewing and planning stories | the `jois-story-*` skills, the `jois-story` commands |
 
 Skills and rules are `jois-<domain>-<thing>`; a command namespace folder is `jois-<domain>`, so
 `commands/jois-git/stage.md` is `/jois-git:stage`. A new domain (`comms`, `writing`) picks
@@ -497,7 +514,7 @@ unit, so `-Agent opsx-task-applier.md` installs one. The toolkit ships two agent
 
 ## Versions
 
-Every skill, rule, agent and `jois-git`, `jois-init`, `jois-code` and `jois-docs` command declares its version in a `metadata:` map in its
+Every skill, rule, agent and `jois-git`, `jois-init`, `jois-code`, `jois-docs` and `jois-story` command declares its version in a `metadata:` map in its
 frontmatter, as the Agent Skills format keeps it. Both keys are strings and are bumped by hand
 whenever the item's guidance changes: `version` is semver (`MAJOR.MINOR.PATCH`) and `last_updated`
 is the date of the change.
@@ -532,7 +549,7 @@ computed. The installer dot-sources it, and you can run it on any skill folder, 
 
 ## Checks
 
-`check_toolkit.py` verifies the toolkit against its own standards: rule scoping, versions, the `disable-model-invocation` flag, the write-pr/update-pr shared sections, and a `tools` list on every agent. It
+`check_toolkit.py` verifies the toolkit against its own standards: rule scoping, versions, the `disable-model-invocation` flag, the write-pr/update-pr shared sections, a `tools` list on every agent, and, for skills that carry scripts, a lock file beside each `package.json` and no import outside the skill folder. It
 uses only the Python standard library; only the tests need a package (`pytest`, listed in
 `requirements.txt`). Set up a virtual environment once, then run both from this folder:
 

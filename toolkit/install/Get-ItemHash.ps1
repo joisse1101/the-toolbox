@@ -5,7 +5,8 @@ Prints a toolkit item's content hash and its metadata.version / metadata.last_up
 .DESCRIPTION
 An item is a skill folder, a command namespace folder, or a single .md file (a rule, an agent or a
 command). The hash covers every file's relative path and content in a stable order, so two copies of
-an item have the same hash exactly when they are identical. Install-Toolkit.ps1 dot-sources this
+an item have the same hash exactly when they are identical. A `node_modules` folder inside the item
+is skipped, so a skill with installed packages hashes the same as the toolkit's copy. Install-Toolkit.ps1 dot-sources this
 file for the same functions.
 
 Version and date come from the `metadata:` map in each .md file's frontmatter (the skill's SKILL.md,
@@ -37,7 +38,9 @@ function Get-ItemHash([string]$Item) {
     try {
         if ($entry.PSIsContainer) {
             $root = $entry.FullName.TrimEnd('\')
+            # node_modules is what `npm ci` installed here, not part of the item, so it never counts.
             $files = Get-ChildItem -LiteralPath $root -Recurse -File |
+                Where-Object { $_.FullName.Substring($root.Length + 1) -notmatch '(^|\\)node_modules\\' } |
                 Sort-Object { $_.FullName.Substring($root.Length + 1).Replace('\', '/') }
             $pairs = [System.Collections.Generic.List[object]]::new()
             foreach ($f in $files) { $pairs.Add(@($f.FullName.Substring($root.Length + 1).Replace('\', '/'), $f.FullName)) }
