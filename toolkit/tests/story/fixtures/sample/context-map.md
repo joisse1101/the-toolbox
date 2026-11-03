@@ -1,6 +1,6 @@
 # Context map
 
-Generated from `context-map.json`; edit the map through `plan-stories`, not this file.
+Generated from `context-map.json`; edit the map through `jois-story-plan`, not this file.
 
 ## Contexts
 
