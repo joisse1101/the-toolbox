@@ -445,7 +445,7 @@ It needs the `jois-init-docs-templates` skill folder, which holds every file it 
 `.\Install-Toolkit.ps1 -Skill jois-init-docs-templates`, in the project or in `~/.claude`. If neither has it,
 the command says so, names `Install-Toolkit.ps1` and writes nothing.
 
-The command first checks the project (a git repo, a GitHub remote, `docs/wiki/`, a root `CLAUDE.md`,
+The command first checks the project (a git repo, a GitHub remote, `wiki/`, a root `CLAUDE.md`,
 `openspec/config.yaml`) and reports what it found. It then asks about each write on its own yes/no
 question, and a no skips only that write.
 
@@ -456,7 +456,7 @@ question, and a no skips only that write.
 - `.github/workflows/docs-check.yml`: runs the checker on every pull request.
 - `.github/workflows/wiki-publish.yml`: publishes the pages to the wiki.
 - One checklist line in `.github/pull_request_template.md`, created when the template is missing.
-- `docs/wiki/Home.md` and a generated `docs/wiki/_Sidebar.md`.
+- `wiki/Home.md` and a generated `wiki/_Sidebar.md`.
 - An optional routing-table section in `CLAUDE.md` files.
 - When `openspec/config.yaml` exists, optional archive guidance that tells the archiver to update the affected page first.
   The `jois-init:opsx` blocks are not touched.
@@ -465,16 +465,17 @@ It ends with a one-line report, each part marked `added`, `replaced`, `unchanged
 
 ### The nested layout
 
-- Pages sit in topic folders under `docs/wiki/`, for example `docs/wiki/architecture/billing/refunds.md`.
+- Pages sit in topic folders under `wiki/` at the repo root, for example `wiki/architecture/billing/refunds.md`.
+- A project on the old layout runs `git mv docs/wiki wiki` and re-runs the command.
 - `Home.md` is hand-written, except the page list between its markers.
 - `_Sidebar.md` is generated. Run `python scripts/build_wiki.py --write-nav` and commit the result.
 - The checker fails when the committed navigation is out of date.
 - It also fails on a broken relative link, an orphan page, a missing path in inline code and an oversized `CLAUDE.md`.
-- A non-markdown file under `docs/wiki/` also fails, because the wiki would not publish it.
+- A non-markdown file under `wiki/` also fails, because the wiki would not publish it.
 - The GitHub wiki is flat, so the builder joins folders with `-`: that page becomes `architecture-billing-refunds`.
 - The builder rewrites links to match and keeps anchors. Two pages with the same flat name make it fail.
 - Renaming or moving a page changes its wiki URL.
-- No flat `wiki/` folder is ever created.
+- The nested pages sit directly in `wiki/`. The flat output is built only in a temporary folder.
 
 ### One-time wiki setup
 
@@ -486,8 +487,8 @@ The command cannot do these. It states them after it adds the publish workflow.
 
 ### The overwrite rule
 
-- Publishing is one way, from `docs/wiki/` to the wiki. Nothing syncs back.
-- Each publish deletes every wiki page that is not in `docs/wiki/`.
+- Publishing is one way, from `wiki/` to the wiki. Nothing syncs back.
+- Each publish deletes every wiki page that is not in `wiki/`.
 - Before it overwrites, the workflow warns about wiki commits not made by the Actions bot. It then publishes anyway.
 - Edit pages in the repo, never in the wiki.
 

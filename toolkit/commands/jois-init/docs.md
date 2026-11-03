@@ -1,6 +1,6 @@
 ---
 name: "JOIS: Init Docs"
-description: "Set up the docs process in this project: nested pages in docs/wiki/, a drift checker, a builder, a one-way wiki publish and a PR checklist line"
+description: "Set up the docs process in this project: nested pages in wiki/, a drift checker, a builder, a one-way wiki publish and a PR checklist line"
 allowed-tools: Bash(git status:*), Bash(git remote:*), Bash(git diff:*), Bash(python scripts/build_wiki.py:*), Bash(python scripts/check_docs.py:*), Bash(python -m pytest scripts/tests:*), Read, Glob, Edit, Write
 disable-model-invocation: true
 metadata:
@@ -10,7 +10,7 @@ metadata:
 
 Set the docs process up in the project this runs in.
 
-The pages live in `docs/wiki/` as nested topic folders and are the source of truth.
+The pages live in `wiki/` at the repo root as nested topic folders and are the source of truth.
 The GitHub wiki is a one-way copy of them.
 
 ## Rules
@@ -23,7 +23,9 @@ The GitHub wiki is a one-way copy of them.
 - Say why the write is needed and what it changes.
 - Never combine two writes in one question.
 - Never write after a no. Carry on with the next write.
-- Never create a flat `wiki/` folder.
+- The nested pages sit directly in `wiki/`.
+- Never create a `docs/wiki/` folder.
+- Build the flat output only in a temporary folder, never in the repo.
 - Write only inside this project.
 
 ## Markers
@@ -52,7 +54,7 @@ The GitHub wiki is a one-way copy of them.
 1. **Check the project (read-only).**
    - Run `git status`. If this is not a git repository, say so and stop. Write nothing.
    - Run `git remote -v`. Note whether a GitHub remote exists.
-   - Look for `docs/wiki/`, a root `CLAUDE.md`, `openspec/config.yaml` and a PR template (`.github/pull_request_template.md`).
+   - Look for `wiki/`, a root `CLAUDE.md`, `openspec/config.yaml` and a PR template (`.github/pull_request_template.md`).
    - Look for the template folder, as in the Rules.
    - Report all findings in plain words before the first question about a write.
    - A missing GitHub remote does not stop the setup. Say the publish workflow will not work until one exists.
@@ -67,10 +69,10 @@ The GitHub wiki is a one-way copy of them.
    - The PR line comes from `pr-checklist-line.md`. It goes into `.github/pull_request_template.md`.
    - Create the template with the block when none exists.
    - Otherwise add the block and leave the other text as it is.
-4. **Add the `docs/wiki/` skeleton.**
+4. **Add the `wiki/` skeleton.**
    - Why: the checker and the publish step need a `Home.md` and a generated `_Sidebar.md`.
    - Ask first. Then run `python scripts/build_wiki.py --write-nav`.
-   - It creates `docs/wiki/Home.md` and `docs/wiki/_Sidebar.md` when missing.
+   - It creates `wiki/Home.md` and `wiki/_Sidebar.md` when missing.
    - In an existing `Home.md` it changes only the block between the markers, or appends one.
    - Skip this step if step 2 was refused, because the builder is not there. Say so.
    - Then run `python scripts/check_docs.py` and report what it prints.
@@ -115,6 +117,6 @@ State these four facts once the publish workflow is added, before the report:
 - The repo's wiki must be enabled (Settings, Features, Wikis).
 - One first wiki page must be created once in the web interface. Git cannot clone an empty wiki.
 - Actions workflow permission must be set to read and write (Settings, Actions, General, Workflow permissions).
-- Publishing deletes every wiki page that is not in `docs/wiki/`. Wiki edits are warned about and then overwritten.
+- Publishing deletes every wiki page that is not in `wiki/`. Wiki edits are warned about and then overwritten.
 
 None of these can be set by this command.
