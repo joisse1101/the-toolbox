@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Sets up, in any repository, a docs process where nested pages under `docs/wiki/` are the source of truth, are checked for drift on every pull request, and are mirrored one way to the GitHub wiki.
+Sets up, in any repository, a docs process where nested pages under `wiki/` are the source of truth, are checked for drift on every pull request, and are mirrored one way to the GitHub wiki.
 
 ## Requirements
 
