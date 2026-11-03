@@ -13,7 +13,7 @@ import path from 'node:path';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
-import { listBacklogs, readStoryContext, searchStories, readFile as readStoryFile, formatSection, formatStory, fileLines, SECTIONS, FILE_SECTIONS } from '../../../.claude/skills/explore-stories/read-story-context.mjs';
+import { listBacklogs, readStoryContext, searchStories, readFile as readStoryFile, formatSection, formatStory, fileLines, SECTIONS, FILE_SECTIONS } from '../../../toolkit/skills/jois-story-explore/read-story-context.mjs';
 import { writeProposal, checkProposal, skippedText, foundText } from '../../../.claude/skills/propose-stories/write-proposal.mjs';
 import { writeLexicon, checkLexicon } from '../../../.claude/skills/propose-stories/write-lexicon.mjs';
 import { suggestLexicon } from '../../../.claude/skills/propose-stories/suggest-lexicon.mjs';

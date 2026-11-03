@@ -136,7 +136,7 @@ test('the story launchers are wired to the hook: settings name an existing scrip
   assert.deepEqual(commands, ['node planner/claude/mcp/wait-for-backlog-tools.mjs']);
   assert.ok(fs.existsSync(HOOK));
   // The sessions read the two files with read_file, so no hook guards Read and Grep any more.
-  for (const skill of ['explore-stories', 'propose-stories']) {
+  for (const skill of ['propose-stories']) {
     const s = JSON.parse(fs.readFileSync(path.join(ROOT, `.claude/skills/${skill}/locked-settings.json`), 'utf8'));
     assert.deepEqual(Object.keys(s.hooks), ['UserPromptSubmit'], skill);
   }
@@ -146,7 +146,7 @@ test('the story launchers are wired to the hook: settings name an existing scrip
   assert.match(config, /function New-BacklogToolsConfig/);
   assert.match(config, /planner\/claude\/mcp\/backlog-tools\.mjs/);
   assert.match(config, /PLANNER_MCP_READY_FILE/);
-  for (const name of ['shape-stories.ps1', 'explore-stories.ps1']) {
+  for (const name of ['shape-stories.ps1']) {
     const launcher = fs.readFileSync(path.join(ROOT, 'planner/claude/launchers', name), 'utf8');
     assert.match(launcher, /backlog-tools-config\.ps1/, `${name} loads the config helper`);
     assert.match(launcher, /New-BacklogToolsConfig \$root/, `${name} writes the MCP config`);
