@@ -272,7 +272,7 @@ export default function App() {
             {acceptSummary && <p id="acceptSummary" className="card muted">{acceptSummary}</p>}
             {orphans.length > 0 && (
               <p className="warning">
-                {`${orphans.length} review suggestion${orphans.length > 1 ? 's' : ''} no longer match a story (it was renumbered, moved or deleted). Run /review-backlog again, or `}
+                {`${orphans.length} review suggestion${orphans.length > 1 ? 's' : ''} no longer match a story (it was renumbered, moved or deleted). Run /jois-story:review again, or `}
                 <button type="button" className="link-btn" onClick={dismissOrphans}>dismiss {orphans.length > 1 ? 'them' : 'it'}</button>.
               </p>
             )}

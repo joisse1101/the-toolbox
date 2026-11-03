@@ -8,7 +8,7 @@ const RETRY_START_MS = 2000;
 const RETRY_MAX_MS = 30000;
 
 // The suggested term renames and deletes for the open backlog (lexicon-suggestions/<same file name>), written by the
-// propose-stories tool. Loaded when the backlog opens and on Reload. Apply/Dismiss change a row's Status; the file is
+// jois-story-propose skill. Loaded when the backlog opens and on Reload. Apply/Dismiss change a row's Status; the file is
 // rewritten shortly after and retried while it is locked (open in Excel), like the review suggestions.
 export function useLexiconSuggestions(current) {
   const [file, setFile] = useState(emptySuggestions);
