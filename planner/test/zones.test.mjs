@@ -59,15 +59,14 @@ test('every source file imports only from the zones its own zone may depend on',
 });
 
 test('the zone rules cover the layout: logic, portal, claude, skills and toolkit all have source files', () => {
-  for (const folder of ['planner/logic', 'planner/logic/diagrams', 'planner/portal', 'planner/logic/skill-support', 'planner/claude', 'toolkit/skills/jois-story-review']) {
+  for (const folder of ['planner/logic', 'planner/portal', 'planner/logic/skill-support', 'planner/claude', 'toolkit/skills/jois-story-review', 'toolkit/skills/jois-story-plan']) {
     assert.ok(files.some((f) => starts(f, folder)), `no source files under ${folder}`);
   }
 });
 
 test('the rules reject what they are for', () => {
   assert.equal(allowed('planner/logic/backlog/ids.js').some((f) => starts('planner/portal/web/lib/word-diff.js', f)), false);
-  assert.equal(allowed('planner/logic/diagrams/source.js').some((f) => starts('planner/portal/web/lib/word-diff.js', f)), false);
-  assert.equal(allowed('planner/logic/diagrams/checks.js').some((f) => starts('.claude/skills/plan-stories/read-diagrams.mjs', f)), false);
+  assert.equal(allowed('toolkit/skills/jois-story-plan/diagrams/checks.js').some((f) => starts('planner/logic/backlog/model.js', f)), false);
   assert.equal(allowed('planner/portal/web/main.jsx').some((f) => starts('toolkit/skills/jois-story-review/write-review.mjs', f)), false);
   assert.equal(allowed('toolkit/skills/jois-story-review/read-backlog.mjs').some((f) => starts('planner/logic/backlog/model.js', f)), false);
   assert.equal(allowed('toolkit/skills/jois-story-review/lib/backlog/model.js').some((f) => starts('planner/logic/backlog/ids.js', f)), false);

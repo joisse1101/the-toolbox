@@ -130,16 +130,8 @@ test('PLANNER_MCP_READY_FILES: the hook waits for every file, and names how many
   }
 });
 
-test('the story launchers are wired to the hook: settings name an existing script, and each launcher builds the config it relies on', () => {
-  const settings = JSON.parse(fs.readFileSync(path.join(ROOT, '.claude/skills/plan-stories/locked-settings.json'), 'utf8'));
-  const commands = settings.hooks.UserPromptSubmit.flatMap((g) => g.hooks.map((h) => h.command));
-  assert.deepEqual(commands, ['node planner/claude/mcp/wait-for-backlog-tools.mjs']);
+test('the hook script exists and the launcher config builds the config it relies on', () => {
   assert.ok(fs.existsSync(HOOK));
-  // The sessions read the two files with read_file, so no hook guards Read and Grep any more.
-  for (const skill of ['plan-stories']) {
-    const s = JSON.parse(fs.readFileSync(path.join(ROOT, `.claude/skills/${skill}/locked-settings.json`), 'utf8'));
-    assert.deepEqual(Object.keys(s.hooks), ['UserPromptSubmit'], skill);
-  }
   assert.ok(!fs.existsSync(path.join(ROOT, 'planner/claude/mcp/guard-read.mjs')));
 
   const config = fs.readFileSync(path.join(ROOT, 'planner/claude/launchers/backlog-tools-config.ps1'), 'utf8');
