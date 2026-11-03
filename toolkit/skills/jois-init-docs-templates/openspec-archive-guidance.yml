@@ -1,3 +1,3 @@
       # jois-init:docs begin (managed by /jois-init:docs; edits here are overwritten)
-      - "Before archiving, update the page in docs/wiki/ that the change affects, so the docs match the new behavior. Then run python scripts/check_docs.py."
+      - "Before archiving, update the page in wiki/ that the change affects, so the docs match the new behavior. Then run python scripts/check_docs.py."
       # jois-init:docs end

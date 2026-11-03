@@ -8,7 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import build_wiki  # noqa: E402
 import check_docs  # noqa: E402
 
-DEEP = "docs/wiki/architecture/billing/refunds.md"
+DEEP = "wiki/architecture/billing/refunds.md"
 
 
 def _file(root, relative, text="# Title\n"):
@@ -20,12 +20,12 @@ def _file(root, relative, text="# Title\n"):
 
 def _tree(root):
     """A minimal passing repo: a page two folders deep, its code file, navigation written."""
-    _file(root, "docs/wiki/Home.md", "# Home\n\nWelcome.\n")
+    _file(root, "wiki/Home.md", "# Home\n\nWelcome.\n")
     _file(root, DEEP, "# Refunds\n\nSee [states](../orders/lifecycle.md#states).\nCode: `src/billing/refund.py`.\n")
-    _file(root, "docs/wiki/architecture/orders/lifecycle.md", "# Order lifecycle\n")
+    _file(root, "wiki/architecture/orders/lifecycle.md", "# Order lifecycle\n")
     _file(root, "src/billing/refund.py", "")
     _file(root, "CLAUDE.md", "# Project\n")
-    build_wiki.write_nav(root / "docs" / "wiki")
+    build_wiki.write_nav(root / "wiki")
     return root
 
 
@@ -43,7 +43,7 @@ def test_minimal_tree_passes(tmp_path, capsys):
 def test_broken_link_two_folders_deep_names_page_line_and_link(tmp_path, capsys):
     _tree(tmp_path)
     _file(tmp_path, DEEP, "# Refunds\n\nSee [gone](../orders/missing.md).\n")
-    build_wiki.write_nav(tmp_path / "docs" / "wiki")
+    build_wiki.write_nav(tmp_path / "wiki")
     assert check_docs.main(["--root", str(tmp_path)]) == 1
     assert f"{DEEP}:3: broken link '../orders/missing.md'" in capsys.readouterr().out
 
@@ -62,7 +62,7 @@ def test_git_ignored_path_and_ignore_marker_are_exempt(tmp_path):
     assert _problems(tmp_path) == []
     (tmp_path / ".gitignore").unlink()
     _file(tmp_path, DEEP, "# Refunds\n\nSee [s](../orders/lifecycle.md). `src/billing/refund.py` <!-- docs-check: ignore -->\n")
-    build_wiki.write_nav(tmp_path / "docs" / "wiki")
+    build_wiki.write_nav(tmp_path / "wiki")
     assert _problems(tmp_path) == []
 
 
@@ -74,9 +74,9 @@ def test_paths_inside_code_fences_are_not_checked(tmp_path):
 
 def test_orphan_nested_page_is_reported(tmp_path):
     _tree(tmp_path)
-    _file(tmp_path, "docs/wiki/architecture/billing/invoices.md")
+    _file(tmp_path, "wiki/architecture/billing/invoices.md")
     problems = _problems(tmp_path)
-    assert "docs/wiki/architecture/billing/invoices.md:1: orphan page, not linked from _Sidebar.md" in problems
+    assert "wiki/architecture/billing/invoices.md:1: orphan page, not linked from _Sidebar.md" in problems
 
 
 def test_root_claude_md_over_budget(tmp_path):
@@ -95,29 +95,29 @@ def test_nested_claude_md_over_budget_and_within_budget(tmp_path):
 
 def test_navigation_out_of_date_when_a_page_is_added_without_regenerating(tmp_path):
     _tree(tmp_path)
-    _file(tmp_path, "docs/wiki/architecture/billing/invoices.md")
+    _file(tmp_path, "wiki/architecture/billing/invoices.md")
     problems = _problems(tmp_path)
-    assert any(p.startswith("docs/wiki/_Sidebar.md:1: navigation is out of date") for p in problems)
-    assert any(p.startswith("docs/wiki/Home.md:1: navigation is out of date") for p in problems)
+    assert any(p.startswith("wiki/_Sidebar.md:1: navigation is out of date") for p in problems)
+    assert any(p.startswith("wiki/Home.md:1: navigation is out of date") for p in problems)
 
 
 def test_navigation_passes_after_regenerating(tmp_path):
     _tree(tmp_path)
-    _file(tmp_path, "docs/wiki/architecture/billing/invoices.md")
-    build_wiki.write_nav(tmp_path / "docs" / "wiki")
+    _file(tmp_path, "wiki/architecture/billing/invoices.md")
+    build_wiki.write_nav(tmp_path / "wiki")
     assert _problems(tmp_path) == []
 
 
 def test_image_file_is_not_published(tmp_path):
     _tree(tmp_path)
-    (tmp_path / "docs/wiki/architecture/billing/flow.png").write_bytes(b"\x89PNG")
-    assert "docs/wiki/architecture/billing/flow.png:1: not published, only .md files reach the wiki" in _problems(tmp_path)
+    (tmp_path / "wiki/architecture/billing/flow.png").write_bytes(b"\x89PNG")
+    assert "wiki/architecture/billing/flow.png:1: not published, only .md files reach the wiki" in _problems(tmp_path)
 
 
 def test_flat_name_collision_is_reported(tmp_path):
     _tree(tmp_path)
-    _file(tmp_path, "docs/wiki/a-b.md")
-    _file(tmp_path, "docs/wiki/a/b.md")
+    _file(tmp_path, "wiki/a-b.md")
+    _file(tmp_path, "wiki/a/b.md")
     problems = _problems(tmp_path)
     assert len(problems) == 1 and "a-b.md" in problems[0] and "a/b.md" in problems[0]
 

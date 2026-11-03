@@ -1,5 +1,5 @@
 # jois-init:docs begin
-"""Checks that the docs under `docs/wiki/` still match the repo.
+"""Checks that the docs under `wiki/` still match the repo.
 
 Standard library only. The repo root is the parent of this script's folder (override with `--root`).
 Exits 1 and prints one `file:line: message` per problem, else prints a one-line pass.
@@ -11,7 +11,7 @@ Checks:
      `docs-check: ignore`, is exempt)
   4. the root and one-level-nested `CLAUDE.md` files stay within their line limits
   5. the generated navigation is up to date (what `build_wiki.py --write-nav` would write)
-  6. no file under `docs/wiki/` other than markdown (it would not reach the wiki)
+  6. no file under `wiki/` other than markdown (it would not reach the wiki)
   7. no two pages share one flat name
 """
 
@@ -171,7 +171,7 @@ def _wiki_rel(page: str) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Check docs/wiki/ against the repo.")
+    parser = argparse.ArgumentParser(description="Check wiki/ against the repo.")
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parent.parent,
                         help="the repo root (default: the parent of this script's folder)")
     root = parser.parse_args(argv).root.resolve()
