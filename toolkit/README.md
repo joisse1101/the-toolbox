@@ -436,6 +436,72 @@ Install both parts, then start the command in a Claude Code session:
 - The commit checks are the backstop.
 - Groups run one at a time, never in parallel, because the agents share one checkout.
 
+## Docs setup
+
+`/jois-init:docs` sets up a docs process in the project it runs in. The pages live in the repo, are
+checked for drift on every pull request and are copied one way to the GitHub wiki.
+
+It needs the `jois-init-docs-templates` skill folder, which holds every file it writes. Install it with
+`.\Install-Toolkit.ps1 -Skill jois-init-docs-templates`, in the project or in `~/.claude`. If neither has it,
+the command says so, names `Install-Toolkit.ps1` and writes nothing.
+
+The command first checks the project (a git repo, a GitHub remote, `docs/wiki/`, a root `CLAUDE.md`,
+`openspec/config.yaml`) and reports what it found. It then asks about each write on its own yes/no
+question, and a no skips only that write.
+
+### What it writes
+
+- `scripts/check_docs.py` and `scripts/build_wiki.py`: the checker and the builder, plain Python with no install step.
+- `scripts/tests/test_check_docs.py` and `scripts/tests/test_build_wiki.py`: their tests.
+- `.github/workflows/docs-check.yml`: runs the checker on every pull request.
+- `.github/workflows/wiki-publish.yml`: publishes the pages to the wiki.
+- One checklist line in `.github/pull_request_template.md`, created when the template is missing.
+- `docs/wiki/Home.md` and a generated `docs/wiki/_Sidebar.md`.
+- An optional routing-table section in `CLAUDE.md` files.
+- When `openspec/config.yaml` exists, optional archive guidance that tells the archiver to update the affected page first.
+  The `jois-init:opsx` blocks are not touched.
+
+It ends with a one-line report, each part marked `added`, `replaced`, `unchanged` or `skipped`.
+
+### The nested layout
+
+- Pages sit in topic folders under `docs/wiki/`, for example `docs/wiki/architecture/billing/refunds.md`.
+- `Home.md` is hand-written, except the page list between its markers.
+- `_Sidebar.md` is generated. Run `python scripts/build_wiki.py --write-nav` and commit the result.
+- The checker fails when the committed navigation is out of date.
+- It also fails on a broken relative link, an orphan page, a missing path in inline code and an oversized `CLAUDE.md`.
+- A non-markdown file under `docs/wiki/` also fails, because the wiki would not publish it.
+- The GitHub wiki is flat, so the builder joins folders with `-`: that page becomes `architecture-billing-refunds`.
+- The builder rewrites links to match and keeps anchors. Two pages with the same flat name make it fail.
+- Renaming or moving a page changes its wiki URL.
+- No flat `wiki/` folder is ever created.
+
+### One-time wiki setup
+
+The command cannot do these. It states them after it adds the publish workflow.
+
+- Enable the wiki in the repo (Settings, Features, Wikis).
+- Create one first wiki page in the web interface, because git cannot clone an empty wiki.
+- Set Actions workflow permission to read and write (Settings, Actions, General, Workflow permissions).
+
+### The overwrite rule
+
+- Publishing is one way, from `docs/wiki/` to the wiki. Nothing syncs back.
+- Each publish deletes every wiki page that is not in `docs/wiki/`.
+- Before it overwrites, the workflow warns about wiki commits not made by the Actions bot. It then publishes anyway.
+- Edit pages in the repo, never in the wiki.
+
+### Re-running
+
+- Every managed block sits between `jois-init:docs begin` and `jois-init:docs end` markers.
+- A re-run replaces the block in place and never adds a second copy. Text outside the markers is kept.
+- A hand edit between the markers is overwritten.
+- A file that has no markers and differs from the template is shown as a diff and needs a yes before it changes.
+
+### What is unchecked
+
+- The first real publish to a GitHub wiki is unchecked. The workflow runs only on GitHub, and this repo's tests cover the builder offline.
+
 ## Rules
 
 Each `.md` file directly under `toolkit/rules/` is one rule: a short instruction file Claude Code
