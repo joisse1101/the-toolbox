@@ -13,6 +13,8 @@ Purpose: this folder holds the files that `/jois-init:docs` copies into a projec
 
 - `scripts/build_wiki.py`: lists the pages under `docs/wiki/`, flattens them for the GitHub wiki and regenerates the navigation.
 - `scripts/tests/test_build_wiki.py`: tests for the builder.
+- `scripts/check_docs.py`: the drift checker (links, orphans, inline-code paths, `CLAUDE.md` sizes, navigation, unpublished files).
+- `scripts/tests/test_check_docs.py`: tests for the checker.
 
 ## Rules
 
