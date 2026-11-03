@@ -1,24 +1,28 @@
-// Checks and writes one slice for the diagram-tools server: <data folder>/<backlog>/slices/<slice>/ with the one document
-// UC-<slice>.md (specification and Mermaid diagrams) and source.json. checkDiagram and writeDiagram run the same
-// preparation, the same structural checks (planner/logic/diagrams/checks.js) and Mermaid's own parser on every diagram, so
-// a slice that passes one is accepted by the other; only writeDiagram writes. The stories come as { id, title } pairs, as for the backlog tools, and the story hashes are
-// computed here, never taken from the caller.
+// Checks and writes one slice: <data folder>/<backlog>/slices/<slice>/ with the one document UC-<slice>.md (specification
+// and Mermaid diagrams) and source.json. Usage, the slice as JSON on stdin:
+//   node <skill folder>/write-diagram.mjs <backlog name> [--check] [--repo]
+// The JSON is { slice, scope, stories: [{ id, title }], files: [{ name, content }] }. --check runs the same preparation, the same
+// structural checks (diagrams/checks.js) and Mermaid's own parser on every diagram as the write, and writes nothing; --repo says
+// the skill read the repo, which lifts the limits of a slice without one. The stories come as { id, title } pairs and the story
+// hashes are computed here, never taken from the caller. Without the Mermaid packages (see parse-mermaid.mjs) it refuses.
+// The data folder comes from the PLANNER_CONFIG variable or a planner.config.yaml (see lib/skill-support/resolve-data-dir.mjs).
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-import { resolveStoryRef } from '../../../planner/logic/backlog/story-ref.js';
-import { parseLimits } from '../../../planner/logic/diagrams/limits.js';
-import { buildSource, scopeStories, applyStoriesBlock } from '../../../planner/logic/diagrams/source.js';
-import { checkSlice, formatProblems } from '../../../planner/logic/diagrams/checks.js';
-import { writeAtomic } from '../../../planner/logic/skill-support/write-atomic.mjs';
+import { pathToFileURL } from 'node:url';
+import { resolveStoryRef } from './lib/backlog/story-ref.js';
+import { parseLimits } from './diagrams/limits.js';
+import { buildSource, scopeStories, applyStoriesBlock } from './diagrams/source.js';
+import { checkSlice, formatProblems } from './diagrams/checks.js';
+import { describeParseError, writeAtomic } from './lib/skill-support/write-atomic.mjs';
 import { loadStories, slicePath, readSliceFolder, readConventions, scopeText, SOURCE_FILE } from './read-diagrams.mjs';
-import { parseMermaid } from './parse-mermaid.mjs';
+import { parseMermaid, mermaidMissing } from './parse-mermaid.mjs';
+import { dataDirOrThrow } from './lib/skill-support/resolve-data-dir.mjs';
 
 const require = createRequire(import.meta.url);
-const { logWrite } = require('../../../planner/logic/storage/write-log.cjs');
-const { DATA_DIR } = require('../../../planner/logic/storage/paths.cjs');
-const { GUIDELINES_DIR } = require('../../../planner/logic/skill-support/paths.cjs');
+const { logWrite } = require('./lib/storage/write-log.cjs');
+const { GUIDELINES_DIR } = require('./lib/skill-support/paths.cjs');
 
 const MAX_FILE_CHARS = 200000;
 const norm = (s) => String(s ?? '').trim().toLowerCase();
@@ -43,8 +47,10 @@ function cleanScope(scope) {
 }
 
 // Everything both tools need, or { ok: false, errors } naming every problem found.
-//   input: { name, slice, scope, stories: [{ id, title }], files: [{ name, content }], repo?: { readPaths: Set } }
-async function prepare({ dataDir = DATA_DIR, guidelinesDir = GUIDELINES_DIR, name, slice, scope: rawScope, stories: pairs, files: fileList, repo = null, now = () => new Date().toISOString() }) {
+//   input: { name, slice, scope, stories: [{ id, title }], files: [{ name, content }], repo?: {} (the skill read the repo) }
+async function prepare({ dataDir = dataDirOrThrow(), guidelinesDir = GUIDELINES_DIR, name, slice, scope: rawScope, stories: pairs, files: fileList, repo = null, now = () => new Date().toISOString() }) {
+  const missing = mermaidMissing();
+  if (missing) return { ok: false, errors: [missing] };
   const loaded = loadStories({ dataDir, name });
   if (!loaded.ok) return loaded;
   const errors = [];
@@ -61,7 +67,7 @@ async function prepare({ dataDir = DATA_DIR, guidelinesDir = GUIDELINES_DIR, nam
   const given = Array.isArray(pairs) ? pairs : [];
   const listed = new Set();
   for (const pair of given) {
-    const ref = resolveStoryRef(loaded.stories, { id: pair?.id, title: pair?.title }, { required: true, key: 'title', hint: 'read_context in the backlog tools' });
+    const ref = resolveStoryRef(loaded.stories, { id: pair?.id, title: pair?.title }, { required: true, key: 'title', hint: 'the backlog file user-stories.csv' });
     if (!ref.ok) errors.push(ref.message);
     else if (!inScope.includes(ref.story)) errors.push(`"${ref.story.title.trim()}" is not in the scope ${scopeText(scope)}.`);
     else listed.add(ref.story);
@@ -149,7 +155,38 @@ export async function writeDiagram(input) {
     return { ok: false, errors, text: problemsText(errors) };
   }
   const written = [...Object.keys(files).filter((f) => existing?.files[f] !== files[f]), ...(sameStories(existing?.source, source) ? [] : [SOURCE_FILE])];
-  logWrite({ writer: 'write_diagram', backlog: loaded.base, kind: 'slices', text: Object.values(files).join('') + sourceText, extra: { slice }, dataDir: input.dataDir ?? DATA_DIR });
+  logWrite({ writer: 'write_diagram', backlog: loaded.base, kind: 'slices', text: Object.values(files).join('') + sourceText, extra: { slice }, dataDir: input.dataDir ?? dataDirOrThrow() });
   const note = leftover.length ? ` Files in the folder that were not sent and were left as they are: ${leftover.join(', ')}.` : '';
   return { ok: true, changed: true, written, leftover, slice, base: loaded.base, text: `Wrote the slice "${slice}" to ${loaded.base}/slices/${slice}/ (${written.join(', ')}); ${Object.keys(files).length} files and ${SOURCE_FILE}.${note}` };
+}
+
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
+if (isMain) {
+  const flags = process.argv.slice(2).filter((a) => a.startsWith('--'));
+  const names = process.argv.slice(2).filter((a) => !a.startsWith('--'));
+  if (names.length !== 1 || flags.some((f) => f !== '--check' && f !== '--repo')) {
+    console.error('Usage: node write-diagram.mjs <backlog name> [--check] [--repo]  (slice JSON on stdin)');
+    process.exit(2);
+  }
+  let result;
+  try {
+    const raw = fs.readFileSync(0, 'utf8');
+    let body;
+    try {
+      body = JSON.parse(raw);
+    } catch (err) {
+      throw new Error(describeParseError(err, raw, 'slice'));
+    }
+    const input = { dataDir: dataDirOrThrow(), name: names[0], slice: body.slice, scope: body.scope, stories: body.stories, files: body.files, repo: flags.includes('--repo') ? {} : null };
+    result = await (flags.includes('--check') ? checkDiagram : writeDiagram)(input);
+  } catch (err) {
+    console.error(`Nothing was written. ${err.message}`);
+    process.exit(1);
+  }
+  if (!result.ok) {
+    console.error(`Nothing was written. ${result.errors.length} problem${result.errors.length === 1 ? '' : 's'}:`);
+    for (const e of result.errors) console.error(`- ${e}`);
+    process.exit(1);
+  }
+  console.log(result.text);
 }

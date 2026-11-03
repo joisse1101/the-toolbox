@@ -1,4 +1,4 @@
-// The context map of a backlog (planner/guidelines/diagram-conventions.md section 9): its checks, its comparison with the Epics
+// The context map of a backlog (references/diagram-conventions.md section 9): its checks, its comparison with the Epics
 // of the backlog and the document composed from it. Pure: the caller passes the source object, the Epic names and the limits.
 // The source is { contexts: [{ name, purpose, owner, epics, reason? }], relationships: [{ from, to, type, crosses }] }.
 

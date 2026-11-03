@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { loadBacklog } from '../../logic/backlog/model.js';
-import { buildSource, compareSource, scopeStories, storyHash, criteriaOf, storiesBlock, applyStoriesBlock } from '../../logic/diagrams/source.js';
+import { loadBacklog } from '../../skills/jois-story-plan/lib/backlog/model.js';
+import { buildSource, compareSource, scopeStories, storyHash, criteriaOf, storiesBlock, applyStoriesBlock } from '../../skills/jois-story-plan/diagrams/source.js';
 
 const HEADER = 'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes,Locked,Clarifications';
 const row = (epic, feature, title, ac = 'AC1: Given a, when b, then c.', notes = '') =>

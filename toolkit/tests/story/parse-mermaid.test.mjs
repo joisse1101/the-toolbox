@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseMermaid } from '../../../.claude/skills/plan-stories/parse-mermaid.mjs';
+import { planSkillCopy } from './helpers/plan-skill.mjs';
+
+const { parseMermaid } = await planSkillCopy().load('parse-mermaid.mjs');
 
 const CLASS = `classDiagram
   namespace Identity {

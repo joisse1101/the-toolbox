@@ -3,18 +3,19 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadBacklog } from '../../logic/backlog/model.js';
-import { parseLimits } from '../../logic/diagrams/limits.js';
-import { scopeStories } from '../../logic/diagrams/source.js';
-import { readDocument } from '../../logic/diagrams/document.js';
-import { checkSlice, formatProblems, SEQUENCE_INIT } from '../../logic/diagrams/checks.js';
+import { loadBacklog } from '../../skills/jois-story-plan/lib/backlog/model.js';
+import { parseLimits } from '../../skills/jois-story-plan/diagrams/limits.js';
+import { scopeStories } from '../../skills/jois-story-plan/diagrams/source.js';
+import { readDocument } from '../../skills/jois-story-plan/diagrams/document.js';
+import { checkSlice, formatProblems, SEQUENCE_INIT } from '../../skills/jois-story-plan/diagrams/checks.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const SAMPLE = path.join(HERE, '..', 'sample-data');
-const SLICE_DIR = path.join(SAMPLE, 'sample', 'slices', 'sign-in');
+const FIXTURES = path.join(HERE, 'fixtures', 'sample');
+const CONVENTIONS = path.join(HERE, '..', '..', 'skills', 'jois-story-plan', 'references', 'diagram-conventions.md');
+const SLICE_DIR = path.join(FIXTURES, 'slices', 'sign-in');
 const SPEC = 'UC-sign-in.md';
-const limits = parseLimits(fs.readFileSync(path.join(HERE, '..', '..', 'guidelines', 'diagram-conventions.md'), 'utf8'));
-const stories = scopeStories(loadBacklog(fs.readFileSync(path.join(SAMPLE, 'sample', 'user-stories.csv'), 'utf8')).stories, { type: 'feature', epic: 'Identity and access', feature: 'Sign in' });
+const limits = parseLimits(fs.readFileSync(CONVENTIONS, 'utf8'));
+const stories = scopeStories(loadBacklog(fs.readFileSync(path.join(FIXTURES, 'user-stories.csv'), 'utf8')).stories, { type: 'feature', epic: 'Identity and access', feature: 'Sign in' });
 
 const mock = fs.readFileSync(path.join(SLICE_DIR, SPEC), 'utf8');
 const run = (text, extra = {}) => checkSlice({ slice: 'sign-in', files: { [SPEC]: text }, stories, limits, ...extra });
@@ -65,7 +66,7 @@ test('a sequence diagram without the init line, or with another one, is rejected
 });
 
 test('the conventions show the same init line the check requires', () => {
-  const conventions = fs.readFileSync(path.join(HERE, '..', '..', 'guidelines', 'diagram-conventions.md'), 'utf8');
+  const conventions = fs.readFileSync(CONVENTIONS, 'utf8');
   assert.ok(conventions.includes(SEQUENCE_INIT));
 });
 
@@ -146,11 +147,12 @@ test('analysis level: maturity, TBC sections and file paths, inside a diagram to
   assert.match(messages(run(changed('participant FORM as «boundary»<br/>SignInForm', 'participant FORM as «boundary»<br/>SignInForm auth/login/page.tsx'))), /names a file path \(auth\/login\/page\.tsx\)/);
 });
 
-test('repo level: a traceability path the session never read is rejected', () => {
+test('repo level: Maturity may be built, and a traceability row has to name a file::symbol (which files were read is the skill\'s rule)', () => {
   const traced = (code) => changed('| **Maturity** | planned |', '| **Maturity** | built |').replace('## Traceability\nTBC', `## Traceability\n| Step | What | Code |\n|---|---|---|\n| 1.2 | sign in | ${code} |`).replace('## Implementation overview\nTBC', '## Implementation overview\n| Layer | File |\n|---|---|\n| API | `src/auth/login.js` |');
-  const repo = { readPaths: new Set(['src/auth/login.js']) };
+  const repo = {};
   assert.deepEqual(formatProblems(run(traced('`src/auth/login.js::signIn`'), { repo }).problems), []);
-  assert.match(messages(run(traced('`src/auth/invented.js::x`'), { repo })), /invented\.js, which repo_read did not return/);
+  assert.match(messages(run(traced('signs in'), { repo })), /traceability row "1\.2" names no `file::symbol`/);
+  assert.match(messages(run(traced('`src/auth/login.js::signIn`'))), /Maturity is "built"; without a repo it is "planned"/);
 });
 
 test('every problem of a failing slice is reported together', () => {

@@ -1,21 +1,26 @@
-// Checks and writes a backlog's context map for the diagram-tools server: <data folder>/<backlog>/context-map.json (the
-// source) and context-map.md (composed from it). checkContextMap and writeContextMap run the same preparation, the same checks
-// (planner/logic/diagrams/context-map.js) and Mermaid's own parser on the flowchart, so a map that passes one is accepted by the
-// other; only writeContextMap writes. The document is generated here, never sent by the caller.
+// Checks and writes a backlog's context map: <data folder>/<backlog>/context-map.json (the source) and context-map.md
+// (composed from it). Usage, the map as JSON on stdin:
+//   node <skill folder>/write-context-map.mjs <backlog name> [--check]
+// The JSON is { contexts, relationships }. --check runs the same preparation, the same checks (diagrams/context-map.js) and Mermaid's
+// own parser on the flowchart as the write, and writes nothing. The document is generated here, never sent by the caller. Without
+// the Mermaid packages (see parse-mermaid.mjs) it refuses. The data folder comes from the PLANNER_CONFIG variable or a
+// planner.config.yaml (see lib/skill-support/resolve-data-dir.mjs).
 
 import fs from 'node:fs';
+import path from 'node:path';
 import { createRequire } from 'node:module';
-import { parseLimits } from '../../../planner/logic/diagrams/limits.js';
-import { checkContextMap as findProblems, composeContextMap, epicNames } from '../../../planner/logic/diagrams/context-map.js';
-import { writeAtomic } from '../../../planner/logic/skill-support/write-atomic.mjs';
+import { pathToFileURL } from 'node:url';
+import { parseLimits } from './diagrams/limits.js';
+import { checkContextMap as findProblems, composeContextMap, epicNames } from './diagrams/context-map.js';
+import { describeParseError, writeAtomic } from './lib/skill-support/write-atomic.mjs';
 import { loadStories, readConventions } from './read-diagrams.mjs';
 import { readMapFiles, MAP_SOURCE_FILE, MAP_DOCUMENT_FILE } from './read-context-map.mjs';
-import { parseMermaid } from './parse-mermaid.mjs';
+import { parseMermaid, mermaidMissing } from './parse-mermaid.mjs';
+import { dataDirOrThrow } from './lib/skill-support/resolve-data-dir.mjs';
 
 const require = createRequire(import.meta.url);
-const { logWrite } = require('../../../planner/logic/storage/write-log.cjs');
-const { DATA_DIR } = require('../../../planner/logic/storage/paths.cjs');
-const { GUIDELINES_DIR } = require('../../../planner/logic/skill-support/paths.cjs');
+const { logWrite } = require('./lib/storage/write-log.cjs');
+const { GUIDELINES_DIR } = require('./lib/skill-support/paths.cjs');
 
 const norm = (s) => String(s ?? '').trim().toLowerCase();
 const trimmed = (s) => String(s ?? '').trim();
@@ -42,7 +47,9 @@ function cleanSource({ contexts, relationships }, epics) {
 
 // input: { dataDir, guidelinesDir, name, contexts, relationships }
 //   -> { ok: true, loaded, source, sourceText, documentText } | { ok: false, errors }
-async function prepare({ dataDir = DATA_DIR, guidelinesDir = GUIDELINES_DIR, name, contexts, relationships }) {
+async function prepare({ dataDir = dataDirOrThrow(), guidelinesDir = GUIDELINES_DIR, name, contexts, relationships }) {
+  const missing = mermaidMissing();
+  if (missing) return { ok: false, errors: [missing] };
   const loaded = loadStories({ dataDir, name });
   if (!loaded.ok) return loaded;
   let limits;
@@ -95,6 +102,35 @@ export async function writeContextMap(input) {
     return { ok: false, errors, text: problemsText(errors) };
   }
   const written = [existing.document === documentText ? null : MAP_DOCUMENT_FILE, existing.source === sourceText ? null : MAP_SOURCE_FILE].filter(Boolean);
-  logWrite({ writer: 'write_context_map', backlog: loaded.base, kind: 'context-map', text: documentText + sourceText, dataDir: input.dataDir ?? DATA_DIR });
+  logWrite({ writer: 'write_context_map', backlog: loaded.base, kind: 'context-map', text: documentText + sourceText, dataDir: input.dataDir ?? dataDirOrThrow() });
   return { ok: true, changed: true, written, base: loaded.base, text: `Wrote the context map to ${loaded.base}/ (${written.join(', ')}).` };
+}
+
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
+if (isMain) {
+  const check = process.argv[3] === '--check';
+  if (process.argv.length !== (check ? 4 : 3)) {
+    console.error('Usage: node write-context-map.mjs <backlog name> [--check]  (map JSON on stdin)');
+    process.exit(2);
+  }
+  let result;
+  try {
+    const raw = fs.readFileSync(0, 'utf8');
+    let body;
+    try {
+      body = JSON.parse(raw);
+    } catch (err) {
+      throw new Error(describeParseError(err, raw, 'map'));
+    }
+    result = await (check ? checkContextMap : writeContextMap)({ dataDir: dataDirOrThrow(), name: process.argv[2], contexts: body.contexts, relationships: body.relationships });
+  } catch (err) {
+    console.error(`Nothing was written. ${err.message}`);
+    process.exit(1);
+  }
+  if (!result.ok) {
+    console.error(`Nothing was written. ${result.errors.length} problem${result.errors.length === 1 ? '' : 's'}:`);
+    for (const e of result.errors) console.error(`- ${e}`);
+    process.exit(1);
+  }
+  console.log(result.text);
 }

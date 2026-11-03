@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { parseLimits, layerForStereotype } from '../../logic/diagrams/limits.js';
+import { parseLimits, layerForStereotype } from '../../skills/jois-story-plan/diagrams/limits.js';
 
-const CONVENTIONS = new URL('../../guidelines/diagram-conventions.md', import.meta.url);
+const CONVENTIONS = new URL('../../skills/jois-story-plan/references/diagram-conventions.md', import.meta.url);
 const withBlock = (json) => `# Conventions\n\n\`\`\`diagram-limits\n${json}\n\`\`\`\n`;
 
 test('the committed conventions file holds a valid block without a palette', () => {

@@ -1,11 +1,15 @@
-// How the plan-stories skill reads a backlog's context map for the diagram-tools server: <data folder>/<backlog>/
-// context-map.json (the checked source) and context-map.md (generated from it); see planner/guidelines/diagram-conventions.md
-// section 9. Reading compares the map with the Epics of the backlog as they are now and only reports the difference; no file
-// is changed here. A backlog without a map is normal, not an error.
+// How the jois-story-plan skill reads a backlog's context map: <data folder>/<backlog>/context-map.json (the checked
+// source) and context-map.md (generated from it); see references/diagram-conventions.md section 9. Reading compares the map
+// with the Epics of the backlog as they are now and only reports the difference; no file is changed here. A backlog without a
+// map is normal, not an error. Usage:
+//   node <skill folder>/read-context-map.mjs <backlog name>
+// The data folder comes from the PLANNER_CONFIG variable or a planner.config.yaml (see lib/skill-support/resolve-data-dir.mjs).
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { epicNames, compareContextMap } from '../../../planner/logic/diagrams/context-map.js';
+import { pathToFileURL } from 'node:url';
+import { epicNames, compareContextMap } from './diagrams/context-map.js';
+import { dataDirOrThrow } from './lib/skill-support/resolve-data-dir.mjs';
 import { loadStories, DATA_LABEL } from './read-diagrams.mjs';
 
 export const MAP_SOURCE_FILE = 'context-map.json';
@@ -54,4 +58,24 @@ export function formatContextMap(r) {
   else out.push(`--- ${MAP_DOCUMENT_FILE} ---`, r.document.trimEnd());
   out.push(`--- ${MAP_SOURCE_FILE} ---`, JSON.stringify(r.source, null, 2));
   return out.join('\n');
+}
+
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
+if (isMain) {
+  if (process.argv.length !== 3) {
+    console.error('Usage: node read-context-map.mjs <backlog name>');
+    process.exit(2);
+  }
+  let result;
+  try {
+    result = readContextMap({ dataDir: dataDirOrThrow(), name: process.argv[2] });
+  } catch (err) {
+    console.error(err.message);
+    process.exit(1);
+  }
+  if (!result.ok) {
+    console.error(result.errors.join('\n'));
+    process.exit(1);
+  }
+  console.log(formatContextMap(result));
 }

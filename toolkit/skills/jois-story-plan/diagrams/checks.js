@@ -1,7 +1,7 @@
-// The structural checks of a slice (planner/guidelines/diagram-conventions.md). They read the slice's one document and
-// return problems; whether a diagram is valid Mermaid is for the parser step of the skill side to judge (planner/logic is
-// pure and has no DOM). Pure: the caller reads the file.
-import { sameTitle } from '../backlog/story-ref.js';
+// The structural checks of a slice (references/diagram-conventions.md). They read the slice's one document and
+// return problems; whether a diagram is valid Mermaid is for the parser step (parse-mermaid.mjs) to judge, because these
+// checks are pure and have no DOM. Pure: the caller reads the file.
+import { sameTitle } from '../lib/backlog/story-ref.js';
 import { criteriaOf } from './source.js';
 import { layerForStereotype } from './limits.js';
 import { readDocument } from './document.js';
@@ -244,13 +244,12 @@ function checkSpec({ file, text, slice, stories, flows, repo }) {
     }
     lines.forEach((l, i) => FILE_PATH.test(l) && at(i + 1, `names a file path (${FILE_PATH.exec(l)[0]}) with no repo read; a slice without a repo names no path`));
   } else {
+    // With a repo the skill names only files and symbols it has read itself; that is the skill's rule and is not checked here.
     const trace = bodyOf('## Traceability');
     if (trace.join('\n').trim() !== 'TBC') {
       for (const { line, cells } of tableRows(trace).slice(1)) {
-        const code = cells[2] ?? '';
-        const refs = [...code.matchAll(/`([^`:]+?)(?:::[^`]*)?`/g)].map((m) => m[1]);
+        const refs = [...(cells[2] ?? '').matchAll(/`([^`:]+?)(?:::[^`]*)?`/g)];
         if (refs.length === 0) at(heading.get('## Traceability') + 2 + line, `traceability row "${cells[0]}" names no \`file::symbol\``);
-        for (const ref of refs) if (!repo.readPaths.has(ref.replace(/\\/g, '/'))) at(heading.get('## Traceability') + 2 + line, `traceability row "${cells[0]}" names ${ref}, which repo_read did not return in this session`);
       }
     }
   }
@@ -324,7 +323,7 @@ function checkDesignSections({ bodyOf, heading, at, repo, acIds }) {
 //   files        { 'UC-<slice>.md': text }: a slice is one document plus source.json
 //   stories      the backlog stories in the slice's scope (loadBacklog stories)
 //   limits       parseLimits(...)
-//   repo         null (no repo read) or { readPaths: Set of repo paths returned by repo_read }
+//   repo         null (no repo read) or any object (the skill read the repo, so the no-repo limits are lifted)
 // -> { ok, problems: [{ file, line?, message }], diagrams: [{ heading, line, text }] }; `diagrams` are the document's mermaid
 // blocks, for the caller's parser step.
 export function checkSlice({ slice, files, stories, limits, repo = null }) {

@@ -1,7 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { checkContextMap, compareContextMap, composeContextMap, epicNames } from '../../logic/diagrams/context-map.js';
-import { parseMermaid } from '../../../.claude/skills/plan-stories/parse-mermaid.mjs';
+import { checkContextMap, compareContextMap, composeContextMap, epicNames } from '../../skills/jois-story-plan/diagrams/context-map.js';
+import { planSkillCopy } from './helpers/plan-skill.mjs';
+
+const { parseMermaid } = await planSkillCopy().load('parse-mermaid.mjs');
 
 const EPICS = ['Identity and access', 'Reporting', 'Billing'];
 const TYPES = ['customer-supplier', 'anti-corruption-layer', 'shared-kernel', 'conformist', 'published-events'];

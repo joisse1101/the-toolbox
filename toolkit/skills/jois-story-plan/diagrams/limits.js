@@ -1,5 +1,5 @@
 // The numeric limits and stereotypes of a slice and the relationship types of a context map, read from the fenced `diagram-limits` block of
-// planner/guidelines/diagram-conventions.md so that the document is the only place they are written. Pure: the caller
+// references/diagram-conventions.md so that the document is the only place they are written. Pure: the caller
 // reads the file and passes its text. A `palette` key in the block is ignored: colors are optional and never checked.
 
 const BLOCK = /```diagram-limits\r?\n([\s\S]*?)```/;

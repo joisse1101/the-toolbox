@@ -3,11 +3,16 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { sampleTree, pathOf, slicesPath, backlogPath, logLines, SAMPLE_SLICE } from '../helpers/backlog-tree.mjs';
-import { fileURLToPath } from 'node:url';
-import { readContextMap, formatContextMap } from '../../../.claude/skills/plan-stories/read-context-map.mjs';
-import { checkContextMap, writeContextMap } from '../../../.claude/skills/plan-stories/write-context-map.mjs';
-import { readDiagrams } from '../../../.claude/skills/plan-stories/read-diagrams.mjs';
+import { spawnSync } from 'node:child_process';
+import { sampleTree, pathOf, slicesPath, backlogPath, logLines, SAMPLE_SLICE } from './helpers/backlog-tree.mjs';
+import { tempConfig } from './helpers/temp-config.mjs';
+import { planSkillCopy } from './helpers/plan-skill.mjs';
+
+// The scripts run from a temp copy of the skill folder that has the Mermaid packages (see helpers/plan-skill.mjs).
+const plan = planSkillCopy();
+const { readContextMap, formatContextMap } = await plan.load('read-context-map.mjs');
+const { checkContextMap, writeContextMap } = await plan.load('write-context-map.mjs');
+const { readDiagrams } = await plan.load('read-diagrams.mjs');
 
 
 function setup({ withSlice = false } = {}) {
@@ -133,4 +138,24 @@ test('the committed sample map passes the checks and the parser, matches its com
   }
   const read = readContextMap({ dataDir: withMap, name: 'sample' });
   assert.deepEqual([read.exists, read.missing, read.unknown], [true, [], []]);
+});
+
+test('cli: write-context-map --check reports and writes nothing, the write then writes, and read-context-map shows the map', () => {
+  const root = setup();
+  const env = { ...process.env, PLANNER_CONFIG: tempConfig(root) };
+  const run = (script, args, body) => spawnSync(process.execPath, [path.join(plan.dir, script), ...args], { input: body === undefined ? '' : JSON.stringify(body), encoding: 'utf8', env });
+  const mapFiles = () => fs.readdirSync(dirOf(root)).filter((f) => f.startsWith('context-map'));
+  const checked = run('write-context-map.mjs', ['sample', '--check'], MAP);
+  assert.equal(checked.status, 0, checked.stderr);
+  assert.match(checked.stdout, /Check passed; nothing was written/);
+  assert.deepEqual(mapFiles(), []);
+  const wrote = run('write-context-map.mjs', ['sample'], MAP);
+  assert.equal(wrote.status, 0, wrote.stderr);
+  assert.match(wrote.stdout, /Wrote the context map/);
+  const read = run('read-context-map.mjs', ['sample']);
+  assert.equal(read.status, 0, read.stderr);
+  assert.match(read.stdout, /2 contexts \| up to date/);
+  const bad = run('write-context-map.mjs', ['sample'], { ...MAP, contexts: [MAP.contexts[0]] });
+  assert.equal(bad.status, 1);
+  assert.match(bad.stderr, /Nothing was written\./);
 });

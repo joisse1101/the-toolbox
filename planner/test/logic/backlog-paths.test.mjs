@@ -25,7 +25,6 @@ test('the other paths of a backlog and the log', () => {
   assert.equal(bp.backlogDir(D, 'iam'), path.join(D, 'iam'));
   assert.equal(bp.reviewDecidedFile(D, 'iam'), path.join(D, 'iam', 'user-stories', 'review.csv.decided'));
   assert.equal(bp.slicesDir(D, 'iam'), path.join(D, 'iam', 'slices'));
-  assert.equal(bp.repoFile(D, 'iam'), path.join(D, 'iam', 'repo.json'));
   assert.deepEqual(bp.contextMapFiles(D, 'iam'), { json: path.join(D, 'iam', 'context-map.json'), md: path.join(D, 'iam', 'context-map.md') });
   assert.equal(bp.logFile(D), path.join(D, 'logs', 'writes.jsonl'));
 });
@@ -52,7 +51,6 @@ test('unsafe names are rejected by every path builder', () => {
     assert.throws(() => bp.backlogDir(D, name), (e) => e.status === 400);
     assert.throws(() => bp.backlogFile(D, name, 'backlog'), (e) => e.status === 400);
     assert.throws(() => bp.slicesDir(D, name), (e) => e.status === 400);
-    assert.throws(() => bp.repoFile(D, name), (e) => e.status === 400);
     assert.throws(() => bp.contextMapFiles(D, name), (e) => e.status === 400);
   }
 });

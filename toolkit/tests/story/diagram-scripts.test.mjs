@@ -3,10 +3,15 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { sampleTree, pathOf, slicesPath, backlogPath, logLines, SAMPLE_SLICE } from '../helpers/backlog-tree.mjs';
-import { fileURLToPath } from 'node:url';
-import { readDiagrams, formatDiagrams, listSlices } from '../../../.claude/skills/plan-stories/read-diagrams.mjs';
-import { checkDiagram, writeDiagram } from '../../../.claude/skills/plan-stories/write-diagram.mjs';
+import { spawnSync } from 'node:child_process';
+import { sampleTree, pathOf, slicesPath, logLines, SAMPLE_SLICE } from './helpers/backlog-tree.mjs';
+import { tempConfig } from './helpers/temp-config.mjs';
+import { planSkillCopy } from './helpers/plan-skill.mjs';
+
+// The scripts run from a temp copy of the skill folder that has the Mermaid packages (see helpers/plan-skill.mjs).
+const plan = planSkillCopy();
+const { readDiagrams, formatDiagrams, listSlices } = await plan.load('read-diagrams.mjs');
+const { checkDiagram, writeDiagram } = await plan.load('write-diagram.mjs');
 
 const FIXTURE_SLICE = SAMPLE_SLICE;
 
@@ -203,4 +208,63 @@ test('write: a second document is refused, naming the rule', async () => {
   const r = await writeDiagram(input(root, { files: [...fixtureFiles(), { name: 'UC-sign-in-extra.md', content: '# extra' }] }));
   assert.equal(r.ok, false);
   assert.match(r.text, /UC-sign-in-extra\.md: is not part of a slice: a slice is one document/);
+});
+
+// ---- the scripts as Bash runs them ----
+
+const run = (copy, script, args, body, root) => spawnSync(process.execPath, [path.join(copy.dir, script), ...args], {
+  input: body === undefined ? '' : JSON.stringify(body), encoding: 'utf8', env: { ...process.env, PLANNER_CONFIG: tempConfig(root) },
+});
+const sliceBody = (over = {}) => ({ slice: 'sign-in', scope: SCOPE, stories: PAIRS, files: fixtureFiles(), ...over });
+
+test('cli: write-diagram --check on the mock reports and writes nothing, the write then writes and a repeat changes nothing', () => {
+  const root = setup();
+  const checked = run(plan, 'write-diagram.mjs', ['sample', '--check'], sliceBody(), root);
+  assert.equal(checked.status, 0, checked.stderr);
+  assert.match(checked.stdout, /Check passed; nothing was written/);
+  assert.equal(fs.existsSync(slicesPath(root, 'sample')), false);
+  const wrote = run(plan, 'write-diagram.mjs', ['sample'], sliceBody(), root);
+  assert.equal(wrote.status, 0, wrote.stderr);
+  assert.match(wrote.stdout, /Wrote the slice "sign-in"/);
+  assert.match(run(plan, 'write-diagram.mjs', ['sample'], sliceBody(), root).stdout, /Nothing changed/);
+  const read = run(plan, 'read-diagrams.mjs', ['sample', '--slice', 'sign-in'], undefined, root);
+  assert.equal(read.status, 0, read.stderr);
+  assert.match(read.stdout, /sign-in \| Feature: Identity and access > Sign in \| 2 stories \| up to date/);
+});
+
+test('cli: an invalid diagram is refused with --check and without, with the parser message, and nothing is written', () => {
+  const root = setup();
+  const files = fixtureFiles().map((f) => ({ ...f, content: f.content.replace('MAILER-->>U: 2.10 reset link received', 'MAILER-->>>U: 2.10 reset link received') }));
+  for (const args of [['sample', '--check'], ['sample']]) {
+    const r = run(plan, 'write-diagram.mjs', args, sliceBody({ files }), root);
+    assert.equal(r.status, 1, args.join(' '));
+    assert.match(r.stderr, /Nothing was written\./);
+    assert.match(r.stderr, /does not parse as Mermaid: Parse error on line \d+/);
+  }
+  assert.equal(fs.existsSync(slicesPath(root, 'sample')), false);
+});
+
+test('cli: without the Mermaid packages the writers refuse, naming the skill folder and npm ci, and write nothing', () => {
+  const bare = planSkillCopy({ withPackages: false });
+  const root = setup();
+  for (const args of [['sample', '--check'], ['sample']]) {
+    const r = run(bare, 'write-diagram.mjs', args, sliceBody(), root);
+    assert.equal(r.status, 1, args.join(' '));
+    assert.ok(r.stderr.includes(bare.dir), r.stderr);
+    assert.match(r.stderr, /npm ci/);
+  }
+  const map = run(bare, 'write-context-map.mjs', ['sample', '--check'], { contexts: [], relationships: [] }, root);
+  assert.equal(map.status, 1);
+  assert.match(map.stderr, /npm ci/);
+  assert.equal(fs.existsSync(slicesPath(root, 'sample')), false);
+});
+
+test('cli: a script run with no data folder set says so and a bad stdin is named', () => {
+  const root = setup();
+  const noConfig = spawnSync(process.execPath, [path.join(plan.dir, 'read-diagrams.mjs'), 'sample'], { encoding: 'utf8', cwd: os.tmpdir(), env: { ...process.env, PLANNER_CONFIG: '' } });
+  assert.equal(noConfig.status, 1);
+  assert.match(noConfig.stderr, /No data folder is set/);
+  const bad = spawnSync(process.execPath, [path.join(plan.dir, 'write-diagram.mjs'), 'sample', '--check'], { input: '{ nope', encoding: 'utf8', env: { ...process.env, PLANNER_CONFIG: tempConfig(root) } });
+  assert.equal(bad.status, 1);
+  assert.match(bad.stderr, /not valid JSON/);
 });
