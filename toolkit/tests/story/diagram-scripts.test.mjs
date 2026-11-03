@@ -105,7 +105,7 @@ test('write: the slice is written, read back, logged without contents, and the h
   assert.deepEqual(source.stories.map((s) => [s.id, s.hash]), [['IAM-0001', 'baf514d489ee'], ['IAM-0002', 'ddf31b439280']]);
   assert.match(formatDiagrams(readDiagrams({ dataDir: root, name: 'sample' })), /up to date/);
   const [line] = logLines(root);
-  assert.deepEqual([line.writer, line.backlog, line.kind, line.slice], ['write_diagram', 'sample', 'slices', 'sign-in']);
+  assert.deepEqual([line.writer, line.backlog, line.kind, line.slice], ['write-diagram.mjs', 'sample', 'slices', 'sign-in']);
   assert.ok(line.bytes > 0 && /^[0-9a-f]{12}$/.test(line.hash));
   assert.ok(!fs.readFileSync(path.join(root, 'logs', 'writes.jsonl'), 'utf8').includes('Sign in with email'), 'no diagram text in the log');
 });

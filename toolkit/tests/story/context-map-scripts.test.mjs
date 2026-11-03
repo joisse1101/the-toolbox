@@ -95,7 +95,7 @@ test('write: the write is logged without contents and never deletes a file', asy
   const root = setup({ withSlice: true });
   await writeContextMap(input(root));
   const [line] = logLines(root);
-  assert.deepEqual([line.writer, line.backlog, line.kind], ['write_context_map', 'sample', 'context-map']);
+  assert.deepEqual([line.writer, line.backlog, line.kind], ['write-context-map.mjs', 'sample', 'context-map']);
   assert.equal(JSON.stringify(line).includes('Platform team'), false);
   assert.equal(fs.existsSync(path.join(sliceOf(root), 'source.json')), true);
 });

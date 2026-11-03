@@ -155,7 +155,7 @@ export async function writeDiagram(input) {
     return { ok: false, errors, text: problemsText(errors) };
   }
   const written = [...Object.keys(files).filter((f) => existing?.files[f] !== files[f]), ...(sameStories(existing?.source, source) ? [] : [SOURCE_FILE])];
-  logWrite({ writer: 'write_diagram', backlog: loaded.base, kind: 'slices', text: Object.values(files).join('') + sourceText, extra: { slice }, dataDir: input.dataDir ?? dataDirOrThrow() });
+  logWrite({ writer: 'write-diagram.mjs', backlog: loaded.base, kind: 'slices', text: Object.values(files).join('') + sourceText, extra: { slice }, dataDir: input.dataDir ?? dataDirOrThrow() });
   const note = leftover.length ? ` Files in the folder that were not sent and were left as they are: ${leftover.join(', ')}.` : '';
   return { ok: true, changed: true, written, leftover, slice, base: loaded.base, text: `Wrote the slice "${slice}" to ${loaded.base}/slices/${slice}/ (${written.join(', ')}); ${Object.keys(files).length} files and ${SOURCE_FILE}.${note}` };
 }

@@ -28,9 +28,9 @@ test('a write appends one line with the writer, backlog, kind, size and a short 
 
 test('extra fields are added to the line and never replace the standard ones', () => {
   const root = temp();
-  logWrite({ writer: 'write_diagram', backlog: 'sample', kind: 'slices', text: 'x', extra: { slice: 'sign-in', writer: 'spoof', bytes: 0 }, dataDir: root });
+  logWrite({ writer: 'write-diagram.mjs', backlog: 'sample', kind: 'slices', text: 'x', extra: { slice: 'sign-in', writer: 'spoof', bytes: 0 }, dataDir: root });
   const [line] = lines(root);
-  assert.deepEqual([line.backlog, line.slice, line.writer, line.bytes], ['sample', 'sign-in', 'write_diagram', 1]);
+  assert.deepEqual([line.backlog, line.slice, line.writer, line.bytes], ['sample', 'sign-in', 'write-diagram.mjs', 1]);
 });
 
 test('the same content has the same hash', () => {

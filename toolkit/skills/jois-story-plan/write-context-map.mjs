@@ -102,7 +102,7 @@ export async function writeContextMap(input) {
     return { ok: false, errors, text: problemsText(errors) };
   }
   const written = [existing.document === documentText ? null : MAP_DOCUMENT_FILE, existing.source === sourceText ? null : MAP_SOURCE_FILE].filter(Boolean);
-  logWrite({ writer: 'write_context_map', backlog: loaded.base, kind: 'context-map', text: documentText + sourceText, dataDir: input.dataDir ?? dataDirOrThrow() });
+  logWrite({ writer: 'write-context-map.mjs', backlog: loaded.base, kind: 'context-map', text: documentText + sourceText, dataDir: input.dataDir ?? dataDirOrThrow() });
   return { ok: true, changed: true, written, base: loaded.base, text: `Wrote the context map to ${loaded.base}/ (${written.join(', ')}).` };
 }
 
