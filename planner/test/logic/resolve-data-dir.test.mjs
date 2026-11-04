@@ -3,10 +3,11 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { resolveDataDir, dataDirOrThrow, parseFlatConfig } from '../../logic/skill-support/resolve-data-dir.mjs';
+import { resolveDataDir, dataDirOrThrow, parseFlatConfig, PLANS_DIR } from '../../logic/skill-support/resolve-data-dir.mjs';
 
-// The scenarios of "The data folder is found without the planner" in the toolkit-story-skills spec.
+// The scenarios of "A story skill finds the data folder in the current folder" in the toolkit-story-skills spec.
 const TEST_DIR = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const SAMPLE_CONFIG = path.join(TEST_DIR, 'sample-config.yaml');
 const SAMPLE_DATA = path.join(TEST_DIR, 'sample-data');
@@ -18,10 +19,21 @@ const withConfig = (text) => {
   return dir;
 };
 
-test('variable wins: PLANNER_CONFIG beats a planner.config.yaml in the current folder', () => {
-  const cwd = withConfig('dataDir: ./elsewhere\n');
+test('the .plans name matches PLANS_DIR of backlog-paths.cjs', () => {
+  const { PLANS_DIR: planner } = createRequire(import.meta.url)('../../logic/storage/backlog-paths.cjs');
+  assert.equal(PLANS_DIR, planner);
+});
+
+test('variable wins: PLANNER_CONFIG beats a .plans folder in the current folder', () => {
+  const cwd = temp();
+  fs.mkdirSync(path.join(cwd, '.plans'));
   const found = resolveDataDir({ env: { PLANNER_CONFIG: SAMPLE_CONFIG }, cwd });
   assert.deepEqual(found, { status: 'found', dataDir: SAMPLE_DATA, configFile: SAMPLE_CONFIG });
+});
+
+test('variable wins: PLANNER_CONFIG beats a planner.config.yaml in the current folder', () => {
+  const cwd = withConfig('dataDir: ./elsewhere\n');
+  assert.equal(resolveDataDir({ env: { PLANNER_CONFIG: SAMPLE_CONFIG }, cwd }).dataDir, SAMPLE_DATA);
 });
 
 test('a relative PLANNER_CONFIG is taken from the current folder', () => {
@@ -29,22 +41,27 @@ test('a relative PLANNER_CONFIG is taken from the current folder', () => {
   assert.equal(found.dataDir, SAMPLE_DATA);
 });
 
-test('config found in a parent folder: the nearest planner.config.yaml upward, relative dataDir against its folder', () => {
-  const root = withConfig('projectName: P\ndataDir: ./backlog-data\n');
-  const sub = path.join(root, 'a', 'b');
-  fs.mkdirSync(sub, { recursive: true });
-  const found = resolveDataDir({ env: {}, cwd: sub });
-  assert.equal(found.status, 'found');
-  assert.equal(found.dataDir, path.join(root, 'backlog-data'));
-  assert.equal(found.configFile, path.join(root, 'planner.config.yaml'));
+test('.plans in the current folder is the data folder', () => {
+  const cwd = temp();
+  fs.mkdirSync(path.join(cwd, '.plans'));
+  assert.deepEqual(resolveDataDir({ env: {}, cwd }), { status: 'found', dataDir: path.join(cwd, '.plans'), configFile: null });
 });
 
-test('the nearest config wins over one further up', () => {
-  const root = withConfig('dataDir: ./outer\n');
-  const inner = path.join(root, 'inner');
-  fs.mkdirSync(inner);
-  fs.writeFileSync(path.join(inner, 'planner.config.yaml'), 'dataDir: ./nearer\n');
-  assert.equal(resolveDataDir({ env: {}, cwd: inner }).dataDir, path.join(inner, 'nearer'));
+test('.plans wins over a planner.config.yaml in the same folder', () => {
+  const cwd = withConfig('dataDir: ./other\n');
+  fs.mkdirSync(path.join(cwd, '.plans'));
+  assert.equal(resolveDataDir({ env: {}, cwd }).dataDir, path.join(cwd, '.plans'));
+});
+
+test('config in the current folder with codeBase: that code base\'s .plans, relative value against the config folder', () => {
+  const cwd = withConfig('projectName: P\ncodeBase: ./app\n');
+  const found = resolveDataDir({ env: {}, cwd });
+  assert.deepEqual(found, { status: 'found', dataDir: path.join(cwd, 'app', '.plans'), configFile: path.join(cwd, 'planner.config.yaml') });
+});
+
+test('config in the current folder with dataDir: relative value against the config folder', () => {
+  const cwd = withConfig('projectName: P\ndataDir: ./backlog-data\n');
+  assert.equal(resolveDataDir({ env: {}, cwd }).dataDir, path.join(cwd, 'backlog-data'));
 });
 
 test('an absolute dataDir is used as it is', () => {
@@ -53,18 +70,33 @@ test('an absolute dataDir is used as it is', () => {
   assert.equal(resolveDataDir({ env: {}, cwd }).dataDir, path.resolve(abs));
 });
 
-test('no config: asks the user and names no folder', () => {
-  const cwd = temp(); // a temp folder has no planner.config.yaml above it
-  assert.deepEqual(resolveDataDir({ env: {}, cwd }), { status: 'ask' });
+test('started in a sub-folder: the parent is not examined and nothing is found', () => {
+  const root = withConfig('codeBase: .\n');
+  fs.mkdirSync(path.join(root, '.plans'));
+  const sub = path.join(root, 'a', 'b');
+  fs.mkdirSync(sub, { recursive: true });
+  assert.deepEqual(resolveDataDir({ env: {}, cwd: sub }), { status: 'none', cwd: sub });
 });
 
-test('unreadable config: no dataDir key is reported with the file', () => {
-  const cwd = withConfig('projectName: P\n');
+test('nothing in the current folder: reports none and names the folder', () => {
+  const cwd = temp();
+  assert.deepEqual(resolveDataDir({ env: {}, cwd }), { status: 'none', cwd });
+});
+
+test('unreadable config: both codeBase and dataDir is reported with the file', () => {
+  const cwd = withConfig('codeBase: ./a\ndataDir: ./b\n');
   const found = resolveDataDir({ env: {}, cwd });
   assert.equal(found.status, 'error');
   assert.equal(found.configFile, path.join(cwd, 'planner.config.yaml'));
-  assert.match(found.problem, /no `dataDir` key/);
+  assert.match(found.problem, /both a `codeBase` and a `dataDir`/);
   assert.equal('dataDir' in found, false);
+});
+
+test('unreadable config: neither key is reported with the file', () => {
+  const cwd = withConfig('projectName: P\n');
+  const found = resolveDataDir({ env: {}, cwd });
+  assert.equal(found.status, 'error');
+  assert.match(found.problem, /neither a `codeBase` nor a `dataDir`/);
 });
 
 test('unreadable config: a file that is not flat key: value names the line', () => {
@@ -81,6 +113,13 @@ test('unreadable config: PLANNER_CONFIG naming a missing file is an error, not a
   assert.match(found.problem, /cannot be read/);
 });
 
+test('.plans is a file: reported, no folder guessed, even with a config beside it', () => {
+  const cwd = withConfig('dataDir: ./x\n');
+  fs.writeFileSync(path.join(cwd, '.plans'), 'not a folder');
+  const found = resolveDataDir({ env: {}, cwd });
+  assert.deepEqual(found, { status: 'error', configFile: path.join(cwd, '.plans'), problem: 'is a file, not a folder' });
+});
+
 test('parseFlatConfig skips comments and blank lines, trims trailing comments and unquotes', () => {
   const keys = parseFlatConfig('# top\n\nprojectName: "My: App" # name\ndataDir: ./d # folder\nempty:\n');
   assert.deepEqual(keys, { projectName: 'My: App', dataDir: './d', empty: '' });
@@ -88,7 +127,8 @@ test('parseFlatConfig skips comments and blank lines, trims trailing comments an
 
 test('dataDirOrThrow returns the folder, and otherwise throws a message that says what to do', () => {
   assert.equal(dataDirOrThrow({ env: { PLANNER_CONFIG: SAMPLE_CONFIG }, cwd: temp() }), SAMPLE_DATA);
-  assert.throws(() => dataDirOrThrow({ env: {}, cwd: temp() }), /No data folder is set.*Ask the user.*PLANNER_CONFIG/);
+  const empty = temp();
+  assert.throws(() => dataDirOrThrow({ env: {}, cwd: empty }), (err) => err.message.includes(empty) && /parent folders are not searched/.test(err.message) && /ask/i.test(err.message));
   const cwd = withConfig('projectName: P\n');
-  assert.throws(() => dataDirOrThrow({ env: {}, cwd }), (err) => err.message.includes(path.join(cwd, 'planner.config.yaml')) && /no `dataDir` key/.test(err.message));
+  assert.throws(() => dataDirOrThrow({ env: {}, cwd }), (err) => err.message.includes(path.join(cwd, 'planner.config.yaml')) && /neither/.test(err.message));
 });
