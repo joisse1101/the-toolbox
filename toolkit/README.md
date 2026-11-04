@@ -573,8 +573,8 @@ code (tickets, workflows) load none of them. Five rules are unscoped on purpose:
   - It keeps mock repos, mock data, scratch files and agent progress notes under `.scratch/`.
 
 `jois-comms-documents` is scoped to `**/*.md`: it loads when a markdown file is read or created, and
-not in sessions that never touch markdown. It covers headers, one idea per bullet, and owners and
-dates on next steps.
+not in sessions that never touch markdown. It covers headers, bullets only for parallel items with
+reasoning written as a paragraph, and owners and dates on next steps.
 
 How the standards are split:
 
