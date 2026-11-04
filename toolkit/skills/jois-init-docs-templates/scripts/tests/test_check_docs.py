@@ -122,6 +122,36 @@ def test_flat_name_collision_is_reported(tmp_path):
     assert len(problems) == 1 and "a-b.md" in problems[0] and "a/b.md" in problems[0]
 
 
+WORKFLOW = ".github/workflows/wiki-publish.yml"
+TEMPLATE_WORKFLOW = Path(__file__).resolve().parents[2] / "workflows" / "wiki-publish.yml"
+
+
+def test_shipped_workflow_template_passes(tmp_path):
+    _tree(tmp_path)
+    _file(tmp_path, WORKFLOW, TEMPLATE_WORKFLOW.read_text(encoding="utf-8"))
+    assert _problems(tmp_path) == []
+
+
+def test_plain_rsync_workflow_fails_naming_the_file(tmp_path):
+    _tree(tmp_path)
+    _file(tmp_path, WORKFLOW, "jobs:\n  publish:\n    steps:\n      - run: rsync -a wiki/ out/\n")
+    problems = _problems(tmp_path)
+    assert len(problems) == 1
+    assert problems[0].startswith(f"{WORKFLOW}:1:") and "unrewritten" in problems[0]
+
+
+def test_builder_named_only_in_a_comment_fails(tmp_path):
+    _tree(tmp_path)
+    _file(tmp_path, WORKFLOW, "# run python scripts/build_wiki.py --out dir\njobs: {}\n")
+    assert any(p.startswith(f"{WORKFLOW}:") for p in _problems(tmp_path))
+
+
+def test_absent_workflow_passes(tmp_path):
+    _tree(tmp_path)
+    assert not (tmp_path / WORKFLOW).exists()
+    assert _problems(tmp_path) == []
+
+
 def test_missing_wiki_folder_fails(tmp_path, capsys):
     assert check_docs.main(["--root", str(tmp_path)]) == 1
     assert "folder not found" in capsys.readouterr().out
