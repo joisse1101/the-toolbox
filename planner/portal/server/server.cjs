@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 const { HttpError, validateBacklogName } = require('../../logic/storage/file-name.cjs');
+const { writeBacklogFiles } = require('../../logic/storage/backlog-files.cjs');
 const { KINDS, BACKLOG_FILE, backlogDir, backlogFile, listBacklogs, detectOlderLayout } =require('../../logic/storage/backlog-paths.cjs');
 // The config is read when paths.cjs loads. Run as the server, a bad config ends the process with the message that names the key.
 let paths;
@@ -98,10 +99,6 @@ function mapFsError(err, name) {
   return new HttpError(500, err.message || 'Server error');
 }
 
-function numbered(name, n) {
-  return n === 1 ? name : `${name}-${n}`;
-}
-
 // ---------- file operations ----------
 
 // The backlogs that have a file of `kind` (every backlog for kind `backlog`), by folder name, sorted.
@@ -118,28 +115,11 @@ async function writeNew(file, content) {
   }
 }
 
-// Creates a backlog: its folder holding user-stories.csv. A taken name gets the next free number. Returns the name used.
-async function createBacklog(dataDir, requested, content) {
-  const wanted = validateBacklogName(requested);
-  await fs.promises.mkdir(dataDir, { recursive: true });
-  for (let n = 1; n < 1000; n++) {
-    const name = numbered(wanted, n);
-    const dir = backlogDir(dataDir, name);
-    try {
-      await fs.promises.mkdir(dir); // not recursive: EEXIST means the name is taken
-    } catch (err) {
-      if (err.code !== 'EEXIST') throw err;
-      continue;
-    }
-    try {
-      await writeNew(path.join(dir, BACKLOG_FILE), content);
-    } catch (err) {
-      await fs.promises.rm(dir, { recursive: true, force: true }); // the folder this call just made, never a partial backlog
-      throw err;
-    }
-    return name;
-  }
-  throw new HttpError(409, 'Could not find a free backlog name', 'exists');
+// Creates a backlog: its folder holding the five starting files (header only). A taken name gets the next free number.
+// Returns the name used. The starting files are an ES module, so they load with a dynamic import.
+async function createBacklog(dataDir, requested) {
+  const { startingFiles } = await import('../../logic/backlog/starting-files.js');
+  return writeBacklogFiles(dataDir, requested, startingFiles());
 }
 
 // Creates the file of another kind in an existing backlog; it never overwrites.
@@ -402,9 +382,10 @@ async function handleStoreApi(req, res, segments) {
     if (req.method === 'GET') return send(res, 200, { files: await listFiles(dataDir, kind) });
     if (req.method === 'POST') {
       const body = await readJson(req);
+      // A backlog's content is the server's: a `content` field is ignored for kind `backlog`.
       const content = typeof body.content === 'string' ? body.content : '';
       const name = kind === 'backlog'
-        ? await createBacklog(dataDir, body.name, content)
+        ? await createBacklog(dataDir, body.name)
         : await createKindFile(dataDir, body.name, kind, content);
       return send(res, 201, { name });
     }
