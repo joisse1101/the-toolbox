@@ -5,7 +5,7 @@
 // structural checks (diagrams/checks.js) and Mermaid's own parser on every diagram as the write, and writes nothing; --repo says
 // the skill read the repo, which lifts the limits of a slice without one. The stories come as { id, title } pairs and the story
 // hashes are computed here, never taken from the caller. Without the Mermaid packages (see parse-mermaid.mjs) it refuses.
-// The data folder comes from the PLANNER_CONFIG variable or a planner.config.yaml (see lib/skill-support/resolve-data-dir.mjs).
+// The data folder comes from the PLANNER_CONFIG variable, else .plans or a planner.config.yaml in the current folder (see lib/skill-support/resolve-data-dir.mjs).
 
 import fs from 'node:fs';
 import path from 'node:path';

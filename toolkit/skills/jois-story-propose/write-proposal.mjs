@@ -1,6 +1,6 @@
 // The only way the jois-story-propose skill writes proposals. Usage:
 //   node <skill folder>/write-proposal.mjs <backlog name> [--check]   (stories as JSON on stdin)
-// The data folder comes from the PLANNER_CONFIG variable or a planner.config.yaml (see lib/skill-support/resolve-data-dir.mjs).
+// The data folder comes from the PLANNER_CONFIG variable, else .plans or a planner.config.yaml in the current folder (see lib/skill-support/resolve-data-dir.mjs).
 // Reads <name>/user-stories.csv, validates the input against it and writes <name>/user-stories/proposals.csv. The input is a JSON list whose
 // items are either new stories (no "id"), which are ADDED with NEW-<n> IDs, or patches (an "id" such as NEW-8 plus
 // only the fields to change), which change that proposed story in place. One invalid item means nothing is written.
