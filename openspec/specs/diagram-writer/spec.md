@@ -59,13 +59,6 @@ The slice writer SHALL write each file atomically and re-read the slice afterwar
 - **WHEN** a slice with that name exists for another Epic or Feature
 - **THEN** the write is refused and names the existing scope
 
-### Requirement: Write log
-Every run of the slice writer that writes SHALL append one line to `planner/data/logs/writes.jsonl` with the time, writer, backlog, slice, bytes and a short hash and no contents, as the other writers do.
-
-#### Scenario: Log line
-- **WHEN** a slice is written
-- **THEN** `writes.jsonl` gains one line for it and the line holds no diagram text
-
 ### Requirement: Diagram scripts of the plan skill
 `jois-story-plan` SHALL carry scripts that read slices, check and write a slice, and read, check and write the context map, run with Bash from the installed skill folder. A check is the writer's `--check` and writes nothing.
 

@@ -90,7 +90,7 @@ A story skill SHALL read data and reference files with the session's ordinary fi
 - **THEN** it runs without any planner launcher
 
 ### Requirement: Writes go only through the bundled writers
-A story skill SHALL write to the data only by running its bundled writer script with Bash. Each writer SHALL keep its validation, all-or-nothing write, read-back and write log, and SHALL accept `--check` to validate and report without writing. A writer SHALL refuse a target outside the data folder.
+A story skill SHALL write to the data only by running its bundled writer script with Bash. Each writer SHALL keep its validation, all-or-nothing write and read-back, and SHALL accept `--check` to validate and report without writing. A writer SHALL refuse a target outside the data folder.
 
 #### Scenario: Check writes nothing
 - **WHEN** a writer is run with `--check` on a valid draft
