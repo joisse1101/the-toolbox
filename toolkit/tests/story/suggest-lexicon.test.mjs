@@ -37,7 +37,6 @@ test('a check reports the same problems and what it would add, and creates no fi
   const ok = checkSuggestion({ dataDir: root, name: 'data', items: [rename] });
   assert.deepEqual([ok.ok, ok.added, ok.count], [true, 1, 1]);
   assert.equal(fs.existsSync(suggestionsPath(root)), false, 'a check writes nothing');
-  assert.equal(fs.existsSync(path.join(root, 'logs', 'writes.jsonl')), false, 'a check logs nothing');
   const bad = checkSuggestion({ dataDir: root, name: 'data', items: [{ term: 'Nope', action: 'delete', reason: 'x' }] });
   assert.equal(bad.ok, false);
   assert.equal(suggestLexicon({ dataDir: root, name: 'data', items: [{ term: 'Nope', action: 'delete', reason: 'x' }] }).ok, false);

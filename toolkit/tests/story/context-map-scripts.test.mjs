@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { sampleTree, pathOf, slicesPath, backlogPath, logLines, SAMPLE_SLICE } from './helpers/backlog-tree.mjs';
+import { sampleTree, pathOf, slicesPath, backlogPath, SAMPLE_SLICE } from './helpers/backlog-tree.mjs';
 import { tempConfig } from './helpers/temp-config.mjs';
 import { planSkillCopy } from './helpers/plan-skill.mjs';
 
@@ -77,7 +77,6 @@ test('write: the same map twice changes no byte and says nothing changed', async
   assert.deepEqual([again.ok, again.changed], [true, false]);
   assert.match(again.text, /Nothing changed/);
   assert.deepEqual(fs.readdirSync(dirOf(root)).map((f) => fs.statSync(path.join(dirOf(root), f)).mtimeMs), snapshot);
-  assert.equal(logLines(root).length, 1);
 });
 
 test('write: a refused map writes neither file and lists each problem', async () => {
@@ -88,15 +87,11 @@ test('write: a refused map writes neither file and lists each problem', async ()
   assert.match(r.text, /The Epic "Reporting" is in no context/);
   assert.match(r.text, /names the context "Insight"/);
   assert.equal(fs.existsSync(path.join(dirOf(root), 'context-map.json')), false);
-  assert.deepEqual(logLines(root), []);
 });
 
-test('write: the write is logged without contents and never deletes a file', async () => {
+test('write: the write never deletes a file', async () => {
   const root = setup({ withSlice: true });
   await writeContextMap(input(root));
-  const [line] = logLines(root);
-  assert.deepEqual([line.writer, line.backlog, line.kind], ['write-context-map.mjs', 'sample', 'context-map']);
-  assert.equal(JSON.stringify(line).includes('Platform team'), false);
   assert.equal(fs.existsSync(path.join(sliceOf(root), 'source.json')), true);
 });
 

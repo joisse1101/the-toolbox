@@ -21,12 +21,11 @@ test('backlogFile maps each kind to its fixed file in the backlog folder', () =>
   assert.deepEqual(bp.KINDS, ['backlog', 'review', 'proposals', 'lexicon', 'lexicon-suggestions']);
 });
 
-test('the other paths of a backlog and the log', () => {
+test('the other paths of a backlog', () => {
   assert.equal(bp.backlogDir(D, 'iam'), path.join(D, 'iam'));
   assert.equal(bp.reviewDecidedFile(D, 'iam'), path.join(D, 'iam', 'user-stories', 'review.csv.decided'));
   assert.equal(bp.slicesDir(D, 'iam'), path.join(D, 'iam', 'slices'));
   assert.deepEqual(bp.contextMapFiles(D, 'iam'), { json: path.join(D, 'iam', 'context-map.json'), md: path.join(D, 'iam', 'context-map.md') });
-  assert.equal(bp.logFile(D), path.join(D, 'logs', 'writes.jsonl'));
 });
 
 test('a name with a trailing .csv is the same backlog', () => {

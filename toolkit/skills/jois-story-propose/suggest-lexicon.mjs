@@ -91,7 +91,7 @@ export function suggestLexicon({ dataDir = dataDirOrThrow(), name, items }) {
   const suggestionsDir = path.dirname(suggestionsPath);
   const next = { ...existing, rows: [...existing.rows, ...checked.rows] };
   fs.mkdirSync(suggestionsDir, { recursive: true });
-  const failed = writeAtomic(suggestionsDir, path.basename(suggestionsPath), composeSuggestions(next), 'suggest-lexicon.mjs', { dataDir, backlog: file, kind: 'lexicon-suggestions' });
+  const failed = writeAtomic(suggestionsDir, path.basename(suggestionsPath), composeSuggestions(next));
   if (failed) return { ok: false, errors: [failed] };
   return { ok: true, file, added: checked.rows.length, count: next.rows.length, report: reportOf(lexicon, checked) };
 }

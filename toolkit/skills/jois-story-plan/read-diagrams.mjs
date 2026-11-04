@@ -17,7 +17,6 @@ import { dataDirOrThrow } from './lib/skill-support/resolve-data-dir.mjs';
 
 const require = createRequire(import.meta.url);
 const { backlogDir, backlogFile, slicesDir } = require('./lib/storage/backlog-paths.cjs');
-const { logWrite } = require('./lib/storage/write-log.cjs');
 const { GUIDELINES_DIR, shown } = require('./lib/skill-support/paths.cjs');
 
 export const SLICE_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -82,7 +81,6 @@ function heal({ sliceDir, slice, base, source, dataDir }) {
   const sourceText = `${JSON.stringify(source, null, 2)}\n`;
   const specFile = `UC-${slice}.md`;
   const specPath = path.join(sliceDir, specFile);
-  let wrote = '';
   if (fs.existsSync(specPath)) {
     const spec = fs.readFileSync(specPath, 'utf8');
     try {
@@ -90,7 +88,6 @@ function heal({ sliceDir, slice, base, source, dataDir }) {
       if (next !== spec) {
         const err = writeAtomic(sliceDir, specFile, next);
         if (err) return err;
-        wrote += next;
       }
     } catch {
       // A specification without the generated block is left as it is; the checks report it when the slice is written again.
@@ -98,7 +95,6 @@ function heal({ sliceDir, slice, base, source, dataDir }) {
   }
   const err = writeAtomic(sliceDir, SOURCE_FILE, sourceText);
   if (err) return err;
-  logWrite({ writer: 'read_diagrams', backlog: base, kind: 'slices', text: wrote + sourceText, extra: { slice }, dataDir });
   return null;
 }
 

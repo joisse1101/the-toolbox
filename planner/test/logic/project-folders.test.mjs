@@ -7,7 +7,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 
 const pc = createRequire(import.meta.url)('../../logic/storage/project-config.cjs');
-const { initFolders, copyData, migrateOlderLayout, checkFolder, confineDir, saveConfig, loadConfig, FOLDERS, ROOT } = pc;
+const { initFolders, copyData, migrateOlderLayout, checkFolder, confineDir, saveConfig, loadConfig, ROOT } = pc;
 
 function tmp() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'project-folders-'));
@@ -20,31 +20,40 @@ function put(dir, rel, text = 'x') {
 
 // ---- init (3.1)
 
-test('init on an empty folder creates the data folder and only logs', () => {
+test('init on a missing folder creates the data folder and nothing else', () => {
   const dir = path.join(tmp(), 'data');
   const r = initFolders(dir);
-  assert.deepEqual(FOLDERS, ['logs']);
-  assert.deepEqual(r.created, ['logs']);
+  assert.deepEqual(r.created, ['data']);
   assert.deepEqual(r.existing, []);
   assert.equal(r.createdDataDir, true);
-  assert.deepEqual(fs.readdirSync(dir), ['logs']);
+  assert.deepEqual(fs.readdirSync(dir), []);
 });
 
-test('init on a folder that holds a backlog keeps it and creates logs', () => {
+test('init on an empty folder creates nothing and lists the folder as existing', () => {
+  const dir = tmp();
+  const r = initFolders(dir);
+  assert.deepEqual(r.created, []);
+  assert.deepEqual(r.existing, [path.basename(dir)]);
+  assert.equal(r.createdDataDir, false);
+  assert.deepEqual(fs.readdirSync(dir), []);
+});
+
+test('init on a folder that holds a backlog keeps it, lists it as existing and creates nothing', () => {
   const dir = tmp();
   put(dir, 'iam/user-stories.csv', 'keep');
   const r = initFolders(dir);
-  assert.deepEqual(r.existing, []);
-  assert.deepEqual(r.created, ['logs']);
+  assert.deepEqual(r.existing, [path.basename(dir), 'iam']);
+  assert.deepEqual(r.created, []);
+  assert.deepEqual(fs.readdirSync(dir), ['iam']);
   assert.equal(fs.readFileSync(path.join(dir, 'iam', 'user-stories.csv'), 'utf8'), 'keep');
 });
 
 test('init a second time creates nothing', () => {
-  const dir = tmp();
+  const dir = path.join(tmp(), 'data');
   initFolders(dir);
   const r = initFolders(dir);
   assert.deepEqual(r.created, []);
-  assert.deepEqual(r.existing, FOLDERS);
+  assert.deepEqual(r.existing, ['data']);
   assert.equal(r.createdDataDir, false);
 });
 

@@ -60,9 +60,10 @@ test('every skill present gets its logic, support helpers and guidelines, each c
   runSync(skills, out);
   for (const skill of Object.keys(SKILLS)) {
     const files = filesUnder(path.join(out, skill));
-    for (const expected of ['lib/backlog/model.js', 'lib/skill-support/resolve-data-dir.mjs', 'lib/skill-support/write-atomic.mjs', 'lib/storage/write-log.cjs', 'references/product-backlog.md']) {
+    for (const expected of ['lib/backlog/model.js', 'lib/skill-support/resolve-data-dir.mjs', 'lib/skill-support/write-atomic.mjs', 'references/product-backlog.md']) {
       assert.ok(files.includes(expected), `${skill} lacks ${expected}`);
     }
+    assert.equal(files.includes('lib/storage/write-log.cjs'), false, `${skill} copies the removed write log`);
     assert.equal(files.some((f) => f === 'lib/storage/paths.cjs' || f === 'lib/storage/project-config.cjs'), false, `${skill} copies the planner's config reader`);
     assert.equal(files.some((f) => f.startsWith('lib/diagrams/')), false, `${skill} copies diagram logic`);
     for (const f of files) {

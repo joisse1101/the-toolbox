@@ -26,13 +26,6 @@ export const pathOf = (dataDir, name, kind) => bp.backlogFile(dataDir, name, kin
 export const decidedPath = (dataDir, name) => bp.reviewDecidedFile(dataDir, name);
 export const slicesPath = (dataDir, name) => bp.slicesDir(dataDir, name);
 export const backlogPath = (dataDir, name) => bp.backlogDir(dataDir, name);
-export const logPath = (dataDir) => bp.logFile(dataDir);
-
-// The lines of the write log, parsed (empty when there is none).
-export function logLines(dataDir) {
-  const file = bp.logFile(dataDir);
-  return fs.existsSync(file) ? fs.readFileSync(file, 'utf8').trim().split('\n').map((l) => JSON.parse(l)) : [];
-}
 
 // The committed sample data (`test/sample-data/`) is in the one-folder-per-backlog layout. This is the one place that reads it:
 // it copies the parts a test asks for into a temp data folder and returns that folder, so no test writes into the sample.

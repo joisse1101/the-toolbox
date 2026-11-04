@@ -12,7 +12,7 @@ Two separate things live here.
 | `planner/portal/web/` | The React pages and the Vite config. Builds into `planner/portal/dist/`. |
 | `planner/portal/server/` | `server.cjs`: serves `planner/portal/dist/` and the CSV file API. |
 | `planner/logic/` | Pure logic with no UI or server, by domain: CSV parsing, the story model, IDs, reviews, proposals, the lexicon, storage paths. Used by the portal and copied into the story skills by the sync script. |
-| `planner/data/` | Your private data (git-ignored): one folder per backlog (see [Data layout](#data-layout)) and `logs/` (`writes.jsonl`, one line per save by the portal or a writer, no contents: it shows who wrote a file last). The folder is set in the project config (see [Project config](#project-config)). Coming from the older layout (`backlogs/`, `reviews/`, ...)? See [Data layout](#data-layout). |
+| `planner/data/` | Your private data (git-ignored): one folder per backlog (see [Data layout](#data-layout)). The folder is set in the project config (see [Project config](#project-config)). Coming from the older layout (`backlogs/`, `reviews/`, ...)? See [Data layout](#data-layout). |
 | `planner/guidelines/` | Backlog standards, point sizing and diagram conventions, shown in the portal and copied into the story skills. |
 | `planner/scripts/` | `sync-skill-logic.mjs`: writes the shared logic and guidelines into each story skill (see [Story skills](#story-skills)). |
 | `openspec/` | Specs and change history (must stay at the root for the OpenSpec CLI). |
@@ -39,7 +39,7 @@ You can still run the pieces yourself: `npm run build`, `node planner/portal/ser
 - `dataDir`: the folder holding your data, absolute or relative to the config file's folder. Default: `planner/data`, also used when there is no config file.
 - Both keys are optional. An unknown key or a bad value stops the server with a message naming it.
 - `PLANNER_CONFIG` names another config file to use instead.
-- Settings tab: change the project name or the data folder while the portal runs. The data folder box is read-only: Change folder opens your system's folder dialog. The switch is live, and it offers to create the data folder and `logs/` in an empty folder or copy your data into it. When the folder still holds the older layout, the tab offers **Migrate** (see [Data layout](#data-layout)).
+- Settings tab: change the project name or the data folder while the portal runs. The data folder box is read-only: Change folder opens your system's folder dialog. The switch is live, and it offers to create the data folder in an empty folder or copy your data into it. When the folder still holds the older layout, the tab offers **Migrate** (see [Data layout](#data-layout)).
 - The story skills find the data folder in this order: the file `PLANNER_CONFIG` names, else a `planner.config.yaml` in the current folder or the nearest parent, else they ask you. They read only the `dataDir` line, from a flat `key: value` file. Restart a Claude session after you switch the data folder.
 
 Coming from the `PLANNER_DATA_DIR` or `TLT_DATA_DIR` variable?
@@ -58,10 +58,9 @@ Each backlog is one folder in the data folder, named by the backlog's name (no `
 <dataDir>/<backlog>/lexicon/lexicon-suggestions.csv       suggested term changes
 <dataDir>/<backlog>/slices/<slice>/                       jois-story-plan documents
 <dataDir>/<backlog>/context-map.json, context-map.md
-<dataDir>/logs/writes.jsonl                               the write log
 ```
 
-- A folder is a backlog when it holds `user-stories.csv`. `logs` is reserved and cannot be a backlog name.
+- A folder is a backlog when it holds `user-stories.csv`. `logs` is reserved and cannot be a backlog name (earlier versions kept a `logs/` folder there).
 - Older layout (it may also hold a `repo.json` per backlog, which is copied but no longer used): `backlogs/`, `reviews/`, `proposals/`, `lexicons/`, `lexicon-suggestions/` and `diagrams/` (one file per backlog in each).
   - The portal shows a notice when the data folder holds it. **Migrate** in the Settings tab copies it into the new layout on request only.
   - It never changes or deletes the old files, never overwrites a new file, reads each copy back, and reports the files it could not match.

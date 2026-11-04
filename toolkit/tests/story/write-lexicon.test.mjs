@@ -175,5 +175,4 @@ test('CLI: --check reports the terms it would add and writes no file; a bad item
   assert.match(bad.stderr, /Nothing was written\. 1 problem:/);
   assert.equal(spawnSync('node', [SCRIPT, 'data.csv', '--oops'], { input: '[]', env, encoding: 'utf8' }).status, 2);
   assert.deepEqual(fs.readdirSync(path.dirname(pathOf(root, 'data', 'lexicon'))), before, 'no file was created');
-  assert.equal(fs.existsSync(path.join(root, 'logs', 'writes.jsonl')), false, 'nothing was logged');
 });
