@@ -84,7 +84,9 @@ The GitHub wiki is a one-way copy of them.
 5. **Add the publish workflow.**
    - This comes after the checks, so a repo never publishes pages that nothing guards.
    - Ask first. Then write `.github/workflows/wiki-publish.yml` from `workflows/wiki-publish.yml`.
-   - After it is added, state the setup notes below.
+   - If the file already holds the markers, follow Markers instead: show the diff and ask before replacing.
+   - After it is added or replaced, state the setup notes below.
+   - After a no, or when the block is unchanged, do not state them.
 6. **Offer `CLAUDE.md` routing.**
    - Ask separately. The block comes from `claude-md-routing.md`.
    - If a root `CLAUDE.md` exists, add the block between markers and do not rewrite the rest.
@@ -101,7 +103,8 @@ The GitHub wiki is a one-way copy of them.
    - Read each file written from disk and check its marker lines appear exactly once each, as the Markers section defines them.
    - List a part as added only after this read-back matched.
 9. **Report in one line**, in the form below.
-   - Then state the setup notes if the publish workflow was added.
+   - Then state the setup notes if the publish workflow was added or replaced.
+   - Then, if the user declined a replacement and `python scripts/check_docs.py` still fails, name the file and say the check keeps failing until the block is replaced or fixed by hand.
    - Then say the first real publish is unchecked: it runs only on GitHub.
 
    ```
@@ -116,7 +119,7 @@ The GitHub wiki is a one-way copy of them.
 
 ## Setup notes
 
-State these four facts once the publish workflow is added, before the report:
+State these four facts once the publish workflow is added or replaced, before the report:
 
 - The repo's wiki must be enabled (Settings, Features, Wikis).
 - One first wiki page must be created once in the web interface. Git cannot clone an empty wiki.
