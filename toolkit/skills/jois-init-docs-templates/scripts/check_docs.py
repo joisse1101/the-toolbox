@@ -13,6 +13,8 @@ Checks:
   5. the generated navigation is up to date (what `build_wiki.py --write-nav` would write)
   6. no file under `wiki/` other than markdown (it would not reach the wiki)
   7. no two pages share one flat name
+  8. `.github/workflows/wiki-publish.yml`, when present, has a non-comment line that runs
+     `build_wiki.py --out` (without it `.md` links reach the wiki unrewritten)
 """
 
 from __future__ import annotations
@@ -34,6 +36,8 @@ INLINE_CODE_RE = re.compile(r"`([^`\n]+)`")
 # Looks like a repo path: two or more segments separated by `/`, no spaces or glob/template characters.
 PATH_RE = re.compile(r"^(?:\./)?[\w.@-]+(?:/[\w.@-]+)+/?$")
 URL_LIKE = ("http://", "https://", "//")
+WORKFLOW_FILE = ".github/workflows/wiki-publish.yml"
+WORKFLOW_BUILDER_WORDS = ("build_wiki.py", "--out")
 
 
 def _lines_outside_fences(text: str) -> list[tuple[int, str]]:
@@ -146,6 +150,19 @@ def check_not_published(wiki: Path) -> list[str]:
     ]
 
 
+def check_publish_workflow(root: Path) -> list[str]:
+    """The publish workflow must run the builder, or `.md` links reach the wiki unrewritten."""
+    path = root / WORKFLOW_FILE
+    if not path.is_file():
+        return []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.lstrip().startswith("#") and all(word in line for word in WORKFLOW_BUILDER_WORDS):
+            return []
+    return [
+        f"{WORKFLOW_FILE}:1: no step runs `build_wiki.py --out`, so `.md` links would reach the wiki unrewritten"
+    ]
+
+
 def check_docs(root: Path) -> list[str]:
     wiki = root / build_wiki.WIKI_DIR
     if not wiki.is_dir():
@@ -163,6 +180,7 @@ def check_docs(root: Path) -> list[str]:
         + check_claude_sizes(root, claude)
         + check_navigation(wiki)
         + check_not_published(wiki)
+        + check_publish_workflow(root)
     )
 
 

@@ -4,8 +4,8 @@ description: "Set up the docs process in this project: nested pages in wiki/, a 
 allowed-tools: Bash(git status:*), Bash(git remote:*), Bash(git diff:*), Bash(python scripts/build_wiki.py:*), Bash(python scripts/check_docs.py:*), Bash(python -m pytest scripts/tests:*), Read, Glob, Edit, Write
 disable-model-invocation: true
 metadata:
-  version: "1.0.0"
-  last_updated: "2026-11-03"
+  version: "1.1.0"
+  last_updated: "2026-11-04"
 ---
 
 Set the docs process up in the project this runs in.
@@ -35,10 +35,14 @@ The GitHub wiki is a one-way copy of them.
 - A marker is a whole line that starts, after any indent, with the comment opener and the marker text.
 - Text inside a line, such as a string in a script that names the marker, is not a marker.
 - Every template already carries its markers, so copy it as it is.
-- If the target already holds the markers, replace the lines from the begin marker to the end marker in place.
+- If the target already holds the markers, compare the lines between them with the template.
+- If they are the same, report the block as unchanged.
+- If they differ, show the diff and ask before replacing the block.
+- A yes replaces the lines from the begin marker to the end marker in place.
+- A no leaves the block as it is and the report shows the part as `skipped (declined)`.
 - Keep every line outside the markers as it is.
 - Never add a second copy of a block.
-- A hand edit between the markers is overwritten on the next run.
+- A hand edit between the markers is never overwritten without a yes.
 
 ## Files without markers
 
@@ -80,7 +84,9 @@ The GitHub wiki is a one-way copy of them.
 5. **Add the publish workflow.**
    - This comes after the checks, so a repo never publishes pages that nothing guards.
    - Ask first. Then write `.github/workflows/wiki-publish.yml` from `workflows/wiki-publish.yml`.
-   - After it is added, state the setup notes below.
+   - If the file already holds the markers, follow Markers instead: show the diff and ask before replacing.
+   - After it is added or replaced, state the setup notes below.
+   - After a no, or when the block is unchanged, do not state them.
 6. **Offer `CLAUDE.md` routing.**
    - Ask separately. The block comes from `claude-md-routing.md`.
    - If a root `CLAUDE.md` exists, add the block between markers and do not rewrite the rest.
@@ -97,22 +103,23 @@ The GitHub wiki is a one-way copy of them.
    - Read each file written from disk and check its marker lines appear exactly once each, as the Markers section defines them.
    - List a part as added only after this read-back matched.
 9. **Report in one line**, in the form below.
-   - Then state the setup notes if the publish workflow was added.
+   - Then state the setup notes if the publish workflow was added or replaced.
+   - Then, if the user declined a replacement and `python scripts/check_docs.py` still fails, name the file and say the check keeps failing until the block is replaced or fixed by hand.
    - Then say the first real publish is unchecked: it runs only on GitHub.
 
    ```
    checker: added | builder: added | workflows: added | PR line: added | CLAUDE.md routing: skipped | OpenSpec guidance: skipped
    ```
 
-   Each field takes one value: `added`, `replaced`, `unchanged` or `skipped`.
+   Each field takes one value: `added`, `replaced`, `unchanged`, `skipped` or `skipped (declined)`.
    - `checker`: `scripts/check_docs.py` and its test.
    - `builder`: `scripts/build_wiki.py`, its test and the skeleton.
-   - `workflows`: `docs-check.yml` and `wiki-publish.yml`. If the two differ, write `docs-check=added, wiki-publish=skipped`.
+   - `workflows`: `docs-check.yml` and `wiki-publish.yml`. If the two differ, write `docs-check=added, wiki-publish=skipped (declined)` when a replacement was declined.
    - `PR line`, `CLAUDE.md routing` and `OpenSpec guidance`: the block in its file.
 
 ## Setup notes
 
-State these four facts once the publish workflow is added, before the report:
+State these four facts once the publish workflow is added or replaced, before the report:
 
 - The repo's wiki must be enabled (Settings, Features, Wikis).
 - One first wiki page must be created once in the web interface. Git cannot clone an empty wiki.
