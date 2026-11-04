@@ -33,7 +33,7 @@ export default function SettingsTab({ hidden, settingsState }) {
   return (
     <section id="settingsView" className="card" role="tabpanel" aria-labelledby="tabSettings" hidden={hidden}>
       {error && <p className="warning" role="alert">{error}</p>}
-      {switched && <p className="muted" role="status">{SESSION_NOTE}</p>}
+      {switched && !error && <p className="muted" role="status">{SESSION_NOTE}</p>}
       {settings && (
         <>
           <div className="row">
