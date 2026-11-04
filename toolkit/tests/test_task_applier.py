@@ -98,6 +98,14 @@ def test_apply_command_allows_monitor():
     assert "Monitor" in [tool.strip() for tool in allowed.split(":", 1)[1].split(",")]
 
 
+def test_apply_command_names_the_fix_loop_limits():
+    text = APPLY_COMMAND.read_text(encoding="utf-8")
+    assert "A second round ends with a failure still unexplained" in text
+    assert "The report ends in `blocked: <question>`" in text
+    assert "the same command and the same output line" in text
+    assert "Never take the next group while a failure of the current group is unexplained" in text
+
+
 def test_no_toolkit_file_allows_rm():
     for path in TOOLKIT.rglob("*.md"):
         if ".venv" in path.parts:
