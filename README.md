@@ -37,10 +37,17 @@ You can still run the pieces yourself: `npm run build`, `node planner/portal/ser
 - The config file is `planner/planner.config.yaml`. It is git-ignored: copy `planner/planner.config.example.yaml` and edit it.
 - `projectName`: shown in the portal header. Default: empty.
 - `dataDir`: the folder holding your data, absolute or relative to the config file's folder. Default: `planner/data`, also used when there is no config file.
-- Both keys are optional. An unknown key or a bad value stops the server with a message naming it.
+- `codeBase`: the folder of a code base you work on, absolute or relative to the config file's folder. The data folder is then `<codeBase>/.plans/`, with the layout in [Data layout](#data-layout). You never type `.plans`.
+- Set `codeBase` or `dataDir`, not both. A config with both stops the server with a message naming both keys.
+- All keys are optional. An unknown key or a bad value stops the server with a message naming it.
 - `PLANNER_CONFIG` names another config file to use instead.
 - Settings tab: change the project name or the data folder while the portal runs. The data folder box is read-only: Change folder opens your system's folder dialog. The switch is live, and it offers to create the data folder in an empty folder or copy your data into it. When the folder still holds the older layout, the tab offers **Migrate** (see [Data layout](#data-layout)).
-- The story skills find the data folder in this order: the file `PLANNER_CONFIG` names, else a `planner.config.yaml` in the current folder or the nearest parent, else they ask you. They read only the `dataDir` line, from a flat `key: value` file. Restart a Claude session after you switch the data folder.
+- Settings tab, **Change code base**: pick a code base folder with the same dialog. **Init** creates only `.plans/` in it. If you use `dataDir`, the tab offers to copy your data into the code base's `.plans/` without overwriting a file, then switches the config to `codeBase`. Declining changes nothing, and your old folder keeps its files.
+- The story skills look only in the folder the Claude session started in, never in a parent folder. Their order is: the file `PLANNER_CONFIG` names, else a `.plans/` folder in the current folder, else a `planner.config.yaml` in the current folder. They read only the `codeBase` and `dataDir` lines, from a flat `key: value` file.
+- If nothing is found, a skill tells you and asks before creating `.plans/` in the current folder. `jois-story-explore` only reports it, because it never writes. A skill creates an empty `.plans/` but never a backlog: create a backlog in the portal.
+- Start the session in the code base folder. A session started in a sub-folder finds nothing, and the message names the folder it looked in.
+- Restart a Claude session after you switch the data folder.
+- Committing `.plans/` is the code base owner's choice. Anyone with the code base sees a committed `.plans/`, and it stays in history. The planner never edits `.gitignore`: add `.plans/` there yourself to keep it private.
 
 Coming from the `PLANNER_DATA_DIR` or `TLT_DATA_DIR` variable?
 - The variables are no longer read.
@@ -60,6 +67,7 @@ Each backlog is one folder in the data folder, named by the backlog's name (no `
 <dataDir>/<backlog>/context-map.json, context-map.md
 ```
 
+- `<dataDir>` here is whichever data folder is served: `planner/data`, a `dataDir` folder, or `<codeBase>/.plans`.
 - A folder is a backlog when it holds `user-stories.csv`. `logs` is reserved and cannot be a backlog name (earlier versions kept a `logs/` folder there).
 - Older layout (it may also hold a `repo.json` per backlog, which is copied but no longer used): `backlogs/`, `reviews/`, `proposals/`, `lexicons/`, `lexicon-suggestions/` and `diagrams/` (one file per backlog in each).
   - The portal shows a notice when the data folder holds it. **Migrate** in the Settings tab copies it into the new layout on request only.
