@@ -7,7 +7,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 
 const pc = createRequire(import.meta.url)('../../logic/storage/project-config.cjs');
-const { initFolders, copyData, migrateOlderLayout, checkFolder, confineDir, saveConfig, loadConfig, ROOT } = pc;
+const { initFolders, copyData, migrateOlderLayout, checkFolder, confineDir, confineCodeBase, checkCodeBase, initCodeBase, copyToCodeBase, saveConfig, loadConfig, ROOT } = pc;
 
 function tmp() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'project-folders-'));
@@ -323,6 +323,151 @@ test('check refuses a junction that leads into planner/logic', (t) => {
     fs.unlinkSync(link); // removes the junction only
   }
   assert.ok(fs.existsSync(path.join(ROOT, 'planner', 'logic', 'storage')));
+});
+
+// ---- code base: confinement (2.1)
+
+test('code base: a relative path is refused', () => {
+  const r = confineCodeBase('..\\elsewhere');
+  assert.equal(r.ok, false);
+  assert.match(r.reason, /absolute/);
+});
+
+test('code base: a system folder and a drive root are refused', () => {
+  const sys = process.platform === 'win32' ? process.env.SystemRoot : '/etc';
+  const r = confineCodeBase(sys);
+  assert.equal(r.ok, false);
+  assert.match(r.reason, /system/);
+  const root = confineCodeBase(path.parse(os.tmpdir()).root);
+  assert.equal(root.ok, false);
+  assert.match(root.reason, /root/);
+});
+
+test('code base: the home folder itself is refused, a folder inside it is accepted', () => {
+  const home = tmp();
+  const r = confineCodeBase(home, { home });
+  assert.equal(r.ok, false);
+  assert.match(r.reason, /home/);
+  const inner = path.join(home, 'payments');
+  fs.mkdirSync(inner);
+  const ok = confineCodeBase(inner, { home });
+  assert.equal(ok.ok, true);
+  assert.equal(ok.plansDir, path.join(ok.dir, '.plans'));
+});
+
+test('code base: a folder inside the repository is refused, planner/data included', () => {
+  const r = confineCodeBase(path.join(ROOT, 'planner', 'logic'));
+  assert.equal(r.ok, false);
+  assert.match(r.reason, /repository/);
+  assert.equal(confineCodeBase(path.join(ROOT, 'planner', 'data')).ok, false, 'no planner/data exception');
+  assert.equal(confineCodeBase(ROOT).ok, false);
+});
+
+test('code base: a missing folder is refused and not created', () => {
+  const missing = path.join(tmp(), 'nope');
+  const r = confineCodeBase(missing);
+  assert.equal(r.ok, false);
+  assert.match(r.reason, /does not exist/);
+  assert.equal(fs.existsSync(missing), false);
+});
+
+test('code base: a path that is a file is refused', () => {
+  const dir = tmp();
+  put(dir, 'a.txt');
+  assert.match(confineCodeBase(path.join(dir, 'a.txt')).reason, /file/);
+});
+
+test('code base: a file named .plans is refused and said so', () => {
+  const dir = tmp();
+  put(dir, '.plans', 'x');
+  const r = confineCodeBase(dir);
+  assert.equal(r.ok, false);
+  assert.match(r.reason, /\.plans/);
+  assert.match(r.reason, /file/);
+});
+
+test('code base: an existing folder with and without .plans is accepted', () => {
+  const dir = tmp();
+  assert.equal(confineCodeBase(dir).ok, true);
+  fs.mkdirSync(path.join(dir, '.plans'));
+  assert.equal(confineCodeBase(dir).ok, true);
+});
+
+// ---- code base: check, init and copy on .plans (2.2)
+
+test('code base check: missing .plans, empty .plans, has-planner-files, refused', () => {
+  const cb = tmp();
+  assert.equal(checkCodeBase(cb).status, 'missing');
+  assert.equal(checkCodeBase(cb).dir, path.join(fs.realpathSync.native(cb), '.plans'));
+  fs.mkdirSync(path.join(cb, '.plans'));
+  assert.equal(checkCodeBase(cb).status, 'empty');
+  put(cb, '.plans/iam/user-stories.csv');
+  assert.equal(checkCodeBase(cb).status, 'has-planner-files');
+  assert.equal(checkCodeBase('relative').status, 'refused');
+  assert.equal(checkCodeBase(path.join(cb, 'nope')).status, 'refused');
+});
+
+test('code base init creates only .plans and lists it as created', () => {
+  const cb = tmp();
+  put(cb, 'src/app.js', 'code');
+  const r = initCodeBase(cb);
+  assert.deepEqual(r.created, ['.plans']);
+  assert.deepEqual(r.existing, []);
+  assert.equal(r.createdDataDir, true);
+  assert.deepEqual(fs.readdirSync(cb).sort(), ['.plans', 'src']);
+  assert.deepEqual(fs.readdirSync(path.join(cb, '.plans')), []);
+  assert.equal(fs.readFileSync(path.join(cb, 'src', 'app.js'), 'utf8'), 'code');
+});
+
+test('code base init twice creates nothing the second time and lists .plans as existing', () => {
+  const cb = tmp();
+  initCodeBase(cb);
+  put(cb, '.plans/iam/user-stories.csv', 'keep');
+  const r = initCodeBase(cb);
+  assert.deepEqual(r.created, []);
+  assert.deepEqual(r.existing, ['.plans', 'iam']);
+  assert.equal(r.createdDataDir, false);
+  assert.equal(fs.readFileSync(path.join(cb, '.plans', 'iam', 'user-stories.csv'), 'utf8'), 'keep');
+});
+
+test('code base init refuses a missing code base and creates nothing', () => {
+  const missing = path.join(tmp(), 'nope');
+  const r = initCodeBase(missing);
+  assert.match(r.refused, /does not exist/);
+  assert.equal(fs.existsSync(missing), false);
+});
+
+test('code base init refuses a .plans that is a file', () => {
+  const cb = tmp();
+  put(cb, '.plans', 'x');
+  assert.match(initCodeBase(cb).refused, /file/);
+  assert.equal(fs.readFileSync(path.join(cb, '.plans'), 'utf8'), 'x');
+});
+
+test('code base copy skips an existing file, copies the rest and leaves the source untouched', () => {
+  const s = tmp();
+  put(s, 'iam/user-stories.csv', 'theirs');
+  put(s, 'iam/lexicon.csv', 'lex');
+  const cb = tmp();
+  put(cb, '.plans/iam/user-stories.csv', 'mine');
+  const r = copyToCodeBase(s, cb);
+  assert.deepEqual(r.skipped, [{ file: 'iam/user-stories.csv', reason: 'exists' }]);
+  assert.deepEqual(r.copied, ['iam/lexicon.csv']);
+  assert.equal(fs.readFileSync(path.join(cb, '.plans', 'iam', 'user-stories.csv'), 'utf8'), 'mine');
+  assert.equal(fs.readFileSync(path.join(cb, '.plans', 'iam', 'lexicon.csv'), 'utf8'), 'lex');
+  assert.deepEqual(fs.readdirSync(s, { recursive: true }).map((n) => n.split(path.sep).join('/')).sort(), ['iam', 'iam/lexicon.csv', 'iam/user-stories.csv']);
+  assert.equal(fs.readFileSync(path.join(s, 'iam', 'user-stories.csv'), 'utf8'), 'theirs');
+});
+
+test('code base copy creates .plans when missing and refuses a missing code base', () => {
+  const s = tmp();
+  put(s, 'iam/user-stories.csv', 'x');
+  const cb = tmp();
+  assert.deepEqual(copyToCodeBase(s, cb).copied, ['iam/user-stories.csv']);
+  assert.ok(fs.existsSync(path.join(cb, '.plans', 'iam', 'user-stories.csv')));
+  const missing = path.join(tmp(), 'nope');
+  assert.match(copyToCodeBase(s, missing).refused, /does not exist/);
+  assert.equal(fs.existsSync(missing), false);
 });
 
 // ---- saving (3.4)

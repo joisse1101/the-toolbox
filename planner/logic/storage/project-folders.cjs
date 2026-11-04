@@ -7,7 +7,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const { KIND_FILES, listBacklogs, detectOlderLayout, validateBacklogName } = require('./backlog-paths.cjs');
+const { KIND_FILES, PLANS_DIR, listBacklogs, detectOlderLayout, validateBacklogName } = require('./backlog-paths.cjs');
 
 const ROOT = path.resolve(__dirname, '..', '..', '..');
 
@@ -43,18 +43,25 @@ function systemFolders(env = process.env) {
 
 // Decides whether the browser may name `dir` as a data folder. Returns { ok: true, dir (real path) } or
 // { ok: false, reason }. Absolute paths only; links are resolved before any check.
-function confineDir(dir, { root = ROOT, env = process.env, home = os.homedir() } = {}) {
+function confineDir(dir, options = {}) {
+  return confinePath(dir, options, { noun: 'data folder', allowPlannerData: true });
+}
+
+// The shared rules; `noun` is the word the reasons use, `allowPlannerData` the one repository exception.
+function confinePath(dir, { root = ROOT, env = process.env, home = os.homedir() }, { noun, allowPlannerData }) {
   if (typeof dir !== 'string' || !dir.trim()) return { ok: false, reason: 'The folder must not be empty.' };
   if (!path.isAbsolute(dir.trim())) return { ok: false, reason: 'The folder must be an absolute path.' };
   const real = realResolve(dir.trim());
-  if (path.parse(real).root === real) return { ok: false, reason: 'A drive root cannot be the data folder.' };
+  if (path.parse(real).root === real) return { ok: false, reason: `A drive root cannot be the ${noun}.` };
   if (systemFolders(env).some((s) => path.relative(s, real) === '' || (s !== path.parse(s).root && inside(s, real)))) {
-    return { ok: false, reason: 'A system folder cannot be the data folder.' };
+    return { ok: false, reason: `A system folder cannot be the ${noun}.` };
   }
-  if (path.relative(realResolve(home), real) === '') return { ok: false, reason: 'The home folder itself cannot be the data folder; pick a folder inside it.' };
+  if (path.relative(realResolve(home), real) === '') return { ok: false, reason: `The home folder itself cannot be the ${noun}; pick a folder inside it.` };
   const realRoot = realResolve(root);
-  if (inside(realRoot, real) && !inside(path.join(realRoot, 'planner', 'data'), real)) {
-    return { ok: false, reason: 'A folder inside the repository cannot be the data folder, except planner/data.' };
+  if (inside(realRoot, real) && !(allowPlannerData && inside(path.join(realRoot, 'planner', 'data'), real))) {
+    return { ok: false, reason: allowPlannerData
+      ? `A folder inside the repository cannot be the ${noun}, except planner/data.`
+      : `A folder inside the repository cannot be the ${noun}.` };
   }
   try {
     if (!fs.statSync(real).isDirectory()) return { ok: false, reason: 'That path is a file, not a folder.' };
@@ -62,6 +69,22 @@ function confineDir(dir, { root = ROOT, env = process.env, home = os.homedir() }
     if (err.code !== 'ENOENT' && err.code !== 'ENOTDIR') return { ok: false, reason: `Cannot read that path (${err.message}).` };
   }
   return { ok: true, dir: real };
+}
+
+// Decides whether the browser may name `dir` as a code base. Same rules as confineDir with no planner/data exception,
+// and the folder must exist (it is never created) and must not hold a file named `.plans`. Returns
+// { ok: true, dir (real path of the code base), plansDir } or { ok: false, reason }.
+function confineCodeBase(dir, options = {}) {
+  const c = confinePath(dir, options, { noun: 'code base', allowPlannerData: false });
+  if (!c.ok) return c;
+  if (!isDir(c.dir)) return { ok: false, reason: 'The code base folder does not exist.' };
+  const plansDir = path.join(c.dir, PLANS_DIR);
+  try {
+    if (!fs.statSync(plansDir).isDirectory()) return { ok: false, reason: `The code base holds a file named ${PLANS_DIR}, not a folder.` };
+  } catch (err) {
+    if (err.code !== 'ENOENT' && err.code !== 'ENOTDIR') return { ok: false, reason: `Cannot read ${PLANS_DIR} (${err.message}).` };
+  }
+  return { ok: true, dir: c.dir, plansDir };
 }
 
 function isDir(p) {
@@ -77,10 +100,38 @@ function isDir(p) {
 function checkFolder(dir, options) {
   const c = confineDir(dir, options);
   if (!c.ok) return { status: 'refused', reason: c.reason };
-  if (!isDir(c.dir)) return { status: 'missing', dir: c.dir };
-  if (listBacklogs(c.dir).length) return { status: 'has-planner-files', dir: c.dir };
-  if (detectOlderLayout(c.dir).length) return { status: 'older-layout', dir: c.dir };
-  return { status: 'empty', dir: c.dir };
+  return classify(c.dir);
+}
+
+function classify(dir) {
+  if (!isDir(dir)) return { status: 'missing', dir };
+  if (listBacklogs(dir).length) return { status: 'has-planner-files', dir };
+  if (detectOlderLayout(dir).length) return { status: 'older-layout', dir };
+  return { status: 'empty', dir };
+}
+
+// The same check for a code base: the answer is about `<codeBase>/.plans` (`missing` when it is not there yet), with
+// `codeBase` and `dir` (the .plans folder) in the reply. A refused code base answers { status: 'refused', reason }.
+function checkCodeBase(codeBase, options) {
+  const c = confineCodeBase(codeBase, options);
+  if (!c.ok) return { status: 'refused', reason: c.reason };
+  return { ...classify(c.plansDir), codeBase: c.dir };
+}
+
+// Init for a code base: creates `<codeBase>/.plans` and nothing else; the code base itself must exist. Returns the
+// initFolders reply (created / existing lists) or { refused }.
+function initCodeBase(codeBase, options) {
+  const c = confineCodeBase(codeBase, options);
+  if (!c.ok) return { refused: c.reason };
+  return initFolders(c.plansDir);
+}
+
+// Copy for a code base: copyData from `source` into `<codeBase>/.plans` (never overwrites, source untouched). Returns
+// the copyData reply or { refused }.
+function copyToCodeBase(source, codeBase, { confine, ...copyOptions } = {}) {
+  const c = confineCodeBase(codeBase, confine);
+  if (!c.ok) return { refused: c.reason };
+  return copyData(source, c.plansDir, copyOptions);
 }
 
 // Creates the data folder if missing and nothing else (a backlog folder is created with its backlog). Returns
@@ -242,4 +293,7 @@ function migrateOlderLayout(dataDir, { copyFile = fs.copyFileSync, readFile = fs
   return { copied, skipped, failed };
 }
 
-module.exports = { ROOT, inside, realResolve, confineDir, checkFolder, initFolders, copyData, migrateOlderLayout };
+module.exports = {
+  ROOT, inside, realResolve, confineDir, confineCodeBase, checkFolder, checkCodeBase, initFolders, initCodeBase,
+  copyData, copyToCodeBase, migrateOlderLayout,
+};
