@@ -4,8 +4,8 @@ description: "Set up the docs process in this project: nested pages in wiki/, a 
 allowed-tools: Bash(git status:*), Bash(git remote:*), Bash(git diff:*), Bash(python scripts/build_wiki.py:*), Bash(python scripts/check_docs.py:*), Bash(python -m pytest scripts/tests:*), Read, Glob, Edit, Write
 disable-model-invocation: true
 metadata:
-  version: "1.0.0"
-  last_updated: "2026-11-03"
+  version: "1.1.0"
+  last_updated: "2026-11-04"
 ---
 
 Set the docs process up in the project this runs in.
@@ -35,10 +35,14 @@ The GitHub wiki is a one-way copy of them.
 - A marker is a whole line that starts, after any indent, with the comment opener and the marker text.
 - Text inside a line, such as a string in a script that names the marker, is not a marker.
 - Every template already carries its markers, so copy it as it is.
-- If the target already holds the markers, replace the lines from the begin marker to the end marker in place.
+- If the target already holds the markers, compare the lines between them with the template.
+- If they are the same, report the block as unchanged.
+- If they differ, show the diff and ask before replacing the block.
+- A yes replaces the lines from the begin marker to the end marker in place.
+- A no leaves the block as it is and the report shows the part as `skipped (declined)`.
 - Keep every line outside the markers as it is.
 - Never add a second copy of a block.
-- A hand edit between the markers is overwritten on the next run.
+- A hand edit between the markers is never overwritten without a yes.
 
 ## Files without markers
 
@@ -104,10 +108,10 @@ The GitHub wiki is a one-way copy of them.
    checker: added | builder: added | workflows: added | PR line: added | CLAUDE.md routing: skipped | OpenSpec guidance: skipped
    ```
 
-   Each field takes one value: `added`, `replaced`, `unchanged` or `skipped`.
+   Each field takes one value: `added`, `replaced`, `unchanged`, `skipped` or `skipped (declined)`.
    - `checker`: `scripts/check_docs.py` and its test.
    - `builder`: `scripts/build_wiki.py`, its test and the skeleton.
-   - `workflows`: `docs-check.yml` and `wiki-publish.yml`. If the two differ, write `docs-check=added, wiki-publish=skipped`.
+   - `workflows`: `docs-check.yml` and `wiki-publish.yml`. If the two differ, write `docs-check=added, wiki-publish=skipped (declined)` when a replacement was declined.
    - `PR line`, `CLAUDE.md routing` and `OpenSpec guidance`: the block in its file.
 
 ## Setup notes
