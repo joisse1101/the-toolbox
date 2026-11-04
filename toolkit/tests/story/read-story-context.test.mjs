@@ -570,5 +570,5 @@ test('CLI: without a data folder the script says so and exits non-zero', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'no-config-'));
   const r = spawnSync(process.execPath, [SCRIPT, 'data.csv'], { encoding: 'utf8', cwd: dir, env: { ...process.env, PLANNER_CONFIG: '' } });
   assert.equal(r.status, 1);
-  assert.match(r.stderr, /No data folder is set/);
+  assert.match(r.stderr, /No data folder was found/);
 });

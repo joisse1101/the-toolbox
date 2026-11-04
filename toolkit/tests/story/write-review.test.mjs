@@ -123,7 +123,7 @@ test('CLI: without a data folder it says so and writes nothing', () => {
   const env = { ...process.env, PLANNER_CONFIG: '' };
   const r = spawnSync(process.execPath, [SCRIPT, 'data.csv'], { input: '[]', encoding: 'utf8', env, cwd: root });
   assert.equal(r.status, 1);
-  assert.match(r.stderr, /No data folder is set/);
+  assert.match(r.stderr, /No data folder was found/);
   assert.equal(fs.existsSync(path.dirname(pathOf(root, 'data', 'review'))), false);
 });
 

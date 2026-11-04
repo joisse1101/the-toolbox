@@ -15,7 +15,7 @@ Help the user work out new stories for one backlog by talking them through. **Ne
 
 ## Data folder
 
-The script finds the backlog data folder itself: the config file named by the `PLANNER_CONFIG` variable, else a `planner.config.yaml` in the current folder or the nearest parent, reading its `dataDir` line only. If the script says no data folder is set or the config cannot be read, show the user its message and ask the user to set the `PLANNER_CONFIG` variable to the path of their `planner.config.yaml` in their shell, or to start the session from the folder that holds that file, then run the same command again. Do not prefix the command with the variable: every command you run starts with `node`. Never guess a folder.
+The script finds the backlog data folder itself, in the current folder only and never in a parent folder: the config file named by the `PLANNER_CONFIG` variable, else a `.plans` folder in the current folder, else a `planner.config.yaml` in the current folder (its `codeBase` or `dataDir` line). If the script says no data folder was found, report that to the user, name the folder it looked in, and say they can start the session in the code base folder or set `PLANNER_CONFIG`. This skill only reports it: it does not create `.plans` and has no script for it. If the script says the config or `.plans` cannot be used, show its message. Do not prefix the command with the variable: every command you run starts with `node`. Never guess a folder.
 
 ## Input
 

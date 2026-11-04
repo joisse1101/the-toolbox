@@ -255,7 +255,7 @@ test('cli: a script run with no data folder set says so and a bad stdin is named
   const root = setup();
   const noConfig = spawnSync(process.execPath, [path.join(plan.dir, 'read-diagrams.mjs'), 'sample'], { encoding: 'utf8', cwd: os.tmpdir(), env: { ...process.env, PLANNER_CONFIG: '' } });
   assert.equal(noConfig.status, 1);
-  assert.match(noConfig.stderr, /No data folder is set/);
+  assert.match(noConfig.stderr, /No data folder was found/);
   const bad = spawnSync(process.execPath, [path.join(plan.dir, 'write-diagram.mjs'), 'sample', '--check'], { input: '{ nope', encoding: 'utf8', env: { ...process.env, PLANNER_CONFIG: tempConfig(root) } });
   assert.equal(bad.status, 1);
   assert.match(bad.stderr, /not valid JSON/);

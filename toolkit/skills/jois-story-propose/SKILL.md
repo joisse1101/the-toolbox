@@ -1,7 +1,7 @@
 ---
 name: jois-story-propose
 description: Turn agreed user stories into proposed stories in `<backlog>/user-stories/proposals.csv`, where the portal's Proposed tab shows them for review and acceptance, agreed changes to stories already in the backlog into suggestions in `<backlog>/user-stories/review.csv`, which the story editor shows next to the field, agreed new terms into the backlog's lexicon in `<backlog>/lexicon.csv`, shown in the Lexicon tab, and agreed changes to terms already there (edit, rename, delete) into suggestions in `<backlog>/lexicon/lexicon-suggestions.csv`, which the user applies in the Lexicon tab. Shows the full drafts, edits and terms, asks one yes/no question, and writes only after the user confirms. Validates everything against the guidelines' format, the backlog and the lexicon rules, and never touches the backlog CSV. Use when the user wants to write, save or propose new stories, edits to existing stories or terms for the lexicon, or to continue from jois-story-explore.
-allowed-tools: Bash(node *read-story-context.mjs*), Bash(node *write-proposal.mjs*), Bash(node *write-lexicon.mjs*), Bash(node *suggest-lexicon.mjs*), Bash(node *write-review.mjs*)
+allowed-tools: Bash(node *read-story-context.mjs*), Bash(node *write-proposal.mjs*), Bash(node *write-lexicon.mjs*), Bash(node *suggest-lexicon.mjs*), Bash(node *write-review.mjs*), Bash(node *init-plans.mjs*)
 metadata:
   version: "1.0.0"
   last_updated: "2026-11-03"
@@ -23,7 +23,7 @@ Each writer also takes `--check`, which runs the same validation and writes noth
 
 ## Data folder
 
-The scripts find the backlog data folder themselves: the config file named by the `PLANNER_CONFIG` variable, else a `planner.config.yaml` in the current folder or the nearest parent, reading its `dataDir` line only. If a script says no data folder is set or the config cannot be read, show the user its message and ask the user to set the `PLANNER_CONFIG` variable to the path of their `planner.config.yaml` in their shell, or to start the session from the folder that holds that file, then run the same command again. Do not prefix the command with the variable: every command you run starts with `node`. Never guess a folder.
+The scripts find the backlog data folder themselves, in the current folder only and never in a parent folder: the config file named by the `PLANNER_CONFIG` variable, else a `.plans` folder in the current folder, else a `planner.config.yaml` in the current folder (its `codeBase` or `dataDir` line). If a script says no data folder was found, tell the user which folder it looked in and ask whether to create `.plans` there. Create it only on a yes, with `node <skill folder>/init-plans.mjs` run from the current folder (it creates `.plans` and nothing else, and refuses a file named `.plans`); on a no, create and write nothing. The user can instead start the session in the code base folder or set `PLANNER_CONFIG`. A new `.plans` holds no backlog: the user creates one in the planner. If a script says the config or `.plans` cannot be used, show its message. Do not prefix the command with the variable: every command you run starts with `node`. Never guess a folder.
 
 ## Input
 

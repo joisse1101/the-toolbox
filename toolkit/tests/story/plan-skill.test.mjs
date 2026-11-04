@@ -8,12 +8,12 @@ const skill = fs.readFileSync(path.join(PLAN_SKILL_DIR, 'SKILL.md'), 'utf8');
 const frontmatter = (text) => Object.fromEntries(/^---\n([\s\S]*?)\n---/.exec(text.replace(/\r\n/g, '\n'))[1].split('\n').filter((l) => /^[a-z-]+:/.test(l)).map((l) => [l.slice(0, l.indexOf(':')), l.slice(l.indexOf(':') + 1).trim()]));
 const body = skill.replace(/\r\n/g, '\n');
 
-test('the skill is named jois-story-plan, versioned, and allows only the four scripts and the file tools', () => {
+test('the skill is named jois-story-plan, versioned, and allows only its four scripts, the init script and the file tools', () => {
   const meta = frontmatter(skill);
   assert.equal(meta.name, 'jois-story-plan');
   assert.match(body, /metadata:\n  version: "1\.0\.0"\n  last_updated: "2026-11-03"/);
   assert.deepEqual(meta['allowed-tools'].split(/,\s*/).sort(), [
-    'Bash(node *read-context-map.mjs*)', 'Bash(node *read-diagrams.mjs*)', 'Bash(node *write-context-map.mjs*)', 'Bash(node *write-diagram.mjs*)', 'Glob', 'Grep', 'Read',
+    'Bash(node *init-plans.mjs*)', 'Bash(node *read-context-map.mjs*)', 'Bash(node *read-diagrams.mjs*)', 'Bash(node *write-context-map.mjs*)', 'Bash(node *write-diagram.mjs*)', 'Glob', 'Grep', 'Read',
   ]);
 });
 
