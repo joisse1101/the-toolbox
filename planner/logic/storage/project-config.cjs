@@ -1,17 +1,19 @@
 'use strict';
-// The project config: a YAML file with `projectName` and `dataDir`. Load, validate and default rules only; pure Node.
-// The file is planner/planner.config.yaml unless PLANNER_CONFIG names another one. A relative dataDir is resolved
-// against the folder that holds the config file.
+// The project config: a YAML file with `projectName` and one folder key, `codeBase` or `dataDir`. Load, validate and
+// default rules only; pure Node. The file is planner/planner.config.yaml unless PLANNER_CONFIG names another one. A
+// relative dataDir or codeBase is resolved against the folder that holds the config file. A codeBase's data folder is
+// `<codeBase>/.plans`.
 
 const fs = require('fs');
 const path = require('path');
 const YAML = require('yaml');
+const { PLANS_DIR } = require('./backlog-paths.cjs');
 const { confineDir, checkFolder, initFolders, copyData, migrateOlderLayout } = require('./project-folders.cjs');
 
 const ROOT = path.resolve(__dirname, '..', '..', '..');
 const DEFAULT_CONFIG_PATH = path.join(ROOT, 'planner', 'planner.config.yaml');
 const DEFAULT_DATA_DIR = path.join(ROOT, 'planner', 'data');
-const KEYS = ['projectName', 'dataDir'];
+const KEYS = ['projectName', 'codeBase', 'dataDir'];
 
 // The config file to read: PLANNER_CONFIG (relative to the working folder) or the default place.
 function configPath(env = process.env) {
@@ -30,11 +32,16 @@ function validateConfig(raw, file = 'config') {
     if (typeof raw.dataDir !== 'string') throw new Error(`${file}: "dataDir" must be text`);
     if (!raw.dataDir.trim()) throw new Error(`${file}: "dataDir" must not be empty`);
   }
+  if ('codeBase' in raw) {
+    if (typeof raw.codeBase !== 'string') throw new Error(`${file}: "codeBase" must be text`);
+    if (!raw.codeBase.trim()) throw new Error(`${file}: "codeBase" must not be empty`);
+  }
+  if ('codeBase' in raw && 'dataDir' in raw) throw new Error(`${file}: set only one of "codeBase" and "dataDir", found both`);
   return raw;
 }
 
 // Reads the config. A missing file gives the defaults; a bad one throws naming the key or the file.
-// Returns { projectName, dataDir (absolute), configPath, exists }.
+// Returns { projectName, codeBase (absolute, or null), dataDir (absolute), configPath, exists }.
 function loadConfig({ file = configPath() } = {}) {
   const abs = path.resolve(file);
   let text = null;
@@ -53,13 +60,18 @@ function loadConfig({ file = configPath() } = {}) {
     }
     raw = validateConfig(parsed, abs);
   }
-  const dataDir = raw.dataDir === undefined ? DEFAULT_DATA_DIR : path.resolve(path.dirname(abs), raw.dataDir.trim());
-  return { projectName: raw.projectName ?? '', dataDir, configPath: abs, exists: text !== null };
+  const codeBase = raw.codeBase === undefined ? null : path.resolve(path.dirname(abs), raw.codeBase.trim());
+  let dataDir = DEFAULT_DATA_DIR;
+  if (codeBase !== null) dataDir = path.join(codeBase, PLANS_DIR);
+  else if (raw.dataDir !== undefined) dataDir = path.resolve(path.dirname(abs), raw.dataDir.trim());
+  return { projectName: raw.projectName ?? '', codeBase, dataDir, configPath: abs, exists: text !== null };
 }
 
-// Saves `changes` ({ projectName?, dataDir? }) into the config file through the YAML document API, so comments the user
+// Saves `changes` ({ projectName?, dataDir?, codeBase? }) into the config file through the YAML document API, so comments the user
 // wrote survive. Validates first and writes nothing when a value is refused. A new dataDir must be an absolute path that
-// passes confineDir and already exists (init or the copy creates it). Returns the loaded config; throws an Error with the reason.
+// passes confineDir and already exists (init or the copy creates it). A new codeBase must be an absolute path to an
+// existing folder (the server applies its own confinement first). Saving one folder key removes the other in the same
+// write, so the file never holds both. Returns the loaded config; throws an Error with the reason.
 function saveConfig(changes, { file = configPath(), confine } = {}) {
   const abs = path.resolve(file);
   const next = {};
@@ -71,6 +83,14 @@ function saveConfig(changes, { file = configPath(), confine } = {}) {
     if (!fs.existsSync(c.dir)) throw new Error('The folder does not exist: it must be created by init or the copy first.');
     next.dataDir = changes.dataDir.trim();
   }
+  if (changes.codeBase !== undefined) {
+    if (changes.dataDir !== undefined) throw new Error('Save either a code base or a data folder, not both.');
+    validateConfig({ codeBase: changes.codeBase }, abs);
+    const dir = changes.codeBase.trim();
+    if (!path.isAbsolute(dir)) throw new Error('The code base must be an absolute path.');
+    if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) throw new Error('The code base folder does not exist.');
+    next.codeBase = dir;
+  }
   validateConfig(next, abs);
   let doc;
   try {
@@ -81,6 +101,8 @@ function saveConfig(changes, { file = configPath(), confine } = {}) {
   if (doc.errors.length) throw new Error(`${abs}: not valid YAML (${String(doc.errors[0].message).split('\n')[0]})`);
   if (doc.contents === null) doc.contents = doc.createNode({});
   for (const [key, value] of Object.entries(next)) doc.set(key, value);
+  if (next.codeBase !== undefined) doc.delete('dataDir');
+  if (next.dataDir !== undefined) doc.delete('codeBase');
   validateConfig(doc.toJS(), abs);
   fs.mkdirSync(path.dirname(abs), { recursive: true });
   const tmp = `${abs}.${process.pid}.tmp`;
