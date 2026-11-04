@@ -9,7 +9,6 @@
 //   <dataDir>/<name>/lexicon.csv                            kind `lexicon`
 //   <dataDir>/<name>/lexicon/lexicon-suggestions.csv        kind `lexicon-suggestions`
 //   <dataDir>/<name>/slices/<slice>/                        slices
-//   <dataDir>/logs/writes.jsonl                             the write log (project level)
 
 const fs = require('fs');
 const path = require('path');
@@ -61,10 +60,6 @@ function contextMapFiles(dataDir, name) {
   return { json: path.join(dir, 'context-map.json'), md: path.join(dir, 'context-map.md') };
 }
 
-function logFile(dataDir) {
-  return path.join(dataDir, 'logs', 'writes.jsonl');
-}
-
 // The backlogs: subfolders of the data folder that hold user-stories.csv, sorted by name, each by its folder name.
 // A folder whose name is not a valid backlog name (`logs`, a name with a trailing dot) is not listed.
 function listBacklogs(dataDir) {
@@ -107,6 +102,6 @@ function detectOlderLayout(dataDir) {
 
 module.exports = {
   BACKLOG_FILE, KINDS, KIND_FILES, OLDER_LAYOUT_FOLDERS,
-  validateBacklogName, backlogDir, backlogFile, reviewDecidedFile, slicesDir, contextMapFiles, logFile,
+  validateBacklogName, backlogDir, backlogFile, reviewDecidedFile, slicesDir, contextMapFiles,
   listBacklogs, detectOlderLayout,
 };
