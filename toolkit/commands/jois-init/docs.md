@@ -4,7 +4,7 @@ description: "Set up the docs process in this project: nested pages in wiki/, a 
 allowed-tools: Bash(git status:*), Bash(git remote:*), Bash(git diff:*), Bash(python scripts/build_wiki.py:*), Bash(python scripts/check_docs.py:*), Bash(python -m pytest scripts/tests:*), Read, Glob, Edit, Write
 disable-model-invocation: true
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
   last_updated: "2026-11-04"
 ---
 
@@ -27,6 +27,7 @@ The GitHub wiki is a one-way copy of them.
 - Never create a `docs/wiki/` folder.
 - Build the flat output only in a temporary folder, never in the repo.
 - Write only inside this project.
+- A re-run never changes an existing starter page. `wiki/Home.md` and `wiki/_Sidebar.md` carry no markers, because the repo owns them from the first write.
 
 ## Markers
 
@@ -64,7 +65,7 @@ The GitHub wiki is a one-way copy of them.
    - A missing GitHub remote does not stop the setup. Say the publish workflow will not work until one exists.
 2. **Add the checker, builder and tests.**
    - Files: `scripts/check_docs.py`, `scripts/build_wiki.py`, `scripts/tests/test_check_docs.py`, `scripts/tests/test_build_wiki.py`, all from the template's `scripts/` folder.
-   - Why: the checker fails the build when a page drifts from the repo, and the builder makes the navigation and the flat wiki pages.
+   - Why: the checker fails the build when a page drifts from the repo, and the builder makes the flat wiki pages.
    - Ask one question for the scripts and one for the tests.
    - The scripts need only Python.
 3. **Add the `docs-check` workflow and the PR line.**
@@ -74,11 +75,10 @@ The GitHub wiki is a one-way copy of them.
    - Create the template with the block when none exists.
    - Otherwise add the block and leave the other text as it is.
 4. **Add the `wiki/` skeleton.**
-   - Why: the checker and the publish step need a `Home.md` and a generated `_Sidebar.md`.
-   - Ask first. Then run `python scripts/build_wiki.py --write-nav`.
-   - It creates `wiki/Home.md` and `wiki/_Sidebar.md` when missing.
-   - In an existing `Home.md` it changes only the block between the markers, or appends one.
-   - Skip this step if step 2 was refused, because the builder is not there. Say so.
+   - Why: the checker and the publish step need a `Home.md` and a `_Sidebar.md`, and the repo then edits both by hand.
+   - Ask first. Then copy the template's `wiki/Home.md` and `wiki/_Sidebar.md` into `wiki/`, each only when it is missing.
+   - Never change an existing `Home.md` or `_Sidebar.md`, and do not ask about one. Say that the repo edits them by hand.
+   - Skip this step if step 2 was refused, because the checker is not there. Say so.
    - Then run `python scripts/check_docs.py` and report what it prints.
    - If it fails on pages the project already had, show the failures and change nothing.
 5. **Add the publish workflow.**
