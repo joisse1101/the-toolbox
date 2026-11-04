@@ -10,8 +10,6 @@ const path = require('path');
 const { KIND_FILES, listBacklogs, detectOlderLayout, validateBacklogName } = require('./backlog-paths.cjs');
 
 const ROOT = path.resolve(__dirname, '..', '..', '..');
-// The folders init creates in a data directory, relative to it. Backlog folders are created with their backlog.
-const FOLDERS = ['logs'];
 
 function inside(parent, child) {
   const rel = path.relative(parent, child);
@@ -85,24 +83,16 @@ function checkFolder(dir, options) {
   return { status: 'empty', dir: c.dir };
 }
 
-// Creates the data folder if missing and `logs` in it. Returns { dir, createdDataDir, created, existing }.
+// Creates the data folder if missing and nothing else (a backlog folder is created with its backlog). Returns
+// { dir, createdDataDir, created, existing }: the data folder is listed as created or, when it was there, as existing
+// together with the backlog folders in it.
 function initFolders(dir) {
   const abs = path.resolve(dir);
   const createdDataDir = !fs.existsSync(abs);
   fs.mkdirSync(abs, { recursive: true });
-  const created = [];
-  const existing = [];
-  for (const f of FOLDERS) {
-    const p = path.join(abs, f);
-    if (fs.existsSync(p)) {
-      if (!isDir(p)) throw new Error(`${p}: exists and is not a folder`);
-      existing.push(f);
-    } else {
-      fs.mkdirSync(p);
-      created.push(f);
-    }
-  }
-  return { dir: abs, createdDataDir, created, existing };
+  const name = path.basename(abs);
+  if (createdDataDir) return { dir: abs, createdDataDir, created: [name], existing: [] };
+  return { dir: abs, createdDataDir, created: [], existing: [name, ...listBacklogs(abs)] };
 }
 
 // Copies every file of `source` to the same relative path in `target`. An existing file is skipped, a link is
@@ -252,4 +242,4 @@ function migrateOlderLayout(dataDir, { copyFile = fs.copyFileSync, readFile = fs
   return { copied, skipped, failed };
 }
 
-module.exports = { ROOT, FOLDERS, inside, realResolve, confineDir, checkFolder, initFolders, copyData, migrateOlderLayout };
+module.exports = { ROOT, inside, realResolve, confineDir, checkFolder, initFolders, copyData, migrateOlderLayout };

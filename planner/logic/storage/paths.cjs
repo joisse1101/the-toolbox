@@ -1,7 +1,7 @@
 'use strict';
 // Where things live. The private data (backlogs, reviews, proposals) is set by `dataDir` in the project config
 // (planner.config.yaml, or the file PLANNER_CONFIG names) and defaults to the planner's data/ folder. See project-config.cjs.
-// DATA_DIR is the folder as read when this module loaded, for short-lived scripts; the server and the write log call
+// DATA_DIR is the folder as read when this module loaded, for short-lived scripts; the server calls
 // getDataDir() each time, so setDataDir() takes effect at once.
 
 const fs = require('fs');

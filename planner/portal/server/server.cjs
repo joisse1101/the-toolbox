@@ -18,7 +18,6 @@ try {
   process.exit(1);
 }
 const { getDataDir, setDataDir, legacyDataHint } = paths;
-const { logWrite } = require('../../logic/storage/write-log.cjs');
 const { loadConfig, saveConfig, configPath, confineDir, checkFolder, initFolders, copyData, migrateOlderLayout } = require('../../logic/storage/project-config.cjs');
 
 const HOST = '127.0.0.1';
@@ -366,7 +365,6 @@ async function handleStoreApi(req, res, segments) {
       const name = kind === 'backlog'
         ? await createBacklog(dataDir, body.name, content)
         : await createKindFile(dataDir, body.name, kind, content);
-      logWrite({ writer: 'portal', backlog: name, kind, text: content });
       return send(res, 201, { name });
     }
     throw new HttpError(405, 'Method not allowed');
@@ -390,7 +388,6 @@ async function handleStoreApi(req, res, segments) {
       const content = await readBody(req);
       await fs.promises.access(full); // PUT never creates; 404 if missing
       await fs.promises.writeFile(full, content, 'utf8');
-      logWrite({ writer: 'portal', backlog: name, kind, text: content });
       return send(res, 200, { name });
     }
     if (req.method === 'PATCH' && kind === 'backlog') {
@@ -398,8 +395,7 @@ async function handleStoreApi(req, res, segments) {
       const newName = await renameBacklog(dataDir, name, body.name);
       if (newName !== name) {
         // The backlog now has a new name: log its content so a later write can be traced to this one.
-        logWrite({ writer: 'portal', backlog: newName, kind, text: await fs.promises.readFile(backlogFile(dataDir, newName, kind), 'utf8') });
-      }
+        }
       return send(res, 200, { name: newName });
     }
   } catch (err) {

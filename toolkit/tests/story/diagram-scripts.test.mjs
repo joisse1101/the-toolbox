@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { sampleTree, pathOf, slicesPath, logLines, SAMPLE_SLICE } from './helpers/backlog-tree.mjs';
+import { sampleTree, pathOf, slicesPath, SAMPLE_SLICE } from './helpers/backlog-tree.mjs';
 import { tempConfig } from './helpers/temp-config.mjs';
 import { planSkillCopy } from './helpers/plan-skill.mjs';
 
@@ -60,8 +60,6 @@ test('read: a renumber is healed in source.json and the specification list, and 
   assert.deepEqual(blocks(after['UC-sign-in.md']), blocks(before['UC-sign-in.md']), 'every mermaid block is byte-for-byte as before');
   assert.equal(after['UC-sign-in.md'].replace(/- IAM-0003/, '- IAM-0002'), before['UC-sign-in.md'], 'only the generated list changed in the specification');
   assert.match(formatDiagrams(r), /healed: "Reset a password" is now IAM-0003 \(was IAM-0002\)/);
-  assert.equal(logLines(root).at(-1).writer, 'read_diagrams');
-  assert.equal(logLines(root).at(-1).slice, 'sign-in');
 });
 
 test('read: a reworded story is changed and nothing is rewritten', () => {
@@ -72,7 +70,6 @@ test('read: a reworded story is changed and nothing is rewritten', () => {
   assert.deepEqual(r.slices[0].stories.map((s) => s.status), ['ok', 'changed']);
   assert.match(formatDiagrams(r), /changed: "Reset a password" was reworded/);
   assert.deepEqual(snapshot(sliceDir(root)), before);
-  assert.deepEqual(logLines(root), []);
 });
 
 test('read: a slice that does not exist, a bad backlog and a missing source.json are reported', () => {
@@ -93,7 +90,7 @@ test('check passes on the mock and writes nothing', async () => {
   assert.equal(fs.existsSync(slicesPath(root, 'sample')), false);
 });
 
-test('write: the slice is written, read back, logged without contents, and the hashes are the writer\'s', async () => {
+test('write: the slice is written, read back, and the hashes are the writer\'s', async () => {
   const root = setup();
   const r = await writeDiagram(input(root));
   assert.equal(r.ok, true, r.errors?.join('\n'));
@@ -104,10 +101,6 @@ test('write: the slice is written, read back, logged without contents, and the h
   const source = JSON.parse(written['source.json']);
   assert.deepEqual(source.stories.map((s) => [s.id, s.hash]), [['IAM-0001', 'baf514d489ee'], ['IAM-0002', 'ddf31b439280']]);
   assert.match(formatDiagrams(readDiagrams({ dataDir: root, name: 'sample' })), /up to date/);
-  const [line] = logLines(root);
-  assert.deepEqual([line.writer, line.backlog, line.kind, line.slice], ['write-diagram.mjs', 'sample', 'slices', 'sign-in']);
-  assert.ok(line.bytes > 0 && /^[0-9a-f]{12}$/.test(line.hash));
-  assert.ok(!fs.readFileSync(path.join(root, 'logs', 'writes.jsonl'), 'utf8').includes('Sign in with email'), 'no diagram text in the log');
 });
 
 test('write: the same slice twice changes no byte and says nothing changed', async () => {
@@ -121,7 +114,6 @@ test('write: the same slice twice changes no byte and says nothing changed', asy
   assert.match(again.text, /Nothing changed/);
   assert.deepEqual(snapshot(sliceDir(root)), before);
   for (const f of Object.keys(mtimes)) assert.equal(fs.statSync(path.join(sliceDir(root), f)).mtimeMs, mtimes[f], `${f} not rewritten`);
-  assert.equal(logLines(root).length, 1, 'only the first write is logged');
 });
 
 test('write: a Title that does not match is refused and says what the ID holds', async () => {

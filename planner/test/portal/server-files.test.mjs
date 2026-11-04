@@ -32,7 +32,7 @@ test('list: the subfolders holding user-stories.csv, sorted, by folder name; log
   put('b', 'user-stories.csv', 'ID\r\n');
   put('a', 'user-stories.csv', 'ID\r\n');
   put('notes', 'readme.txt', 'x');
-  put('logs', 'writes.jsonl', '');
+  put('logs', 'leftover.txt', '');
   put('backlogs', 'old.csv', 'ID\r\n'); // the older layout is never read
   assert.deepEqual(await listed(), ['a', 'b']);
 });

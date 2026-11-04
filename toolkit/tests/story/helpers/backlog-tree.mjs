@@ -43,9 +43,3 @@ export function sampleTree({ withSlice = false, withMap = false } = {}) {
 }
 export const slicesPath = (dataDir, name) => bp.slicesDir(dataDir, name);
 export const backlogPath = (dataDir, name) => bp.backlogDir(dataDir, name);
-
-// The lines of the write log, parsed (empty when there is none).
-export function logLines(dataDir) {
-  const file = bp.logFile(dataDir);
-  return fs.existsSync(file) ? fs.readFileSync(file, 'utf8').trim().split('\n').map((l) => JSON.parse(l)) : [];
-}

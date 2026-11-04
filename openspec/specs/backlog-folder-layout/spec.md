@@ -68,13 +68,6 @@ The system SHALL rename a backlog by renaming its folder, so every file and slic
 - **WHEN** the rename fails because another program holds a file in the folder open
 - **THEN** the system returns a locked error and the folder keeps its old name
 
-### Requirement: Project-level files stay at the data directory
-The write log SHALL stay at `<dataDir>/logs/writes.jsonl`. Each line SHALL name the backlog and the kind of file written, in place of the former store and file name.
-
-#### Scenario: Logged write
-- **WHEN** the portal saves the proposals of backlog `iam`
-- **THEN** a line names writer `portal`, backlog `iam`, kind `proposals`, the size and the hash
-
 ### Requirement: Migrate the older layout by copy
 The system SHALL, only on the user's request from the Settings tab, copy data in the older layout (folders `backlogs/`, `reviews/`, `proposals/`, `lexicons/`, `lexicon-suggestions/`, and `diagrams/`) into the new layout in the current data directory, one folder per `backlogs/<name>.csv`. It SHALL reply with what was copied and what was skipped.
 

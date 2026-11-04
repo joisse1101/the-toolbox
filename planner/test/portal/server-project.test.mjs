@@ -49,7 +49,7 @@ test('read settings: the reply holds the project name, the data directory and th
   assert.deepEqual(body, { projectName: 'Alpha', dataDir: dirA, configPath: path.resolve(configFile), olderLayout: [] });
 });
 
-test('switch while idle: the next list, read and write are answered from the new directory, and the log follows', async () => {
+test('switch while idle: the next list, read and write are answered from the new directory', async () => {
   assert.deepEqual(await listed(), ['one']);
   const res = await save({ dataDir: dirB });
   assert.equal(res.status, 200);
@@ -61,9 +61,6 @@ test('switch while idle: the next list, read and write are answered from the new
   assert.equal(created.status, 201);
   assert.equal(fs.existsSync(path.join(dirB, 'two', 'user-stories', 'proposals.csv')), true);
   assert.equal(fs.existsSync(path.join(dirA, 'two', 'user-stories', 'proposals.csv')), false);
-  const log = fs.readFileSync(path.join(dirB, 'logs', 'writes.jsonl'), 'utf8').trimEnd().split('\n').map((l) => JSON.parse(l));
-  assert.deepEqual(log.map((l) => [l.backlog, l.kind]), [['two', 'proposals']]);
-  assert.equal(fs.existsSync(path.join(dirA, 'logs', 'writes.jsonl')), false, 'nothing is logged in the old folder');
 
   assert.equal((await call('POST', '/api/backup/two')).status, 404, 'the backup routes are gone');
   await switchBack();
@@ -150,8 +147,9 @@ test('check, init and copy, then save and switch', async () => {
   fs.mkdirSync(empty);
   assert.equal((await (await call('POST', '/api/project/check', { dir: empty })).json()).status, 'empty');
   const init = await (await call('POST', '/api/project/init', { dir: empty })).json();
-  assert.deepEqual(init.created, ['logs']);
-  assert.equal(init.existing.length, 0);
+  assert.deepEqual(init.created, [], 'the folder was there and nothing else is created');
+  assert.deepEqual(init.existing, ['empty-data']);
+  assert.deepEqual(fs.readdirSync(empty), []);
 
   assert.equal((await save({ dataDir: target, projectName: 'Beta' })).status, 200);
   assert.deepEqual(await listed(), ['one']);

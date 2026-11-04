@@ -19,7 +19,6 @@ import { parseMermaid, mermaidMissing } from './parse-mermaid.mjs';
 import { dataDirOrThrow } from './lib/skill-support/resolve-data-dir.mjs';
 
 const require = createRequire(import.meta.url);
-const { logWrite } = require('./lib/storage/write-log.cjs');
 const { GUIDELINES_DIR } = require('./lib/skill-support/paths.cjs');
 
 const norm = (s) => String(s ?? '').trim().toLowerCase();
@@ -102,7 +101,6 @@ export async function writeContextMap(input) {
     return { ok: false, errors, text: problemsText(errors) };
   }
   const written = [existing.document === documentText ? null : MAP_DOCUMENT_FILE, existing.source === sourceText ? null : MAP_SOURCE_FILE].filter(Boolean);
-  logWrite({ writer: 'write-context-map.mjs', backlog: loaded.base, kind: 'context-map', text: documentText + sourceText, dataDir: input.dataDir ?? dataDirOrThrow() });
   return { ok: true, changed: true, written, base: loaded.base, text: `Wrote the context map to ${loaded.base}/ (${written.join(', ')}).` };
 }
 

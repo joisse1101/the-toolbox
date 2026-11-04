@@ -21,7 +21,6 @@ import { parseMermaid, mermaidMissing } from './parse-mermaid.mjs';
 import { dataDirOrThrow } from './lib/skill-support/resolve-data-dir.mjs';
 
 const require = createRequire(import.meta.url);
-const { logWrite } = require('./lib/storage/write-log.cjs');
 const { GUIDELINES_DIR } = require('./lib/skill-support/paths.cjs');
 
 const MAX_FILE_CHARS = 200000;
@@ -155,7 +154,6 @@ export async function writeDiagram(input) {
     return { ok: false, errors, text: problemsText(errors) };
   }
   const written = [...Object.keys(files).filter((f) => existing?.files[f] !== files[f]), ...(sameStories(existing?.source, source) ? [] : [SOURCE_FILE])];
-  logWrite({ writer: 'write-diagram.mjs', backlog: loaded.base, kind: 'slices', text: Object.values(files).join('') + sourceText, extra: { slice }, dataDir: input.dataDir ?? dataDirOrThrow() });
   const note = leftover.length ? ` Files in the folder that were not sent and were left as they are: ${leftover.join(', ')}.` : '';
   return { ok: true, changed: true, written, leftover, slice, base: loaded.base, text: `Wrote the slice "${slice}" to ${loaded.base}/slices/${slice}/ (${written.join(', ')}); ${Object.keys(files).length} files and ${SOURCE_FILE}.${note}` };
 }

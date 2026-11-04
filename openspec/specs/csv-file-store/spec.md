@@ -81,25 +81,6 @@ The system SHALL open the data folder in the operating system's file manager on 
 - **WHEN** a client requests the folder be opened
 - **THEN** File Explorer opens showing the data folder
 
-### Requirement: Writes are logged
-Every write by the file API or a story skill's writer script SHALL append one line of JSON to `<dataDir>/logs/writes.jsonl` with the time, the writer (`portal` for the file API, or the name of the writer script), the backlog name, the kind of file, the byte size of the new content and a short hash of it. The log folder SHALL NOT be reachable through the file API. A failure to log SHALL be reported on standard error and SHALL NOT fail or undo the write. The log SHALL hold no file contents.
-
-#### Scenario: Portal save logged
-- **WHEN** the portal saves the proposals of backlog `data-portal`
-- **THEN** the log gains a line naming writer `portal`, backlog `data-portal`, kind `proposals`, its size and hash
-
-#### Scenario: Writer logged
-- **WHEN** a story skill's proposal writer adds stories to backlog `data-portal`
-- **THEN** a line names that writer script for that backlog and kind, and a later `portal` line shows who wrote it last
-
-#### Scenario: Log not reachable
-- **WHEN** a client asks the file API for `logs`
-- **THEN** it is rejected as unknown
-
-#### Scenario: Log failure does not block
-- **WHEN** the log file cannot be written
-- **THEN** the data write still succeeds and a message appears on standard error
-
 ### Requirement: The data folder comes from the project config
 The system SHALL take the data folder it serves from the project config's `dataDir`. It SHALL NOT read it from an environment variable.
 
@@ -107,8 +88,8 @@ The system SHALL take the data folder it serves from the project config's `dataD
 - **WHEN** the config's `dataDir` is `D:\planner-data`
 - **THEN** the store folders served are the ones inside `D:\planner-data`
 
-### Requirement: The server switches data folder without a restart
-The server SHALL start using a new data directory as soon as the config is saved with it, for the file API, the backup routes and the write log. It SHALL refuse the switch with a busy error while a write or a backup is running, and the old folder SHALL be left unchanged.
+### Requirement: The server serves a new data folder without a restart
+The server SHALL start using a new data directory as soon as the config is saved with it, for the file API and the backup routes. It SHALL refuse the switch with a busy error while a write or a backup is running, and the old folder SHALL be left unchanged.
 
 #### Scenario: Switch while idle
 - **WHEN** a new data directory is saved and no write or backup is running
@@ -117,10 +98,6 @@ The server SHALL start using a new data directory as soon as the config is saved
 #### Scenario: Switch during a write
 - **WHEN** a new data directory is saved while a write or a backup is running
 - **THEN** the server answers busy, the config and the served folder stay as they were, and nothing is written to either folder by the refused request
-
-#### Scenario: Write log follows the switch
-- **WHEN** the server has switched to a new data directory
-- **THEN** later writes are logged in the new directory's `logs/writes.jsonl`
 
 ### Requirement: Project settings routes
 The server SHALL expose routes to read the project settings, save them, run init, check a directory for planner files, and copy the current data into another directory. Each route that takes a directory SHALL apply the confinement rules of the `project-config` capability. These routes SHALL NOT reach any file other than the config file and the folders init and the copy create.
