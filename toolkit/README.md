@@ -59,6 +59,17 @@ These rules keep it installable on its own:
 - Node loads such a file as a module only through syntax detection, which is on by default from those versions.
 - Unchecked: these two version numbers come from memory of the Node release notes. They were not confirmed against the Node docs, because the docs were not reachable. The tests were run only on Node 24.19.0.
 
+#### Where the story skills find their data
+
+- The story skills read and write backlog files in a data folder. They look only in the folder the session started in, never in a parent folder.
+- The order is: the file the `PLANNER_CONFIG` variable names, else a `.plans/` folder in the current folder, else a `planner.config.yaml` in the current folder.
+- A config file may set `codeBase` (the data folder is then `<codeBase>/.plans/`) or `dataDir`, not both.
+- Start the session in the code base folder. In a sub-folder, a skill finds nothing and says which folder it looked in.
+- If nothing is found, `jois-story-propose`, `jois-story-review` and `jois-story-plan` ask before creating `.plans/` in the current folder, through their `init-plans.mjs`.
+- `jois-story-explore` never writes, so it only reports that nothing was found.
+- A skill creates an empty `.plans/` but never a backlog. Create a backlog in the planner portal.
+- Whether `.plans/` is committed or git-ignored is the code base owner's choice. The toolkit never edits `.gitignore`.
+
 ## Naming
 
 Every item is named `jois-<domain>-<thing>`. `jois` is the owner, so the names never collide with a

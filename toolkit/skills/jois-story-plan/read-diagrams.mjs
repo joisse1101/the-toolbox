@@ -4,7 +4,7 @@
 // changed, missing or new story makes the slice stale and is only reported. A diagram or the specification's prose is never
 // changed here. Usage:
 //   node <skill folder>/read-diagrams.mjs <backlog name> [--slice <slice>]
-// The data folder comes from the PLANNER_CONFIG variable or a planner.config.yaml (see lib/skill-support/resolve-data-dir.mjs).
+// The data folder comes from the PLANNER_CONFIG variable, else .plans or a planner.config.yaml in the current folder (see lib/skill-support/resolve-data-dir.mjs).
 
 import fs from 'node:fs';
 import path from 'node:path';

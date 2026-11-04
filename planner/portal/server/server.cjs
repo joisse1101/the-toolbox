@@ -18,7 +18,9 @@ try {
   process.exit(1);
 }
 const { getDataDir, setDataDir, legacyDataHint } = paths;
-const { loadConfig, saveConfig, configPath, confineDir, checkFolder, initFolders, copyData, migrateOlderLayout } = require('../../logic/storage/project-config.cjs');
+const {
+  loadConfig, saveConfig, configPath, confineDir, confineCodeBase, checkFolder, checkCodeBase, initFolders, initCodeBase, copyData, copyToCodeBase, migrateOlderLayout,
+} = require('../../logic/storage/project-config.cjs');
 
 const HOST = '127.0.0.1';
 const PORT = Number(process.env.PORT) || 3000;
@@ -227,7 +229,17 @@ function settingsReply() {
   const config = loadConfig({ file: configPath() });
   const dataDir = getDataDir();
   // `olderLayout`: the folders of the earlier layout still in the data folder; only detected, never read as data.
-  return { projectName: config.projectName, dataDir, configPath: config.configPath, olderLayout: detectOlderLayout(dataDir) };
+  const reply = { projectName: config.projectName, dataDir, configPath: config.configPath, olderLayout: detectOlderLayout(dataDir) };
+  // `codeBase` appears only when the config names one; dataDir is then its `.plans` folder.
+  if (config.codeBase) reply.codeBase = config.codeBase;
+  return reply;
+}
+
+// A code base named by the browser: refused with 400 unless confineCodeBase accepts it. Returns { dir, plansDir }.
+function confinedCodeBase(codeBase) {
+  const c = confineCodeBase(codeBase);
+  if (!c.ok) throw new HttpError(400, c.reason, 'refused');
+  return c;
 }
 
 // A folder named by the browser: refused with 400 unless confineDir accepts it. Returns the real path.
@@ -258,8 +270,19 @@ async function handleProject(req, res, segments) {
       if (body.projectName !== undefined) changes.projectName = body.projectName;
       if (body.dataDir !== undefined) changes.dataDir = body.dataDir;
       // From here to the switch there is no await: no request can start between the check and the switch.
-      if (changes.dataDir !== undefined && busy > 0) {
+      if (body.codeBase !== undefined) changes.codeBase = body.codeBase;
+      const switches = changes.dataDir !== undefined || changes.codeBase !== undefined;
+      if (switches && busy > 0) {
         throw new HttpError(409, 'A save is running. Try again in a moment.', 'busy');
+      }
+      if (changes.codeBase !== undefined) {
+        if (changes.dataDir !== undefined) throw new HttpError(400, 'Save either a code base or a data folder, not both.', 'refused');
+        if (typeof changes.codeBase !== 'string') throw new HttpError(400, 'The code base must be text.', 'refused');
+        const c = confinedCodeBase(changes.codeBase);
+        if (!fs.existsSync(c.plansDir)) {
+          throw new HttpError(400, 'The code base has no .plans folder: it must be created by init or the copy first.', 'refused');
+        }
+        changes.codeBase = c.dir;
       }
       let saved;
       try {
@@ -267,8 +290,8 @@ async function handleProject(req, res, segments) {
       } catch (err) {
         throw new HttpError(400, err.message, 'refused');
       }
-      if (changes.dataDir !== undefined) switchTo(saved.dataDir);
-      return send(res, 200, { ...settingsReply(), switched: changes.dataDir !== undefined });
+      if (switches) switchTo(saved.dataDir);
+      return send(res, 200, { ...settingsReply(), switched: switches });
     }
     throw new HttpError(405, 'Method not allowed');
   }
@@ -302,10 +325,28 @@ async function handleProject(req, res, segments) {
 
   const body = await readJson(req);
 
-  if (sub === 'check') return send(res, 200, checkFolder(body.dir));
+  // A body with `codeBase` works on `<codeBase>/.plans`; a body with `dir` works on the folder itself.
+  const forCodeBase = body.codeBase !== undefined;
+  if (sub === 'check') return send(res, 200, forCodeBase ? checkCodeBase(body.codeBase) : checkFolder(body.dir));
 
   busy++;
   try {
+    if (forCodeBase) {
+      const c = confinedCodeBase(body.codeBase);
+      if (sub === 'init') {
+        try {
+          return send(res, 200, initCodeBase(c.dir));
+        } catch (err) {
+          throw new HttpError(500, err.message, 'init-failed');
+        }
+      }
+      const result = copyToCodeBase(getDataDir(), c.dir);
+      if (result.refused) throw new HttpError(400, result.refused, 'refused');
+      if (result.stopped) {
+        return send(res, 500, { error: `Copy stopped at ${result.stopped.file}: ${result.stopped.message}`, code: 'copy-stopped', ...result });
+      }
+      return send(res, 200, result);
+    }
     const dir = confined(body.dir);
     if (sub === 'init') {
       try {

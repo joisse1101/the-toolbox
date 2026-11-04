@@ -1,7 +1,7 @@
 ---
 name: jois-story-review
 description: Review a user-story backlog CSV (`<backlog>/user-stories.csv`) against references/product-backlog.md (Epic > Feature > Story hierarchy, INVEST, acceptance-criteria quality and edge cases) and across stories, the backlog's lexicon and its proposals (duplicates, overlaps, contradictions, role and term drift), and report findings with suggested fixes, also written as a review CSV the portal can apply. Never edits the backlog CSV. Use when the user asks to review, audit, sanity-check, consistency-check or "INVEST-check" a backlog or its stories.
-allowed-tools: Bash(node *read-backlog.mjs*), Bash(node *write-review.mjs*)
+allowed-tools: Bash(node *read-backlog.mjs*), Bash(node *write-review.mjs*), Bash(node *init-plans.mjs*)
 metadata:
   version: "1.0.0"
   last_updated: "2026-11-03"
@@ -15,7 +15,7 @@ Review one backlog CSV, write the suggestions to a review CSV and write a report
 
 ## Data folder
 
-The scripts find the backlog data folder themselves: the config file named by the `PLANNER_CONFIG` variable, else a `planner.config.yaml` in the current folder or the nearest parent, reading its `dataDir` line only. If a script says no data folder is set or the config cannot be read, show the user its message and ask the user to set the `PLANNER_CONFIG` variable to the path of their `planner.config.yaml` in their shell, or to start the session from the folder that holds that file, then run the same command again. Do not prefix the command with the variable: every command you run starts with `node`. Never guess a folder, and write nothing until you have one.
+The scripts find the backlog data folder themselves, in the current folder only and never in a parent folder: the config file named by the `PLANNER_CONFIG` variable, else a `.plans` folder in the current folder, else a `planner.config.yaml` in the current folder (its `codeBase` or `dataDir` line). If a script says no data folder was found, tell the user which folder it looked in and ask whether to create `.plans` there. Create it only on a yes, with `node <skill folder>/init-plans.mjs` run from the current folder (it creates `.plans` and nothing else, and refuses a file named `.plans`); on a no, create and write nothing. The user can instead start the session in the code base folder or set `PLANNER_CONFIG`. A new `.plans` holds no backlog: the user creates one in the planner. If a script says the config or `.plans` cannot be used, show its message. Do not prefix the command with the variable: every command you run starts with `node`. Never guess a folder, and write nothing until you have one.
 
 ## Input
 

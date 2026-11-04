@@ -3,8 +3,8 @@
 //   node <skill folder>/write-context-map.mjs <backlog name> [--check]
 // The JSON is { contexts, relationships }. --check runs the same preparation, the same checks (diagrams/context-map.js) and Mermaid's
 // own parser on the flowchart as the write, and writes nothing. The document is generated here, never sent by the caller. Without
-// the Mermaid packages (see parse-mermaid.mjs) it refuses. The data folder comes from the PLANNER_CONFIG variable or a
-// planner.config.yaml (see lib/skill-support/resolve-data-dir.mjs).
+// the Mermaid packages (see parse-mermaid.mjs) it refuses. The data folder comes from the PLANNER_CONFIG variable, else
+// .plans or a planner.config.yaml in the current folder (see lib/skill-support/resolve-data-dir.mjs).
 
 import fs from 'node:fs';
 import path from 'node:path';

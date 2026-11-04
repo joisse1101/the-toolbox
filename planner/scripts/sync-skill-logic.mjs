@@ -27,14 +27,16 @@ const GUIDELINES = path.join(PLANNER, 'guidelines');
 export const DEFAULT_SKILLS_DIR = path.join(REPO, 'toolkit', 'skills');
 
 const SUPPORT = ['skill-support/paths.cjs', 'skill-support/write-atomic.mjs', 'skill-support/resolve-data-dir.mjs'];
-const STORY_GUIDELINES = ['product-backlog.md', 'sprint-points-guideline.md'];
+// The skills that may create `.plans` after asking (explore only reports, so it has no init-plans.mjs).
+const INIT = ['skill-support/init-plans.mjs'];
+const STORY_GUIDELINES =['product-backlog.md', 'sprint-points-guideline.md'];
 
 // What each skill's scripts import (paths under planner/logic/; the files those import come along). Diagram logic is
 // not here: it belongs to jois-story-plan and is not copied.
 export const SKILLS = {
   'jois-story-review': {
     // read-backlog, backlog-checks, write-review
-    logic: ['backlog/model.js', 'backlog/ids.js', 'lexicon/lexicon.js', 'review/review.js', 'storage/backlog-paths.cjs', ...SUPPORT],
+    logic: ['backlog/model.js', 'backlog/ids.js', 'lexicon/lexicon.js', 'review/review.js', 'storage/backlog-paths.cjs', ...SUPPORT, ...INIT],
     guidelines: STORY_GUIDELINES,
   },
   'jois-story-explore': {
@@ -49,13 +51,13 @@ export const SKILLS = {
     // proposal-input, write-proposal, write-lexicon, suggest-lexicon, and read-story-context (a copy of the explore skill's reader)
     logic: [
       'backlog/csv.js', 'backlog/model.js', 'backlog/proposals.js', 'backlog/ids.js', 'backlog/story-ref.js', 'backlog/story-search.js',
-      'backlog/story-text.js', 'review/review.js', 'lexicon/lexicon.js', 'lexicon/lexicon-suggestions.js', 'storage/backlog-paths.cjs', ...SUPPORT,
+      'backlog/story-text.js', 'review/review.js', 'lexicon/lexicon.js', 'lexicon/lexicon-suggestions.js', 'storage/backlog-paths.cjs', ...SUPPORT, ...INIT,
     ],
     guidelines: STORY_GUIDELINES,
   },
   'jois-story-plan': {
     // read-diagrams, write-diagram, write-context-map (the diagram logic is the skill's own)
-    logic: ['backlog/model.js', 'backlog/story-ref.js', 'storage/backlog-paths.cjs', ...SUPPORT],
+    logic: ['backlog/model.js', 'backlog/story-ref.js', 'storage/backlog-paths.cjs', ...SUPPORT, ...INIT],
     guidelines: [...STORY_GUIDELINES, 'diagram-conventions.md'],
   },
 };

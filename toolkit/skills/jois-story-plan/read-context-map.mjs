@@ -3,7 +3,7 @@
 // with the Epics of the backlog as they are now and only reports the difference; no file is changed here. A backlog without a
 // map is normal, not an error. Usage:
 //   node <skill folder>/read-context-map.mjs <backlog name>
-// The data folder comes from the PLANNER_CONFIG variable or a planner.config.yaml (see lib/skill-support/resolve-data-dir.mjs).
+// The data folder comes from the PLANNER_CONFIG variable, else .plans or a planner.config.yaml in the current folder (see lib/skill-support/resolve-data-dir.mjs).
 
 import fs from 'node:fs';
 import path from 'node:path';

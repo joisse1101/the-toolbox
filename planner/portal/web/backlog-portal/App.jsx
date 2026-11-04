@@ -162,6 +162,10 @@ export default function App() {
   useEffect(() => {
     document.title = projectName ? `${projectName} - Backlog portal` : 'Backlog portal';
   }, [projectName]);
+  // After a folder switch the page reloads; land on Settings so the note about skill sessions is seen.
+  useEffect(() => {
+    if (settingsState.switched) actions.setView('settings');
+  }, []); // once, on load
   const showSettings = view === 'settings' || !current; // with no backlog there is nothing else to show
 
   // Ask the Story form to focus a field once it has rendered (default: Epic).

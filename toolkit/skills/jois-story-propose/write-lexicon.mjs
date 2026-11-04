@@ -1,7 +1,7 @@
 // The only way the jois-story-propose skill adds terms to a lexicon. Usage:
 //   node <skill folder>/write-lexicon.mjs <backlog name> [--check]   (terms as JSON on stdin)
 // With --check the same validation runs and reports the terms it would add; nothing is written.
-// The data folder comes from the PLANNER_CONFIG variable or a planner.config.yaml (see lib/skill-support/resolve-data-dir.mjs).
+// The data folder comes from the PLANNER_CONFIG variable, else .plans or a planner.config.yaml in the current folder (see lib/skill-support/resolve-data-dir.mjs).
 // Reads <name>/user-stories.csv (it must exist) and <name>/lexicon.csv, applies the input and writes <name>/lexicon.csv. The input
 // is a JSON list of { term, definition, avoid?, notes?, partOf? }: every item ADDS a term (and needs a definition); a term
 // that is already there is refused, because a change to it is a suggestion (suggest-lexicon.mjs). The rules are those

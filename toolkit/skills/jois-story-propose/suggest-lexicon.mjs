@@ -3,7 +3,7 @@
 // Reads <name>/user-stories.csv (it must exist) and <name>/lexicon.csv, appends open rows to <name>/lexicon/lexicon-suggestions.csv and
 // never touches the lexicon: the user applies a suggestion in the portal's Lexicon tab. The rules are lib/lexicon/lexicon-suggestions.js's
 // (a copy of the planner's); one invalid item means nothing is written. With --check the same validation runs and the impact is
-// reported; nothing is written. The data folder comes from the PLANNER_CONFIG variable or a planner.config.yaml.
+// reported; nothing is written. The data folder comes from the PLANNER_CONFIG variable, else .plans or a planner.config.yaml in the current folder.
 
 import fs from 'node:fs';
 import path from 'node:path';

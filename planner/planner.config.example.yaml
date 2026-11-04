@@ -1,8 +1,14 @@
-# Copy this file to planner.config.yaml (git-ignored) and edit it. Both keys are optional.
+# Copy this file to planner.config.yaml (git-ignored) and edit it. Every key is optional.
 
 # Name of the project, shown in the portal header. Default: empty.
 projectName: My project
 
-# Folder holding the planner data. Absolute, or relative to this file's folder.
-# Default: planner/data
+# Where the planner data lives. Set at most one of codeBase and dataDir; setting both is an error.
+
+# Folder of the code base this project plans. Absolute, or relative to this file's folder.
+# The data lives in its .plans folder (<codeBase>/.plans). Skills started in the code base folder find it there.
+# codeBase: C:\code\my-project
+
+# Folder holding the planner data directly. Absolute, or relative to this file's folder.
+# Default when neither key is set: planner/data
 dataDir: ./data

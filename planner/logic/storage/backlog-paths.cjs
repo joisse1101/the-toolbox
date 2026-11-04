@@ -15,6 +15,9 @@ const { HttpError, validateBacklogName } = require('./file-name.cjs');
 
 const BACKLOG_FILE = 'user-stories.csv';
 
+// The folder directly inside a code base that holds its planner data (`<codeBase>/.plans`).
+const PLANS_DIR = '.plans';
+
 // Kind -> path inside the backlog folder.
 const KIND_FILES = {
   backlog: [BACKLOG_FILE],
@@ -100,7 +103,7 @@ function detectOlderLayout(dataDir) {
 }
 
 module.exports = {
-  BACKLOG_FILE, KINDS, KIND_FILES, OLDER_LAYOUT_FOLDERS,
+  BACKLOG_FILE, PLANS_DIR, KINDS, KIND_FILES, OLDER_LAYOUT_FOLDERS,
   validateBacklogName, backlogDir, backlogFile, reviewDecidedFile, slicesDir, contextMapFiles,
   listBacklogs, detectOlderLayout,
 };

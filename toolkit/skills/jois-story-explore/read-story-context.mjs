@@ -1,5 +1,5 @@
 // The only way the jois-story-explore and jois-story-propose skills read story data. Usage (run from any folder; the data folder
-// comes from PLANNER_CONFIG or a planner.config.yaml found upward from the current folder):
+// comes from PLANNER_CONFIG, else .plans or planner.config.yaml in the current folder; parent folders are not searched):
 //   node read-story-context.mjs                         lists the backlog names (folders of the data folder that hold user-stories.csv)
 //   node read-story-context.mjs <name>                  prints a menu: the sections, the size of each in characters and the command for each
 //   node read-story-context.mjs <name> --section <section> [<ID>[=<Title>] ...]

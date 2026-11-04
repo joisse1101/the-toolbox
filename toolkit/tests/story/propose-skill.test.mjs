@@ -25,11 +25,11 @@ const BACKLOG =
 const PROPOSALS = HEAD + 'NEW-3,Identity & Access Management,Auth,Send a welcome email,,,,,,\r\n';
 const FULL = (code, title) => `${code},Identity & Access Management,Auth,${title},"As a user, I want x, so that y",3,,,"AC1: Given a, when b, then c",\r\n`;
 
-test('the skill is named jois-story-propose, versioned, and may run only its five scripts', () => {
+test('the skill is named jois-story-propose, versioned, and may run only its five scripts and the init script', () => {
   assert.match(front, /^name: jois-story-propose$/m);
   assert.match(front, /version: "1\.0\.0"/);
   assert.match(front, /last_updated: "2026-11-03"/);
-  assert.match(front, /^allowed-tools: Bash\(node \*read-story-context\.mjs\*\), Bash\(node \*write-proposal\.mjs\*\), Bash\(node \*write-lexicon\.mjs\*\), Bash\(node \*suggest-lexicon\.mjs\*\), Bash\(node \*write-review\.mjs\*\)$/m);
+  assert.match(front, /^allowed-tools: Bash\(node \*read-story-context\.mjs\*\), Bash\(node \*write-proposal\.mjs\*\), Bash\(node \*write-lexicon\.mjs\*\), Bash\(node \*suggest-lexicon\.mjs\*\), Bash\(node \*write-review\.mjs\*\), Bash\(node \*init-plans\.mjs\*\)$/m);
   assert.doesNotMatch(front, /mcp__/);
 });
 
