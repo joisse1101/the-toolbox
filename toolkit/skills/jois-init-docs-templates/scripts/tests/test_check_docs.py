@@ -209,6 +209,29 @@ def test_absent_workflow_passes(tmp_path):
     assert _problems(tmp_path) == []
 
 
+STARTER_WIKI = Path(__file__).resolve().parents[2] / "wiki"
+STARTER_ROUTING = Path(__file__).resolve().parents[2] / "claude-md-routing.md"
+
+
+def _copy_starter(root):
+    for name in ("Home.md", "_Sidebar.md"):
+        _file(root, f"wiki/{name}", (STARTER_WIKI / name).read_text(encoding="utf-8"))
+
+
+def test_starter_wiki_passes_the_checker_in_an_empty_tree(tmp_path, capsys):
+    _copy_starter(tmp_path)
+    assert _problems(tmp_path) == []
+    assert check_docs.main(["--root", str(tmp_path)]) == 0
+    assert "docs check passed" in capsys.readouterr().out
+
+
+def test_starter_routing_block_links_only_pages_the_starter_holds(tmp_path):
+    _copy_starter(tmp_path)
+    _file(tmp_path, "CLAUDE.md", STARTER_ROUTING.read_text(encoding="utf-8"))
+    assert check_docs.check_claude_wiki_links(tmp_path, check_docs.claude_files(tmp_path)) == []
+    assert _problems(tmp_path) == []
+
+
 def test_missing_wiki_folder_fails(tmp_path, capsys):
     assert check_docs.main(["--root", str(tmp_path)]) == 1
     assert "folder not found" in capsys.readouterr().out
