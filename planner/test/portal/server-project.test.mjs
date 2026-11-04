@@ -262,3 +262,108 @@ test('folder picker: no request header and a remote Host are refused before the 
   assert.equal(remote, 403);
   assert.equal(opened, 0);
 });
+
+test('code base: confined on every route, config and served folder unchanged when refused', async () => {
+  const before = fs.readFileSync(configFile, 'utf8');
+  const system = process.platform === 'win32' ? process.env.SystemRoot : '/etc';
+  const missing = path.join(tmp, 'no-such-code-base');
+  const withFile = path.join(tmp, 'plans-is-a-file');
+  fs.mkdirSync(withFile);
+  fs.writeFileSync(path.join(withFile, '.plans'), 'x');
+  const cases = [
+    ['relative path', '..\elsewhere'],
+    ['system folder', system],
+    ['drive root', path.parse(tmp).root],
+    ['inside the repository', path.join(REPO, 'planner', 'data')],
+    ['missing folder', missing],
+    ['.plans is a file', withFile],
+  ];
+  for (const [label, codeBase] of cases) {
+    for (const [method, url] of [['PUT', '/api/project'], ['POST', '/api/project/init'], ['POST', '/api/project/copy']]) {
+      const res = await call(method, url, { codeBase });
+      assert.equal(res.status, 400, `${label}: ${url}`);
+      assert.equal((await res.json()).code, 'refused', `${label}: ${url}`);
+    }
+    const check = await (await call('POST', '/api/project/check', { codeBase })).json();
+    assert.equal(check.status, 'refused', label);
+    assert.ok(check.reason, label);
+  }
+  assert.equal(fs.existsSync(missing), false, 'the code base is never created');
+  assert.equal(fs.readFileSync(configFile, 'utf8'), before);
+  assert.deepEqual(await listed(), ['one']);
+});
+
+test('code base: check, init, copy, then save and switch live; the config holds codeBase and no dataDir', async () => {
+  const codeBase = path.join(tmp, 'code-base');
+  fs.mkdirSync(codeBase);
+  const plans = path.join(codeBase, '.plans');
+  const real = fs.realpathSync.native(codeBase);
+
+  const check = await (await call('POST', '/api/project/check', { codeBase })).json();
+  assert.equal(check.status, 'missing');
+  assert.equal(check.dir, path.join(real, '.plans'));
+
+  // A code base without .plans cannot be saved yet.
+  const early = await save({ codeBase });
+  assert.equal(early.status, 400);
+  assert.match((await early.json()).error, /init or the copy/);
+
+  const init = await (await call('POST', '/api/project/init', { codeBase })).json();
+  assert.equal(init.createdDataDir, true);
+  assert.deepEqual(fs.readdirSync(codeBase), ['.plans'], 'only .plans is created');
+  assert.deepEqual(fs.readdirSync(plans), []);
+  assert.equal((await (await call('POST', '/api/project/init', { codeBase })).json()).createdDataDir, false, 'init twice changes nothing');
+  assert.equal((await (await call('POST', '/api/project/check', { codeBase })).json()).status, 'empty');
+
+  const copy = await (await call('POST', '/api/project/copy', { codeBase })).json();
+  assert.ok(copy.copied.includes('one/user-stories.csv'));
+  assert.equal(fs.existsSync(path.join(plans, 'one', 'user-stories.csv')), true);
+  assert.equal(fs.existsSync(path.join(dirA, 'one', 'user-stories.csv')), true, 'the source keeps its files');
+  const again = await (await call('POST', '/api/project/copy', { codeBase })).json();
+  assert.deepEqual(again.copied, []);
+  assert.ok(again.skipped.some((f) => f.file === 'one/user-stories.csv' && f.reason === 'exists'));
+  assert.equal((await (await call('POST', '/api/project/check', { codeBase })).json()).status, 'has-planner-files');
+
+  const res = await save({ codeBase });
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.switched, true);
+  assert.equal(body.codeBase, real);
+  assert.equal(body.dataDir, path.join(real, '.plans'));
+  const saved = fs.readFileSync(configFile, 'utf8');
+  assert.match(saved, /codeBase/);
+  assert.doesNotMatch(saved, /dataDir/);
+  assert.deepEqual(await listed(), ['one'], 'the next list is answered from <code base>/.plans');
+  const created = await call('POST', '/api/proposals/files', { name: 'one', content: 'a\r\n' });
+  assert.equal(created.status, 201);
+  assert.equal(fs.existsSync(path.join(plans, 'one', 'user-stories', 'proposals.csv')), true);
+  assert.deepEqual((await (await fetch(`${origin}/api/project`)).json()).codeBase, real);
+
+  assert.equal((await save({ codeBase, dataDir: dirA })).status, 400, 'both keys in one request are refused');
+  await switchBack();
+  const back = await (await fetch(`${origin}/api/project`)).json();
+  assert.equal('codeBase' in back, false, 'codeBase is reported only when set');
+  assert.doesNotMatch(fs.readFileSync(configFile, 'utf8'), /codeBase/);
+});
+
+test('code base: busy refusal still applies, config and served folder unchanged', async () => {
+  const codeBase = path.join(tmp, 'code-base-busy');
+  fs.mkdirSync(path.join(codeBase, '.plans'), { recursive: true });
+  const before = fs.readFileSync(configFile, 'utf8');
+  const pending = http.request(`${origin}/api/backlog/files/one`, { method: 'PUT', headers: HEADERS });
+  pending.on('error', () => {});
+  pending.write('a,b\r\n');
+  await new Promise((resolve) => setTimeout(resolve, 100));
+
+  const res = await save({ codeBase });
+  assert.equal(res.status, 409);
+  assert.equal((await res.json()).code, 'busy');
+  assert.equal(fs.readFileSync(configFile, 'utf8'), before);
+  assert.deepEqual(await listed(), ['one']);
+
+  const done = new Promise((resolve) => pending.on('response', (r) => { r.resume(); r.on('end', resolve); }));
+  pending.end();
+  await done;
+  assert.equal((await save({ codeBase })).status, 200, 'once the write is done the switch is allowed');
+  await switchBack();
+});
