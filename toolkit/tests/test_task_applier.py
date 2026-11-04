@@ -83,6 +83,14 @@ def test_agent_hook_keeps_the_git_and_gh_block():
     assert "never commits, pushes or calls GitHub" in frontmatter
 
 
+def test_agent_report_carries_failures_part_and_evidence_rule():
+    text = AGENT.read_text(encoding="utf-8")
+    assert "**Failures**" in text
+    assert "not caused by this group" in text
+    assert "the same failure on `main`" in text
+    assert "a fix brief names the failure as the task" in text.lower()
+
+
 def test_apply_command_allows_monitor():
     allowed = next(
         line for line in _frontmatter(APPLY_COMMAND).splitlines() if line.startswith("allowed-tools:")
