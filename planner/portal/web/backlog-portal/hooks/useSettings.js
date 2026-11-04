@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { getProject, saveProject, checkProjectFolder, pickProjectFolder, initProjectFolder, copyProjectData, migrateOlderLayout } from '../../shared/files.js';
+import { getProject, saveProject, checkProjectFolder, checkCodeBase, pickProjectFolder, initProjectFolder, initCodeBase, copyProjectData, copyToCodeBase, migrateOlderLayout } from '../../shared/files.js';
 
 // Survives the page reload that follows a switch, so the Settings tab can still show the note about skill sessions.
 const SWITCHED_KEY = 'planner.dataDirSwitched';
@@ -10,10 +10,11 @@ const SETTLE_FAILED = 'The latest changes could not be saved yet, so the folder 
 // `settleAll` resolves true once every pending save is on disk; it runs before the switch and the reload.
 // `onMigrated` runs after a migration so the backlog list and the open backlog show the copied folders.
 export function useSettings(settleAll, onMigrated) {
-  const [settings, setSettings] = useState(null); // { projectName, dataDir, configPath }
+  const [settings, setSettings] = useState(null); // { projectName, dataDir, configPath, codeBase? }
   const [error, setError] = useState(null);
   const [working, setWorking] = useState(false);
-  const [offer, setOffer] = useState(null); // { dir, status } while the user chooses copy or init; { dir, ready: true } when only the switch is left
+  // { dir, status, isCodeBase?, move? } while the user chooses copy or init; { dir, isCodeBase, ready: true } when only the switch is left
+  const [offer, setOffer] = useState(null);
   const [initResult, setInitResult] = useState(null);
   const [copyResult, setCopyResult] = useState(null);
   const [migrateResult, setMigrateResult] = useState(null); // { copied, skipped, failed } after the user runs the migration
@@ -42,12 +43,13 @@ export function useSettings(settleAll, onMigrated) {
       setSettings(await saveProject({ projectName }));
     });
 
-  const switchTo = async (dir) => {
+  // `isCodeBase` saves `codeBase` (the server derives `.plans` and drops `dataDir`); otherwise it saves `dataDir`.
+  const switchTo = async (dir, isCodeBase = false) => {
     if (!(await settleAll())) throw new Error(SETTLE_FAILED);
     try {
-      await saveProject({ dataDir: dir });
+      await saveProject(isCodeBase ? { codeBase: dir } : { dataDir: dir });
     } catch (err) {
-      if (err.code === 'busy') setOffer({ dir, ready: true });
+      if (err.code === 'busy') setOffer({ dir, isCodeBase, ready: true });
       throw err;
     }
     sessionStorage.setItem(SWITCHED_KEY, '1');
@@ -66,6 +68,20 @@ export function useSettings(settleAll, onMigrated) {
     return undefined;
   };
 
+  // The same flow for a code base, checked on its `.plans` folder. `move` is the offer to move a data folder setup
+  // into a code base: it always asks, even when `.plans` already holds planner files, because the copy is the point.
+  const checkCodeBaseAndSwitch = async (codeBase, move) => {
+    setOffer(null);
+    setInitResult(null);
+    setCopyResult(null);
+    const check = await checkCodeBase(codeBase);
+    if (check.status === 'refused') throw new Error(check.reason);
+    const hasFiles = check.status === 'has-planner-files' || check.status === 'older-layout';
+    if (hasFiles && !move) return switchTo(check.codeBase, true);
+    setOffer({ dir: check.codeBase, status: check.status, isCodeBase: true, move });
+    return undefined;
+  };
+
   // Opens the server's folder dialog; a chosen folder goes through the same flow as any new folder, a cancel does nothing.
   const pickFolder = () =>
     run(async () => {
@@ -74,16 +90,24 @@ export function useSettings(settleAll, onMigrated) {
       return checkAndSwitch(picked.dir);
     });
 
+  // Same dialog for a code base. `move` marks the "move my data into a code base" offer.
+  const pickCodeBase = (move = false) =>
+    run(async () => {
+      const picked = await pickProjectFolder();
+      if (picked.cancelled) return undefined;
+      return checkCodeBaseAndSwitch(picked.dir, move);
+    });
+
   // choice: 'copy' or 'init', for the folder in `offer`.
   const chooseForNewFolder = (choice) =>
     run(async () => {
-      const { dir } = offer;
-      if (choice === 'copy') setCopyResult(await copyProjectData(dir));
-      else setInitResult(await initProjectFolder(dir));
-      await switchTo(dir);
+      const { dir, isCodeBase } = offer;
+      if (choice === 'copy') setCopyResult(await (isCodeBase ? copyToCodeBase(dir) : copyProjectData(dir)));
+      else setInitResult(await (isCodeBase ? initCodeBase(dir) : initProjectFolder(dir)));
+      await switchTo(dir, isCodeBase);
     });
 
-  const retrySwitch = () => run(() => switchTo(offer.dir));
+  const retrySwitch = () => run(() => switchTo(offer.dir, offer.isCodeBase));
 
   const runInit = () =>
     run(async () => {
@@ -100,5 +124,5 @@ export function useSettings(settleAll, onMigrated) {
       onMigrated?.();
     });
 
-  return { settings, error, working, offer, initResult, copyResult, migrateResult, switched, actions: { saveName, pickFolder, chooseForNewFolder, retrySwitch, runInit, runMigration, cancelOffer: () => setOffer(null) } };
+  return { settings, error, working, offer, initResult, copyResult, migrateResult, switched, actions: { saveName, pickFolder, pickCodeBase, chooseForNewFolder, retrySwitch, runInit, runMigration, cancelOffer: () => setOffer(null) } };
 }

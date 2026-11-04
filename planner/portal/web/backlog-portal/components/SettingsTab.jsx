@@ -7,6 +7,16 @@ function FolderList({ title, names }) {
   return <p className="muted">{title}: {names.join(', ')}</p>;
 }
 
+const HAS_FILES = ['has-planner-files', 'older-layout'];
+
+// Why the user is asked about a chosen folder. For a code base the status describes its `.plans` folder.
+function offerReason(offer) {
+  const place = offer.isCodeBase ? 'has no .plans folder' : 'does not exist yet';
+  if (offer.status === 'missing') return place;
+  if (HAS_FILES.includes(offer.status)) return offer.isCodeBase ? 'already holds planner files in .plans' : 'already holds planner files';
+  return offer.isCodeBase ? 'has an empty .plans folder' : 'has no planner files';
+}
+
 // The project name, the data folder and the config file. Always shown, even with no backlog, because an empty new
 // folder is exactly when it is needed. `settingsState` is the useSettings hook's result.
 export default function SettingsTab({ hidden, settingsState }) {
@@ -41,17 +51,35 @@ export default function SettingsTab({ hidden, settingsState }) {
             <button type="button" id="changeFolderBtn" disabled={working || !!offer} onClick={actions.pickFolder}>Change folder</button>
             <button type="button" id="initBtn" disabled={working || !!offer} onClick={actions.runInit}>Create missing folders</button>
           </div>
+          <div className="row">
+            <div className="grow">
+              <label htmlFor="codeBase">Code base</label>
+              <input type="text" id="codeBase" disabled value={settings.codeBase ?? ''} placeholder="Not set: the data folder above is used" readOnly />
+            </div>
+            <button type="button" id="changeCodeBaseBtn" disabled={working || !!offer} onClick={() => actions.pickCodeBase(false)}>Change code base</button>
+            {!settings.codeBase && (
+              <button type="button" id="moveToCodeBaseBtn" disabled={working || !!offer} onClick={() => actions.pickCodeBase(true)}>Move data into a code base</button>
+            )}
+          </div>
+          <p className="muted">
+            A code base keeps its backlogs in its <code>.plans</code> folder. Moving copies the current data there without overwriting
+            a file; the current data folder keeps its files.
+          </p>
           <p className="muted">Config file: <code>{settings.configPath}</code></p>
 
           {offer && !offer.ready && (
             <div id="folderOffer" className="card">
               <p>
-                <code>{offer.dir}</code> {offer.status === 'missing' ? 'does not exist yet' : 'has no planner files'}.
-                Copy the current data there, or create an empty structure? The folder is switched to afterwards.
+                <code>{offer.dir}</code> {offerReason(offer)}.{' '}
+                {offer.move
+                  ? 'Copy the current data there? Files already there are kept. The code base is saved afterwards.'
+                  : 'Copy the current data there, or create an empty structure? The folder is switched to afterwards.'}
               </p>
               <div className="row">
                 <button type="button" id="copyBtn" disabled={working} onClick={() => actions.chooseForNewFolder('copy')}>Copy current data</button>
-                <button type="button" id="createEmptyBtn" disabled={working} onClick={() => actions.chooseForNewFolder('init')}>Create empty structure</button>
+                {!offer.move && (
+                  <button type="button" id="createEmptyBtn" disabled={working} onClick={() => actions.chooseForNewFolder('init')}>Create empty structure</button>
+                )}
                 <button type="button" id="cancelOfferBtn" disabled={working} onClick={actions.cancelOffer}>Cancel</button>
               </div>
             </div>

@@ -38,7 +38,7 @@ async function call(method, url, { json, text } = {}) {
 }
 
 // Project settings: /api/project. A folder is sent as an absolute path; the server confines it.
-// getProject resolves to { projectName, dataDir, configPath }; saveProject takes { projectName?, dataDir? } and
+// getProject resolves to { projectName, dataDir, configPath, codeBase? }; saveProject takes { projectName?, dataDir?, codeBase? } and
 // resolves to the same plus `switched` (a refused value or a running save throws; code 'busy' means try again).
 export function getProject() {
   return call('GET', '/api/project');
@@ -67,6 +67,21 @@ export function initProjectFolder(dir) {
 // Copies the current data folder into `dir`. Resolves to { copied, skipped }.
 export function copyProjectData(dir) {
   return call('POST', '/api/project/copy', { json: { dir } });
+}
+
+// The same three calls for a code base: the server works on `<codeBase>/.plans`. check resolves to the same statuses
+// plus `codeBase` (the resolved path); init resolves like initProjectFolder; copy like copyProjectData.
+// saveProject({ codeBase }) writes `codeBase` and removes `dataDir`; it is refused while `.plans` does not exist.
+export function checkCodeBase(codeBase) {
+  return call('POST', '/api/project/check', { json: { codeBase } });
+}
+
+export function initCodeBase(codeBase) {
+  return call('POST', '/api/project/init', { json: { codeBase } });
+}
+
+export function copyToCodeBase(codeBase) {
+  return call('POST', '/api/project/copy', { json: { codeBase } });
 }
 
 // Copies the older layout of the served data folder into backlog folders; runs only when called.
