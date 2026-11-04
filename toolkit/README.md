@@ -368,6 +368,7 @@ list, and archive's git commands prompt for permission.
   - how to open the agent's transcript: its row in the agent panel then Enter, or `/tasks`
   - the agent's turn limit
 - After each report it says whether the group is done, failed or blocked.
+  - A failure starts a fix round, as described in [Fixing failures](#fixing-failures).
 - While the agent works, the command watches the agent's transcript file with the `Monitor` tool.
   - The transcript is `subagents/agent-<id>.jsonl`.
   - If the file does not change for 3 minutes, the command says the agent looks stalled and is probably waiting for a permission approval.
@@ -412,7 +413,8 @@ Install both parts, then start the command in a Claude Code session:
 - A fixable doubt gets one rerun before it asks.
   - A fixable doubt is a missing exit code or a suite skipped for a folder problem.
   - The rerun puts the exact commands in the prompt, once per group, and the stall watch covers it.
-  - A non-zero exit code, a protected branch, a missing agent and an unrelated change are not rerun.
+  - A protected branch, a missing agent and an unrelated change are not rerun and go to the confirmation word.
+  - A non-zero exit code is not rerun either. It starts the fix loop, as described in [Fixing failures](#fixing-failures).
 - A group of several concerns is split, not stopped on.
   - It is cut by the hygiene rule's one-concern list and by task.
   - The tests run once for the whole group before the first commit.
@@ -420,6 +422,7 @@ Install both parts, then start the command in a Claude Code session:
   - If a later commit fails, it stops and reports which commits were made.
 - A commit-stop line in the project's `operationGuidance` does not govern these commits.
 - Otherwise it stages the group, shows the summary and message, names a confirmation word and ends its turn, as the `jois-git-commit-hygiene` rule says.
+  - The confirmation word comes only after every failure of the group is explained.
   - A detached HEAD or an unreadable branch name counts as protected.
   - No test command, a suite that could not run or a missing agent also send it to the confirmation word.
 - It stages by explicit path and never uses `--amend` or `--no-verify`.
@@ -437,11 +440,27 @@ Install both parts, then start the command in a Claude Code session:
   - what it could not verify
   - the requirement or scenario of the change's specs the task satisfies
   - one `result:` clause labeled with the task number
+  - a `Failures` part, when a command failed: for each failure the command, the exact output line, the cause and whether it is fixed
 - The command copies each clause verbatim into the task's line in `tasks.md` and ticks the box.
 - `/jois-git:write-pr` already reads that clause for Author Verification.
 - The agent never edits `tasks.md`.
 - When a task needs a decision it cannot make, or would narrow a requirement of the specs, it ends with `blocked: <question>`.
 - The command then asks you.
+
+#### Fixing failures
+
+- The purpose is to find and fix a failure before the next group starts, without asking you first.
+- A failure is a task the report calls failed, a test command with a non-zero exit code, or a failure the report does not explain.
+- The command sends a fresh `opsx-task-applier` with the failing command, its exact output and the instruction to find the cause and fix it.
+- After each round it reruns the tests.
+- A failure is explained only when the `Failures` part gives the command, the exact output line, the cause and whether it is fixed.
+  - "Not caused by this group" counts only with evidence, such as the same failure on `main`.
+- The command takes the next group only when every failure is explained.
+- At most two fix rounds run.
+- The command asks you in three cases, says which one applies and shows the failure:
+  - The agent ends with `blocked: <question>`.
+  - A second round ends with a failure still unexplained.
+  - The same failure (same command and output line) comes back after a round meant to fix it.
 
 #### What is enforced
 

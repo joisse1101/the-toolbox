@@ -16,8 +16,8 @@ hooks:
           command: >-
             powershell -NoProfile -Command "if ([Console]::In.ReadToEnd() -match '\x22file_path\x22\s*:\s*\x22[^\x22]*openspec[\x5c/]+changes[\x5c/]+[^\x22]*tasks\.md\x22') { [Console]::Error.WriteLine('opsx-task-applier never edits tasks.md: put the result: clause in your report and the main session records it'); exit 2 }"
 metadata:
-  version: "1.3.1"
-  last_updated: "2026-11-02"
+  version: "1.4.0"
+  last_updated: "2026-11-04"
 ---
 
 # OpenSpec task applier
@@ -112,6 +112,14 @@ Give these parts for each task of the group, in order.
    - Name only commands and outcomes you ran and saw.
    - Never claim a check from Unverified passed.
    - For a task with no command, state what you checked by hand.
+7. **Failures**
+   - Required when a command you ran exited non-zero.
+   - Give one entry per failure: the command, the exact output line, the cause and whether it is fixed.
+   - Say "cause not found" when you did not find the cause.
+   - Call a failure "not caused by this group" only with evidence, such as the same failure on `main`.
+   - Without evidence the main session counts the failure as unexplained.
+
+A fix brief names the failure as the task. Find the cause and fix it within the group's tasks.
 
 If a task failed or is blocked:
 

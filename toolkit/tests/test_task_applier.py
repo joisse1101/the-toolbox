@@ -83,11 +83,27 @@ def test_agent_hook_keeps_the_git_and_gh_block():
     assert "never commits, pushes or calls GitHub" in frontmatter
 
 
+def test_agent_report_carries_failures_part_and_evidence_rule():
+    text = AGENT.read_text(encoding="utf-8")
+    assert "**Failures**" in text
+    assert "not caused by this group" in text
+    assert "the same failure on `main`" in text
+    assert "a fix brief names the failure as the task" in text.lower()
+
+
 def test_apply_command_allows_monitor():
     allowed = next(
         line for line in _frontmatter(APPLY_COMMAND).splitlines() if line.startswith("allowed-tools:")
     )
     assert "Monitor" in [tool.strip() for tool in allowed.split(":", 1)[1].split(",")]
+
+
+def test_apply_command_names_the_fix_loop_limits():
+    text = APPLY_COMMAND.read_text(encoding="utf-8")
+    assert "A second round ends with a failure still unexplained" in text
+    assert "The report ends in `blocked: <question>`" in text
+    assert "the same command and the same output line" in text
+    assert "Never take the next group while a failure of the current group is unexplained" in text
 
 
 def test_no_toolkit_file_allows_rm():

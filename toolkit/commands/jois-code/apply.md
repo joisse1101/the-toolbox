@@ -4,8 +4,8 @@ description: "Apply an OpenSpec change one group of tasks at a time: hand each g
 allowed-tools: Bash(openspec:*), Bash(git status:*), Bash(git diff:*), Bash(git add:*), Bash(git commit:*), Bash(git branch --show-current:*), Read, Edit, Agent, Monitor
 disable-model-invocation: true
 metadata:
-  version: "1.3.0"
-  last_updated: "2026-11-02"
+  version: "1.4.0"
+  last_updated: "2026-11-04"
 ---
 
 Apply the OpenSpec change named in the argument by handing its tasks to the `opsx-task-applier` agent, one group at a time.
@@ -101,9 +101,21 @@ Apply the OpenSpec change named in the argument by handing its tasks to the `ops
      - Record the tasks that have a clause.
      - Ask the user the question.
      - Dispatch the rest of the group again with the answer added to the prompt.
-   - If a task failed:
+   - If a task failed, or step 10 hands you a failing test command, run the **fix loop**:
      - Record the tasks that have a clause.
-     - Stop and report what failed.
+     - A failure is a task the report calls failed, a test command with a non-zero exit code, or a failure the report does not explain.
+     - Do not ask the user whether to go on.
+     - Each round is a fresh `opsx-task-applier` dispatch, in the background, with the watch of step 8.
+     - The brief carries the change name, the failing command, its exact output, the files the group touched and the instruction to find the cause and fix it within the group's tasks.
+     - The brief says the failure is the task, and that the agent must report as its own instructions say, with the `Failures` part.
+     - After each round, check the `Failures` part. A failure is **explained** only when it gives the command, the exact output line, the cause and whether it is fixed.
+     - A failure called "not caused by this group" counts as explained only when the report gives evidence, such as the same failure on `main`. Without evidence it is unexplained.
+     - Ask the user only in these three cases, say which one applies and show the failure:
+       - The report ends in `blocked: <question>`. Ask the question.
+       - A second round ends with a failure still unexplained.
+       - A failure has the same command and the same output line as before a round meant to fix it. Ask without a further round.
+     - Never take the next group while a failure of the current group is unexplained.
+     - A group whose tasks are all done and whose failures are all explained goes on to step 10.
    - If the agent reached its turn limit:
      - Record the finished tasks.
      - Dispatch the rest of the group.
@@ -135,8 +147,12 @@ Apply the OpenSpec change named in the argument by handing its tasks to the `ops
      - Start the watch (step 8) on the rerun too.
      - If the rerun shows exit code 0 for every command, the tests passed: go on.
      - If the rerun is still doubtful, fall back and say why.
+   - **A non-zero exit code** starts the fix loop of step 9.
+     - Pass it the failing command and its exact output.
+     - Rerun `opsx-test-runner` after each fix round, with the same exit-code judging as above.
+     - Go on only when every command shows exit code 0 and every failure is explained.
+     - If the loop ends in a question to the user, wait for the answer. Then fall back only after the failures are explained.
    - **No rerun** for these: fall back at once.
-     - A non-zero exit code. Show the failure.
      - No test command found, or a suite that could not run for another reason (such as missing dependencies).
      - A protected branch.
      - A missing agent.
