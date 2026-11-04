@@ -315,7 +315,7 @@ async function handleProject(req, res, segments) {
       const c = confinedCodeBase(body.codeBase);
       if (sub === 'init') {
         try {
-          return send(res, 200, initCodeBase(c.dir));
+          return send(res, 200, await initCodeBase(c.dir));
         } catch (err) {
           throw new HttpError(500, err.message, 'init-failed');
         }
@@ -330,7 +330,7 @@ async function handleProject(req, res, segments) {
     const dir = confined(body.dir);
     if (sub === 'init') {
       try {
-        return send(res, 200, initFolders(dir));
+        return send(res, 200, await initFolders(dir));
       } catch (err) {
         throw new HttpError(500, err.message, 'init-failed');
       }

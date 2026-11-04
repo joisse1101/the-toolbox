@@ -94,6 +94,9 @@ export default function SettingsTab({ hidden, settingsState }) {
             <div id="initResult">
               <FolderList title="Created" names={initResult.created} />
               <FolderList title="Already there" names={initResult.existing} />
+              {initResult.createdBacklog && (
+                <p className="muted" id="initBacklog">First backlog created: {initResult.createdBacklog}.</p>
+              )}
             </div>
           )}
           {copyResult && <p className="muted">Copied {copyResult.copied.length} file(s), skipped {copyResult.skipped.length}.</p>}

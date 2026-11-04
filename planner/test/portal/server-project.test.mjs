@@ -147,9 +147,14 @@ test('check, init and copy, then save and switch', async () => {
   fs.mkdirSync(empty);
   assert.equal((await (await call('POST', '/api/project/check', { dir: empty })).json()).status, 'empty');
   const init = await (await call('POST', '/api/project/init', { dir: empty })).json();
-  assert.deepEqual(init.created, [], 'the folder was there and nothing else is created');
+  assert.deepEqual(init.created, ['new-backlog'], 'the folder was there, so only the first backlog is created');
   assert.deepEqual(init.existing, ['empty-data']);
-  assert.deepEqual(fs.readdirSync(empty), []);
+  assert.equal(init.createdBacklog, 'new-backlog');
+  assert.deepEqual(fs.readdirSync(empty), ['new-backlog']);
+  assert.deepEqual(fs.readdirSync(path.join(empty, 'new-backlog'), { recursive: true }).sort(), ['lexicon', 'lexicon.csv', 'lexicon/lexicon-suggestions.csv'.replace('/', path.sep), 'user-stories', 'user-stories.csv', 'user-stories/proposals.csv'.replace('/', path.sep), 'user-stories/review.csv'.replace('/', path.sep)].sort());
+  const second = await (await call('POST', '/api/project/init', { dir: empty })).json();
+  assert.deepEqual(second.created, [], 'init twice creates nothing');
+  assert.deepEqual(second.existing, ['empty-data', 'new-backlog']);
 
   assert.equal((await save({ dataDir: target, projectName: 'Beta' })).status, 200);
   assert.deepEqual(await listed(), ['one']);
@@ -311,9 +316,13 @@ test('code base: check, init, copy, then save and switch live; the config holds 
   const init = await (await call('POST', '/api/project/init', { codeBase })).json();
   assert.equal(init.createdDataDir, true);
   assert.deepEqual(fs.readdirSync(codeBase), ['.plans'], 'only .plans is created');
-  assert.deepEqual(fs.readdirSync(plans), []);
-  assert.equal((await (await call('POST', '/api/project/init', { codeBase })).json()).createdDataDir, false, 'init twice changes nothing');
-  assert.equal((await (await call('POST', '/api/project/check', { codeBase })).json()).status, 'empty');
+  assert.deepEqual(init.created, ['.plans', 'new-backlog']);
+  assert.deepEqual(fs.readdirSync(plans), ['new-backlog']);
+  const twice = await (await call('POST', '/api/project/init', { codeBase })).json();
+  assert.equal(twice.createdDataDir, false, 'init twice changes nothing');
+  assert.deepEqual(twice.created, []);
+  assert.deepEqual(twice.existing, ['.plans', 'new-backlog']);
+  assert.equal((await (await call('POST', '/api/project/check', { codeBase })).json()).status, 'has-planner-files');
 
   const copy = await (await call('POST', '/api/project/copy', { codeBase })).json();
   assert.ok(copy.copied.includes('one/user-stories.csv'));
@@ -333,7 +342,7 @@ test('code base: check, init, copy, then save and switch live; the config holds 
   const saved = fs.readFileSync(configFile, 'utf8');
   assert.match(saved, /codeBase/);
   assert.doesNotMatch(saved, /dataDir/);
-  assert.deepEqual(await listed(), ['one'], 'the next list is answered from <code base>/.plans');
+  assert.deepEqual(await listed(), ['new-backlog', 'one'], 'the next list is answered from <code base>/.plans');
   const created = await call('POST', '/api/proposals/files', { name: 'one', content: 'a\r\n' });
   assert.equal(created.status, 201);
   assert.equal(fs.existsSync(path.join(plans, 'one', 'user-stories', 'proposals.csv')), true);

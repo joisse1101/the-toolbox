@@ -20,41 +20,69 @@ function put(dir, rel, text = 'x') {
 
 // ---- init (3.1)
 
-test('init on a missing folder creates the data folder and nothing else', () => {
-  const dir = path.join(tmp(), 'data');
-  const r = initFolders(dir);
-  assert.deepEqual(r.created, ['data']);
+// Init tests that need no confinement keep their folders under the project's .scratch/ and remove them afterwards.
+const SCRATCH = path.resolve(import.meta.dirname, '..', '..', '..', '.scratch', 'project-folders-init');
+function scratch() {
+  fs.mkdirSync(SCRATCH, { recursive: true });
+  return fs.mkdtempSync(path.join(SCRATCH, 'init-'));
+}
+test.after(() => fs.rmSync(SCRATCH, { recursive: true, force: true }));
+
+const loadStartingFiles = async () => (await import('../../logic/backlog/starting-files.js')).startingFiles();
+const KIND_PATHS = { backlog: 'user-stories.csv', review: 'user-stories/review.csv', proposals: 'user-stories/proposals.csv', lexicon: 'lexicon.csv', 'lexicon-suggestions': 'lexicon/lexicon-suggestions.csv' };
+
+async function assertStartingFiles(backlogDir) {
+  for (const { kind, text } of await loadStartingFiles()) {
+    assert.equal(fs.readFileSync(path.join(backlogDir, KIND_PATHS[kind]), 'utf8'), text, `${kind} holds its starting header`);
+  }
+}
+
+test('init on a missing folder creates the data folder and new-backlog with its five starting files', async () => {
+  const dir = path.join(scratch(), 'data');
+  const r = await initFolders(dir);
+  assert.deepEqual(r.created, ['data', 'new-backlog']);
   assert.deepEqual(r.existing, []);
   assert.equal(r.createdDataDir, true);
-  assert.deepEqual(fs.readdirSync(dir), []);
+  assert.equal(r.createdBacklog, 'new-backlog');
+  assert.deepEqual(fs.readdirSync(dir), ['new-backlog']);
+  await assertStartingFiles(path.join(dir, 'new-backlog'));
 });
 
-test('init on an empty folder creates nothing and lists the folder as existing', () => {
-  const dir = tmp();
-  const r = initFolders(dir);
-  assert.deepEqual(r.created, []);
+test('init on an empty folder creates new-backlog and lists the folder as existing', async () => {
+  const dir = scratch();
+  const r = await initFolders(dir);
+  assert.deepEqual(r.created, ['new-backlog']);
   assert.deepEqual(r.existing, [path.basename(dir)]);
   assert.equal(r.createdDataDir, false);
-  assert.deepEqual(fs.readdirSync(dir), []);
+  assert.deepEqual(fs.readdirSync(dir), ['new-backlog']);
+  await assertStartingFiles(path.join(dir, 'new-backlog'));
 });
 
-test('init on a folder that holds a backlog keeps it, lists it as existing and creates nothing', () => {
-  const dir = tmp();
+test('init on a folder that holds a backlog keeps it, lists it as existing and creates nothing', async () => {
+  const dir = scratch();
   put(dir, 'iam/user-stories.csv', 'keep');
-  const r = initFolders(dir);
+  const r = await initFolders(dir);
   assert.deepEqual(r.existing, [path.basename(dir), 'iam']);
   assert.deepEqual(r.created, []);
+  assert.equal(r.createdBacklog, null);
   assert.deepEqual(fs.readdirSync(dir), ['iam']);
+  assert.deepEqual(fs.readdirSync(path.join(dir, 'iam')), ['user-stories.csv']);
   assert.equal(fs.readFileSync(path.join(dir, 'iam', 'user-stories.csv'), 'utf8'), 'keep');
 });
 
-test('init a second time creates nothing', () => {
-  const dir = path.join(tmp(), 'data');
-  initFolders(dir);
-  const r = initFolders(dir);
+test('init a second time creates nothing and lists the folder and its backlog as existing', async () => {
+  const dir = path.join(scratch(), 'data');
+  await initFolders(dir);
+  const file = path.join(dir, 'new-backlog', 'user-stories.csv');
+  fs.appendFileSync(file, 'x');
+  const before = fs.readFileSync(file, 'utf8');
+  const r = await initFolders(dir);
   assert.deepEqual(r.created, []);
-  assert.deepEqual(r.existing, ['data']);
+  assert.deepEqual(r.existing, ['data', 'new-backlog']);
   assert.equal(r.createdDataDir, false);
+  assert.equal(r.createdBacklog, null);
+  assert.deepEqual(fs.readdirSync(dir), ['new-backlog']);
+  assert.equal(fs.readFileSync(file, 'utf8'), before, 'the existing file is not touched');
 });
 
 // ---- copy (3.2)
@@ -407,40 +435,51 @@ test('code base check: missing .plans, empty .plans, has-planner-files, refused'
   assert.equal(checkCodeBase(path.join(cb, 'nope')).status, 'refused');
 });
 
-test('code base init creates only .plans and lists it as created', () => {
+test('code base init creates .plans and .plans/new-backlog with its starting files, and nothing else', async () => {
   const cb = tmp();
   put(cb, 'src/app.js', 'code');
-  const r = initCodeBase(cb);
-  assert.deepEqual(r.created, ['.plans']);
+  const r = await initCodeBase(cb);
+  assert.deepEqual(r.created, ['.plans', 'new-backlog']);
   assert.deepEqual(r.existing, []);
   assert.equal(r.createdDataDir, true);
   assert.deepEqual(fs.readdirSync(cb).sort(), ['.plans', 'src']);
-  assert.deepEqual(fs.readdirSync(path.join(cb, '.plans')), []);
+  assert.deepEqual(fs.readdirSync(path.join(cb, '.plans')), ['new-backlog']);
+  await assertStartingFiles(path.join(cb, '.plans', 'new-backlog'));
+  assert.equal(fs.existsSync(path.join(cb, 'planner.config.yaml')), false, 'no config is written');
   assert.equal(fs.readFileSync(path.join(cb, 'src', 'app.js'), 'utf8'), 'code');
 });
 
-test('code base init twice creates nothing the second time and lists .plans as existing', () => {
+test('code base init twice creates nothing the second time and lists .plans and its backlog as existing', async () => {
   const cb = tmp();
-  initCodeBase(cb);
+  await initCodeBase(cb);
+  const r = await initCodeBase(cb);
+  assert.deepEqual(r.created, []);
+  assert.deepEqual(r.existing, ['.plans', 'new-backlog']);
+  assert.equal(r.createdDataDir, false);
+  assert.deepEqual(fs.readdirSync(path.join(cb, '.plans')), ['new-backlog']);
+});
+
+test('code base init on a .plans that holds a backlog creates nothing', async () => {
+  const cb = tmp();
   put(cb, '.plans/iam/user-stories.csv', 'keep');
-  const r = initCodeBase(cb);
+  const r = await initCodeBase(cb);
   assert.deepEqual(r.created, []);
   assert.deepEqual(r.existing, ['.plans', 'iam']);
-  assert.equal(r.createdDataDir, false);
+  assert.deepEqual(fs.readdirSync(path.join(cb, '.plans')), ['iam']);
   assert.equal(fs.readFileSync(path.join(cb, '.plans', 'iam', 'user-stories.csv'), 'utf8'), 'keep');
 });
 
-test('code base init refuses a missing code base and creates nothing', () => {
+test('code base init refuses a missing code base and creates nothing', async () => {
   const missing = path.join(tmp(), 'nope');
-  const r = initCodeBase(missing);
+  const r = await initCodeBase(missing);
   assert.match(r.refused, /does not exist/);
   assert.equal(fs.existsSync(missing), false);
 });
 
-test('code base init refuses a .plans that is a file', () => {
+test('code base init refuses a .plans that is a file', async () => {
   const cb = tmp();
   put(cb, '.plans', 'x');
-  assert.match(initCodeBase(cb).refused, /file/);
+  assert.match((await initCodeBase(cb)).refused, /file/);
   assert.equal(fs.readFileSync(path.join(cb, '.plans'), 'utf8'), 'x');
 });
 
