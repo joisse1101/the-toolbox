@@ -1,6 +1,6 @@
 # Story Skills Internals
 
-How the four story skills work inside. The skills are global toolkit items in `toolkit/skills/`: `jois-story-explore`, `jois-story-propose`, `jois-story-review` and `jois-story-plan`. Their commands are `/jois-story:propose`, `/jois-story:re-read` and `/jois-story:review`, in `toolkit/commands/jois-story/`. Each skill carries its scripts and a copy of what it shares with the planner, so an installed skill needs nothing from this repo. The specs are `toolkit-story-skills` and the capability spec for each writer. The files the skills write are described on [Data Folder](Data-Folder.md).
+How the five story skills work inside. The skills are global toolkit items in `toolkit/skills/`: `jois-story-explore`, `jois-story-propose`, `jois-story-review`, `jois-story-plan` and `jois-story-verify`. Their commands are `/jois-story:propose`, `/jois-story:re-read`, `/jois-story:review` and `/jois-story:verify`, in `toolkit/commands/jois-story/`. Each skill but `jois-story-verify` carries its scripts and a copy of what it shares with the planner, so an installed skill needs nothing from this repo. The specs are `toolkit-story-skills` and the capability spec for each writer. The files the skills write are described on [Data Folder](Data-Folder.md).
 
 ## Where the data folder comes from
 
@@ -63,3 +63,19 @@ The rules are in `toolkit/skills/jois-story-plan/references/diagram-conventions.
 A context map (`context-map.json` and `context-map.md`) is read by `read-context-map.mjs` and written by `write-context-map.mjs`. Its rules are section 9 of the conventions.
 
 The skill reads the target code base with ordinary `Read` and `Grep` in the current folder. There is no repo setting.
+
+## The verify skill
+
+`jois-story-verify` checks one stored slice and has no script, no `package.json` and no `lib/`. Because it carries no copy of the shared logic, it finds the scripts of the other story skills at run time: it loads each installed skill with the Skill tool, notes the folder it came from and runs the script from there.
+
+| Script | Skill that holds it | Used for |
+| --- | --- | --- |
+| `read-diagrams.mjs` | `jois-story-plan` | the slice list, one slice with its files and whether it is stale |
+| `write-diagram.mjs` | `jois-story-plan` | `--check` on the stored slice, and the write of a corrected slice |
+| `read-story-context.mjs` | `jois-story-propose` or `jois-story-explore` | one story with its `Clarifications` |
+| `read-backlog.mjs` | `jois-story-review` | the `epic-<n>` sections with the `Clarifications` column |
+| `write-review.mjs` | `jois-story-review` or `jois-story-propose` | a suggestion row in `review.csv` |
+
+Without `jois-story-plan` the skill stops, because a slice cannot exist without it and it holds the only checks. Without a review writer it reports story findings and offers no write. Without a story reader the two open-question checks are reported as not run. A check that cannot run never counts as passed.
+
+`read-diagrams.mjs --slice` prints text, so the skill rebuilds the JSON that `write-diagram.mjs` takes (`slice`, `scope`, `stories`, `files`) from that text before it runs `--check`. It writes a corrected slice only through `write-diagram.mjs` and a story suggestion only through `write-review.mjs --append`, each after a yes to the exact change, and it never edits a story.

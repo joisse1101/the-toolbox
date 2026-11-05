@@ -69,6 +69,18 @@ Use the plan skill. It reads `<backlog>/user-stories.csv` and `<backlog>/lexicon
 
 The skill needs the packages in its own folder, installed by `npm ci` there. The installer does this unless it was run with `-NoPackages`. Proposed stories are not drawn, because they are not in the backlog until you accept them.
 
+## Verify a slice
+
+Use the verify skill. It reads the slice `<backlog>/slices/<slice>/` and the stories in its scope, and writes only after you approve: a corrected slice to the same folder, or review suggestions to `<backlog>/user-stories/review.csv`.
+
+1. Ask Claude to use `jois-story-verify`, or run `/jois-story:verify` with the backlog and the slice. When you name none, it asks which.
+2. Read the ranked report: critical, warning and suggestion findings, each with a fix and an owner, and any check that was not run.
+3. For a slice fix, read the complete corrected document and `tasks.md` and choose "Yes, write", or "No, change it". A typed "looks good" is not an answer.
+4. For a story problem, read the suggestion row it shows and answer yes or no. Then apply or dismiss the suggestion in the Review tab. The skill never edits a story.
+5. Answer any `TBC` decision it asks you. It never fills one with a guess.
+
+The skill needs `jois-story-plan` installed, because it uses that skill's scripts.
+
 ## Change the data folder or code base
 
 Use the Settings tab. It reads and writes the config file, `planner/planner.config.yaml` (or the file `PLANNER_CONFIG` names), and copies backlog files between folders.
