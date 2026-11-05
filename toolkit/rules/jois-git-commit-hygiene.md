@@ -1,7 +1,7 @@
 ---
 metadata:
-  version: "1.4.0"
-  last_updated: "2026-11-03"
+  version: "1.5.0"
+  last_updated: "2026-11-05"
 ---
 # Commit hygiene
 
@@ -23,11 +23,19 @@ Applies only when you are about to commit.
 - A confirmation covers one commit.
 - After a change request, restage, present and ask again.
 
-## One exception
+## Apply flows
 
-- `/jois-code:apply` may commit a finished group without the word on a branch other than `main` or `master`.
-- The command sets the other conditions, so follow its text and do not restate them here.
-- No other command and no direct request shares this exception.
+- A flow that applies the tasks of a plan commits each finished concern without the word.
+- It does so only on a branch other than `main` or `master`, and only when its checks pass.
+- When a case is doubtful, it commits nothing, says which condition failed and stops.
+- It does not name a confirmation word when it stops.
+- It never pushes.
+- No other flow and no direct request shares this.
+
+## Push
+
+- A `git push` needs the user's confirmation word, in every flow.
+- Name the word for the push and end your turn, as for a commit.
 
 ## One concern per commit
 
