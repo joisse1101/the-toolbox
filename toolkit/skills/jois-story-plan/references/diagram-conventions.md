@@ -291,3 +291,23 @@ slice again changes no byte.
 
 Tasks are stale exactly when the slice is stale (its `source.json` story hashes), and nothing keeps a second
 record of that. The read reports how many tasks are ticked out of the total and changes no tick.
+
+### Review reply
+
+The reply that shows the complete tasks text also lists what the tasks leave out, so the user can decide
+whether to add a task. Three definitions make two runs list the same gaps.
+
+A rule or a failure response is covered when some task's `Verify:` line names it. A task that only cites a
+step of the rule's `Steps` cell does not cover it, because a task can cite a step without checking the rule.
+The rules are the rows of `## Non-functional and security rules`; the failure responses are the rows of
+`## Failure responses`. Every rule and failure response that no `Verify:` line names is listed as not covered.
+
+A failure response is a gap when its `AC id` row in the acceptance-criteria table is on the `main` path and no
+task's `Verify:` line names it. No failure criterion exists for it, so no task was owed. The reply names it by
+its failure and its step, and says that no failure criterion covers it. A failure response tied to a `failure`
+row is not a gap, because a failure criterion is given its own task.
+
+A task depends on a `TBC` design decision when the decision's `Steps` cell lists a step the task cites. The
+task's `Verify:` line then names the decision id. An open question that names a decision id inherits that
+dependency. Any other open question names no step, so no task can be tied to it; the reply only lists it, and
+no `Verify:` line has to mention it.
