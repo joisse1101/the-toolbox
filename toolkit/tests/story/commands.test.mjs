@@ -6,17 +6,18 @@ import { fileURLToPath } from 'node:url';
 
 const TOOLKIT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const COMMANDS = path.join(TOOLKIT, 'commands', 'jois-story');
-const NAMES = ['propose', 're-read', 'review'];
+const NAMES = ['propose', 're-read', 'review', 'verify'];
 const read = (name) => fs.readFileSync(path.join(COMMANDS, `${name}.md`), 'utf8').replace(/\r\n/g, '\n');
 
-test('the three story commands exist and nothing else is in the folder', () => {
+test('the four story commands exist and nothing else is in the folder', () => {
   assert.deepEqual(fs.readdirSync(COMMANDS).sort(), NAMES.map((n) => `${n}.md`).sort());
 });
 
 test('each command is versioned and hidden from the model', () => {
   for (const name of NAMES) {
     const front = read(name).split('---')[1];
-    assert.match(front, /^metadata:\n {2}version: "1\.0\.0"\n {2}last_updated: "2026-11-03"$/m, name);
+    const updated = name === 'verify' ? '2026-11-05' : '2026-11-03';
+    assert.match(front, new RegExp(`^metadata:\\n {2}version: "1\\.0\\.0"\\n {2}last_updated: "${updated}"$`, 'm'), name);
     assert.match(front, /^disable-model-invocation: true$/m, name);
     assert.doesNotMatch(front, /mcp__/, name);
   }
@@ -40,6 +41,13 @@ test('commands call the new skills and scripts, and name each other by the new n
   assert.match(read('review'), /\/jois-story:re-read/);
   assert.match(read('review'), /\/jois-story:propose/);
   assert.match(read('review'), /--check/);
+});
+
+test('verify loads jois-story-verify first and stops when it is not installed', () => {
+  const text = read('verify');
+  assert.match(text, /load the `jois-story-verify` skill with the Skill tool/);
+  assert.match(text, /If it is not installed, stop, say so, and read and write nothing/);
+  assert.ok(text.indexOf('jois-story-verify') < text.indexOf('If it is not installed'));
 });
 
 test('propose skips the yes/no step and re-read and review write nothing', () => {
