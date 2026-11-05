@@ -8,6 +8,7 @@ const path = require('path');
 const { spawn } = require('child_process');
 const { HttpError, validateBacklogName } = require('../../logic/storage/file-name.cjs');
 const { writeBacklogFiles } = require('../../logic/storage/backlog-files.cjs');
+const { validateInitials, readInitials, writeInitials, findConflict, defaultInitials } = require('../../logic/storage/backlog-initials.cjs');
 const { PLANS_DIR, KINDS, BACKLOG_FILE, backlogDir, backlogFile, listBacklogs, detectOlderLayout } =require('../../logic/storage/backlog-paths.cjs');
 // The config is read when paths.cjs loads. Run as the server, a bad config ends the process with the message that names the key.
 let paths;
@@ -115,11 +116,55 @@ async function writeNew(file, content) {
   }
 }
 
-// Creates a backlog: its folder holding the five starting files (header only). A taken name gets the next free number.
-// Returns the name used. The starting files are an ES module, so they load with a dynamic import.
+// The other backlogs of the data folder as { name, initials, frozenCodes } for the initials checks. The model is an ES
+// module, so it loads with a dynamic import. A sibling whose file cannot be read counts as holding no frozen IDs.
+async function siblingsOf(dataDir, name) {
+  const { loadBacklog } = await import('../../logic/backlog/model.js');
+  return listBacklogs(dataDir)
+    .filter((other) => other !== name)
+    .map((other) => {
+      const initials = readInitials(dataDir, other);
+      let frozenCodes = [];
+      try {
+        const text = fs.readFileSync(backlogFile(dataDir, other, 'backlog'), 'utf8');
+        const { stories } = loadBacklog(text, { initials: initials || 'B0' });
+        frozenCodes = stories.filter((s) => s.frozen && s.code).map((s) => s.code);
+      } catch { /* an unreadable sibling is reported when it is opened, not here */ }
+      return { name: other, initials, frozenCodes };
+    });
+}
+
+// The backlog's initials: the saved ones, or (first open of a backlog without backlog.json) the default, which is then saved.
+async function openInitials(dataDir, name) {
+  const saved = readInitials(dataDir, name);
+  if (saved) return saved;
+  return writeInitials(dataDir, name, defaultInitials(await siblingsOf(dataDir, name)));
+}
+
+// Creates a backlog: its folder holding the five starting files (header only) and backlog.json with the default initials.
+// A taken name gets the next free number. Returns the name used. The starting files are an ES module, so they load with a
+// dynamic import. When backlog.json cannot be written the folder is removed, so no partial backlog is left.
 async function createBacklog(dataDir, requested) {
   const { startingFiles } = await import('../../logic/backlog/starting-files.js');
-  return writeBacklogFiles(dataDir, requested, startingFiles());
+  const name = await writeBacklogFiles(dataDir, requested, startingFiles());
+  try {
+    writeInitials(dataDir, name, defaultInitials(await siblingsOf(dataDir, name)));
+  } catch (err) {
+    await fs.promises.rm(backlogDir(dataDir, name), { recursive: true, force: true });
+    throw err;
+  }
+  return name;
+}
+
+// Changes a backlog's initials: validated, refused when a sibling clashes (the message names it), written atomically.
+// The backlog's own current value is not a clash. Returns the stored initials.
+async function updateInitials(dataDir, name, value) {
+  if (!fs.existsSync(backlogFile(dataDir, name, 'backlog'))) throw new HttpError(404, `${name} was not found`, 'not-found');
+  const initials = validateInitials(value);
+  if (initials === readInitials(dataDir, name)) return initials;
+  const clash = findConflict(initials, await siblingsOf(dataDir, name));
+  if (clash) throw new HttpError(409, `The initials ${initials} are already used by the backlog "${clash.name}".`, 'initials-taken');
+  return writeInitials(dataDir, name, initials);
 }
 
 // Creates the file of another kind in an existing backlog; it never overwrites.
@@ -610,6 +655,8 @@ async function handleStoreApi(req, res, segments) {
   try {
     if (req.method === 'GET') {
       const content = await fs.promises.readFile(full, 'utf8');
+      // A backlog comes with its initials; one without backlog.json is given the default, saved on this first open.
+      if (kind === 'backlog') return send(res, 200, { name, content, initials: await openInitials(dataDir, name) });
       return send(res, 200, { name, content });
     }
     if (req.method === 'PUT') {
@@ -620,10 +667,9 @@ async function handleStoreApi(req, res, segments) {
     }
     if (req.method === 'PATCH' && kind === 'backlog') {
       const body = await readJson(req);
+      // { initials } changes the initials; { name } renames (the folder moves, so backlog.json and the initials stay).
+      if (body.initials !== undefined) return send(res, 200, { name, initials: await updateInitials(dataDir, name, body.initials) });
       const newName = await renameBacklog(dataDir, name, body.name);
-      if (newName !== name) {
-        // The backlog now has a new name: log its content so a later write can be traced to this one.
-        }
       return send(res, 200, { name: newName });
     }
   } catch (err) {

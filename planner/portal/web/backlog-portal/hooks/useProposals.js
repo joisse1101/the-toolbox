@@ -101,7 +101,7 @@ export function reducer(state, action) {
 // The proposed stories of the open backlog (`current`, a file name): loads proposals/<current>, edits them and keeps
 // them on disk. A missing file is an empty list; the first save creates it. `headers` are the backlog's, used for a
 // file that does not exist yet so unknown columns line up.
-export function useProposals(current, headers) {
+export function useProposals(current, headers, initials) {
   const [state, dispatch] = useReducer(reducer, initial);
   const [status, setStatus] = useState({ kind: 'idle', detail: '' });
   const [message, setMessage] = useState(null);
@@ -110,6 +110,8 @@ export function useProposals(current, headers) {
   stateRef.current = state;
   const headersRef = useRef(headers);
   headersRef.current = headers;
+  const initialsRef = useRef(initials);
+  initialsRef.current = initials;
   const loadToken = useRef(0);
 
   const autosave = useAutosave({ store, stateRef, onStatus: setStatus, onMessage: setMessage });
@@ -130,7 +132,7 @@ export function useProposals(current, headers) {
       }
       if (token !== loadToken.current) return;
       autosave.loaded(text);
-      const backlog = text === null ? emptyFile(headersRef.current) : loadBacklog(text, { placeholderIds: true });
+      const backlog = text === null ? emptyFile(headersRef.current) : loadBacklog(text, { placeholderIds: true, initials: initialsRef.current });
       dispatch({ type: 'loaded', name, backlog, keepSelection });
       autosave.setStatus('saved');
     }

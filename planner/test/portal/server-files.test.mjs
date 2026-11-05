@@ -47,7 +47,7 @@ test('read and write go to the fixed file of the kind; a write never creates', a
   put('a', 'user-stories.csv', 'ID\r\nA-1\r\n');
   put('a', 'user-stories/review.csv', 'R\r\n');
   const read = await (await fetch(`${origin}/api/backlog/files/a`)).json();
-  assert.deepEqual(read, { name: 'a', content: 'ID\r\nA-1\r\n' });
+  assert.deepEqual(read, { name: 'a', content: 'ID\r\nA-1\r\n', initials: 'B1' }, 'a backlog comes with its initials (the default, on first open)');
   assert.equal((await (await fetch(`${origin}/api/backlog/files/a.csv`)).json()).name, 'a', 'a trailing .csv is dropped');
   assert.equal((await (await fetch(`${origin}/api/review/files/a`)).json()).content, 'R\r\n');
   assert.equal((await fetch(`${origin}/api/lexicon/files/b`)).status, 404, 'a missing file is not found');
@@ -181,4 +181,84 @@ test('a request whose Host is not this machine is refused', async () => {
     req.end();
   });
   assert.equal(status, 403);
+});
+
+// ---------- initials (backlog.json) ----------
+
+const initialsFile = (name) => path.join(root, name, 'backlog.json');
+const savedInitials = (name) => JSON.parse(fs.readFileSync(initialsFile(name), 'utf8')).initials;
+const openedInitials = async (name) => (await (await fetch(`${origin}/api/backlog/files/${name}`)).json()).initials;
+const frozenStory = (code) => `ID,Epic,Title,Frozen\r\n${code},IAM,A story,Yes\r\n`;
+
+test('create writes backlog.json with initials no other backlog uses; rename keeps them', async () => {
+  put('init-old', 'user-stories.csv', 'ID\r\n');
+  put('init-old', 'backlog.json', '{"initials":"B1"}\n');
+  const made = (await (await call('POST', '/api/backlog/files', { name: 'init-new' })).json()).name;
+  const initials = savedInitials(made);
+  assert.match(initials, /^B\d+$/);
+  assert.notEqual(initials, 'B1', 'a sibling holds B1');
+  assert.equal(await openedInitials(made), initials, 'the backlog comes back with its initials');
+
+  assert.equal((await call('PATCH', `/api/backlog/files/${made}`, { name: 'init-renamed' })).status, 200);
+  assert.equal(savedInitials('init-renamed'), initials, 'a rename keeps the initials');
+  assert.equal(fs.existsSync(initialsFile(made)), false);
+});
+
+test('first open of a backlog without backlog.json saves the lowest unused default, skipping initials frozen IDs hold', async () => {
+  put('open-a', 'user-stories.csv', frozenStory('B1-IAM-0001'));
+  put('open-a', 'backlog.json', '{"initials":"ZZ"}\n');
+  put('open-b', 'user-stories.csv', 'ID\r\n');
+  assert.equal(fs.existsSync(initialsFile('open-b')), false);
+  const initials = await openedInitials('open-b');
+  assert.notEqual(initials, 'B1', 'a frozen ID of open-a starts with B1');
+  assert.equal(savedInitials('open-b'), initials, 'the default is saved on the first open');
+  assert.equal(await openedInitials('open-b'), initials, 'a second open reads it back');
+});
+
+test('initials update: an accepted change is uppercased, saved, and a same value changes nothing', async () => {
+  put('upd-a', 'user-stories.csv', 'ID\r\n');
+  put('upd-a', 'backlog.json', '{"initials":"UPDA"}\n');
+  const res = await call('PATCH', '/api/backlog/files/upd-a', { initials: 'upda2' });
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { name: 'upd-a', initials: 'UPDA2' });
+  assert.equal(savedInitials('upd-a'), 'UPDA2');
+  assert.equal(fs.readdirSync(path.join(root, 'upd-a')).some((f) => f.endsWith('.tmp')), false, 'no temp file is left');
+
+  const same = await call('PATCH', '/api/backlog/files/upd-a', { initials: 'updA2' });
+  assert.equal(same.status, 200, 'the own value is not a clash');
+  assert.equal(savedInitials('upd-a'), 'UPDA2');
+});
+
+test('initials update: refused when a sibling uses them (ignoring case), the message names the sibling', async () => {
+  put('ref-iam', 'user-stories.csv', 'ID\r\n');
+  put('ref-iam', 'backlog.json', '{"initials":"RIAM"}\n');
+  put('ref-billing', 'user-stories.csv', 'ID\r\n');
+  put('ref-billing', 'backlog.json', '{"initials":"RBIL"}\n');
+  const res = await call('PATCH', '/api/backlog/files/ref-billing', { initials: 'riam' });
+  assert.equal(res.status, 409);
+  assert.match((await res.json()).error, /ref-iam/);
+  assert.equal(savedInitials('ref-billing'), 'RBIL');
+});
+
+test('initials update: refused when a sibling holds a frozen ID that starts with them, the message names the sibling', async () => {
+  put('fz-iam', 'user-stories.csv', frozenStory('FZB1-IAM-0002'));
+  put('fz-iam', 'backlog.json', '{"initials":"FZOPS"}\n');
+  put('fz-billing', 'user-stories.csv', 'ID\r\n');
+  put('fz-billing', 'backlog.json', '{"initials":"FZBIL"}\n');
+  const res = await call('PATCH', '/api/backlog/files/fz-billing', { initials: 'FZB1' });
+  assert.equal(res.status, 409);
+  assert.match((await res.json()).error, /fz-iam/);
+  assert.equal(savedInitials('fz-billing'), 'FZBIL');
+});
+
+test('initials update: an invalid value is refused with the rule and nothing is saved', async () => {
+  put('bad-a', 'user-stories.csv', 'ID\r\n');
+  put('bad-a', 'backlog.json', '{"initials":"BADA"}\n');
+  for (const initials of ['1A', 'A-B', '', 'ABCDEFG', 5]) {
+    const res = await call('PATCH', '/api/backlog/files/bad-a', { initials });
+    assert.equal(res.status, 400, JSON.stringify(initials));
+    assert.match((await res.json()).error, /1 to 6 letters or digits/);
+  }
+  assert.equal(savedInitials('bad-a'), 'BADA');
+  assert.equal((await call('PATCH', '/api/backlog/files/nope-missing', { initials: 'OK' })).status, 404);
 });

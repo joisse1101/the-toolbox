@@ -68,10 +68,6 @@
   font-size: 11px; font-weight: 600; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .story-list li.in-feature { margin-left: 16px; }
-.story-list .group-lock { float: right; margin-left: 6px; padding: 0 4px; border: 1px solid transparent; background: none; font-size: 11px; line-height: 1.4; cursor: pointer; }
-.story-list .group-lock:hover, .story-list .group-lock:focus-visible { border-color: var(--accent); }
-.story-list .group-lock.none { opacity: 0.45; }
-.story-list .group-lock.none:hover, .story-list .group-lock.none:focus-visible { opacity: 1; }
 .story-list li.epic-head:first-child { margin-top: 0; }
 .story-list li:hover { border-color: var(--accent); }
 .story-list li.epic-head:hover, .story-list li.feature-head:hover { border-color: var(--border); }
@@ -244,13 +240,16 @@ legend { font-weight: 600; padding: 0 6px; }
 .suggestion-list { display: grid; gap: 8px; margin-top: 8px; }
 .suggestion { border: 1px dashed var(--accent); border-radius: var(--radius); padding: 8px 10px; background: var(--surface); }
 .suggestion.stale { border-color: var(--border); opacity: 0.8; }
-.suggestion.unlock { border-style: solid; }
-.unlock-banner { display: grid; gap: 8px; margin-bottom: 12px; }
-.unlock-banner-title { margin: 0 0 4px; font-weight: 600; }
 .lock-toggle { display: inline-flex; align-items: center; gap: 4px; margin-left: 12px; font: 13px system-ui, sans-serif; color: var(--text); cursor: pointer; }
 .lock-toggle input:disabled { cursor: not-allowed; }
 .lock-mark { margin-right: 4px; font-size: 12px; }
-.story-form.locked #epic { background: var(--surface); color: var(--muted); cursor: not-allowed; }
+.frozen-mark { margin-right: 4px; font-size: 12px; color: var(--accent); }
+.story-form .story-code .frozen-mark { margin-left: 12px; font-weight: 600; }
+.frozen-note { margin: 0 0 12px; padding: 6px 10px; border: 1px solid var(--accent); border-radius: 4px; background: var(--surface); }
+.story-form.frozen input[readonly], .story-form.frozen textarea[readonly] { background: var(--surface); cursor: default; }
+.story-form.frozen button:disabled, .story-form.frozen select:disabled { cursor: not-allowed; }
+.initials-field { max-width: 9em; }
+.initials-field input { text-transform: uppercase; }
 .suggestion-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; font-size: 12px; color: var(--muted); }
 .suggestion-kind { font-weight: 600; color: var(--text); }
 .suggestion-confirm { padding: 0 6px; border-radius: 999px; border: 1px solid var(--warn-border); background: var(--warn-bg); color: var(--warn-text); }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { createFileStore } from '../../shared/files.js';
 import { loadBacklog, newStory, displayOrder, applyBulk } from '../../../../logic/backlog/model.js';
-import { commitEpic, commitEpics, moveStory, moveGroup, gatherFeatures, recodedBetween, removeStory, removeStories, wouldCycle, lockStories, unlockStories } from '../../../../logic/backlog/ids.js';
+import { commitEpic, commitEpics, moveStory, moveGroup, gatherFeatures, recodedBetween, removeStory, removeStories, wouldCycle, renumber } from '../../../../logic/backlog/ids.js';
 import { applySuggestions, acceptAll } from '../../../../logic/review/review.js';
 import { useAutosave } from './useAutosave.js';
 
@@ -12,6 +12,7 @@ const initial = {
   files: [],
   current: null, // selected file name
   backlog: null, // { headers, stories, hasBom }
+  initials: '', // the open backlog's initials; every ID is computed with them
   selectedId: null,
   view: 'editor', // 'editor' | 'stories' | 'graph' | 'proposed' | 'lexicon' | 'settings' | 'review'
   checked: new Set(), // story ids ticked in the Stories tab (separate from selectedId)
@@ -39,6 +40,7 @@ export function reducer(state, action) {
         ...state,
         current: action.name,
         backlog: action.backlog,
+        initials: action.initials,
         selectedId: stories.length ? stories[Math.min(Math.max(previousIndex, 0), stories.length - 1)].id : null,
         checked: new Set(), // ids are assigned per load, so a selection cannot survive a reload
         lastChecked: null,
@@ -46,19 +48,20 @@ export function reducer(state, action) {
       };
     }
     case 'cleared':
-      return { ...state, current: null, backlog: null, selectedId: null, checked: new Set(), lastChecked: null };
+      return { ...state, current: null, backlog: null, initials: '', selectedId: null, checked: new Set(), lastChecked: null };
     case 'renamed':
       return { ...state, current: action.name };
     case 'select':
       return { ...state, selectedId: action.id };
     case 'view':
       return { ...state, view: action.view };
+    // A frozen story is read-only: an edit action for it changes nothing, even when the form is stale.
     case 'edit': {
+      if (state.backlog.stories.some((s) => s.id === action.id && s.frozen)) return state;
       const stories = state.backlog.stories.map((s) => {
         if (s.id !== action.id) return s;
         const draft = { ...s, criteria: s.criteria.map((c) => ({ ...c })), clarifications: s.clarifications.map((p) => ({ ...p })) };
         action.change(draft);
-        if (s.locked) draft.epic = s.epic; // the Epic of a locked story is read-only
         return draft;
       });
       return withStories(state, stories);
@@ -66,33 +69,33 @@ export function reducer(state, action) {
     case 'add':
       return withStories(state, [...state.backlog.stories, action.story], { selectedId: action.story.id });
     case 'commitEpic': {
-      const stories = commitEpic(state.backlog.stories, action.id);
+      const stories = commitEpic(state.backlog.stories, action.id, state.initials);
       return stories === state.backlog.stories ? state : withStories(state, stories);
     }
     case 'move': {
-      const stories = moveStory(state.backlog.stories, action.id, action.epic, action.beforeId);
+      const stories = moveStory(state.backlog.stories, action.id, action.epic, action.beforeId, state.initials);
       return stories === state.backlog.stories ? state : withStories(state, stories, { selectedId: action.id });
     }
     case 'moveGroup': {
-      const stories = moveGroup(state.backlog.stories, action.group, action.beforeKey);
+      const stories = moveGroup(state.backlog.stories, action.group, action.beforeKey, state.initials);
       return stories === state.backlog.stories ? state : withStories(state, stories);
     }
     case 'renumberDisplayed': {
-      const stories = gatherFeatures(state.backlog.stories);
+      const stories = gatherFeatures(state.backlog.stories, state.initials);
       return stories === state.backlog.stories ? state : withStories(state, stories);
     }
     case 'delete': {
       const stories = state.backlog.stories;
       const i = stories.findIndex((s) => s.id === action.id);
       if (i < 0) return state;
-      const rest = removeStory(stories, action.id);
-      if (rest === stories) return state; // a locked story is not deleted
+      const rest = removeStory(stories, action.id, state.initials);
+      if (rest === stories) return state; // a frozen story is not deleted
       return withStories(state, rest, { selectedId: rest.length ? rest[Math.min(i, rest.length - 1)].id : null });
     }
-    // Delete the ticked stories (action.ids) except locked ones. The selected story moves to the nearest survivor.
+    // Delete the ticked stories (action.ids) except frozen ones. The selected story moves to the nearest survivor.
     case 'deleteMany': {
       const stories = state.backlog.stories;
-      const { stories: rest } = removeStories(stories, action.ids);
+      const { stories: rest } = removeStories(stories, action.ids, state.initials);
       if (rest === stories) return state;
       const i = stories.findIndex((s) => s.id === state.selectedId);
       const keep = rest.some((s) => s.id === state.selectedId);
@@ -103,20 +106,20 @@ export function reducer(state, action) {
       const { stories } = state.backlog;
       const from = stories.find((s) => s.id === action.id);
       const to = stories.find((s) => s.code === action.code);
-      if (!from?.code || !to || from.dependsOn.includes(action.code) || wouldCycle(stories, from.code, action.code)) return state;
+      if (!from?.code || from.frozen || !to || from.dependsOn.includes(action.code) || wouldCycle(stories, from.code, action.code)) return state;
       return withStories(state, stories.map((s) => (s === from ? { ...s, dependsOn: [...s.dependsOn, action.code] } : s)));
     }
     case 'removeDependency': {
       const { stories } = state.backlog;
       const from = stories.find((s) => s.id === action.id);
-      if (!from?.dependsOn.includes(action.code)) return state;
+      if (from?.frozen || !from?.dependsOn.includes(action.code)) return state;
       const dependsOn = from.dependsOn.filter((c) => c !== action.code);
       return withStories(state, stories.map((s) => (s === from ? { ...s, dependsOn, ambiguous: s.ambiguous.filter((c) => c !== action.code) } : s)));
     }
     // Apply one review suggestion or a whole split group. A failed apply (stale row, cycle) leaves the state alone;
     // the caller runs applySuggestions first to show the reason.
     case 'applySuggestions': {
-      const result = applySuggestions(state.backlog.stories, action.rows, state.backlog.headers);
+      const result = applySuggestions(state.backlog.stories, action.rows, state.backlog.headers, state.initials);
       return result.error ? state : withStories(state, result.stories);
     }
     // Accept all: the stories acceptAll (planner/logic/review/review.js) computed for a whole run, stored as one edit.
@@ -128,10 +131,11 @@ export function reducer(state, action) {
       const keep = stories.some((s) => s.id === state.selectedId);
       return withStories(state, stories, { selectedId: keep ? state.selectedId : (stories[0]?.id ?? null) });
     }
-    // Lock or unlock the ticked stories (or just action.ids). Stories without an ID are skipped when locking.
-    case 'lock': {
-      const { stories } = (action.on ? lockStories : unlockStories)(state.backlog.stories, action.ids);
-      return stories === state.backlog.stories ? state : withStories(state, stories);
+    // The backlog's initials changed (the server accepted them): every ID that is not frozen is recomputed with them.
+    case 'setInitials': {
+      if (action.initials === state.initials) return state;
+      const stories = renumber(state.backlog.stories, action.initials);
+      return stories === state.backlog.stories ? { ...state, initials: action.initials } : withStories(state, stories, { initials: action.initials });
     }
     case 'check': {
       const checked = new Set(state.checked);
@@ -147,7 +151,7 @@ export function reducer(state, action) {
     case 'bulk': {
       const stories = state.backlog.stories.map((s) => ({ ...s }));
       applyBulk(stories, state.checked, action.patch);
-      return withStories(state, commitEpics(stories, state.checked));
+      return withStories(state, commitEpics(stories, state.checked, state.initials));
     }
     default:
       return state;
@@ -178,10 +182,10 @@ export function useBacklog() {
 
     // keepSelection: stay on the same position in the story list (a reload), rather than start at the top.
     async function loadFile(name, keepSelection = false) {
-      const text = await store.read(name);
+      const { content: text, initials } = await store.readBacklog(name);
       autosave.loaded(text);
-      const backlog = loadBacklog(text);
-      dispatch({ type: 'loaded', name, backlog, keepSelection });
+      const backlog = loadBacklog(text, { initials });
+      dispatch({ type: 'loaded', name, backlog, initials, keepSelection });
       autosave.setStatus('saved');
       return backlog;
     }
@@ -279,8 +283,8 @@ export function useBacklog() {
       // Asks first. Resolves true when the story was deleted.
       deleteSelected() {
         const { backlog, selectedId } = stateRef.current;
-        if (backlog?.stories.find((s) => s.id === selectedId)?.locked) {
-          setMessage('A locked story cannot be deleted. Unlock it first.');
+        if (backlog?.stories.find((s) => s.id === selectedId)?.frozen) {
+          setMessage('A frozen story cannot be deleted.');
           return false;
         }
         if (selectedId === null || !confirm('Delete the selected story?')) return false;
@@ -288,14 +292,14 @@ export function useBacklog() {
         return true;
       },
 
-      // Asks first. Deletes the ticked stories that are not locked. Returns { deleted, skipped } (skipped: locked ones kept);
-      // nothing is asked or deleted when all of them are locked, and deleted is 0 when the user cancels.
+      // Asks first. Deletes the ticked stories that are not frozen. Returns { deleted, skipped } (skipped: frozen ones kept);
+      // nothing is asked or deleted when all of them are frozen, and deleted is 0 when the user cancels.
       deleteChecked() {
         const { backlog, checked } = stateRef.current;
-        const { skipped } = removeStories(backlog.stories, checked);
+        const { skipped } = removeStories(backlog.stories, checked, stateRef.current.initials);
         const deleted = [...checked].filter((id) => backlog.stories.some((s) => s.id === id)).length - skipped;
         if (deleted <= 0) return { deleted: 0, skipped };
-        if (!confirm(`Delete ${deleted} ${deleted === 1 ? 'story' : 'stories'}?${skipped ? `\n\n${skipped} locked ${skipped === 1 ? 'story is' : 'stories are'} kept.` : ''}\n\nThis cannot be undone.`)) return { deleted: 0, skipped: 0 };
+        if (!confirm(`Delete ${deleted} ${deleted === 1 ? 'story' : 'stories'}?${skipped ? `\n\n${skipped} frozen ${skipped === 1 ? 'story is' : 'stories are'} kept.` : ''}\n\nThis cannot be undone.`)) return { deleted: 0, skipped: 0 };
         dispatch({ type: 'deleteMany', ids: checked });
         return { deleted, skipped };
       },
@@ -318,28 +322,28 @@ export function useBacklog() {
       // make their review suggestions follow (review.retarget).
       moveStory(id, epic, beforeId) {
         const { stories } = stateRef.current.backlog;
-        const recoded = recodedBetween(stories, moveStory(stories, id, epic, beforeId));
+        const recoded = recodedBetween(stories, moveStory(stories, id, epic, beforeId, stateRef.current.initials));
         dispatch({ type: 'move', id, epic, beforeId });
         return recoded;
       },
       // `group` is { epic } or { epic, feature }; beforeKey the epic or feature to land before (null = last).
       moveGroup(group, beforeKey) {
         const { stories } = stateRef.current.backlog;
-        const recoded = recodedBetween(stories, moveGroup(stories, group, beforeKey));
+        const recoded = recodedBetween(stories, moveGroup(stories, group, beforeKey, stateRef.current.initials));
         dispatch({ type: 'moveGroup', group, beforeKey });
         return recoded;
       },
       // Asks first. Resolves the recoded map, or null when nothing changes or the user cancels.
       renumberDisplayed() {
         const { stories } = stateRef.current.backlog;
-        const after = gatherFeatures(stories);
+        const after = gatherFeatures(stories, stateRef.current.initials);
         if (after === stories) return null;
         const recoded = recodedBetween(stories, after);
         const n = recoded.size;
         const effect = n ? `${n} ${n === 1 ? 'story gets' : 'stories get'} a new ID, and links to ${n === 1 ? 'it are' : 'them are'} updated.` : 'No ID changes; the rows are only put in the order shown.';
         if (!confirm(`Put the stories of each feature together, in the order shown, and renumber?
 
-${effect} Locked stories keep their IDs.
+${effect} Frozen stories keep their IDs.
 
 This cannot be undone.`)) return null;
         dispatch({ type: 'renumberDisplayed' });
@@ -350,38 +354,32 @@ This cannot be undone.`)) return null;
 
       toggleChecked: (ids, on, anchor) => dispatch({ type: 'check', ids, on, anchor }),
       checkAll: (on, ids) => dispatch({ type: 'checkAll', on, ids }),
-      // Resolves { skipped }: the locked ticked stories whose Epic was not changed.
+      // Resolves { skipped }: the frozen ticked stories, which a bulk edit leaves as they are.
       applyBulkPatch(patch) {
         const { backlog, checked } = stateRef.current;
-        const epicChange = typeof patch.epic === 'string' && patch.epic.trim() !== '';
-        const skipped = epicChange ? backlog.stories.filter((s) => checked.has(s.id) && s.locked).length : 0;
+        const skipped = backlog.stories.filter((s) => checked.has(s.id) && s.frozen).length;
         dispatch({ type: 'bulk', patch });
         return { skipped };
       },
 
-      // Lock or unlock the ticked stories. Resolves { skipped }: ticked stories without an ID that could not be locked.
-      lockChecked(on) {
-        const { backlog, checked } = stateRef.current;
-        const { skipped } = (on ? lockStories : unlockStories)(backlog.stories, checked);
-        dispatch({ type: 'lock', ids: checked, on });
-        return { skipped };
-      },
-      lockStory: (id, on) => dispatch({ type: 'lock', ids: new Set([id]), on }),
-
-      // Lock or unlock every story of a group (an epic's or a feature's). Stories without an ID cannot be locked: they
-      // are skipped and the message says how many. Resolves { skipped }.
-      lockGroup(groupStories, on) {
-        const ids = new Set(groupStories.map((s) => s.id));
-        const { skipped } = (on ? lockStories : unlockStories)(stateRef.current.backlog.stories, ids);
-        dispatch({ type: 'lock', ids, on });
-        setMessage(skipped ? `${skipped} skipped (no ID)` : null);
-        return { skipped };
+      // Asks the server to change the backlog's initials, then renumbers the stories that are not frozen. Resolves
+      // { ok: true } (also when nothing changed) or { error } with the server's refusal; nothing changes on error.
+      async setInitials(wanted) {
+        const { current, initials } = stateRef.current;
+        if (!current || wanted.trim().toUpperCase() === initials) return { ok: true };
+        try {
+          const stored = await store.setInitials(current, wanted);
+          dispatch({ type: 'setInitials', initials: stored });
+          return { ok: true };
+        } catch (err) {
+          return { error: err.message };
+        }
       },
 
       // Resolves { ok: true } or { error } (the edit is not made on error).
       applySuggestions(rows) {
         const { backlog } = stateRef.current;
-        const result = applySuggestions(backlog.stories, rows, backlog.headers);
+        const result = applySuggestions(backlog.stories, rows, backlog.headers, stateRef.current.initials);
         if (result.error) return { error: result.error };
         dispatch({ type: 'applySuggestions', rows });
         return { ok: true };
@@ -390,7 +388,7 @@ This cannot be undone.`)) return null;
       // Applies the eligible units in order as one edit. Returns { applied, skipped } (see acceptAll in planner/logic/review/review.js).
       acceptAll(units) {
         const { backlog } = stateRef.current;
-        const result = acceptAll(backlog.stories, units, backlog.headers);
+        const result = acceptAll(backlog.stories, units, backlog.headers, stateRef.current.initials);
         if (result.applied.length) dispatch({ type: 'acceptSuggestions', stories: result.stories });
         return { applied: result.applied, skipped: result.skipped };
       },

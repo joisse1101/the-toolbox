@@ -14,11 +14,22 @@ user-stories/review.csv             kind review (with review.decided beside it)
 user-stories/proposals.csv          kind proposals
 lexicon.csv                         kind lexicon
 lexicon/lexicon-suggestions.csv     kind lexicon-suggestions
+backlog.json                        the backlog's initials, not a kind
 slices/<slice>/                     not a kind
 context-map.json, context-map.md    not a kind
 ```
 
-Slices and the context map are not kinds, so the portal's file API cannot reach them.
+Slices, the context map and `backlog.json` are not kinds, so the portal's file API cannot read or write them as files. The server reads and writes `backlog.json` itself.
+
+## Initials in backlog.json
+
+`backlog.json` holds one setting, the backlog's initials, written as `{"initials":"B1"}`. The initials start every story ID of the backlog (`B1-IAM-0003`). Valid initials are 1 to 6 letters or digits, start with a letter and have no hyphen, and are stored in uppercase.
+
+A backlog the server creates gets `backlog.json` at once, and a rename moves the folder, so the file and the initials stay with it. A backlog without the file, for example one made before initials existed, is given the default when it is first opened, and the file is saved then. The default is the lowest `B<n>` (n from 1) that does not clash with any sibling backlog.
+
+The initials of one backlog must not clash with a sibling, meaning another backlog in the same data folder. A sibling clashes when it uses the same initials, ignoring case, or when one of its frozen story IDs starts with them and a hyphen. The second case is why initials that a sibling retired are still refused: its frozen IDs keep them. The check cannot see backlogs in another data folder, so two data folders can reuse the same initials.
+
+The server writes the file atomically, to a temporary file first and then a rename, so a failed write never leaves half a file. The functions are in `planner/logic/storage/backlog-initials.cjs`.
 
 ## The older layout
 

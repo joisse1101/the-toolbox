@@ -54,7 +54,7 @@ test('a second New is numbered and leaves the first unchanged', async () => {
   const res = await create('new-backlog');
   assert.deepEqual(await res.json(), { name: 'new-backlog-2' });
   assert.deepEqual(snapshot(path.join(root, 'new-backlog')), before);
-  assert.equal(Object.keys(snapshot(path.join(root, 'new-backlog-2'))).length, 5);
+  assert.equal(Object.keys(snapshot(path.join(root, 'new-backlog-2'))).length, 6, 'the five starting files and backlog.json');
 });
 
 test('nothing is taken from an existing backlog, and the existing backlog is unchanged', async () => {
