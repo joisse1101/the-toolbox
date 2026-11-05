@@ -59,13 +59,13 @@ Use the Lexicon tab, or the propose skill. Both work on `<backlog>/lexicon.csv`.
 
 ## Plan a slice
 
-Use the plan skill. It reads `<backlog>/user-stories.csv` and `<backlog>/lexicon.csv` and writes a slice, `<backlog>/slices/<slice>/`, holding the document `UC-<slice>.md` and `source.json`. It may also write the context map, `<backlog>/context-map.json` and `<backlog>/context-map.md`.
+Use the plan skill. It reads `<backlog>/user-stories.csv` and `<backlog>/lexicon.csv` and writes a slice, `<backlog>/slices/<slice>/`, holding the document `UC-<slice>.md`, the build tasks `tasks.md` and `source.json`. It may also write the context map, `<backlog>/context-map.json` and `<backlog>/context-map.md`.
 
 1. Ask Claude to use `jois-story-plan` on the backlog. Say whether you want the slice for an Epic, a Feature or one story. The skill recommends one with a reason.
 2. Optionally ask it to draw the context map first, which sets bounded contexts, owners and links between contexts. It shows the whole map and asks "Write this map?".
 3. Answer the design checkpoint: the skill shows an outline of participants, contracts and failure branches, and asks for each design decision the stories do not settle.
-4. Read the complete document it shows, and choose "Yes, write" to write the slice. A typed "yes" is not enough, and nothing is written before that choice.
-5. Open `UC-<slice>.md` in GitHub or the VS Code markdown preview. When a story changes later, the skill reports the slice as stale and redraws it only when you ask.
+4. Read the complete document and the complete `tasks.md` it shows in the same reply, and choose "Yes, write" to write both. There is one question for the two files. A typed "yes" is not enough, and nothing is written before that choice.
+5. Open `UC-<slice>.md` in GitHub or the VS Code markdown preview, and tick tasks in `tasks.md` as you finish them. When a story changes later, the skill reports the slice as stale and redraws it only when you ask; after a redraw it tells you which ticks were reset or dropped.
 
 The skill needs the packages in its own folder, installed by `npm ci` there. The installer does this unless it was run with `-NoPackages`. Proposed stories are not drawn, because they are not in the backlog until you accept them.
 
