@@ -51,7 +51,7 @@ def test_only_the_review_skill_and_the_commands_are_installed(project):
     skills = sorted(p.name for p in (root / ".claude" / "skills").iterdir())
     assert skills == ["jois-story-review"]
     commands = sorted(p.name for p in (root / ".claude" / "commands" / "jois-story").iterdir())
-    assert commands == ["propose.md", "re-read.md", "review.md"]
+    assert commands == ["propose.md", "re-read.md", "review.md", "verify.md"]
 
 
 def test_the_review_command_names_a_skill_for_each_script_and_does_not_need_propose():
