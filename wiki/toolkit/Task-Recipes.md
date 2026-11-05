@@ -24,6 +24,8 @@ The change moves through four steps, and the commit rule applies at the end of e
 
 `/jois-code:apply` needs the agent `opsx-task-applier` installed and stops without it. With `opsx-test-runner` also installed it checks each group before committing, and without it the command stops with nothing committed and names the missing agent. If the session ends, run `/jois-code:apply <change>` again: it resumes from the tasks not yet ticked. It never pushes.
 
+To build a slice written by `jois-story-plan` instead, run `/jois-code:apply slice <backlog>/<slice>`. It checks that the slice is current and stops if it is stale, then works the same group loop and commits the code by itself under the same conditions. It ticks the slice's `tasks.md` in place, never stages the slice folder and never suggests `/opsx:archive`. Redraw a stale slice with `jois-story-plan` and run the command again.
+
 When the change shapes user stories rather than code, the story skills have their own order, described in [Story Skills](../planner/Story-Skills.md).
 
 ## Commit and open a pull request

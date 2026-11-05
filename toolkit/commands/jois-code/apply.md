@@ -1,14 +1,24 @@
 ---
 name: "JOIS: Apply"
 description: "Apply an OpenSpec change or a slice one group of tasks at a time: hand each group to opsx-task-applier, record its results in tasks.md, check it with opsx-test-runner, then commit it by itself on an unprotected branch (never main or master, never a push), defer the commit while a named pending task fixes a failing test, or stop with nothing committed in a doubtful case"
-allowed-tools: Bash(openspec:*), Bash(git status:*), Bash(git diff:*), Bash(git add:*), Bash(git commit:*), Bash(git branch --show-current:*), Read, Edit, Agent, Monitor
+allowed-tools: Bash(openspec:*), Bash(git status:*), Bash(git diff:*), Bash(git add:*), Bash(git commit:*), Bash(git branch --show-current:*), Bash(node *jois-story-plan*read-diagrams.mjs*), Read, Edit, Glob, Agent, Monitor
 disable-model-invocation: true
 metadata:
-  version: "1.6.0"
-  last_updated: "2026-11-06"
+  version: "1.7.0"
+  last_updated: "2026-11-05"
 ---
 
-Apply the OpenSpec change named in the argument by handing its tasks to the `opsx-task-applier` agent, one group at a time.
+Apply an OpenSpec change, or a slice written by `jois-story-plan`, by handing its tasks to the `opsx-task-applier` agent, one group at a time.
+
+## Forms
+
+The argument alone picks the form. Never guess between them.
+
+- `/jois-code:apply <change>` is the OpenSpec form. A bare name is always an OpenSpec change, even when a slice has the same name.
+- `/jois-code:apply slice <backlog>/<slice>` is the slice form. It does not call `openspec`.
+- `slice` alone, or `slice <backlog>` with no slice name: ask for `<backlog>/<slice>` and do nothing else.
+
+Steps 1 to 3 differ by form. Steps 4 to 11 are shared.
 
 ## Rules
 
@@ -19,7 +29,31 @@ Apply the OpenSpec change named in the argument by handing its tasks to the `ops
 - You are the only writer of `tasks.md`.
 - This is advisory. Nothing blocks a session from running plain `/opsx:apply`.
 
-## Steps
+## Slice form: steps 1 to 3
+
+A slice is the folder `<backlog>/slices/<slice>/` of the data folder the plan skill reads. It holds `tasks.md` and `UC-<slice>.md`. Use these steps instead of steps 1 to 3 below.
+
+1. **Pick the slice.**
+   - Take `<backlog>` and `<slice>` from the argument `slice <backlog>/<slice>`.
+   - Announce the slice `<slice>` of the backlog `<backlog>`.
+   - Work on that slice only.
+2. **Read its files.**
+   - Find `tasks.md` with Glob: `**/<backlog>/slices/<slice>/tasks.md`.
+   - Read `tasks.md` and `UC-<slice>.md` from that folder.
+   - If the folder or `tasks.md` does not exist, say what is missing, point to `jois-story-plan` and stop.
+   - A group is one `## <flow>` section of `tasks.md`.
+   - A task is a checkbox line `- [ ] T-<slice>-<name> <title>` with its `Satisfies:` and `Verify:` lines.
+3. **Check the slice is current.**
+   - Look for `read-diagrams.mjs` in `~/.claude/skills/jois-story-plan/` and in this project's `.claude/skills/jois-story-plan/`.
+   - If it is in neither, say the plan skill is not installed, name `Install-Toolkit.ps1` and stop.
+   - Run `node <that folder>/read-diagrams.mjs <backlog> --slice <slice>` and read the whole output.
+   - Never re-implement the comparison yourself, and never redraw the slice.
+   - The script repairs a shifted story ID in the slice's `source.json`. That write stays inside the untracked slice folder.
+   - If the output says `STALE`, or has a `changed:`, `missing:`, `new:` or `ambiguous:` line, or the command fails: dispatch nothing. Name each story by its Title, say the slice must be redrawn with `jois-story-plan`, and stop.
+   - A `healed:` line alone does not make the slice stale. Mention it and go on.
+   - Keep the text of `UC-<slice>.md` in mind for the briefs.
+
+## OpenSpec form: steps 1 to 3
 
 1. **Pick the change.**
    - Use the name in the argument.
@@ -40,6 +74,10 @@ Apply the OpenSpec change named in the argument by handing its tasks to the `ops
    - Keep the `context` and `operationGuidance` from the output in mind for the briefs.
    - A commit-stop line in `operationGuidance` (an older project's line that tells the agent to stop before each commit) does not govern this command's group commits.
    - Step 10 owns those commits and decides when to commit or stop with nothing committed.
+## Shared steps 4 to 11
+
+Both forms run these. "The change" below means the slice in the slice form.
+
 4. **Check the agent.**
    - Look for `opsx-task-applier.md` in `~/.claude/agents/` and in this project's `.claude/agents/`.
    - If it is in neither, say so, name `Install-Toolkit.ps1` (`-Agent opsx-task-applier.md`) and stop.
@@ -68,8 +106,10 @@ Apply the OpenSpec change named in the argument by handing its tasks to the `ops
    - Do nothing else until the report arrives.
    - The prompt carries the change name and the verbatim text of each pending task of the group.
    - Never paraphrase a task.
+   - In the slice form the prompt carries `<backlog>/<slice>` as the name and each task with its `Satisfies:` and `Verify:` lines, and the path of `UC-<slice>.md`, to read first.
    - The prompt carries the paths of the `contextFiles`, to read before changing anything.
    - The prompt carries the `operationGuidance` entries that apply to this group.
+   - In the slice form there are no `contextFiles` and no `operationGuidance`.
    - The prompt says the agent must not edit `tasks.md`.
    - The prompt says the agent must report as its own instructions say.
 8. **Watch the agent.**
@@ -97,6 +137,7 @@ Apply the OpenSpec change named in the argument by handing its tasks to the `ops
    - For each task whose report carries a `result:` clause, copy that clause verbatim after the task in `tasks.md`.
    - Tick the box of that task.
    - Tick nothing else.
+   - In the slice form, copy the clause on its own indented line directly after the task's `Verify:` line, so the slice's task format stays valid. Tick only a task whose report carries a `result:` clause.
    - If the report ends in `blocked: <question>`:
      - Record the tasks that have a clause.
      - Ask the user the question.
@@ -175,6 +216,7 @@ Apply the OpenSpec change named in the argument by handing its tasks to the `ops
    - Run `git status` and `git diff --stat`.
      - Ignore `openspec/changes/<name>/`, including `tasks.md`, in this check.
      - Never stage that folder in this step. It is committed at archive.
+     - In the slice form, ignore `<backlog>/slices/` in this check too, and never stage or commit anything under it. It is not tracked by git here, so the ticks stay local.
      - A tracked file outside the group's reported files and outside that folder changed: stop and name the file.
      - Something unrelated outside that folder already staged or edited: stop and name it.
    - **Split the group** when it is more than one concern (over about 200 lines or 5 files, or more than one layer).
@@ -203,9 +245,10 @@ Apply the OpenSpec change named in the argument by handing its tasks to the `ops
     - While a commit is held back, step 10 reruns the tests after each group and commits the held-back changes once every command exits 0.
     - After the last group nothing is deferred: if a command is still red, run the fix loop over the whole change, then ask the user if a failure stays unexplained.
     - Then run step 2 again and follow what it says.
+    - In the slice form, read the slice's `tasks.md` again instead. If no group has an unticked task, say the slice is built and name `jois-story-plan` for the next slice, and stop. Never suggest `/opsx:archive`.
 
 ## Resuming
 
-- State lives in `tasks.md` and the CLI.
-- If the session is compacted or ends, run `/jois-code:apply <change>` again.
+- State lives in `tasks.md` and the CLI. In the slice form it lives in the slice's `tasks.md` alone.
+- If the session is compacted or ends, run `/jois-code:apply <change>` or `/jois-code:apply slice <backlog>/<slice>` again.
 - It resumes from the pending tasks.
