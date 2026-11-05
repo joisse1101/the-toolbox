@@ -53,6 +53,7 @@ name:
 |---|---|
 | `source.json` | the scope and the stories drawn (written by `write-diagram.mjs`, never by hand) |
 | `UC-<slice>.md` | the one document: the specification (section 4) and every diagram, each in a `mermaid` fence |
+| `tasks.md` | the build tasks of the slice (section 10), written with the document in the same write |
 
 `<slice>` is a lowercase slug of the Epic, Feature or story Title (letters, digits, hyphens). A slice
 holds no other diagram file.
@@ -233,3 +234,52 @@ works as before; a slice is cut from the Epics as in section 6 whether or not a 
   downstream. The init line of section 3 is for sequence diagrams and is not required here.
 - The map is compared with the Epics of the backlog on every read; an Epic it lacks or no longer finds is
   reported and the map is not changed.
+
+## 10. Tasks (tasks.md)
+
+The build tasks of a slice, in the slice folder next to `UC-<slice>.md`. The skill drafts them with the
+slice, shows the complete text in the same reply as the document, and the slice writer writes both files
+after one yes/no. A slice written before tasks existed has no `tasks.md` and reads as before; its next redraw
+writes one.
+
+### Layout
+
+One `## <flow>` group per flow of the document's `### Sequence: <flow>` headings, in the order of the
+document. A flow with no failure path still gets a group. Each task is a checkbox line followed by two
+indented lines:
+
+```
+## <flow>
+
+- [ ] T-<slice>-<name> <title>
+  Satisfies: AC-<slice>-<name>[, AC-<slice>-<name>] (steps <step ids>)
+  Verify: <how to verify the task>
+```
+
+- The checkbox is `[ ]` or `[x]` and is the only record of whether a task is done.
+- The task id is `T-<slice>-<name>`, kebab-case and unique in the file.
+- `Satisfies` names one or more `AC id` rows of the acceptance-criteria table (section 4), and every step id
+  exists in the sequence diagram of the task's flow.
+- `Verify` is not empty. The writer checks only that it is there; the review of the complete text is where
+  the user judges whether the verification is real.
+
+### Coverage
+
+Every `AC id` of the acceptance-criteria table is named by at least one task. The writer refuses a task that
+names an `AC id` not in the table, two tasks with one id, a group that is not a flow of the document, and a
+row of the table that no task names. A task text or reply names a story by its Title, never by an id.
+
+### Carry-over
+
+Ticks survive a redraw, decided by the writer, not the skill. The skill sends every task unticked, and the
+writer reads the `tasks.md` already in the folder, so a tick made by hand since the skill last read is not
+lost. A task is written ticked only when the old file ticked the same task id and the text of every
+criterion the task names is, byte for byte, the text in the old document's table. A task whose criterion text
+changed is written unticked and reported as reset; a task id the new file no longer holds is dropped and
+reported. Each report lists the task id and title, so nothing is reset or dropped silently. Sending the same
+slice again changes no byte.
+
+### Staleness and progress
+
+Tasks are stale exactly when the slice is stale (its `source.json` story hashes), and nothing keeps a second
+record of that. The read reports how many tasks are ticked out of the total and changes no tick.
