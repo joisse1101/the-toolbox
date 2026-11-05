@@ -425,7 +425,7 @@ Install both parts, then start the command in a Claude Code session:
   - A fixable doubt is a missing exit code or a suite skipped for a folder problem.
   - The rerun puts the exact commands in the prompt, once per group, and the stall watch covers it.
   - A protected branch, a missing agent and an unrelated change are not rerun and go to the confirmation word.
-  - A non-zero exit code is not rerun either. It starts the fix loop, as described in [Fixing failures](#fixing-failures).
+  - A non-zero exit code is not rerun either. If a pending task of a later group is named as the fix, the commit waits. Otherwise it starts the fix loop. Both are described in [Fixing failures](#fixing-failures).
 - A group of several concerns is split, not stopped on.
   - It is cut by the hygiene rule's one-concern list and by task.
   - The tests run once for the whole group before the first commit.
@@ -468,6 +468,20 @@ Install both parts, then start the command in a Claude Code session:
   - "Not caused by this group" counts only with evidence, such as the same failure on `main`.
 - The command takes the next group only when every failure is explained.
 - At most two fix rounds run.
+
+A failing test does not always need a fix round now. Sometimes a later task of the same change is what makes the test pass, so the command holds the commit back and goes on.
+
+- A failure is deferrable only when it is explained and also names, as its fix, a task that is still pending in a later group.
+  - The failure gives the command, the exact output line, the cause and the task number.
+  - The command checks the named task in `tasks.md` itself. The task must exist, sit in a later group and be unticked.
+  - "A later group will fix it" with no task named is not deferrable, and neither is a task that is ticked or missing.
+- For a deferrable failure the command does not commit, says which task it waits for, and takes the next group without asking you.
+- After each later group it reruns the tests.
+  - While every failure still names a pending task, it keeps holding.
+  - When every command exits 0, it commits all held-back changes by explicit path, cut into commits by concern as the `jois-git-commit-hygiene` rule says.
+  - Held-back groups that changed the same file keep that file in one commit.
+  - It never commits while any command is red.
+- The last group cannot defer, because no later task is left to fix anything. A red result there runs the fix loop over the whole change, and the command asks you if a failure stays unexplained.
 - The command asks you in three cases, says which one applies and shows the failure:
   - The agent ends with `blocked: <question>`.
   - A second round ends with a failure still unexplained.
