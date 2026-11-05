@@ -510,7 +510,7 @@ question, and a no skips only that write.
 - `.github/workflows/docs-check.yml`: runs the checker on every pull request.
 - `.github/workflows/wiki-publish.yml`: publishes the pages to the wiki.
 - One checklist line in `.github/pull_request_template.md`, created when the template is missing.
-- `wiki/Home.md` and a generated `wiki/_Sidebar.md`.
+- A starter `wiki/Home.md` and `wiki/_Sidebar.md`, each written only when missing and edited by hand from then on.
 - An optional routing-table section in `CLAUDE.md` files.
 - When `openspec/config.yaml` exists, optional archive guidance that tells the archiver to update the affected page first.
   The `jois-init:opsx` blocks are not touched.
@@ -521,10 +521,10 @@ It ends with a one-line report, each part marked `added`, `replaced`, `unchanged
 
 - Pages sit in topic folders under `wiki/` at the repo root, for example `wiki/architecture/billing/refunds.md`.
 - A project on the old layout runs `git mv docs/wiki wiki` and re-runs the command.
-- `Home.md` is hand-written, except the page list between its markers.
-- `_Sidebar.md` is generated. Run `python scripts/build_wiki.py --write-nav` and commit the result.
-- The checker fails when the committed navigation is out of date.
-- It also fails on a broken relative link, an orphan page, a missing path in inline code and an oversized `CLAUDE.md`.
+- `Home.md` and `_Sidebar.md` are both hand-written and carry no markers, so a re-run never changes them.
+- The checker keeps the sidebar complete: it fails on a page not linked once from `_Sidebar.md`, a page linked twice, a sidebar link that does not resolve and a sidebar link to `Home.md`.
+- It also fails on a broken relative link, a page not linked from `Home.md`, a `CLAUDE.md` link into `wiki/` that names no file, a missing path in inline code and an oversized `CLAUDE.md`.
+- The sidebar lists pages in the order you write them, so it can follow a reading order. Nothing generates it.
 - A non-markdown file under `wiki/` also fails, because the wiki would not publish it.
 - The GitHub wiki is flat, so the builder joins folders with `-`: that page becomes `architecture-billing-refunds`.
 - The builder rewrites links to match and keeps anchors. Two pages with the same flat name make it fail.
@@ -551,7 +551,7 @@ The command cannot do these. It states them after it adds the publish workflow.
 - Every managed block sits between `jois-init:docs begin` and `jois-init:docs end` markers.
 - A re-run replaces the block in place and never adds a second copy. Text outside the markers is kept.
 - A hand edit between the markers is overwritten.
-- A file that has no markers and differs from the template is shown as a diff and needs a yes before it changes.
+- A file that has no markers and differs from the template is shown as a diff and needs a yes before it changes. The two starter wiki pages are the exception: they are never changed once they exist.
 
 ### What is unchecked
 
