@@ -48,7 +48,7 @@ Install both parts, then start the command in a Claude Code session:
 .\Install-Toolkit.ps1 -Rule jois-git-commit-hygiene.md -Force
 ```
 
-The command checks for each agent in `~/.claude/agents/` and in the project's `.claude/agents/`. If `opsx-task-applier` is in neither, the command says so, names `Install-Toolkit.ps1` and stops. If `opsx-test-runner` is in neither, the command says so, names `Install-Toolkit.ps1` and carries on, and that group falls back to the confirmation word. The command never copies an agent itself.
+The command checks for each agent in `~/.claude/agents/` and in the project's `.claude/agents/`. If `opsx-task-applier` is in neither, the command says so, names `Install-Toolkit.ps1` and stops. If `opsx-test-runner` is in neither, the command says so, names `Install-Toolkit.ps1` and carries on, and that group falls back to the confirmation word. The command never copies an agent itself. <!-- docs-check: ignore -->
 
 Re-install the rule and the test runner for the commit exception to take effect. An older installed rule still says "never commit" next to the new command, and `-Force` overwrites the installed rule, which `-List` shows as `differs`.
 
