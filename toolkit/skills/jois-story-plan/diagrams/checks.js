@@ -7,7 +7,7 @@ import { layerForStereotype } from './limits.js';
 import { readDocument } from './document.js';
 
 const SLUG = '[a-z0-9]+(?:-[a-z0-9]+)*';
-const STORY_ID = /\b[A-Z][A-Z0-9]*-\d{4}\b/;
+const STORY_ID = /\b[A-Z][A-Z0-9]*(?:-[A-Z][A-Z0-9]*)*-\d{4}\b/;
 const FILE_PATH = /\b[\w.-]+(?:\/[\w.-]+)*\.(?:py|js|jsx|mjs|cjs|ts|tsx|java|cs|go|rb|php|rs|kt|swift|sql|ya?ml|json|toml|xml|html|css|sh|ps1)\b/;
 const GREENFIELD_MATURITY = /^planned\s*\(greenfield\)/i;
 const CONVENTIONS_MODES = 'section 5, Modes';

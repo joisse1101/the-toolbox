@@ -39,7 +39,7 @@ The toolkit holds six skills, in `toolkit/skills/`.
 | `jois-story-explore` | Talks new stories through with you against the backlog guidelines and the existing stories. It never writes a file. | You want to explore, shape or brainstorm stories before saving them. |
 | `jois-story-propose` | Shows full drafts, asks one yes or no, then writes proposed stories, edits to backlog stories, new lexicon terms and term changes through its writer scripts. It never edits the backlog file. | The stories are agreed and you want them saved for the planner to show. |
 | `jois-story-review` | Reviews a whole backlog against the backlog guidelines, reports findings with fixes and writes them as suggestions the planner can apply. It never edits the backlog file. | You want a backlog audited, sanity-checked or INVEST-checked. |
-| `jois-story-plan` | Draws the context map of a backlog and turns the stories of one Epic, Feature or story into a slice: a use-case specification with class and sequence diagrams. It writes only after you confirm. | You want stories planned, drawn or specified, or a stale slice redrawn. |
+| `jois-story-plan` | Draws the context map of a backlog and turns the stories of one Epic, Feature or story into a slice: a use-case specification with class and sequence diagrams. It writes only after you confirm, and the same yes also freezes the stories the slice covers (the `Frozen` column is its one write into the backlog). | You want stories planned, drawn or specified, or a stale slice redrawn. |
 
 The four story skills are explained for their users in [Story Skills](../planner/Story-Skills.md), and their internals in [Story Skills Internals](../planner/architecture/Story-Skills-Internals.md).
 

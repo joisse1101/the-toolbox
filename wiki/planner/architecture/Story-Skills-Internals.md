@@ -45,7 +45,7 @@ Every story has a `Clarifications` column of `Q1: ...` and `A1: ...` pairs, wher
 
 ### The review skill
 
-`jois-story-review` reviews a backlog against `planner/guidelines/product-backlog.md` and writes suggestions to `review.csv` through `write-review.mjs`. It never edits `user-stories.csv`. It cites the guidelines through its `references/` copy and does not restate them. `read-backlog.mjs <backlog> [section]` serves the context in sections: `guidelines`, `sizing`, `lexicon`, `proposals`, `checks` and `epic-<n>`. Locked stories are reference only.
+`jois-story-review` reviews a backlog against `planner/guidelines/product-backlog.md` and writes suggestions to `review.csv` through `write-review.mjs`. It never edits `user-stories.csv`, and its writer rejects any row for a frozen story (an old `unlock` row in a review file is shown as stale). It cites the guidelines through its `references/` copy and does not restate them. `read-backlog.mjs <backlog> [section]` serves the context in sections: `guidelines`, `sizing`, `lexicon`, `proposals`, `checks` and `epic-<n>`. The scope line counts frozen stories (`N of M stories submitted for review, K frozen (reference only)`), and frozen stories are reference only.
 
 `planner/logic/review/review.js` is shared with the portal's Apply and Dismiss, so a suggestion applies the same way in both places. Each backlog has a lexicon, `<backlog>/lexicon.csv`, and its rules are in `planner/logic/lexicon/lexicon.js` and `planner/logic/lexicon/lexicon-suggestions.js`.
 
@@ -57,6 +57,8 @@ Every story has a `Clarifications` column of `Q1: ...` and `A1: ...` pairs, wher
 - `source.json` holds the stories by Title and a hash of their text, so a changed, missing or new story shows the slice as stale.
 
 The rules are in `toolkit/skills/jois-story-plan/references/diagram-conventions.md`, which is a copy of `planner/guidelines/diagram-conventions.md`, the source. Its fenced `diagram-limits` block is read by `toolkit/skills/jois-story-plan/diagrams/limits.js`.
+
+`write-freeze.mjs` is the plan skill's only write into `user-stories.csv`. It takes `[{ id, title }]` on stdin and runs after the slice is written and read back. It uses `freezeStories` from `planner/logic/backlog/ids.js` (copied into the skill's `lib/` by the sync script) and the backlog initials from `backlog.json`, and it refuses a story with no ID or with an ID that lacks the initials. Then it writes only the `Frozen` cell of the stories it names, atomically, and reads the file back. Freezing is idempotent, and nothing unfreezes a story, so a mistaken freeze is fixed by hand in the CSV.
 
 `write-diagram.mjs` runs `checks.js` and Mermaid's own parser on every block, writes nothing when a check fails, and writes `source.json` last. If the skill-local packages are missing it says to run `npm ci` in the skill folder and refuses the write. `toolkit/install/Install-Toolkit.ps1` runs that `npm ci` after copying the skill, and `-NoPackages` skips it.
 

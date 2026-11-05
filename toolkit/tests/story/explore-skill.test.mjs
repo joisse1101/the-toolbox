@@ -10,7 +10,7 @@ const front = text.split('---')[1];
 
 test('the skill is named jois-story-explore, versioned, and may only run the reader script', () => {
   assert.match(front, /^name: jois-story-explore$/m);
-  assert.match(front, /version: "1\.0\.0"/);
+  assert.match(front, /version: "1\.1\.0"/);
   assert.match(front, /^allowed-tools: Bash\(node \*read-story-context\.mjs\*\)$/m);
   assert.doesNotMatch(front, /write-|mcp__/);
 });

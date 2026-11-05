@@ -18,6 +18,7 @@ import {
 } from './lib/review/review.js';
 import { describeParseError as describeJsonError, writeAtomic } from './lib/skill-support/write-atomic.mjs';
 import { dataDirOrThrow } from './lib/skill-support/resolve-data-dir.mjs';
+import { initialsOf } from './lib/skill-support/backlog-initials.mjs';
 
 const require = createRequire(import.meta.url);
 const { backlogDir, backlogFile, reviewDecidedFile } = require('./lib/storage/backlog-paths.cjs'); // same name rules as the file API
@@ -67,7 +68,7 @@ function prepare({ dataDir, name, input, append, requireTitles }) {
   } catch {
     return { ok: false, errors: [`${shown(dataDir, backlogPath)} was not found.`] };
   }
-  const backlog = loadBacklog(backlogText);
+  const backlog = loadBacklog(backlogText, { initials: initialsOf(dataDir, file) });
 
   let findings;
   try {
@@ -77,9 +78,7 @@ function prepare({ dataDir, name, input, append, requireTitles }) {
   }
   const old = readRows(reviewPath);
   const earlier = readRows(decidedPath);
-  // A field edit on a locked story needs an unlock row in the resulting file: the rows this batch is added to count.
-  const existingRows = append && old.ok ? old.rows : [];
-  const errors = validateFindings(findings, backlog, { existingRows, requireTitles }).map((e) => e.replace(/^Finding (\d+)/, 'Finding $1 in this batch'));
+  const errors = validateFindings(findings, backlog, { requireTitles }).map((e) => e.replace(/^Finding (\d+)/, 'Finding $1 in this batch'));
 
   if (append && !old.ok) errors.push(`${reviewShown} cannot be appended to: ${old.error}`);
   if (append && old.ok && Array.isArray(findings)) {

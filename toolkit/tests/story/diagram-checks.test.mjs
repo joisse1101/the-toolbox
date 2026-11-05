@@ -15,7 +15,7 @@ const CONVENTIONS = path.join(HERE, '..', '..', 'skills', 'jois-story-plan', 're
 const SLICE_DIR = path.join(FIXTURES, 'slices', 'sign-in');
 const SPEC = 'UC-sign-in.md';
 const limits = parseLimits(fs.readFileSync(CONVENTIONS, 'utf8'));
-const stories = scopeStories(loadBacklog(fs.readFileSync(path.join(FIXTURES, 'user-stories.csv'), 'utf8')).stories, { type: 'feature', epic: 'Identity and access', feature: 'Sign in' });
+const stories = scopeStories(loadBacklog(fs.readFileSync(path.join(FIXTURES, 'user-stories.csv'), 'utf8'), { initials: 'B1' }).stories, { type: 'feature', epic: 'Identity and access', feature: 'Sign in' });
 
 // A Windows checkout may hold CRLF; the tests edit the text with "\n" strings.
 const mock = fs.readFileSync(path.join(SLICE_DIR, SPEC), 'utf8');
@@ -89,7 +89,7 @@ test('an actor needs no stereotype and a stereotype line before the name is acce
 });
 
 test('text shaped like a story ID is rejected inside a diagram', () => {
-  assert.match(messages(run(changed('Member ..> Email', 'Member ..> Email : IAM-0001'))), /story ID \(IAM-0001\)/);
+  assert.match(messages(run(changed('Member ..> Email', 'Member ..> Email : B1-IAM-0001'))), /story ID \(B1-IAM-0001\)/);
 });
 
 test('step ids: a duplicate, a step out of order and a step in the wrong phase are rejected', () => {

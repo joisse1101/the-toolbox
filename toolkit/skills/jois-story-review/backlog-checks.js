@@ -1,8 +1,8 @@
 // The checks of a backlog that need no judgement: dependency links, duplicates, points, missing parts, words the lexicon
 // says to avoid, and overlap with the proposals. Feeds the review skill's `checks` section. Pure: no file access.
-//   backlogChecks({ stories, lexicon, proposals }) -> [{ storyId, title, locked, kind, message }]
-// A problem about a lexicon term has `term` instead of `storyId` and `title`. Locked stories are checked too, and marked
-// `locked`, because the review uses them as context but does not review them. Priority is never checked.
+//   backlogChecks({ stories, lexicon, proposals }) -> [{ storyId, title, frozen, kind, message }]
+// A problem about a lexicon term has `term` instead of `storyId` and `title`. Frozen stories are checked too, and marked
+// `frozen`, because the review uses them as context but does not review them. Priority is never checked.
 
 import { backlogProblems } from './lib/backlog/ids.js';
 import { POINTS, SPLIT_ABOVE, storyIssues } from './lib/backlog/model.js';
@@ -31,7 +31,7 @@ function pointsProblem(story) {
 
 export function backlogChecks({ stories, lexicon = null, proposals = [] }) {
   const out = [];
-  const add = (story, kind, message) => out.push({ storyId: story.code || '(no ID)', title: story.title, locked: story.locked, kind, message });
+  const add = (story, kind, message) => out.push({ storyId: story.code || '(no ID)', title: story.title, frozen: story.frozen, kind, message });
 
   const dependency = backlogProblems(stories);
   const proposed = proposals.filter((p) => !p.benched);
