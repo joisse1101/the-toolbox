@@ -1,0 +1,76 @@
+import { useEffect, useRef } from 'react';
+
+const NAME_HINT = 'Optional';
+
+// Add Project: link a code base (folder dialog, optional name, offer to create .plans) or create a new project from a name.
+// `projects` is the useProjects hook's result. A refusal is shown inside the dialog, and nothing changes until it succeeds.
+export default function AddProjectDialog({ projects }) {
+  const { dialog, error, working, actions } = projects;
+  const ref = useRef(null);
+  const isOpen = !!dialog;
+
+  // The dialog element only exists while open; showModal gives focus handling and the backdrop.
+  useEffect(() => {
+    if (isOpen && !ref.current.open) ref.current.showModal();
+  }, [isOpen]);
+
+  if (!dialog) return null;
+
+  const isLink = dialog.mode === 'link';
+  const submitNew = (e) => {
+    e.preventDefault();
+    if (dialog.name.trim() && !working) actions.createProject();
+  };
+
+  return (
+    <dialog id="addProjectDialog" className="add-project" ref={ref} aria-labelledby="addProjectTitle" onCancel={(e) => { e.preventDefault(); actions.closeDialog(); }}>
+      <h2 id="addProjectTitle">Add Project</h2>
+      <div className="seg" role="radiogroup" aria-label="How to add the project">
+        <label className="seg-item">
+          <input type="radio" name="addProjectMode" value="link" checked={isLink} disabled={working} onChange={() => actions.setMode('link')} />
+          Link a code base
+        </label>
+        <label className="seg-item">
+          <input type="radio" name="addProjectMode" value="new" checked={!isLink} disabled={working} onChange={() => actions.setMode('new')} />
+          New project
+        </label>
+      </div>
+
+      {isLink && !dialog.offer && (
+        <div className="dialog-body">
+          <p className="muted">Choose the code base folder. Its backlogs are kept in its .plans folder. The name is optional and replaces the folder name in the Project dropdown.</p>
+          <label htmlFor="addProjectName">Name</label>
+          <input type="text" id="addProjectName" autoComplete="off" spellCheck={false} value={dialog.name} placeholder={NAME_HINT} onChange={(e) => actions.setName(e.target.value)} />
+          <div className="dialog-actions">
+            <button type="button" id="addProjectCancelBtn" onClick={actions.closeDialog}>Cancel</button>
+            <button type="button" id="addProjectChooseBtn" className="primary" disabled={working} onClick={actions.linkCodeBase}>Choose folder…</button>
+          </div>
+        </div>
+      )}
+
+      {isLink && dialog.offer && (
+        <div className="dialog-body" id="addProjectOffer">
+          <p>{`${dialog.offer.codeBase} has no planner files yet. Create its .plans folder with a first backlog?`}</p>
+          <div className="dialog-actions">
+            <button type="button" id="addProjectDeclineBtn" disabled={working} onClick={actions.declineOffer}>No, do not add it</button>
+            <button type="button" id="addProjectCreateBtn" className="primary" disabled={working} onClick={actions.acceptOffer}>Create .plans and add</button>
+          </div>
+        </div>
+      )}
+
+      {!isLink && (
+        <form className="dialog-body" onSubmit={submitNew}>
+          <p className="muted">Creates a folder with this name in planner/data, with a first backlog.</p>
+          <label htmlFor="newProjectName">Project name</label>
+          <input type="text" id="newProjectName" autoComplete="off" spellCheck={false} autoFocus value={dialog.name} onChange={(e) => actions.setName(e.target.value)} />
+          <div className="dialog-actions">
+            <button type="button" id="newProjectCancelBtn" onClick={actions.closeDialog}>Cancel</button>
+            <button type="submit" id="newProjectCreateBtn" className="primary" disabled={working || !dialog.name.trim()}>Create project</button>
+          </div>
+        </form>
+      )}
+
+      {error && <p id="addProjectError" className="error" role="alert">{error}</p>}
+    </dialog>
+  );
+}

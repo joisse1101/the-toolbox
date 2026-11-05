@@ -91,10 +91,18 @@ export function useSettings(settleAll, onMigrated) {
       if (err.code === 'busy') setOffer({ dir, isCodeBase, ready: true });
       throw err;
     }
+    finishSwitch(result);
+  };
+
+  // The config now names the new project: remember it for the note about skill sessions, then reload.
+  const finishSwitch = (result = null) => {
     writeStored(SWITCHED_KEY, '1');
     if (result) writeStored(INIT_RESULT_KEY, JSON.stringify(result));
     window.location.reload();
   };
+
+  // Choosing a saved project of the Project dropdown: the same switch, and no file is touched. Throws when it cannot switch.
+  const switchProject = (project) => switchTo(project.codeBase ?? project.dataDir, !!project.codeBase);
 
   const checkAndSwitch = async (dir) => {
     setOffer(null);
@@ -168,5 +176,5 @@ export function useSettings(settleAll, onMigrated) {
       onMigrated?.();
     });
 
-  return { settings, error, working, offer, initResult, copyResult, migrateResult, switched, actions: { saveName, pickFolder, pickCodeBase, chooseForNewFolder, retrySwitch, runInit, runMigration, cancelOffer: () => setOffer(null) } };
+  return { settings, error, working, offer, initResult, copyResult, migrateResult, switched, actions: { switchProject, finishSwitch, saveName, pickFolder, pickCodeBase, chooseForNewFolder, retrySwitch, runInit, runMigration, cancelOffer: () => setOffer(null) } };
 }

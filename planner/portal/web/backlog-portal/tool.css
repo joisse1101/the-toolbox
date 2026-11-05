@@ -5,7 +5,25 @@
 .top-right { display: flex; align-items: center; gap: 10px; }
 .home { text-decoration: none; margin-right: 4px; }
 .file-bar { margin-bottom: 12px; }
-.file-bar .warning { margin: 8px 0 0; }
+.file-bar .warning, .file-bar .error { margin: 8px 0 0; }
+.file-bar .row > .grow { min-width: 0; } /* a long project or backlog name shrinks the select instead of widening the bar */
+
+/* Add Project dialog: a native modal <dialog>, so focus stays inside and Escape closes it. */
+.add-project {
+  width: min(480px, calc(100vw - 32px));
+  padding: 16px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.add-project::backdrop { background: rgb(0 0 0 / 0.45); }
+.add-project .seg { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.add-project .seg-item { display: flex; align-items: center; gap: 6px; margin: 0; padding: 6px 10px; font-size: inherit; color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; }
+.add-project .seg-item:has(input:checked) { border-color: var(--accent); }
+.add-project .dialog-body p { margin: 0 0 8px; overflow-wrap: anywhere; }
+.add-project .dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.add-project .error { margin: 12px 0 0; }
 .file-bar button.icon-only { display: inline-flex; align-items: center; justify-content: center; padding-inline: 8px; }
 .file-bar button.icon-only svg { height: 1lh; width: 1lh; } /* one text line tall, so the button matches its text neighbours */
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
