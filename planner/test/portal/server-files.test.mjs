@@ -90,23 +90,26 @@ test('a write needs the request header', async () => {
 });
 
 test('create: a free name makes the folder with user-stories.csv; a taken name is numbered and the original is untouched', async () => {
-  const first = await call('POST', '/api/backlog/files', { name: 'sprint-12', content: 'ID,Epic\r\n' });
+  const first = await call('POST', '/api/backlog/files', { name: 'sprint-12' });
   assert.equal(first.status, 201);
   assert.deepEqual(await first.json(), { name: 'sprint-12' });
-  assert.equal(fs.readFileSync(path.join(root, 'sprint-12', 'user-stories.csv'), 'utf8'), 'ID,Epic\r\n');
+  assert.equal(fs.existsSync(path.join(root, 'sprint-12', 'user-stories.csv')), true);
 
   put('sprint-12', 'user-stories.csv', 'mine\r\n');
-  const second = await (await call('POST', '/api/backlog/files', { name: 'sprint-12.csv', content: 'other\r\n' })).json();
+  const second = await (await call('POST', '/api/backlog/files', { name: 'sprint-12.csv' })).json();
   assert.deepEqual(second, { name: 'sprint-12-2' });
-  const third = await (await call('POST', '/api/backlog/files', { name: 'sprint-12', content: 'x\r\n' })).json();
+  const third = await (await call('POST', '/api/backlog/files', { name: 'sprint-12' })).json();
   assert.deepEqual(third, { name: 'sprint-12-3' });
   assert.equal(fs.readFileSync(path.join(root, 'sprint-12', 'user-stories.csv'), 'utf8'), 'mine\r\n');
-  assert.equal(fs.readFileSync(path.join(root, 'sprint-12-2', 'user-stories.csv'), 'utf8'), 'other\r\n');
   assert.ok((await listed()).includes('sprint-12-3'));
+});
 
-  const empty = await call('POST', '/api/backlog/files', { name: 'blank' });
-  assert.equal(empty.status, 201);
-  assert.equal(fs.readFileSync(path.join(root, 'blank', 'user-stories.csv'), 'utf8'), '', 'no content gives an empty file');
+test('create of a backlog ignores a content field: the server writes the header-only starting file', async () => {
+  const res = await call('POST', '/api/backlog/files', { name: 'sent-content', content: 'ID,Epic\r\nX-1,Mine\r\n' });
+  assert.equal(res.status, 201);
+  const text = fs.readFileSync(path.join(root, 'sent-content', 'user-stories.csv'), 'utf8');
+  assert.equal(text.includes('X-1'), false, 'the sent content was not written');
+  assert.equal(text.trim().split(/\r?\n/).length, 1, 'one header row, no data row');
 });
 
 test('create of another kind: in an existing backlog only, never over an existing file', async () => {

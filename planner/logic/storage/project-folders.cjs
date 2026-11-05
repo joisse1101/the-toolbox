@@ -7,6 +7,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
+const { writeBacklogFiles } = require('./backlog-files.cjs');
 const { KIND_FILES, PLANS_DIR, listBacklogs, detectOlderLayout, validateBacklogName } = require('./backlog-paths.cjs');
 
 const ROOT = path.resolve(__dirname, '..', '..', '..');
@@ -120,7 +121,7 @@ function checkCodeBase(codeBase, options) {
 
 // Init for a code base: creates `<codeBase>/.plans` and nothing else; the code base itself must exist. Returns the
 // initFolders reply (created / existing lists) or { refused }.
-function initCodeBase(codeBase, options) {
+async function initCodeBase(codeBase, options) {
   const c = confineCodeBase(codeBase, options);
   if (!c.ok) return { refused: c.reason };
   return initFolders(c.plansDir);
@@ -134,16 +135,31 @@ function copyToCodeBase(source, codeBase, { confine, ...copyOptions } = {}) {
   return copyData(source, c.plansDir, copyOptions);
 }
 
-// Creates the data folder if missing and nothing else (a backlog folder is created with its backlog). Returns
-// { dir, createdDataDir, created, existing }: the data folder is listed as created or, when it was there, as existing
-// together with the backlog folders in it.
-function initFolders(dir) {
+const FIRST_BACKLOG = 'new-backlog';
+
+// Creates the data folder if missing, and a first backlog named `new-backlog` (with its starting files) only when the
+// folder holds no backlog. Never touches anything that exists, so a second run creates nothing. Returns
+// { dir, createdDataDir, created, existing, createdBacklog }: each of the data folder and the backlog folders is listed as
+// created or as existing; `createdBacklog` is the name of the backlog this call made, or null. Async because the starting
+// files are an ES module, loaded with a dynamic import.
+async function initFolders(dir) {
   const abs = path.resolve(dir);
   const createdDataDir = !fs.existsSync(abs);
   fs.mkdirSync(abs, { recursive: true });
   const name = path.basename(abs);
-  if (createdDataDir) return { dir: abs, createdDataDir, created: [name], existing: [] };
-  return { dir: abs, createdDataDir, created: [], existing: [name, ...listBacklogs(abs)] };
+  const existingBacklogs = listBacklogs(abs);
+  if (existingBacklogs.length) {
+    return { dir: abs, createdDataDir, created: createdDataDir ? [name] : [], existing: createdDataDir ? existingBacklogs : [name, ...existingBacklogs], createdBacklog: null };
+  }
+  const { startingFiles } = await import('../backlog/starting-files.js');
+  const made = await writeBacklogFiles(abs, FIRST_BACKLOG, startingFiles());
+  return {
+    dir: abs,
+    createdDataDir,
+    created: createdDataDir ? [name, made] : [made],
+    existing: createdDataDir ? [] : [name],
+    createdBacklog: made,
+  };
 }
 
 // Copies every file of `source` to the same relative path in `target`. An existing file is skipped, a link is

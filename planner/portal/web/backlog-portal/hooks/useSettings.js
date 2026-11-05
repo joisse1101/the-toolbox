@@ -3,7 +3,44 @@ import { getProject, saveProject, checkProjectFolder, checkCodeBase, pickProject
 
 // Survives the page reload that follows a switch, so the Settings tab can still show the note about skill sessions.
 const SWITCHED_KEY = 'planner.dataDirSwitched';
+// The same, for the init result (created list, already-there list, created backlog); read once, then cleared on the first load.
+const INIT_RESULT_KEY = 'planner.initResult';
 const SETTLE_FAILED = 'The latest changes could not be saved yet, so the folder was not changed.';
+
+// Storage may be unavailable (private mode, blocked); the page works without it, only the note is lost.
+function readStored(key) {
+  try {
+    return sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeStored(key, value) {
+  try {
+    sessionStorage.setItem(key, value);
+  } catch {
+    // Without storage the init result is not shown after the reload; the switch itself still works.
+  }
+}
+
+function clearStored(key) {
+  try {
+    sessionStorage.removeItem(key);
+  } catch {
+    // Nothing stored, nothing to clear.
+  }
+}
+
+function readStoredInitResult() {
+  const text = readStored(INIT_RESULT_KEY);
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
 
 // The project settings (name, data folder, config file) and the flow that changes the folder:
 // check the folder, then switch at once when it has planner files, otherwise offer copy or init, then switch.
@@ -15,12 +52,14 @@ export function useSettings(settleAll, onMigrated) {
   const [working, setWorking] = useState(false);
   // { dir, status, isCodeBase?, move? } while the user chooses copy or init; { dir, isCodeBase, ready: true } when only the switch is left
   const [offer, setOffer] = useState(null);
-  const [initResult, setInitResult] = useState(null);
+  const [initResult, setInitResult] = useState(readStoredInitResult);
   const [copyResult, setCopyResult] = useState(null);
   const [migrateResult, setMigrateResult] = useState(null); // { copied, skipped, failed } after the user runs the migration
-  const [switched, setSwitched] = useState(() => sessionStorage.getItem(SWITCHED_KEY) === '1');
+  const [switched, setSwitched] = useState(() => readStored(SWITCHED_KEY) === '1');
 
   useEffect(() => {
+    clearStored(INIT_RESULT_KEY); // shown on this load only
+
     getProject().then(setSettings, (err) => setError(err.message));
   }, []);
 
@@ -44,7 +83,7 @@ export function useSettings(settleAll, onMigrated) {
     });
 
   // `isCodeBase` saves `codeBase` (the server derives `.plans` and drops `dataDir`); otherwise it saves `dataDir`.
-  const switchTo = async (dir, isCodeBase = false) => {
+  const switchTo = async (dir, isCodeBase = false, result = null) => {
     if (!(await settleAll())) throw new Error(SETTLE_FAILED);
     try {
       await saveProject(isCodeBase ? { codeBase: dir } : { dataDir: dir });
@@ -52,7 +91,8 @@ export function useSettings(settleAll, onMigrated) {
       if (err.code === 'busy') setOffer({ dir, isCodeBase, ready: true });
       throw err;
     }
-    sessionStorage.setItem(SWITCHED_KEY, '1');
+    writeStored(SWITCHED_KEY, '1');
+    if (result) writeStored(INIT_RESULT_KEY, JSON.stringify(result));
     window.location.reload();
   };
 
@@ -102,9 +142,13 @@ export function useSettings(settleAll, onMigrated) {
   const chooseForNewFolder = (choice) =>
     run(async () => {
       const { dir, isCodeBase } = offer;
+      let result = null;
       if (choice === 'copy') setCopyResult(await (isCodeBase ? copyToCodeBase(dir) : copyProjectData(dir)));
-      else setInitResult(await (isCodeBase ? initCodeBase(dir) : initProjectFolder(dir)));
-      await switchTo(dir, isCodeBase);
+      else {
+        result = await (isCodeBase ? initCodeBase(dir) : initProjectFolder(dir));
+        setInitResult(result);
+      }
+      await switchTo(dir, isCodeBase, result);
     });
 
   const retrySwitch = () => run(() => switchTo(offer.dir, offer.isCodeBase));

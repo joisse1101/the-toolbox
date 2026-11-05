@@ -132,3 +132,16 @@ test('dataDirOrThrow returns the folder, and otherwise throws a message that say
   const cwd = withConfig('projectName: P\n');
   assert.throws(() => dataDirOrThrow({ env: {}, cwd }), (err) => err.message.includes(path.join(cwd, 'planner.config.yaml')) && /neither/.test(err.message));
 });
+
+test('a fresh code base after init: .plans is found with no yaml present, and its backlog is listed', async () => {
+  const { initCodeBase } = createRequire(import.meta.url)('../../logic/storage/project-config.cjs');
+  const { listBacklogs } = createRequire(import.meta.url)('../../logic/storage/backlog-paths.cjs');
+  const codeBase = temp();
+  assert.deepEqual((await initCodeBase(codeBase)).created, ['.plans', 'new-backlog']);
+  assert.deepEqual(fs.readdirSync(codeBase), ['.plans'], 'init writes no yaml into the code base');
+  const found = resolveDataDir({ env: {}, cwd: codeBase });
+  assert.equal(found.status, 'found');
+  assert.equal(found.configFile, null);
+  assert.equal(found.dataDir, path.join(codeBase, PLANS_DIR));
+  assert.deepEqual(listBacklogs(found.dataDir), ['new-backlog']);
+});

@@ -49,11 +49,11 @@ The system SHALL return the full text of a named CSV file and SHALL replace the 
 - **THEN** the system returns an error identifying the file as locked or unwritable, and the file's existing contents are left unchanged
 
 ### Requirement: Create a new file
-Creating a backlog is described by the `backlog-folder-layout` capability. The system SHALL NOT overwrite an existing backlog.
+Creating a backlog is described by the `backlog-folder-layout` capability: the server SHALL make the folder with all its starting files, and the request SHALL NOT need to carry file content. The system SHALL NOT overwrite an existing backlog. Creating the file of another kind in an existing backlog SHALL still never overwrite it.
 
 #### Scenario: Name is free
 - **WHEN** a client creates `new-backlog` and no such folder exists
-- **THEN** the backlog is created and `new-backlog` is returned
+- **THEN** the backlog is created with its starting files and `new-backlog` is returned
 
 #### Scenario: Name is taken
 - **WHEN** a client creates `new-backlog` and it already exists

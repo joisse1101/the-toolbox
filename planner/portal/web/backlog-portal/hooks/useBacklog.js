@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { createFileStore } from '../../shared/files.js';
-import { loadBacklog, newBacklogText, newStory, displayOrder, applyBulk } from '../../../../logic/backlog/model.js';
+import { loadBacklog, newStory, displayOrder, applyBulk } from '../../../../logic/backlog/model.js';
 import { commitEpic, commitEpics, moveStory, moveGroup, gatherFeatures, recodedBetween, removeStory, removeStories, wouldCycle, lockStories, unlockStories } from '../../../../logic/backlog/ids.js';
 import { applySuggestions, acceptAll } from '../../../../logic/review/review.js';
 import { useAutosave } from './useAutosave.js';
@@ -241,7 +241,7 @@ export function useBacklog() {
       newBacklog: () =>
         wrap(async () => {
           if (!(await autosave.leaveCurrentFile())) return false;
-          const name = await store.create(NEW_BACKLOG_NAME, newBacklogText());
+          const name = await store.create(NEW_BACKLOG_NAME); // the server writes the starting files
           await refreshFiles();
           const backlog = await loadFile(name);
           actions.addStory(backlog.headers); // a new backlog starts with one blank story
