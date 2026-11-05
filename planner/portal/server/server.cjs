@@ -343,12 +343,19 @@ async function addProject(body) {
 
 // The target of a relocation named by the browser: { dir (the data folder), status } from the folder check.
 function relocationTarget(body) {
+  let t;
   if (body.codeBase !== undefined) {
     const c = confinedCodeBase(body.codeBase);
-    return { codeBase: c.dir, dir: c.plansDir, status: checkCodeBase(c.dir).status };
+    t = { codeBase: c.dir, dir: c.plansDir, status: checkCodeBase(c.dir).status };
+  } else {
+    const dir = confined(body.dir);
+    t = { dir, status: checkFolder(dir).status };
   }
-  const dir = confined(body.dir);
-  return { dir, status: checkFolder(dir).status };
+  // A path that another saved project already holds would give the list two entries with one path.
+  const config = loadConfig({ file: configPath() });
+  const other = config.projects.findIndex((p, i) => i !== config.activeProject && !p.synthetic && sameFolder(p.dataDir, t.dir));
+  if (other >= 0) throw new HttpError(409, `The folder is already the saved project "${config.projects[other].name || path.basename(config.projects[other].codeBase || config.projects[other].dataDir)}". Choose it in the Project dropdown instead.`, 'exists');
+  return t;
 }
 
 // What a relocation to this target needs: `copy` (empty or missing: copies without a prompt), `choose` (it holds a backlog

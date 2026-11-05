@@ -444,3 +444,19 @@ test('relocate: refused targets, the header and the busy rule', async () => {
   pending.end();
   await done;
 });
+
+test('relocate: a folder that is another saved project is refused by the plan and the apply, and nothing changes', async () => {
+  await reset();
+  const cb = codeBaseWithPlans('cb-dup');
+  assert.equal((await post('/api/project/add', { codeBase: cb, name: 'Dup' })).status, 200);
+  await call('PUT', '/api/project', { dataDir: dirA });
+  const before = config();
+  const oldTree = snapshot(dirA);
+  for (const url of ['/api/project/relocate-plan', '/api/project/relocate-apply']) {
+    const res = await post(url, { codeBase: cb });
+    assert.equal(res.status, 409, url);
+    assert.equal((await res.json()).code, 'exists');
+  }
+  assert.equal(config(), before);
+  assert.deepEqual(snapshot(dirA), oldTree);
+});
