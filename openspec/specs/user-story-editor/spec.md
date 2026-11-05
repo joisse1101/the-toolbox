@@ -144,59 +144,6 @@ A backlog file SHALL hold many stories, one per CSV row. The tool SHALL let the 
 - **WHEN** the user hovers a story that is missing its Epic
 - **THEN** the tooltip shows the user story text and a line saying Epic is missing
 
-### Requirement: CSV format
-Each story SHALL be stored as one row with exactly these columns: `ID, Epic, Feature, Title, User Story, Sprint points, Priority, Depends On, User Acceptance Criteria, Notes, Locked, Clarifications`.
-
-- `ID` SHALL hold the story ID, or be empty when the story has none.
-- `Title` SHALL hold the title of the user story.
-- `User Story` SHALL hold one sentence in the form `As <as>, I want <i want>, so that <so that>`.
-- `Depends On` SHALL hold the IDs of the stories this story depends on, separated by semicolons, or be empty.
-- `User Acceptance Criteria` SHALL hold one line per criterion, lines separated by a line break within the cell, each in the form `AC<n>: Given <given>, when <when>, then <then>`, where `<n>` is the criterion's position starting at 1.
-- `Locked` SHALL hold `Yes` for a locked story and be empty otherwise. Any other value SHALL be read as unlocked.
-- `Clarifications` SHALL hold the story's question and answer pairs in the form defined by the `story-clarifications` capability, or be empty.
-
-Values containing commas, quotes or line breaks SHALL be correctly quoted so the file round-trips and opens correctly in Excel. A file that lacks the `ID`, `Depends On`, `Title`, `Locked` or `Clarifications` column SHALL be accepted and the columns added to it when it is saved. The tool SHALL NOT translate older column names: a `Capability` column SHALL be treated as an unknown column and kept unchanged.
-
-#### Scenario: Story sentence saved
-- **WHEN** the user enters As "a team lead", I want "to export a backlog", so that "I can share it"
-- **THEN** the `User Story` cell contains `As a team lead, I want to export a backlog, so that I can share it`
-
-#### Scenario: Multiple criteria in one cell
-- **WHEN** a story has two criteria
-- **THEN** the `User Acceptance Criteria` cell contains two lines beginning `AC1: Given ` and `AC2: Given `, separated by a line break
-
-#### Scenario: Round trip
-- **WHEN** a story containing commas, quotes and a line break in its text is saved and the file is reloaded
-- **THEN** every field is identical to what was entered
-
-#### Scenario: Story with no criteria
-- **WHEN** a story has no criteria text
-- **THEN** its `User Acceptance Criteria` cell is empty
-
-#### Scenario: ID and dependencies saved
-- **WHEN** story `IAM-0003` depends on `IAM-0001` and `DD-0002`
-- **THEN** its row has `IAM-0003` in `ID` and `IAM-0001;DD-0002` in `Depends On`
-
-#### Scenario: Columns added on save
-- **WHEN** a file without `ID`, `Depends On`, `Title`, `Locked` and `Clarifications` columns is opened and saved
-- **THEN** the saved file has all five columns and every other column keeps its values
-
-#### Scenario: Title and feature saved
-- **WHEN** a story has Feature "Authentication" and Title "Local Login"
-- **THEN** its row has `Authentication` in `Feature` and `Local Login` in `Title`
-
-#### Scenario: Old column names are not translated
-- **WHEN** a file with a `Capability` column is opened and saved
-- **THEN** the `Capability` column and its values are saved unchanged and no value is copied into `Feature` or `Title`
-
-#### Scenario: Lock saved and reloaded
-- **WHEN** a locked story is saved and the file is reloaded
-- **THEN** the story is still locked
-
-#### Scenario: Clarifications saved
-- **WHEN** a story with a question and its answer is saved and the file is reloaded
-- **THEN** the `Clarifications` cell holds `Q1: ...` and `A1: ...` lines and the story shows the same pair
-
 ### Requirement: Parsing story and criteria text
 When loading a file, the tool SHALL split the `User Story` cell into As / I want / So that using the literal keywords `As`, `I want` and `so that` (case-insensitive, first occurrence of each, in that order), and SHALL split the `User Acceptance Criteria` cell into criteria by line, each into Given / When / Then using the keywords `Given`, `when` and `then` (case-insensitive, first occurrence of each, in that order). The comma immediately before a keyword SHALL be treated as a separator and removed from the preceding field, and a missing comma SHALL be tolerated. The leading `AC<n>:` label SHALL be ignored and criteria renumbered from their position.
 
@@ -470,7 +417,7 @@ The Stories tab SHALL have a search box above the table. While the box holds tex
 - **THEN** the story list shows every story
 
 ### Requirement: Multi-select in the Stories tab
-Each table row SHALL have a checkbox, and the header SHALL have a select-all checkbox that selects or clears every row shown. Shift-clicking a row's checkbox SHALL select every row shown between it and the last clicked checkbox. The tool SHALL show how many stories are selected. While a search hides some of the selected stories, the tool SHALL also show how many selected stories are hidden. Select-all, shift-click and clearing SHALL act only on the rows shown: they SHALL NOT select or deselect a story the search hides. A bulk edit and Lock/Unlock selected SHALL apply to all selected stories, hidden ones included. The selection SHALL be separate from the story selected in the Editor tab, and SHALL be cleared when another backlog is opened. Stories removed from the backlog SHALL drop out of the selection.
+Each table row SHALL have a checkbox, and the header SHALL have a select-all checkbox that selects or clears every row shown. Shift-clicking a row's checkbox SHALL select every row shown between it and the last clicked checkbox. The tool SHALL show how many stories are selected. While a search hides some of the selected stories, the tool SHALL also show how many selected stories are hidden. Select-all, shift-click and clearing SHALL act only on the rows shown: they SHALL NOT select or deselect a story the search hides. A bulk edit and Delete selected SHALL apply to all selected stories, hidden ones included. The selection SHALL be separate from the story selected in the Editor tab, and SHALL be cleared when another backlog is opened. Stories removed from the backlog SHALL drop out of the selection.
 
 #### Scenario: Select several
 - **WHEN** the user ticks three rows
@@ -507,61 +454,6 @@ Each table row SHALL have a checkbox, and the header SHALL have a select-all che
 #### Scenario: Bulk edit reaches hidden selected stories
 - **WHEN** 3 stories are selected, a search hides 2 of them, and the user applies a Priority to the selection
 - **THEN** the confirmation names 3 stories and all 3 get the Priority
-
-### Requirement: Bulk edit selected stories
-When at least one story is selected in the Stories tab, the tool SHALL show a bulk edit bar with a Priority dropdown, an Epic text field and a Feature text field. The Priority dropdown SHALL default to "No change" and offer "None", Critical, High, Medium and Low. The Epic and Feature fields SHALL suggest the values already used in the backlog, and an empty field SHALL mean "no change"; the tool SHALL NOT clear an Epic or Feature in bulk. The Apply button SHALL be disabled until at least one of the three is set. Applying SHALL first ask for confirmation naming what will change and how many stories are affected; when the Epic change gives stories new IDs, the confirmation SHALL say so. An Epic change SHALL skip locked stories, and the confirmation SHALL say how many were skipped. On confirmation the tool SHALL set only the chosen fields on every selected story, place the stories whose Epic changed at the bottom of the new Epic in their current row order, recompute IDs and rewrite dependencies as described in "Story IDs follow position", leave all other fields and unselected stories untouched, keep the selection, reset the bar to "no change", and save through the normal auto-save. Priority and Feature changes SHALL apply to locked stories as well. If the user cancels, nothing SHALL change. There SHALL be no undo.
-
-#### Scenario: Set priority only
-- **WHEN** 10 stories are selected, Priority is set to High, Epic and Feature are empty, and the user applies and confirms
-- **THEN** all 10 stories have Priority High and their Epic and Feature are unchanged
-
-#### Scenario: Change epic
-- **WHEN** 4 unlocked stories are selected, Epic is set to "Billing", and the user applies and confirms
-- **THEN** those 4 stories have Epic "Billing", their Feature and Title are unchanged, and the list shows them under "Billing"
-
-#### Scenario: Change epic renumbers
-- **WHEN** 2 stories `IAM-0001` and `IAM-0002` are moved to epic "Billing & Invoicing", which already has 3 stories, and a third story depends on `IAM-0001`
-- **THEN** the two stories become `BI-0004` and `BI-0005` in their previous order, the remaining IAM stories are renumbered from `IAM-0001`, and the third story's dependency names `BI-0004`
-
-#### Scenario: Confirmation mentions new IDs
-- **WHEN** the user clicks Apply with an Epic that differs from the selected stories' current Epics
-- **THEN** the confirmation states that the affected stories will receive new IDs
-
-#### Scenario: Change capability
-- **WHEN** stories from two different epics are selected and Feature is set to "Invoices"
-- **THEN** after confirming, all selected stories have Feature "Invoices" and their IDs are unchanged
-
-#### Scenario: Clear priority
-- **WHEN** Priority is set to "None" and applied with confirmation
-- **THEN** the selected stories have an empty Priority
-
-#### Scenario: Several fields at once
-- **WHEN** Priority High and Epic "Billing" are both set and confirmed
-- **THEN** both are applied to every selected unlocked story, and Priority only to selected locked stories
-
-#### Scenario: Nothing to apply
-- **WHEN** stories are selected but Priority is "No change" and Epic and Feature are empty
-- **THEN** the Apply button is disabled
-
-#### Scenario: Confirmation
-- **WHEN** the user clicks Apply with 12 stories selected and Epic set to "Billing"
-- **THEN** a confirmation states that Epic will be set to "Billing" on 12 stories
-
-#### Scenario: Cancelled
-- **WHEN** the user cancels the confirmation
-- **THEN** no story changes and nothing is saved
-
-#### Scenario: Saved
-- **WHEN** a bulk edit is confirmed
-- **THEN** the save status shows saving and then saved, and the CSV contains the new values
-
-#### Scenario: No selection
-- **WHEN** no story is selected
-- **THEN** the bulk edit bar is not shown
-
-#### Scenario: Locked stories skipped for Epic
-- **WHEN** 5 stories are selected, 2 are locked, and Epic is set to "Billing" and confirmed
-- **THEN** the 3 unlocked stories move to "Billing", the locked ones keep their Epic and ID, and the confirmation said 2 were skipped
 
 ### Requirement: Dependency graph tab
 The tool SHALL provide a Graph tab, shown when a backlog is open, that draws each story as a node and each dependency as an arrow from the story to the story it depends on. Dependencies SHALL be editable in the graph as well as in the Editor.
@@ -816,118 +708,6 @@ At Features and Epics levels, selecting a node or an arrow SHALL list the story 
 - **WHEN** the level is Features or Epics
 - **THEN** there are no link handles, and the Link and Remove dependency actions are disabled
 
-### Requirement: Story IDs follow position
-Every story with a non-blank Epic SHALL have an ID of the form `<PREFIX>-<NNNN>`, stored in the `ID` column, where `<NNNN>` is four digits. The prefix SHALL be the uppercased initials of the words of the story's Epic, ignoring `&` and other punctuation (`Identity & Access Management` gives `IAM`, `Data Delivery` gives `DD`). For an unlocked story the number SHALL be the lowest number, counting from 1, that no locked story of the same prefix holds, taken in the order of the backlog's rows among the unlocked stories with the same Epic. If the prefixes of two different Epics are equal, the Epic that occurs first in the backlog SHALL keep the prefix and each later one SHALL be lengthened by appending letters from the first word of its Epic (second letter, then third, and so on) until it is unique (`DD` in use, `Digital Dashboards` becomes `DDI`). A story with a blank Epic SHALL have no ID.
-
-A **locked** story SHALL keep its ID: recomputing SHALL NOT change it, and its number SHALL NOT be given to another story. Numbers may therefore have gaps. The prefix of a locked story's ID SHALL stay reserved for its Epic so that no two stories ever share an ID, including when two Epics have equal initials.
-
-The ID is not fixed for unlocked stories: the tool SHALL recompute their IDs whenever a story is added, deleted, reordered or moved to another Epic, when an Epic is committed, and when a backlog is loaded. New stories SHALL be placed after the other stories of their Epic. Whenever recomputing changes a story's ID, every `Depends On` entry in the backlog that referred to the old ID SHALL be rewritten to the new ID, so each link keeps pointing at the same story. The ID SHALL be shown on the story form as read-only text and SHALL NOT be editable.
-
-An Epic SHALL count as committed when the Epic field loses focus or a suggestion is chosen; while the user is typing in it the story's ID SHALL NOT change.
-
-#### Scenario: ID from epic and position
-- **WHEN** the epic "Identity & Access Management" has three stories
-- **THEN** their IDs are `IAM-0001`, `IAM-0002` and `IAM-0003` in row order
-
-#### Scenario: New story goes to the bottom
-- **WHEN** a fourth story is committed to that epic
-- **THEN** it becomes `IAM-0004` and the other IDs are unchanged
-
-#### Scenario: Not changed while typing
-- **WHEN** the user is typing a new Epic into a story and has not left the field
-- **THEN** the story's ID has not changed yet
-
-#### Scenario: Prefix collision lengthens the later epic
-- **WHEN** epic "Data Delivery" occurs before epic "Digital Dashboards"
-- **THEN** the first epic's IDs start `DD-` and the second's start `DDI-`
-
-#### Scenario: Blank epic has no ID
-- **WHEN** a story has a blank Epic
-- **THEN** its ID is blank and no other story can depend on it
-
-#### Scenario: Delete closes the gap
-- **WHEN** `IAM-0002` of three unlocked IAM stories is deleted
-- **THEN** the former `IAM-0003` becomes `IAM-0002` and dependencies on it name `IAM-0002`
-
-#### Scenario: Move to another epic
-- **WHEN** story `IAM-0002` is moved to the epic "Data Delivery" and `DD-0001` is its last story, and another story depends on `IAM-0002`
-- **THEN** the moved story becomes `DD-0002`, the former `IAM-0003` becomes `IAM-0002`, and each dependency names the same story as before
-
-#### Scenario: Swapped IDs keep links
-- **WHEN** `IAM-0001` and `IAM-0002` swap places and a third story depended on `IAM-0001`
-- **THEN** the third story now depends on `IAM-0002`, which is the same story as before
-
-#### Scenario: ID is read-only
-- **WHEN** the user views a story that has an ID
-- **THEN** the ID is displayed but cannot be edited
-
-#### Scenario: Old file gets IDs
-- **WHEN** a file without an `ID` column and with three stories in epic "Billing & Invoicing" is opened
-- **THEN** the stories show `BI-0001` to `BI-0003` in file order, the file is saved with an `ID` column, and its other columns and their order are preserved
-
-#### Scenario: Rows reordered in Excel
-- **WHEN** a file's rows were reordered outside the tool so the `ID` values no longer match the positions
-- **THEN** on load the IDs of unlocked stories follow the new positions and dependencies are rewritten to name the same stories
-
-#### Scenario: Locked story keeps its ID when a story above is deleted
-- **WHEN** `IAM-0002` is locked and the unlocked `IAM-0001` is deleted
-- **THEN** the locked story is still `IAM-0002`
-
-#### Scenario: Unlocked stories number around a locked one
-- **WHEN** `IAM-0002` is locked and a new story is added to the epic after the unlocked `IAM-0001` and `IAM-0003`
-- **THEN** the new story is `IAM-0004`, and if `IAM-0001` is then deleted the remaining unlocked stories become `IAM-0001` and `IAM-0003`
-
-#### Scenario: Equal initials never share an ID
-- **WHEN** a locked story holds `DD-0001` and its epic is "Data Delivery", and another epic "Digital Dashboards" exists
-- **THEN** the second epic's stories are numbered `DDI-` and no story other than the locked one has `DD-0001`
-
-#### Scenario: Links to a locked story survive
-- **WHEN** an unlocked story depends on the locked `IAM-0002` and stories above it are deleted
-- **THEN** the dependency still names `IAM-0002`
-
-### Requirement: Reorder stories by drag and drop
-In the story panel of the Editor tab, the user SHALL be able to drag an unlocked story and drop it between two stories of an Epic group, above the first or below the last. A locked story SHALL NOT be draggable. Other stories MAY be dropped between or around locked stories; a locked story keeps its ID wherever the stories around it land. Dropping within the story's own group SHALL reorder it. Dropping into another Epic's group SHALL set the story's Epic to that group's Epic and place it at the dropped position. Dropping onto the "(No epic)" group SHALL have no effect. A drop SHALL show where the story will land while dragging, SHALL keep the story selected, and SHALL be saved through the normal auto-save. Reordering within a group SHALL change the saved order of that group's rows only and SHALL NOT move the rows of other Epics or change the order of the groups. IDs and dependencies SHALL be updated as described in "Story IDs follow position". Open review suggestions of a story whose ID changes SHALL follow the story to its new ID.
-
-#### Scenario: Reorder within an epic
-- **WHEN** the user drags the third story of "Billing" above the first and none is locked
-- **THEN** it is listed first in the group, its ID becomes `...-0001`, the other two become `-0002` and `-0003`, and the CSV rows of the group are in the new order
-
-#### Scenario: Move to another epic
-- **WHEN** the user drags a story from "Billing" and drops it between the first and second stories of "Onboarding"
-- **THEN** its Epic is "Onboarding", it is listed second in that group with the next free number of that group, and the unlocked stories after it are renumbered
-
-#### Scenario: Drop at the end
-- **WHEN** the user drops a story below the last story of a group
-- **THEN** it becomes the last story of that group
-
-#### Scenario: Other rows untouched
-- **WHEN** a story is reordered within its group
-- **THEN** the rows of other Epics keep their positions in the saved file and the groups keep their order
-
-#### Scenario: Drop on no epic
-- **WHEN** the user drops a story on the "(No epic)" group
-- **THEN** nothing changes
-
-#### Scenario: Selection kept
-- **WHEN** the selected story is dragged to a new place
-- **THEN** it is still the selected story and the form still shows it
-
-#### Scenario: Dropped where it started
-- **WHEN** a story is dropped at its own position
-- **THEN** nothing changes and nothing is saved
-
-#### Scenario: Locked story cannot be dragged
-- **WHEN** the user tries to drag a locked story
-- **THEN** it does not move
-
-#### Scenario: Dropped next to a locked story
-- **WHEN** an unlocked story is dropped above the locked `IAM-0002`
-- **THEN** the locked story keeps `IAM-0002` and the dropped story takes the lowest free number
-
-#### Scenario: Suggestions follow a dragged story
-- **WHEN** the story `IAM-0002` has an open review suggestion and dragging another story above it gives it the ID `IAM-0003`
-- **THEN** the suggestion is shown on that story, now listed under `IAM-0003`, and no suggestion is reported as no longer matching a story
-
 ### Requirement: Story dependencies
 Each story SHALL have an optional list of stories it depends on, stored in the `Depends On` column as story IDs separated by semicolons (for example `IAM-0001;IAM-0003`). On the story form the user SHALL be able to add and remove dependencies by picking from the other stories in the backlog that have an ID, listed by ID and label. A story SHALL NOT be offered as a dependency of itself, and the same story SHALL NOT be listed twice. The form SHALL also show, read-only, the stories that depend on the open story ("Required by"), derived from the other stories' `Depends On` and not stored. Each listed story SHALL be a link that opens that story in the Editor tab. A story without an ID SHALL show that an ID is assigned once an Epic is set, and cannot be linked until then.
 
@@ -1006,139 +786,6 @@ The story form SHALL show a **Move to Proposed** button in the same row as the s
 #### Scenario: Not in the Proposed tab
 - **WHEN** a story is open in the Proposed tab
 - **THEN** the form has no Move to Proposed button
-
-### Requirement: Lock a story
-Each story SHALL have a lock, stored in the `Locked` column of the backlog CSV as `Yes` (locked) or empty (unlocked). A locked story is reference only: it is not submitted for review and its position is fixed. The story form SHALL offer a lock toggle. A story without an ID (blank Epic) SHALL NOT be lockable and the toggle SHALL be disabled for it with a hint that it needs an Epic. A locked story SHALL be marked as locked in the story list and the Stories tab.
-
-A locked story SHALL NOT be draggable (see "Reorder stories by drag and drop"), SHALL NOT be moved to Proposed (see the `story-proposals` capability) and SHALL NOT be deleted: Alt+D SHALL do nothing for it and the user SHALL be told to unlock it first, the Delete story button SHALL be disabled for it with the hint "Unlock the story first", and Delete selected SHALL skip it (see "Delete selected stories"). Only its **Epic** field SHALL be read-only; Feature, Title, User Story, Sprint points, Priority, Depends On, User Acceptance Criteria and Notes SHALL stay editable, as SHALL the dependencies of other stories on it. Ctrl+Up/Down SHALL select a locked story like any other. Applying a review suggestion to a locked story is covered by the `backlog-review-suggestions` capability.
-
-#### Scenario: Lock a story
-- **WHEN** the user turns on the lock for `IAM-0002`
-- **THEN** the story is marked locked, the Epic field becomes read-only, and the saved row has `Yes` in `Locked`
-
-#### Scenario: Unlock
-- **WHEN** the user turns the lock off
-- **THEN** the Epic field is editable again and the saved row has an empty `Locked`
-
-#### Scenario: No ID, no lock
-- **WHEN** a story has a blank Epic
-- **THEN** the lock toggle is disabled and says the story needs an Epic
-
-#### Scenario: Other fields stay editable
-- **WHEN** the user edits the Title, points and dependencies of a locked story
-- **THEN** the changes are made and saved
-
-#### Scenario: Cannot be deleted
-- **WHEN** the user presses Alt+D on a locked story
-- **THEN** the story is not deleted and a message says to unlock it first
-
-#### Scenario: Delete story disabled
-- **WHEN** a locked story is open in the Editor tab
-- **THEN** the Delete story button is disabled and its hint says to unlock the story first
-
-### Requirement: Lock and unlock selected stories
-When at least one story is selected in the Stories tab, the bulk edit bar area SHALL offer **Lock selected** and **Unlock selected**. Lock selected SHALL lock every selected story that has an ID and skip the others; when any were skipped the tool SHALL say how many ("n skipped (no ID)"). Unlock selected SHALL unlock every selected locked story. Both SHALL save through the normal auto-save, keep the selection, and SHALL NOT change any other field or any ID.
-
-#### Scenario: Lock several
-- **WHEN** five stories are selected, four have an ID, and the user clicks Lock selected
-- **THEN** the four are locked and the message says 1 was skipped (no ID)
-
-#### Scenario: Unlock several
-- **WHEN** the user clicks Unlock selected with three locked stories selected
-- **THEN** all three are unlocked and the selection is kept
-
-### Requirement: Delete selected stories
-When at least one story is selected in the Stories tab, the bulk bar SHALL offer **Delete selected (N)**, N being the number of selected stories, next to Lock selected and Unlock selected. It SHALL ask for confirmation naming how many stories will be deleted before changing anything. Deleting SHALL apply to every selected story, hidden ones included, except locked stories, which SHALL be skipped and kept. Deleted stories SHALL have their IDs removed from the `Depends On` of the stories that remain, and the remaining stories SHALL be renumbered once as described in "Story IDs follow position". When any locked story was skipped the tool SHALL say how many ("n locked stories were kept"). The deleted stories SHALL leave the selection, the remaining selection SHALL be kept, and the change SHALL save through the normal auto-save. If every selected story is locked, nothing SHALL be deleted and the tool SHALL say so.
-
-#### Scenario: Delete several
-- **WHEN** four unlocked stories are selected and the user clicks Delete selected (4) and confirms
-- **THEN** the four are removed, the remaining stories are renumbered, and the selection is empty
-
-#### Scenario: Cancel
-- **WHEN** the user cancels the confirmation
-- **THEN** no story is deleted and the selection is kept
-
-#### Scenario: Locked stories are skipped
-- **WHEN** five stories are selected, two are locked, and the user deletes and confirms
-- **THEN** the three unlocked stories are deleted, the two locked ones remain and stay selected, and the message says 2 locked stories were kept
-
-#### Scenario: Links are cleaned
-- **WHEN** `IAM-0001` is deleted in bulk and the remaining `IAM-0003` depended on it
-- **THEN** `IAM-0003` (renumbered if needed) no longer lists `IAM-0001`
-
-#### Scenario: Nothing selected
-- **WHEN** no story is selected in the Stories tab
-- **THEN** Delete selected is disabled
-
-### Requirement: Reorder groups by drag and drop
-In the story panel of the Editor tab, the user SHALL be able to drag an Epic head or a Feature head, expanded or collapsed, and drop it between two groups of the same level. An Epic SHALL be dropped between epics, above the first or below the last. A Feature SHALL be dropped only among the features of its own Epic, above the first or below the last. The whole group SHALL move as one block: all its stories keep their relative order and sit together at the new place. The "(No epic)" group SHALL NOT be draggable, and dropping a Feature onto another Epic SHALL have no effect. A locked story moves with its group and keeps its ID. While dragging, the panel SHALL show a drop line above or below the row where the group will land, in the style used for dragging a single story. The dragged group's stories SHALL stay as they are in the file apart from this move, and the selected story SHALL stay selected. The change SHALL be saved through the normal auto-save, and IDs and dependencies SHALL be updated as described in "Story IDs follow position". Open review suggestions of a story whose ID changes SHALL follow the story to its new ID.
-
-#### Scenario: Suggestions follow a moved group
-- **WHEN** the story `BI-0003` has an open review suggestion and moving its feature gives it the ID `BI-0001`
-- **THEN** the suggestion is shown on that story as before, now listed under `BI-0001`, and it is saved with the review file
-
-#### Scenario: Move a feature within its epic
-- **WHEN** "Billing" lists the features Pay, Refund and Invoice, and the user drops Invoice above Pay
-- **THEN** the panel lists Invoice, Pay, Refund; the stories of Invoice come first in the epic's rows of the saved file, and the epic's stories are numbered `...-0001` onward in that order
-
-#### Scenario: Move a collapsed epic
-- **WHEN** the epic "Onboarding" is collapsed and the user drops it above "Billing"
-- **THEN** all stories of Onboarding appear before those of Billing, in their previous order, and the groups are shown in the new order
-
-#### Scenario: Feature stays in its epic
-- **WHEN** the user drops the feature Pay of "Billing" on the group "Onboarding"
-- **THEN** nothing changes and nothing is saved
-
-#### Scenario: No epic cannot be dragged
-- **WHEN** the user tries to drag the "(No epic)" head
-- **THEN** it does not move
-
-#### Scenario: Other rows untouched by a feature move
-- **WHEN** a feature is moved inside its epic
-- **THEN** the rows of other Epics keep their positions in the saved file
-
-#### Scenario: Locked story moves with its group
-- **WHEN** the feature Pay holds the locked story `BI-0002` and the feature is dropped below Refund
-- **THEN** the locked story is still `BI-0002`, and the unlocked stories take the lowest free numbers in the new order
-
-#### Scenario: Epic order changes a shared prefix
-- **WHEN** "Data Delivery" and "Digital Dashboards" both start with `DD`, none of their stories is locked, and the user drops the second above the first
-- **THEN** the stories of "Digital Dashboards" are numbered `DD-` and those of "Data Delivery" `DDA-`, and `Depends On` links follow their stories
-
-#### Scenario: Dropped where it started
-- **WHEN** a group is dropped at its own position
-- **THEN** nothing changes and nothing is saved
-
-### Requirement: Renumber stories in the displayed order
-Beside the Add story button in the story panel of the Editor tab there SHALL be a Renumber button. Pressing it SHALL make the file order match what the panel shows within each Epic, by gathering the rows of each Feature into one block in the order the features are shown, and then renumber the stories as described in "Story IDs follow position". Rows of other Epics SHALL keep their positions. A locked story SHALL keep its ID, and its Epic SHALL keep the prefix of that ID. Before changing anything the button SHALL ask the user to confirm, saying how many stories get a new ID. The button SHALL be disabled, with a tooltip saying why, when pressing it would change no row and no ID. Open review suggestions of a story whose ID changes SHALL follow the story to its new ID. The change SHALL be saved through the normal auto-save and the selected story SHALL stay selected.
-
-#### Scenario: Suggestions follow Renumber
-- **WHEN** the story `BI-0003` has an open review suggestion and Renumber gives it the ID `BI-0002`
-- **THEN** the suggestion is shown on that story, now listed under `BI-0002`, and no suggestion is reported as no longer matching a story
-
-#### Scenario: Interleaved features are gathered
-- **WHEN** the rows of "Billing" are Pay, Refund, Pay and the user presses Renumber and confirms
-- **THEN** the rows become Pay, Pay, Refund and the stories are numbered `BI-0001` to `BI-0003` in the order the panel shows them
-
-#### Scenario: Locked story kept
-- **WHEN** `BI-0002` is locked and the user presses Renumber and confirms
-- **THEN** it is still `BI-0002` and the unlocked stories of its Epic take the lowest free numbers around it
-
-#### Scenario: Links follow
-- **WHEN** a story depends on `BI-0003` and Renumber gives that story the ID `BI-0002`
-- **THEN** the dependency now names `BI-0002`
-
-#### Scenario: Declined
-- **WHEN** the user presses Renumber and cancels the confirmation
-- **THEN** nothing changes and nothing is saved
-
-#### Scenario: Nothing to renumber
-- **WHEN** every Feature's rows are already together and every ID already follows position
-- **THEN** the Renumber button is disabled and its tooltip says the IDs already follow the order shown
-
-#### Scenario: Other epics untouched
-- **WHEN** Renumber gathers the features of "Billing"
-- **THEN** the rows of other Epics keep their positions in the saved file
 
 ### Requirement: Resizable list panel
 On the Editor, Proposed and Lexicon tabs, a draggable divider SHALL separate the list panel from the form beside it. Dragging the divider SHALL change the width of the list panel and the form SHALL take the remaining width. The width SHALL stay between a minimum and a maximum, so that neither the list nor the form can be dragged out of sight. Each of the three tabs SHALL have its own width: resizing one SHALL NOT change the others. The width SHALL be stored in the browser (not in the backlog, `data/` or on the server) and applied again when the page is reopened. Double-clicking the divider SHALL reset that tab's width to 260px. A stored value that is missing, not a number or outside the limits SHALL be replaced by the nearest allowed width, or the default when it is not a number, and an unavailable browser store SHALL NOT break the page (the width then lasts until the page is closed). When the layout stacks, at a window width of 800px or less, the divider SHALL NOT be shown and the stored width SHALL NOT apply. Resizing SHALL NOT change the backlog, the proposals or the lexicon.
@@ -1273,39 +920,352 @@ When a story appears inside a collapsed group, the panel SHALL expand only that 
 - **WHEN** the user opens the Proposed tab
 - **THEN** its story list has no collapse-all buttons, and its groups can still be folded one at a time as before
 
-### Requirement: Lock and unlock a group
-Each Epic header and each Feature header in the Editor tab's story list SHALL offer a lock button that locks or unlocks every story of that group at once. A group is the stories listed under that header, so a Feature group is the stories of that Feature within its Epic. The button SHALL lock the group when at least one of its stories is unlocked, and SHALL unlock the group when all of its stories are locked. Locking SHALL lock every story of the group that has an ID and skip the others; when any were skipped the tool SHALL say how many ("n skipped (no ID)"). Both actions SHALL save through the normal auto-save and SHALL NOT change any other field or any ID.
+### Requirement: Frozen stories are read-only
+A story is **frozen** when its `Frozen` cell holds `Yes`. Only `jois-story-plan` freezes stories (see the `frozen-stories` capability); the portal SHALL offer no way to freeze or unfreeze a story: no toggle on the story form, no button on an Epic or Feature header, no bulk action in the Stories tab and no keyboard shortcut. A frozen story SHALL be marked as frozen on its row in the story list, on its row in the Stories tab and on its form.
 
-The header SHALL show the group's lock state, worked out from its stories: a lock mark when all of them are locked, a distinct partial mark when some are, and no mark when none are. The button SHALL be usable on a collapsed group, SHALL NOT also fold or unfold it, SHALL NOT start a drag of the group, and SHALL be reachable by keyboard. A group lock is not stored: it only sets the `Locked` column of the stories the group holds at that moment, so a story added to, dragged into or given the Feature of a locked group later is unlocked until the group is locked again. A locked story keeps every rule of "Lock a story". The story list of the Proposed tab SHALL NOT offer the button.
+The form of a frozen story SHALL show every field read-only: Epic, Feature, Title, As a, I want, So that, Sprint points, Priority, its own Depends On, the acceptance criteria, Notes and Clarifications. The form SHALL say that the story is frozen because it is part of a slice, and that a change to it is made by a new story that supersedes it. The Depends On entries of other stories that name a frozen story SHALL stay editable, and a frozen story SHALL be offered in the Depends on picker of other stories like any other story. Ctrl+Up/Down SHALL select a frozen story like any other.
 
-#### Scenario: Lock a feature
-- **WHEN** the feature "Sign in" holds three unlocked stories and the user clicks its lock button
-- **THEN** the three stories are locked, the header shows the lock mark, and the saved rows have `Yes` in `Locked`
+A frozen story SHALL NOT be draggable (see "Reorder unfrozen stories by drag and drop"), SHALL NOT be moved to Proposed (see the `story-proposals` capability) and SHALL NOT be deleted: Alt+D SHALL do nothing for it and the user SHALL be told that a frozen story cannot be deleted, the Delete story button SHALL be disabled for it with the hint "A frozen story cannot be deleted", and Delete selected and Bulk edit SHALL skip it (see "Delete selected unfrozen stories" and "Bulk edit selected stories"). Applying a review suggestion to a frozen story is covered by the `backlog-review-suggestions` capability.
 
-#### Scenario: Lock an epic
-- **WHEN** the epic "Identity" holds two features, one with a locked story and one with unlocked stories, and the user clicks the epic's lock button
-- **THEN** every story of both features is locked
+#### Scenario: Form of a frozen story
+- **WHEN** the user opens a frozen story in the Editor tab
+- **THEN** the form is marked frozen, every field is read-only, and a note says a change is made by a superseding story
 
-#### Scenario: Unlock a group
-- **WHEN** every story of a feature is locked and the user clicks its lock button
-- **THEN** every story of the feature is unlocked and the header shows no mark
+#### Scenario: No freeze or unfreeze control
+- **WHEN** the user looks at the story form, an Epic header, a Feature header and the bulk bar of the Stories tab
+- **THEN** none of them offers to freeze, unfreeze or lock a story
 
-#### Scenario: Partly locked group
-- **WHEN** a feature holds one locked and two unlocked stories
-- **THEN** the header shows the partial mark, and clicking its lock button locks the other two
+#### Scenario: Marked in the lists
+- **WHEN** a frozen story is listed in the Editor tab and in the Stories tab
+- **THEN** both rows show it as frozen
 
-#### Scenario: Stories without an ID are skipped
-- **WHEN** a feature under a blank Epic holds two stories and the user clicks its lock button
-- **THEN** nothing is locked and the message says 2 were skipped (no ID)
+#### Scenario: Dependency on a frozen story stays editable
+- **WHEN** the user adds the frozen story `B1-IAM-0002` to the Depends on list of the unfrozen story `B1-IAM-0005`
+- **THEN** the change is made and saved, and `B1-IAM-0002` is unchanged
 
-#### Scenario: Collapsed group
-- **WHEN** a feature is collapsed and the user clicks its lock button
-- **THEN** its stories are locked and the feature stays collapsed
+#### Scenario: Cannot be dragged
+- **WHEN** the user tries to drag a frozen story
+- **THEN** it does not move
 
-#### Scenario: Later additions are not locked
-- **WHEN** a feature is locked and the user then adds a story to it
-- **THEN** the new story is unlocked and the header shows the partial mark
+#### Scenario: Cannot be deleted
+- **WHEN** the user presses Alt+D on a frozen story
+- **THEN** the story is not deleted and a message says a frozen story cannot be deleted
 
-#### Scenario: Proposed list has no group lock
-- **WHEN** the Proposed tab's story list is shown
-- **THEN** its Epic and Feature headers have no lock button
+#### Scenario: Delete story disabled
+- **WHEN** a frozen story is open in the Editor tab
+- **THEN** the Delete story button is disabled and its hint says a frozen story cannot be deleted
+
+### Requirement: Story IDs carry initials, epic prefix and number
+Every story with a non-blank Epic SHALL have an ID of the form `<INITIALS>-<PREFIX>-<NNNN>`, stored whole in the `ID` column, where `<NNNN>` is four digits. `<INITIALS>` SHALL be the initials of the backlog the story is in (see the `backlog-initials` capability); they hold no hyphen, so the parts of an ID can be told apart. `<PREFIX>` SHALL be the uppercased initials of the words of the story's Epic, ignoring `&` and other punctuation (`Identity & Access Management` gives `IAM`, `Data Delivery` gives `DD`), as fixed below. A story with a blank Epic SHALL have no ID. For an unfrozen story the number SHALL be the lowest number, counting from 1, that no frozen story with the same initials and prefix holds, taken in the order of the backlog's rows among the unfrozen stories with the same Epic.
+
+The prefix of an Epic SHALL be fixed from its first frozen story: from then on every story of that Epic, frozen or not, uses that prefix, whatever the order of the Epics. For the Epics that hold no fixed prefix, if the initials of two different Epics are equal, the Epic that occurs first in the backlog SHALL keep the prefix and each later one SHALL take the prefix with the next free digit appended (`DD` in use, `Digital Dashboards` becomes `DD1`, a third Epic with those initials becomes `DD2`); a prefix that another Epic already holds SHALL be skipped.
+
+A **frozen** story SHALL keep its ID: recomputing SHALL NOT change it, and its number SHALL NOT be given to another story, now or later, because a frozen story is never deleted. Numbers may therefore have gaps.
+
+The ID is not fixed for unfrozen stories: the tool SHALL recompute their IDs whenever a story is added, deleted, reordered or moved to another Epic, when an Epic is committed, when the backlog's initials change, and when a backlog is loaded. An ID that lacks the backlog's initials, as in an older file (`IAM-0003`), SHALL gain them when the backlog is loaded (`B1-IAM-0003`). New stories SHALL be placed after the other stories of their Epic. Whenever recomputing changes a story's ID, every `Depends On` entry in the backlog that referred to the old ID SHALL be rewritten to the new ID, so each link keeps pointing at the same story. The ID SHALL be shown on the story form as read-only text and SHALL NOT be editable.
+
+An Epic SHALL count as committed when the Epic field loses focus or a suggestion is chosen; while the user is typing in it the story's ID SHALL NOT change.
+
+#### Scenario: ID from initials, epic and position
+- **WHEN** the backlog's initials are `B1` and the epic "Identity & Access Management" has three stories
+- **THEN** their IDs are `B1-IAM-0001`, `B1-IAM-0002` and `B1-IAM-0003` in row order
+
+#### Scenario: New story goes to the bottom
+- **WHEN** a fourth story is committed to that epic
+- **THEN** it becomes `B1-IAM-0004` and the other IDs are unchanged
+
+#### Scenario: Not changed while typing
+- **WHEN** the user is typing a new Epic into a story and has not left the field
+- **THEN** the story's ID has not changed yet
+
+#### Scenario: Equal epic initials get a digit
+- **WHEN** epic "Data Delivery" occurs before epic "Digital Dashboards" and none of their stories is frozen
+- **THEN** the first epic's IDs start `B1-DD-` and the second's start `B1-DD1-`
+
+#### Scenario: A third epic with the same initials
+- **WHEN** epic "Dynamic Dashboards" occurs after those two epics
+- **THEN** its IDs start `B1-DD2-`
+
+#### Scenario: Blank epic has no ID
+- **WHEN** a story has a blank Epic
+- **THEN** its ID is blank and no other story can depend on it
+
+#### Scenario: Delete closes the gap
+- **WHEN** `B1-IAM-0002` of three unfrozen IAM stories is deleted
+- **THEN** the former `B1-IAM-0003` becomes `B1-IAM-0002` and dependencies on it name `B1-IAM-0002`
+
+#### Scenario: Move to another epic
+- **WHEN** story `B1-IAM-0002` is moved to the epic "Data Delivery" and `B1-DD-0001` is its last story, and another story depends on `B1-IAM-0002`
+- **THEN** the moved story becomes `B1-DD-0002`, the former `B1-IAM-0003` becomes `B1-IAM-0002`, and each dependency names the same story as before
+
+#### Scenario: Swapped IDs keep links
+- **WHEN** `B1-IAM-0001` and `B1-IAM-0002` swap places and a third story depended on `B1-IAM-0001`
+- **THEN** the third story now depends on `B1-IAM-0002`, which is the same story as before
+
+#### Scenario: Older IDs gain the initials on load
+- **WHEN** a file whose stories have the IDs `IAM-0001` and `IAM-0002`, the second depending on the first, is loaded in a backlog with the initials `B1`
+- **THEN** the stories become `B1-IAM-0001` and `B1-IAM-0002` and the dependency names `B1-IAM-0001`
+
+#### Scenario: Frozen story keeps its ID
+- **WHEN** `B1-IAM-0002` is frozen and an unfrozen story is dropped above it
+- **THEN** the frozen story is still `B1-IAM-0002` and the dropped story takes the lowest free number
+
+#### Scenario: Frozen number is not reused
+- **WHEN** `B1-IAM-0001` to `B1-IAM-0003` are frozen and a new story is added to the epic
+- **THEN** the new story becomes `B1-IAM-0004`
+
+#### Scenario: Prefix stays once frozen
+- **WHEN** "Data Delivery" holds the frozen story `B1-DD-0001`, "Digital Dashboards" holds `B1-DD1-0001`, and the user drops "Digital Dashboards" above "Data Delivery"
+- **THEN** each epic keeps its prefix and the frozen story is still `B1-DD-0001`
+
+### Requirement: Renumber unfrozen stories in the displayed order
+Beside the Add story button in the story panel of the Editor tab there SHALL be a Renumber button. Pressing it SHALL make the file order match what the panel shows within each Epic, by gathering the rows of each Feature into one block in the order the features are shown, and then renumber the stories as described in "Story IDs carry initials, epic prefix and number". Rows of other Epics SHALL keep their positions. A frozen story SHALL keep its ID, and its Epic SHALL keep the prefix of that ID. Before changing anything the button SHALL ask the user to confirm, saying how many stories get a new ID. The button SHALL be disabled, with a tooltip saying why, when pressing it would change no row and no ID. Open review suggestions of a story whose ID changes SHALL follow the story to its new ID. The change SHALL be saved through the normal auto-save and the selected story SHALL stay selected.
+
+#### Scenario: Suggestions follow Renumber
+- **WHEN** the story `B1-BI-0003` has an open review suggestion and Renumber gives it the ID `B1-BI-0002`
+- **THEN** the suggestion is shown on that story, now listed under `B1-BI-0002`, and no suggestion is reported as no longer matching a story
+
+#### Scenario: Interleaved features are gathered
+- **WHEN** the rows of "Billing" are Pay, Refund, Pay and the user presses Renumber and confirms
+- **THEN** the rows become Pay, Pay, Refund and the stories are numbered `B1-BI-0001` to `B1-BI-0003` in the order the panel shows them
+
+#### Scenario: Frozen story kept
+- **WHEN** `B1-BI-0002` is frozen and the user presses Renumber and confirms
+- **THEN** it is still `B1-BI-0002` and the unfrozen stories of its Epic take the lowest free numbers around it
+
+#### Scenario: Links follow
+- **WHEN** a story depends on `B1-BI-0003` and Renumber gives that story the ID `B1-BI-0002`
+- **THEN** the dependency now names `B1-BI-0002`
+
+#### Scenario: Declined
+- **WHEN** the user presses Renumber and cancels the confirmation
+- **THEN** nothing changes and nothing is saved
+
+#### Scenario: Nothing to renumber
+- **WHEN** every Feature's rows are already together and every ID already follows position
+- **THEN** the Renumber button is disabled and its tooltip says the IDs already follow the order shown
+
+#### Scenario: Other epics untouched
+- **WHEN** Renumber gathers the features of "Billing"
+- **THEN** the rows of other Epics keep their positions in the saved file
+
+### Requirement: Reorder unfrozen stories by drag and drop
+In the story panel of the Editor tab, the user SHALL be able to drag an unfrozen story and drop it between two stories of an Epic group, above the first or below the last. A frozen story SHALL NOT be draggable. Other stories MAY be dropped between or around frozen stories; a frozen story keeps its ID wherever the stories around it land. Dropping within the story's own group SHALL reorder it. Dropping into another Epic's group SHALL set the story's Epic to that group's Epic and place it at the dropped position. Dropping onto the "(No epic)" group SHALL have no effect. A drop SHALL show where the story will land while dragging, SHALL keep the story selected, and SHALL be saved through the normal auto-save. Reordering within a group SHALL change the saved order of that group's rows only and SHALL NOT move the rows of other Epics or change the order of the groups. IDs and dependencies SHALL be updated as described in "Story IDs carry initials, epic prefix and number". Open review suggestions of a story whose ID changes SHALL follow the story to its new ID.
+
+#### Scenario: Reorder within an epic
+- **WHEN** the user drags the third story of "Billing" above the first and none is frozen
+- **THEN** it is listed first in the group, its ID becomes `...-0001`, the other two become `-0002` and `-0003`, and the CSV rows of the group are in the new order
+
+#### Scenario: Move to another epic
+- **WHEN** the user drags a story from "Billing" and drops it between the first and second stories of "Onboarding"
+- **THEN** its Epic is "Onboarding", it is listed second in that group with the next free number of that group, and the unfrozen stories after it are renumbered
+
+#### Scenario: Drop at the end
+- **WHEN** the user drops a story below the last story of a group
+- **THEN** it becomes the last story of that group
+
+#### Scenario: Other rows untouched
+- **WHEN** a story is reordered within its group
+- **THEN** the rows of other Epics keep their positions in the saved file and the groups keep their order
+
+#### Scenario: Drop on no epic
+- **WHEN** the user drops a story on the "(No epic)" group
+- **THEN** nothing changes
+
+#### Scenario: Selection kept
+- **WHEN** the selected story is dragged to a new place
+- **THEN** it is still the selected story and the form still shows it
+
+#### Scenario: Dropped where it started
+- **WHEN** a story is dropped at its own position
+- **THEN** nothing changes and nothing is saved
+
+#### Scenario: Frozen story cannot be dragged
+- **WHEN** the user tries to drag a frozen story
+- **THEN** it does not move
+
+#### Scenario: Dropped next to a frozen story
+- **WHEN** an unfrozen story is dropped above the frozen `B1-IAM-0002`
+- **THEN** the frozen story keeps `B1-IAM-0002` and the dropped story takes the lowest free number
+
+#### Scenario: Suggestions follow a dragged story
+- **WHEN** the story `B1-IAM-0002` has an open review suggestion and dragging another story above it gives it the ID `B1-IAM-0003`
+- **THEN** the suggestion is shown on that story, now listed under `B1-IAM-0003`, and no suggestion is reported as no longer matching a story
+
+### Requirement: Move groups by drag and drop
+In the story panel of the Editor tab, the user SHALL be able to drag an Epic head or a Feature head, expanded or collapsed, and drop it between two groups of the same level. An Epic SHALL be dropped between epics, above the first or below the last. A Feature SHALL be dropped only among the features of its own Epic, above the first or below the last. The whole group SHALL move as one block: all its stories keep their relative order and sit together at the new place. The "(No epic)" group SHALL NOT be draggable, and dropping a Feature onto another Epic SHALL have no effect. A frozen story moves with its group and keeps its ID. While dragging, the panel SHALL show a drop line above or below the row where the group will land, in the style used for dragging a single story. The dragged group's stories SHALL stay as they are in the file apart from this move, and the selected story SHALL stay selected. The change SHALL be saved through the normal auto-save, and IDs and dependencies SHALL be updated as described in "Story IDs carry initials, epic prefix and number". Open review suggestions of a story whose ID changes SHALL follow the story to its new ID.
+
+#### Scenario: Suggestions follow a moved group
+- **WHEN** the story `B1-BI-0003` has an open review suggestion and moving its feature gives it the ID `B1-BI-0001`
+- **THEN** the suggestion is shown on that story as before, now listed under `B1-BI-0001`, and it is saved with the review file
+
+#### Scenario: Move a feature within its epic
+- **WHEN** "Billing" lists the features Pay, Refund and Invoice, and the user drops Invoice above Pay
+- **THEN** the panel lists Invoice, Pay, Refund; the stories of Invoice come first in the epic's rows of the saved file, and the epic's stories are numbered `...-0001` onward in that order
+
+#### Scenario: Move a collapsed epic
+- **WHEN** the epic "Onboarding" is collapsed and the user drops it above "Billing"
+- **THEN** all stories of Onboarding appear before those of Billing, in their previous order, and the groups are shown in the new order
+
+#### Scenario: Feature stays in its epic
+- **WHEN** the user drops the feature Pay of "Billing" on the group "Onboarding"
+- **THEN** nothing changes and nothing is saved
+
+#### Scenario: No epic cannot be dragged
+- **WHEN** the user tries to drag the "(No epic)" head
+- **THEN** it does not move
+
+#### Scenario: Other rows untouched by a feature move
+- **WHEN** a feature is moved inside its epic
+- **THEN** the rows of other Epics keep their positions in the saved file
+
+#### Scenario: Frozen story moves with its group
+- **WHEN** the feature Pay holds the frozen story `B1-BI-0002` and the feature is dropped below Refund
+- **THEN** the frozen story is still `B1-BI-0002`, and the unfrozen stories take the lowest free numbers in the new order
+
+#### Scenario: Epic order changes a shared prefix
+- **WHEN** "Data Delivery" and "Digital Dashboards" both start with `DD`, none of their stories is frozen, and the user drops the second above the first
+- **THEN** the stories of "Digital Dashboards" are numbered `B1-DD-` and those of "Data Delivery" `B1-DD1-`, and `Depends On` links follow their stories
+
+#### Scenario: Epic order keeps a fixed prefix
+- **WHEN** "Data Delivery" holds a frozen story `B1-DD-0001` and the user drops "Digital Dashboards", whose prefix is `DD1`, above it
+- **THEN** both epics keep their prefixes and the frozen story is still `B1-DD-0001`
+
+#### Scenario: Dropped where it started
+- **WHEN** a group is dropped at its own position
+- **THEN** nothing changes and nothing is saved
+
+### Requirement: Delete selected unfrozen stories
+When at least one story is selected in the Stories tab, the bulk bar SHALL offer **Delete selected (N)**, N being the number of selected stories. It SHALL ask for confirmation naming how many stories will be deleted before changing anything. Deleting SHALL apply to every selected story, hidden ones included, except frozen stories, which SHALL be skipped and kept. Deleted stories SHALL have their IDs removed from the `Depends On` of the stories that remain, and the remaining stories SHALL be renumbered once as described in "Story IDs carry initials, epic prefix and number". When any frozen story was skipped the tool SHALL say how many ("n frozen stories were kept"). The deleted stories SHALL leave the selection, the remaining selection SHALL be kept, and the change SHALL save through the normal auto-save. If every selected story is frozen, nothing SHALL be deleted and the tool SHALL say so.
+
+#### Scenario: Delete several
+- **WHEN** four unfrozen stories are selected and the user clicks Delete selected (4) and confirms
+- **THEN** the four are removed, the remaining stories are renumbered, and the selection is empty
+
+#### Scenario: Cancel
+- **WHEN** the user cancels the confirmation
+- **THEN** no story is deleted and the selection is kept
+
+#### Scenario: Frozen stories are skipped
+- **WHEN** five stories are selected, two are frozen, and the user deletes and confirms
+- **THEN** the three unfrozen stories are deleted, the two frozen ones remain and stay selected, and the message says 2 frozen stories were kept
+
+#### Scenario: Only frozen stories selected
+- **WHEN** every selected story is frozen and the user clicks Delete selected
+- **THEN** nothing is deleted and the message says the selected stories are frozen
+
+### Requirement: Bulk edit selected unfrozen stories
+When at least one story is selected in the Stories tab, the tool SHALL show a bulk edit bar with a Priority dropdown, an Epic text field and a Feature text field. The Priority dropdown SHALL default to "No change" and offer "None", Critical, High, Medium and Low. The Epic and Feature fields SHALL suggest the values already used in the backlog, and an empty field SHALL mean "no change"; the tool SHALL NOT clear an Epic or Feature in bulk. The Apply button SHALL be disabled until at least one of the three is set. Applying SHALL first ask for confirmation naming what will change and how many stories are affected; when the Epic change gives stories new IDs, the confirmation SHALL say so. A bulk edit SHALL skip frozen stories whatever the field, because every field of a frozen story is read-only, and the confirmation SHALL say how many were skipped. On confirmation the tool SHALL set only the chosen fields on every selected unfrozen story, place the stories whose Epic changed at the bottom of the new Epic in their current row order, recompute IDs and rewrite dependencies as described in "Story IDs carry initials, epic prefix and number", leave all other fields and unselected stories untouched, keep the selection, reset the bar to "no change", and save through the normal auto-save. If every selected story is frozen, nothing SHALL change and the tool SHALL say so. If the user cancels, nothing SHALL change. There SHALL be no undo.
+
+#### Scenario: Set priority only
+- **WHEN** 10 stories are selected, Priority is set to High, Epic and Feature are empty, and the user applies and confirms
+- **THEN** all 10 stories have Priority High and their Epic and Feature are unchanged
+
+#### Scenario: Change epic
+- **WHEN** 4 unfrozen stories are selected, Epic is set to "Billing", and the user applies and confirms
+- **THEN** those 4 stories have Epic "Billing", their Feature and Title are unchanged, and the list shows them under "Billing"
+
+#### Scenario: Change epic renumbers
+- **WHEN** 2 stories `B1-IAM-0001` and `B1-IAM-0002` are moved to epic "Billing & Invoicing", which already has 3 stories, and a third story depends on `B1-IAM-0001`
+- **THEN** the two stories become `B1-BI-0004` and `B1-BI-0005` in their previous order, the remaining IAM stories are renumbered from `B1-IAM-0001`, and the third story's dependency names `B1-BI-0004`
+
+#### Scenario: Confirmation mentions new IDs
+- **WHEN** the user clicks Apply with an Epic that differs from the selected stories' current Epics
+- **THEN** the confirmation states that the affected stories will receive new IDs
+
+#### Scenario: Change capability
+- **WHEN** stories from two different epics are selected and Feature is set to "Invoices"
+- **THEN** after confirming, all selected stories have Feature "Invoices" and their IDs are unchanged
+
+#### Scenario: Clear priority
+- **WHEN** Priority is set to "None" and applied with confirmation
+- **THEN** the selected stories have an empty Priority
+
+#### Scenario: Several fields at once
+- **WHEN** Priority High and Epic "Billing" are both set and confirmed
+- **THEN** both are applied to every selected unfrozen story
+
+#### Scenario: Nothing to apply
+- **WHEN** stories are selected but Priority is "No change" and Epic and Feature are empty
+- **THEN** the Apply button is disabled
+
+#### Scenario: Confirmation
+- **WHEN** the user clicks Apply with 12 stories selected and Epic set to "Billing"
+- **THEN** a confirmation states that Epic will be set to "Billing" on 12 stories
+
+#### Scenario: Cancelled
+- **WHEN** the user cancels the confirmation
+- **THEN** no story changes and nothing is saved
+
+#### Scenario: Saved
+- **WHEN** a bulk edit is confirmed
+- **THEN** the save status shows saving and then saved, and the CSV contains the new values
+
+#### Scenario: No selection
+- **WHEN** no story is selected
+- **THEN** the bulk edit bar is not shown
+
+#### Scenario: Frozen stories skipped
+- **WHEN** 5 stories are selected, 2 are frozen, and Priority is set to High and confirmed
+- **THEN** the 3 unfrozen stories get Priority High, the frozen ones are unchanged, and the confirmation said 2 were skipped
+
+#### Scenario: Only frozen stories selected
+- **WHEN** every selected story is frozen and the user clicks Apply
+- **THEN** no story changes and the message says the selected stories are frozen
+
+### Requirement: Story CSV format
+Each story SHALL be stored as one row with exactly these columns: `ID, Epic, Feature, Title, User Story, Sprint points, Priority, Depends On, User Acceptance Criteria, Notes, Frozen, Clarifications`.
+
+- `ID` SHALL hold the story ID, or be empty when the story has none.
+- `Title` SHALL hold the title of the user story.
+- `User Story` SHALL hold one sentence in the form `As <as>, I want <i want>, so that <so that>`.
+- `Depends On` SHALL hold the IDs of the stories this story depends on, separated by semicolons, or be empty.
+- `User Acceptance Criteria` SHALL hold one line per criterion, lines separated by a line break within the cell, each in the form `AC<n>: Given <given>, when <when>, then <then>`, where `<n>` is the criterion's position starting at 1.
+- `Frozen` SHALL hold `Yes` for a frozen story and be empty otherwise. Any other value SHALL be read as unfrozen.
+- `Clarifications` SHALL hold the story's question and answer pairs in the form defined by the `story-clarifications` capability, or be empty.
+
+Values containing commas, quotes or line breaks SHALL be correctly quoted so the file round-trips and opens correctly in Excel. A file that lacks the `ID`, `Depends On`, `Title`, `Frozen` or `Clarifications` column SHALL be accepted and the columns added to it when it is saved. An older `Locked` column SHALL be ignored, never read as frozen, and SHALL NOT be written when the file is saved. The tool SHALL NOT translate other older column names: a `Capability` column SHALL be treated as an unknown column and kept unchanged.
+
+#### Scenario: Story sentence saved
+- **WHEN** the user enters As "a team lead", I want "to export a backlog", so that "I can share it"
+- **THEN** the `User Story` cell contains `As a team lead, I want to export a backlog, so that I can share it`
+
+#### Scenario: Multiple criteria in one cell
+- **WHEN** a story has two criteria
+- **THEN** the `User Acceptance Criteria` cell contains two lines beginning `AC1: Given ` and `AC2: Given `, separated by a line break
+
+#### Scenario: Round trip
+- **WHEN** a story containing commas, quotes and a line break in its text is saved and the file is reloaded
+- **THEN** every field is identical to what was entered
+
+#### Scenario: Story with no criteria
+- **WHEN** a story has no criteria text
+- **THEN** its `User Acceptance Criteria` cell is empty
+
+#### Scenario: ID and dependencies saved
+- **WHEN** story `B1-IAM-0003` depends on `B1-IAM-0001` and `B1-DD-0002`
+- **THEN** its row has `B1-IAM-0003` in `ID` and `B1-IAM-0001;B1-DD-0002` in `Depends On`
+
+#### Scenario: Columns added on save
+- **WHEN** a file without `ID`, `Depends On`, `Title`, `Frozen` and `Clarifications` columns is opened and saved
+- **THEN** the saved file has all five columns and every other column keeps its values
+
+#### Scenario: Title and feature saved
+- **WHEN** a story has Feature "Authentication" and Title "Local Login"
+- **THEN** its row has `Authentication` in `Feature` and `Local Login` in `Title`
+
+#### Scenario: Old column names are not translated
+- **WHEN** a file with a `Capability` column is opened and saved
+- **THEN** the `Capability` column and its values are saved unchanged and no value is copied into `Feature` or `Title`
+
+#### Scenario: Old Locked column is dropped
+- **WHEN** a file with a `Locked` column holding `Yes` on a story is opened and saved
+- **THEN** the story is not frozen, the saved file has no `Locked` column, and every other column keeps its values
+
+#### Scenario: Frozen saved and reloaded
+- **WHEN** a frozen story is saved and the file is reloaded
+- **THEN** the story is still frozen
+
+#### Scenario: Clarifications saved
+- **WHEN** a story with a question and its answer is saved and the file is reloaded
+- **THEN** the `Clarifications` cell holds `Q1: ...` and `A1: ...` lines and the story shows the same pair

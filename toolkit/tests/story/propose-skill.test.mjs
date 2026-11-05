@@ -21,14 +21,14 @@ const examples = () => [...text.matchAll(/```json\n([\s\S]*?)\n```/g)].map((m) =
 const HEAD = 'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes\r\n';
 const BACKLOG =
   HEAD +
-  'IAM-0001,Identity & Access Management,Auth,Log in with a password,"As a user, I want to log in, so that I can access the portal",5,High,,"AC1: Given a, when b, then c",\r\n';
+  'B1-IAM-0001,Identity & Access Management,Auth,Log in with a password,"As a user, I want to log in, so that I can access the portal",5,High,,"AC1: Given a, when b, then c",\r\n';
 const PROPOSALS = HEAD + 'NEW-3,Identity & Access Management,Auth,Send a welcome email,,,,,,\r\n';
 const FULL = (code, title) => `${code},Identity & Access Management,Auth,${title},"As a user, I want x, so that y",3,,,"AC1: Given a, when b, then c",\r\n`;
 
 test('the skill is named jois-story-propose, versioned, and may run only its five scripts and the init script', () => {
   assert.match(front, /^name: jois-story-propose$/m);
-  assert.match(front, /version: "1\.0\.0"/);
-  assert.match(front, /last_updated: "2026-11-03"/);
+  assert.match(front, /version: "1\.1\.0"/);
+  assert.match(front, /last_updated: "2026-11-05"/);
   assert.match(front, /^allowed-tools: Bash\(node \*read-story-context\.mjs\*\), Bash\(node \*write-proposal\.mjs\*\), Bash\(node \*write-lexicon\.mjs\*\), Bash\(node \*suggest-lexicon\.mjs\*\), Bash\(node \*write-review\.mjs\*\), Bash\(node \*init-plans\.mjs\*\)$/m);
   assert.doesNotMatch(front, /mcp__/);
 });
@@ -60,14 +60,14 @@ test('the examples are the five lists of the writers', () => {
 test('the new-stories example passes the writer\'s validation', () => {
   const r = buildProposals({
     input: examples()[0],
-    backlog: loadBacklog(BACKLOG),
-    proposals: loadBacklog(PROPOSALS, { placeholderIds: true }),
+    backlog: loadBacklog(BACKLOG, { initials: 'B1' }),
+    proposals: loadBacklog(PROPOSALS, { placeholderIds: true, initials: 'B1' }),
     requireTitles: true,
   });
   assert.deepEqual(r.errors, undefined);
   assert.equal(r.ok, true);
   assert.deepEqual(r.ids, ['NEW-4', 'NEW-5', 'NEW-6']);
-  assert.deepEqual(r.stories.map((s) => s.dependsOn), [['IAM-0001'], ['NEW-4'], ['NEW-3']]);
+  assert.deepEqual(r.stories.map((s) => s.dependsOn), [['B1-IAM-0001'], ['NEW-4'], ['NEW-3']]);
 });
 
 test('the patch example passes the writer\'s validation', () => {
@@ -75,8 +75,8 @@ test('the patch example passes the writer\'s validation', () => {
   assert.ok(input.every((item) => /^NEW-\d+$/.test(item.id)));
   const r = buildProposals({
     input,
-    backlog: loadBacklog(BACKLOG),
-    proposals: loadBacklog(HEAD + input.map((i) => FULL(i.id, i.storyTitle)).join(''), { placeholderIds: true }),
+    backlog: loadBacklog(BACKLOG, { initials: 'B1' }),
+    proposals: loadBacklog(HEAD + input.map((i) => FULL(i.id, i.storyTitle)).join(''), { placeholderIds: true, initials: 'B1' }),
     requireTitles: true,
   });
   assert.deepEqual(r.errors, undefined);
@@ -85,7 +85,7 @@ test('the patch example passes the writer\'s validation', () => {
 
 test('the backlog edit example passes the review writer\'s validation, and the skill only appends', () => {
   const findings = examples()[2];
-  assert.deepEqual(validateFindings(findings, loadBacklog(BACKLOG), { requireTitles: true }), []);
+  assert.deepEqual(validateFindings(findings, loadBacklog(BACKLOG, { initials: 'B1' }), { requireTitles: true }), []);
   assert.ok(findings.every((f) => f.action !== 'add-story' && !f.group), 'edits never create stories or groups');
   assert.match(text, /Always `--append`/);
   assert.match(text, /do not run an earlier command again once its read-back matched/);

@@ -6,53 +6,6 @@ Turns the findings of a backlog review into data the portal can use: a review CS
 
 ## Requirements
 
-### Requirement: Review CSV
-A review of a backlog SHALL be stored as a CSV file in the `reviews` folder with the same file name as the backlog it reviews (for example `reviews/data-portal.csv` for `backlogs/data-portal.csv`). One row SHALL describe one field edit, or one suggestion to unlock a story, and SHALL have the columns `Story ID`, `Field`, `Action`, `Current`, `Suggested`, `Reason`, `Area`, `Confidence`, `Group` and `Status`.
-
-- `Story ID` is the ID of the story the edit applies to, or `NEW-<n>` for a story to be created (see "Split suggestions").
-- `Field` is one of `Epic`, `Feature`, `Title`, `User Story`, `Sprint points`, `Depends On`, `User Acceptance Criteria`, `Notes`, and is empty on an `unlock` row. Priority is not a Field: reviews do not cover it.
-- `Action` is one of `replace`, `add`, `remove`, `append`, `add-story`, `unlock`.
-- `Area` is one of `Hierarchy`, `INVEST`, `Acceptance criteria`.
-- `Confidence` is `ready` (apply as-is) or `confirm` (a proposed default the user must check).
-- `Status` is `open`, `applied` or `dismissed`; a new row is `open`.
-- `Reason` is one sentence stating what is wrong.
-
-#### Scenario: One row per edit
-- **WHEN** a review finds a missing failure-path criterion on one story and a typo on another
-- **THEN** the review CSV has two rows, each with its own Story ID, Field, Action and Reason
-
-#### Scenario: Open in Excel
-- **WHEN** the user opens a review CSV in Excel
-- **THEN** it opens as UTF-8 with all columns readable
-
-#### Scenario: Unlock row
-- **WHEN** the review has a strong objection to the locked story `IAM-0002`
-- **THEN** the review CSV has a row with Story ID `IAM-0002`, Action `unlock`, empty Field and Suggested, and the objection as Reason
-
-### Requirement: Every finding yields a field edit
-Every finding of a review about a story that is not locked SHALL produce at least one review row with a non-empty `Suggested` value; a finding SHALL NOT be left as advice only. A finding about a locked story SHALL be written as an `unlock` row (see "Unlock suggestion"), and MAY be accompanied by field-edit rows for that story as the evidence for it. The edit for each kind of finding SHALL be:
-
-- Wording, typo or weak "so that": `replace` on the field.
-- Missing or vague acceptance criterion: `add` or `replace` on `User Acceptance Criteria`.
-- Duplicate or unwanted acceptance criterion: `remove` on `User Acceptance Criteria`, with `Suggested` = the label of the criterion (for example `AC4`).
-- A value only the user can decide (for example a page size, a relevance threshold, missing Sprint points; never Priority): `replace` with a proposed default, `Confidence` = `confirm`.
-- A story or feature in the wrong place: `replace` on `Epic` or `Feature`.
-- A dependency problem: `add` or `remove` on `Depends On`.
-- An open question (for example a single-story feature): `append` the question to `Clarifications` (see "Clarification suggestions"), `Confidence` = `confirm`. A fact or decision worth recording, as opposed to something awaiting an answer, MAY still be an `append` to `Notes`.
-- A story that is too large or covers several needs: a split group (see "Split suggestions").
-
-#### Scenario: Value only the user can decide
-- **WHEN** the review finds that a pagination criterion does not state the page size
-- **THEN** it suggests a replacement criterion with a concrete page size and marks the row `confirm`
-
-#### Scenario: Open question becomes a note
-- **WHEN** the review finds a Feature with a single story
-- **THEN** it suggests appending the question "split, merge or intended?" to that story's Clarifications and marks the row `confirm`
-
-#### Scenario: Objection to a locked story
-- **WHEN** the review finds a locked story far over the size limit
-- **THEN** it writes an `unlock` row with the Reason and may add the split group as evidence
-
 ### Requirement: Suggestions do not grow the story
 A suggested value SHALL stay within what the story already implies. It SHALL NOT add a capability, user group, permission or rule that the story does not contain. When a better value would need new scope, the review SHALL suggest a modest value and raise the larger idea as an `append` to `Clarifications` marked `confirm`.
 
@@ -93,61 +46,6 @@ Review files SHALL be written only by running the writer script `write-review.mj
 #### Scenario: Edits written from a propose session
 - **WHEN** `jois-story-propose` writes edits to backlog stories with `write-review.mjs data-portal --append`
 - **THEN** the rows are added after the existing rows of `data-portal/user-stories/review.csv`, the rows already there are unchanged, and the portal shows the new rows as open suggestions
-
-### Requirement: Script validates findings
-The script SHALL reject the whole input, write nothing, and report every problem found when any finding: names a Story ID that is not in the backlog (other than `NEW-<n>` on an `add-story` row); uses a Field, Action, Area or Confidence outside the allowed values; has an empty `Suggested` (except an `unlock` row, which SHALL have an empty `Field` and `Suggested`); uses an Action that does not fit the Field (for example `add` on `Title`, `remove` on a Field other than `Depends On` and `User Acceptance Criteria`, or `add` on a Field other than `Depends On` and `User Acceptance Criteria`); has an `add-story` row without a Group or a `NEW-<n>` ID, or a new story without a Title; belongs to a Group whose rows do not all have `Confidence` = `confirm`; or is a `Depends On` `add` row whose entry is not a story ID in the backlog, is the story itself, or is a `NEW-<n>` that is not in the same Group. A `Depends On` `remove` row SHALL be accepted when the story lists the entry in its `Depends On`, whether or not a story holds that entry, and SHALL be rejected when the story does not list it; the entry may be a code no story holds, the story's own code or a `NEW-<n>`. It SHALL also reject an `unlock` row for a story that is not locked, and a batch that leaves a field-edit row for a locked story without an `unlock` row for the same story in the resulting review file (an `unlock` row written by an earlier batch counts). Each problem about a finding SHALL name the finding by its position in the input. When the input is not valid JSON, the script SHALL report the parser's message and the position of the failure. The script SHALL ignore any `Current` or `Status` the caller supplies.
-
-#### Scenario: Unknown story
-- **WHEN** a finding names `ZZ-0009`, which is not in the backlog
-- **THEN** the script exits with an error naming `ZZ-0009` and no review file is created or changed
-
-#### Scenario: Empty suggestion
-- **WHEN** a finding that is not an `unlock` row has an empty `Suggested`
-- **THEN** the script rejects it, because every finding must carry a field edit
-
-#### Scenario: All problems reported together
-- **WHEN** the input has an unknown Story ID and an invalid Action
-- **THEN** the error output lists both
-
-#### Scenario: Malformed JSON
-- **WHEN** the input has a missing comma after the 3rd finding
-- **THEN** the error includes the JSON parser's message and the position it reports, and nothing is written
-
-#### Scenario: Unlock row for an unlocked story
-- **WHEN** an `unlock` row names a story that is not locked
-- **THEN** the batch is rejected and nothing is written
-
-#### Scenario: Field edit on a locked story without unlock
-- **WHEN** a batch has a `replace` row for a locked story and the review file would hold no `unlock` row for it
-- **THEN** the batch is rejected, naming the story, and nothing is written
-
-#### Scenario: Unlock row in an earlier batch
-- **WHEN** an earlier batch wrote the `unlock` row for a locked story and a later `--append` batch adds a `replace` row for it
-- **THEN** the later batch is accepted
-
-#### Scenario: Unlock with a value
-- **WHEN** an `unlock` row has a non-empty Field or Suggested
-- **THEN** the batch is rejected
-
-#### Scenario: Remove a link to a story that does not exist
-- **WHEN** `IAM-0003` lists `IAM-0099` in `Depends On`, no story holds `IAM-0099`, and a `Depends On` `remove` row for `IAM-0003` has `suggested` `IAM-0099`
-- **THEN** the row is accepted and written
-
-#### Scenario: Remove a link to the story itself
-- **WHEN** `IAM-0003` lists `IAM-0003` in `Depends On` and a `remove` row for it has `suggested` `IAM-0003`
-- **THEN** the row is accepted and written
-
-#### Scenario: Remove a link to a proposed story
-- **WHEN** `IAM-0003` lists `NEW-4` in `Depends On` and a `remove` row for it has `suggested` `NEW-4`
-- **THEN** the row is accepted and written, without a Group
-
-#### Scenario: Remove a link the story does not list
-- **WHEN** a `Depends On` `remove` row has `suggested` `IAM-0099` and the story does not list it
-- **THEN** the batch is rejected, saying the story does not depend on `IAM-0099`
-
-#### Scenario: Add keeps its checks
-- **WHEN** a `Depends On` `add` row has `suggested` `IAM-0099`, which no story holds, or the story's own code
-- **THEN** the batch is rejected and nothing is written
 
 ### Requirement: Script fills Current from the backlog
 For each row the script SHALL set `Current` from the backlog as it was read: the story's current value for the Field on `replace`, `append`, and `Depends On` `add` or `remove`; the text of the criterion being replaced on an `User Acceptance Criteria` `replace` (matched by the `AC<n>` label at the start of `Suggested`, which the script SHALL reject if no such criterion exists; a `remove` on `User Acceptance Criteria` takes the label alone as `Suggested`, and `Current` is the text of that criterion); and empty for `add`, `add-story`, and rows for `NEW-<n>` stories. It SHALL use the same parsing as the portal so `Current` is exactly what the portal will compare against. Every written row SHALL have `Status` = `open`, except rows that keep a status from an earlier review (see "Safe, repeatable writes").
@@ -365,98 +263,6 @@ When moving a story to Proposed renumbers the stories below it, the open suggest
 - **WHEN** `IAM-0002` is moved to Proposed and `IAM-0003` becomes `IAM-0002`
 - **THEN** the open suggestions that were on `IAM-0003` are on `IAM-0002` and are still applicable
 
-### Requirement: Unlock suggestion
-When the review has a strong objection to a locked story, it SHALL be written as one row with `Action` = `unlock` for that story: `Field`, `Current`, `Suggested` and `Group` empty, `Reason` = one sentence stating the objection, `Area` and `Confidence` as for any row. An `unlock` row SHALL be shown as a banner above the story in the story form reading that the review suggests unlocking and reviewing the story, with the Reason, an **Unlock** button and a **Dismiss** button; it SHALL also appear in the Review tab under its Area with the same two buttons. **Unlock** SHALL unlock the story, set the row to `applied`, change nothing else and be autosaved like any edit; the story is then reviewed by the next review run. **Dismiss** SHALL set the row to `dismissed` and leave the story locked. An `unlock` row SHALL be stale when its story is no longer found or is no longer locked, and then SHALL offer Dismiss only. The story list's suggestion badge SHALL count an open `unlock` row like any other suggestion.
-
-#### Scenario: Banner on a locked story
-- **WHEN** a review has an open `unlock` row for the locked story `IAM-0002`
-- **THEN** the story form shows a banner with the Reason and Unlock and Dismiss above the story
-
-#### Scenario: Unlock from the banner
-- **WHEN** the user clicks Unlock on the banner
-- **THEN** the story is unlocked and saved, the row is `applied`, and no other field of the story changed
-
-#### Scenario: Dismiss keeps the lock
-- **WHEN** the user clicks Dismiss on the banner
-- **THEN** the story stays locked and the row is `dismissed`
-
-#### Scenario: Unlocked by hand
-- **WHEN** the user unlocks the story with the toggle while its `unlock` row is open
-- **THEN** the row shows as stale with Dismiss only
-
-### Requirement: Suggestions on a locked story cannot be applied
-A field-edit suggestion (any row other than `unlock`) for a locked story SHALL be shown where it is shown for any story, marked as belonging to a locked story, with Dismiss but without an enabled Apply, until the story is unlocked. This applies to suggestions written for the story while it was locked and to suggestions that already existed when it was locked. A split group that narrows a locked story SHALL be treated the same way as a whole. Once the story is unlocked, the suggestion SHALL behave as for any story, including the staleness rules.
-
-#### Scenario: Apply disabled
-- **WHEN** a locked story has an open `replace` row for its Title
-- **THEN** the chip shows the suggestion, its Reason and Dismiss, and Apply is disabled with a hint to unlock the story
-
-#### Scenario: Locked after the review
-- **WHEN** a story with an open suggestion is locked
-- **THEN** Apply on that suggestion becomes disabled, and becomes available again after unlocking
-
-#### Scenario: Split group on a locked story
-- **WHEN** a split group narrows a locked story
-- **THEN** the group cannot be applied until the story is unlocked
-
-### Requirement: Clarification suggestions
-A review file MAY hold rows that suggest a question for a story's `Clarifications`, written by `jois-story-review` through `write-review.mjs`. Such a row SHALL have `Field` = `Clarifications`, `Action` = `append`, `Suggested` = the question text, a `Reason` saying why the question matters, and `Group` empty; `Area` MAY be any Area, including `Clarification`, which is added to the allowed Areas, and `Confidence` MAY be `ready` or `confirm`. These values are allowed in addition to those of the Review CSV requirement. Both `jois-story-review` and `jois-story-propose` MAY write `resolve` rows (see "Resolve clarification suggestions"); `jois-story-review` writes one only for a question that the story's own text already answers. Such rows SHALL be shown in the story form and the Review tab like any other suggestion (the Review tab SHALL list the `Clarification` Area with the others). **Apply** SHALL add a new pair at the end of the story's `Clarifications` with the suggested text as the question and an empty answer, set the row to `applied`, and be autosaved like any edit; the story's "N open" badge SHALL then count it. **Dismiss** SHALL behave as for any suggestion. A row SHALL be stale when its story is no longer found or the story already has a question with the same text (ignoring case and extra spaces). A clarification suggestion on a locked story SHALL follow the lock rules of the other suggestions.
-
-#### Scenario: Apply a suggested question
-- **WHEN** the user applies an open clarification suggestion on story `IAM-0003`
-- **THEN** `IAM-0003` has a new question with an empty answer, the row is `applied`, and the story shows one more open question
-
-#### Scenario: Already asked
-- **WHEN** the story already has a question with the suggested text
-- **THEN** the row is shown as out of date with Dismiss only
-
-#### Scenario: Locked story
-- **WHEN** the story is locked and the review has no open unlock row for it
-- **THEN** Apply is disabled as for any suggestion on a locked story
-
-#### Scenario: Review skill writes a resolve row
-- **WHEN** `jois-story-review` finds that a story's Notes already state the answer to an open question
-- **THEN** it may write a `resolve` row for that question, and the row is applied and shown like one written by `jois-story-propose`
-
-### Requirement: Accept all in the Review tab
-The Review tab SHALL offer an **Accept all** button in its header, which applies the open suggestions of every Area section, and an **Accept all** button on each Area section, which applies only the open suggestions of that section. A button SHALL be disabled when its scope has no open suggestion. Before anything is applied the tool SHALL ask the user to confirm, saying how many suggestions will be applied; declining SHALL change nothing.
-
-Accept all SHALL apply the eligible suggestions one after the other in the order the tab lists them, each against the backlog as the previous one left it, with the same effect as clicking Apply on each. A suggestion SHALL NOT be applied, and SHALL stay open and unchanged, when it is an `unlock` row, when its story is locked, when any of its rows has `Confidence` = `confirm`, or when it cannot be applied at that point (it is stale, or applying it would be refused, for example because it would close a dependency cycle). A split group SHALL count as one suggestion. A suggestion that cannot be applied SHALL NOT stop the run: the next one is still tried.
-
-The backlog edits of one run and the `applied` status of the rows it applied SHALL be saved like those of a single Apply. When the run ends the tool SHALL say how many suggestions were applied and how many were left open, with the number left for each reason (unlock row, locked story, needs a check, could not be applied).
-
-#### Scenario: Accept all in the header
-- **WHEN** the Review tab has 5 open suggestions that are all eligible and the user clicks Accept all in the header and confirms
-- **THEN** all 5 are applied to the backlog, their rows are `applied`, and the tool reports 5 applied and none left open
-
-#### Scenario: Accept all for one Area
-- **WHEN** the tab has open suggestions in Hierarchy and INVEST and the user clicks Accept all on the INVEST section and confirms
-- **THEN** only the INVEST suggestions are applied and the Hierarchy ones stay open
-
-#### Scenario: Confirm default skipped
-- **WHEN** an open suggestion has `Confidence` = `confirm` and the user accepts all
-- **THEN** it is not applied, it stays open, and the summary counts it as needing a check
-
-#### Scenario: Locked story skipped
-- **WHEN** an open field-edit suggestion belongs to a locked story and the user accepts all
-- **THEN** it is not applied and stays open
-
-#### Scenario: Unlock row skipped
-- **WHEN** the tab has an open `unlock` row and the user accepts all
-- **THEN** the story stays locked and the row stays open
-
-#### Scenario: Suggestion that cannot be applied
-- **WHEN** applying an earlier suggestion of the run makes a later one stale
-- **THEN** the later one is not applied and stays open, and the suggestions after it are still applied
-
-#### Scenario: Declined
-- **WHEN** the user declines the confirmation
-- **THEN** the backlog and the review file are unchanged
-
-#### Scenario: Nothing eligible
-- **WHEN** every open suggestion in the scope is skipped
-- **THEN** nothing is applied and the summary says so, with the reasons
-
 ### Requirement: Rows written through the tool name the story's Title
 When a story skill runs the review writer, each row SHALL carry `storyTitle`, the story's current Title, and a `Depends On` row SHALL carry `targetTitle`, the Title of the story named in `suggested`. A `Depends On` `remove` row whose entry no story holds (a code that does not exist, the story itself or a `NEW-<n>`) has no story to name and SHALL NOT need `targetTitle`; when a story does hold the code, `targetTitle` is required and checked as for an `add` row. The pairs SHALL be checked against the backlog, and a mismatch SHALL be reported without writing any row, saying what the ID holds now and which stories have the Title. The Titles are used only for this check: they SHALL NOT be stored, the review file's columns SHALL NOT change, and the portal SHALL read and apply the rows as before. When the script is run by hand without the Titles, rows without them SHALL be accepted as before and a Title that is given SHALL be checked.
 
@@ -484,29 +290,6 @@ When a story skill runs the review writer, each row SHALL carry `storyTitle`, th
 - **WHEN** the script is run by hand with rows that have no `storyTitle`
 - **THEN** they are written as before
 
-### Requirement: Resolve clarification suggestions
-A review file MAY hold rows that settle a question of a backlog story, written by `jois-story-propose` through `write-review.mjs`. Such a row SHALL have `Field` = `Clarifications` and `Action` = `resolve`, no Group, and `Suggested` the note to add to Notes (non-empty, MAY have several lines, not starting with a `Q<n>:` or `A<n>:` label). The finding names the pair by its number in a `pair` key (a number, as the story read shows it); the writer SHALL fill `Current` with that pair's question text from the backlog, as it fills `Current` for a criterion, and the stored row finds its pair by that text afterwards, ignoring case and surrounding blank space. It SHALL reject a finding without `pair`, one whose `pair` does not exist, and one on a story whose Clarifications cell is free text. The pair MAY have an empty or a filled answer. **Apply** SHALL, in one edit, append `Suggested` to the story's Notes on a new line (as the whole Notes when empty) and remove the pair, the later pairs being renumbered; **Dismiss** leaves both unchanged. The row is **stale** when no pair has the question text any more, when the Clarifications cell is free text, or when Notes already contain the suggested text. A resolve row on a locked story SHALL follow the lock rules of the other field edits, and Accept all SHALL apply it as it applies other rows.
-
-#### Scenario: Apply resolves the pair
-- **WHEN** the user applies an open resolve row on story `IAM-0003` for the question "Who owns approvals?" with the note "Approvals are owned by Finance"
-- **THEN** the story's Notes end with that line, the question is gone from its Clarifications, and the "N open" badge drops by one if it was open
-
-#### Scenario: Pair found after another row
-- **WHEN** an earlier applied row removed pair 1, so the question is now pair 1 instead of 2
-- **THEN** the row still finds the pair by its question text
-
-#### Scenario: Question gone
-- **WHEN** the question was deleted in the editor after the row was written
-- **THEN** the row is shown as out of date with Dismiss only
-
-#### Scenario: Notes already hold the decision
-- **WHEN** Notes already contain the suggested text
-- **THEN** the row is stale, and Dismiss is available
-
-#### Scenario: Locked story
-- **WHEN** a resolve row targets a locked story and the review has no `unlock` row for it
-- **THEN** the writer rejects it, as for any field edit on a locked story
-
 ### Requirement: Consistency area
 `Consistency` SHALL be added to the allowed Areas, with `Hierarchy`, `INVEST`, `Acceptance criteria` and `Clarification`. A row with Area `Consistency` MAY have any Field and Action that the Field/Action rules allow. The writer SHALL accept it and reject an Area outside the list, naming the allowed ones. The Review tab SHALL list `Consistency` as a section after the other Areas, with its own Accept all button and the same open, applied and dismissed handling as every other Area. An Area section with no suggestions SHALL NOT be shown. Existing review files without Consistency rows SHALL load unchanged.
 
@@ -521,3 +304,191 @@ A review file MAY hold rows that settle a question of a backlog story, written b
 #### Scenario: Old review file
 - **WHEN** a review file has no `Consistency` rows
 - **THEN** it loads as before and the tab shows no Consistency section
+
+### Requirement: Suggestions on a frozen story cannot be applied
+A field-edit suggestion for a frozen story SHALL be shown where it is shown for any story, marked as belonging to a frozen story, with Dismiss but without an enabled Apply. This applies to suggestions that already existed when the story was frozen. No control SHALL exist to unfreeze the story, so Apply stays disabled for good and its hint SHALL say that a frozen story cannot be edited. A split group that narrows a frozen story SHALL be treated the same way as a whole. A review run after the story is frozen SHALL NOT write new rows for it.
+
+#### Scenario: Apply disabled
+- **WHEN** a frozen story has an open `replace` row for its Title
+- **THEN** the chip shows the suggestion, its Reason and Dismiss, and Apply is disabled with a hint that a frozen story cannot be edited
+
+#### Scenario: Frozen after the review
+- **WHEN** a story with an open suggestion is frozen by `jois-story-plan`
+- **THEN** Apply on that suggestion becomes disabled and stays disabled
+
+#### Scenario: Split group on a frozen story
+- **WHEN** a split group narrows a frozen story
+- **THEN** the group cannot be applied
+
+### Requirement: Resolve clarification rows
+A review file MAY hold rows that settle a question of a backlog story, written by `jois-story-propose` through `write-review.mjs`. Such a row SHALL have `Field` = `Clarifications` and `Action` = `resolve`, no Group, and `Suggested` the note to add to Notes (non-empty, MAY have several lines, not starting with a `Q<n>:` or `A<n>:` label). The finding names the pair by its number in a `pair` key (a number, as the story read shows it); the writer SHALL fill `Current` with that pair's question text from the backlog, as it fills `Current` for a criterion, and the stored row finds its pair by that text afterwards, ignoring case and surrounding blank space. It SHALL reject a finding without `pair`, one whose `pair` does not exist, and one on a story whose Clarifications cell is free text. The pair MAY have an empty or a filled answer. **Apply** SHALL, in one edit, append `Suggested` to the story's Notes on a new line (as the whole Notes when empty) and remove the pair, the later pairs being renumbered; **Dismiss** leaves both unchanged. The row is **stale** when no pair has the question text any more, when the Clarifications cell is free text, or when Notes already contain the suggested text. A resolve row for a frozen story SHALL be rejected by the writer, as any row for a frozen story is, and Accept all SHALL apply a resolve row as it applies other rows.
+
+#### Scenario: Apply resolves the pair
+- **WHEN** the user applies an open resolve row on story `B1-IAM-0003` for the question "Who owns approvals?" with the note "Approvals are owned by Finance"
+- **THEN** the story's Notes end with that line, the question is gone from its Clarifications, and the "N open" badge drops by one if it was open
+
+#### Scenario: Pair found after another row
+- **WHEN** an earlier applied row removed pair 1, so the question is now pair 1 instead of 2
+- **THEN** the row still finds the pair by its question text
+
+#### Scenario: Question gone
+- **WHEN** the question was deleted in the editor after the row was written
+- **THEN** the row is shown as out of date with Dismiss only
+
+#### Scenario: Notes already hold the decision
+- **WHEN** Notes already contain the suggested text
+- **THEN** the row is stale, and Dismiss is available
+
+#### Scenario: Frozen story
+- **WHEN** a resolve row targets a frozen story
+- **THEN** the writer rejects it, as for any row on a frozen story
+
+### Requirement: Review CSV file
+A review of a backlog SHALL be stored as a CSV file in the `reviews` folder with the same file name as the backlog it reviews (for example `reviews/data-portal.csv` for `backlogs/data-portal.csv`). One row SHALL describe one field edit and SHALL have the columns `Story ID`, `Field`, `Action`, `Current`, `Suggested`, `Reason`, `Area`, `Confidence`, `Group` and `Status`.
+
+- `Story ID` is the ID of the story the edit applies to, or `NEW-<n>` for a story to be created (see "Split suggestions").
+- `Field` is one of `Epic`, `Feature`, `Title`, `User Story`, `Sprint points`, `Depends On`, `User Acceptance Criteria`, `Notes`. Priority is not a Field: reviews do not cover it.
+- `Action` is one of `replace`, `add`, `remove`, `append`, `add-story`.
+- `Area` is one of `Hierarchy`, `INVEST`, `Acceptance criteria`.
+- `Confidence` is `ready` (apply as-is) or `confirm` (a proposed default the user must check).
+- `Status` is `open`, `applied` or `dismissed`; a new row is `open`.
+- `Reason` is one sentence stating what is wrong.
+
+A row with `Action` = `unlock`, written by a version that had story locks, SHALL be read without error as a stale row that offers Dismiss only and is never applied.
+
+#### Scenario: One row per edit
+- **WHEN** a review finds a missing failure-path criterion on one story and a typo on another
+- **THEN** the review CSV has two rows, each with its own Story ID, Field, Action and Reason
+
+#### Scenario: Open in Excel
+- **WHEN** the user opens a review CSV in Excel
+- **THEN** it opens as UTF-8 with all columns readable
+
+#### Scenario: Old unlock row
+- **WHEN** a review file written before this change holds an open `unlock` row
+- **THEN** the file loads without error, the row is shown as out of date with Dismiss only, and Accept all leaves it open
+
+### Requirement: Every finding yields a field edit row
+Every finding of a review about a story that is not frozen SHALL produce at least one review row with a non-empty `Suggested` value; a finding SHALL NOT be left as advice only. A finding about a frozen story SHALL NOT be written as a row: it SHALL be reported in the report text as a suggestion to supersede the story (see the `backlog-review-skill` capability). The edit for each kind of finding SHALL be:
+
+- Wording, typo or weak "so that": `replace` on the field.
+- Missing or vague acceptance criterion: `add` or `replace` on `User Acceptance Criteria`.
+- Duplicate or unwanted acceptance criterion: `remove` on `User Acceptance Criteria`, with `Suggested` = the label of the criterion (for example `AC4`).
+- A value only the user can decide (for example a page size, a relevance threshold, missing Sprint points; never Priority): `replace` with a proposed default, `Confidence` = `confirm`.
+- A story or feature in the wrong place: `replace` on `Epic` or `Feature`.
+- A dependency problem: `add` or `remove` on `Depends On`.
+- An open question (for example a single-story feature): `append` the question to `Clarifications` (see "Clarification suggestion rows"), `Confidence` = `confirm`. A fact or decision worth recording, as opposed to something awaiting an answer, MAY still be an `append` to `Notes`.
+- A story that is too large or covers several needs: a split group (see "Split suggestions").
+
+#### Scenario: Value only the user can decide
+- **WHEN** the review finds that a pagination criterion does not state the page size
+- **THEN** it suggests a replacement criterion with a concrete page size and marks the row `confirm`
+
+#### Scenario: Open question becomes a note
+- **WHEN** the review finds a Feature with a single story
+- **THEN** it suggests appending the question "split, merge or intended?" to that story's Clarifications and marks the row `confirm`
+
+#### Scenario: Objection to a frozen story
+- **WHEN** the review finds a frozen story far over the size limit
+- **THEN** it writes no row for it and the report suggests superseding the story
+
+### Requirement: Accept all applies every open suggestion of an area
+The Review tab SHALL offer an **Accept all** button in its header, which applies the open suggestions of every Area section, and an **Accept all** button on each Area section, which applies only the open suggestions of that section. A button SHALL be disabled when its scope has no open suggestion. Before anything is applied the tool SHALL ask the user to confirm, saying how many suggestions will be applied; declining SHALL change nothing.
+
+Accept all SHALL apply the eligible suggestions one after the other in the order the tab lists them, each against the backlog as the previous one left it, with the same effect as clicking Apply on each. A suggestion SHALL NOT be applied, and SHALL stay open and unchanged, when its story is frozen, when any of its rows has `Confidence` = `confirm`, or when it cannot be applied at that point (it is stale, or applying it would be refused, for example because it would close a dependency cycle). A split group SHALL count as one suggestion. A suggestion that cannot be applied SHALL NOT stop the run: the next one is still tried.
+
+The backlog edits of one run and the `applied` status of the rows it applied SHALL be saved like those of a single Apply. When the run ends the tool SHALL say how many suggestions were applied and how many were left open, with the number left for each reason (frozen story, needs a check, could not be applied).
+
+#### Scenario: Accept all in the header
+- **WHEN** the Review tab has 5 open suggestions that are all eligible and the user clicks Accept all in the header and confirms
+- **THEN** all 5 are applied to the backlog, their rows are `applied`, and the tool reports 5 applied and none left open
+
+#### Scenario: Accept all for one Area
+- **WHEN** the tab has open suggestions in Hierarchy and INVEST and the user clicks Accept all on the INVEST section and confirms
+- **THEN** only the INVEST suggestions are applied and the Hierarchy ones stay open
+
+#### Scenario: Confirm default skipped
+- **WHEN** an open suggestion has `Confidence` = `confirm` and the user accepts all
+- **THEN** it is not applied, it stays open, and the summary counts it as needing a check
+
+#### Scenario: Frozen story skipped
+- **WHEN** an open field-edit suggestion belongs to a frozen story and the user accepts all
+- **THEN** it is not applied and stays open, and the summary counts it as a frozen story
+
+#### Scenario: Suggestion that cannot be applied
+- **WHEN** applying an earlier suggestion of the run makes a later one stale
+- **THEN** the later one is not applied and stays open, and the suggestions after it are still applied
+
+#### Scenario: Declined
+- **WHEN** the user declines the confirmation
+- **THEN** the backlog and the review file are unchanged
+
+#### Scenario: Nothing eligible
+- **WHEN** every open suggestion in the scope is skipped
+- **THEN** nothing is applied and the summary says so, with the reasons
+
+### Requirement: Clarification suggestion rows
+A review file MAY hold rows that suggest a question for a story's `Clarifications`, written by `jois-story-review` through `write-review.mjs`. Such a row SHALL have `Field` = `Clarifications`, `Action` = `append`, `Suggested` = the question text, a `Reason` saying why the question matters, and `Group` empty; `Area` MAY be any Area, including `Clarification`, which is added to the allowed Areas, and `Confidence` MAY be `ready` or `confirm`. These values are allowed in addition to those of the Review CSV requirement. Both `jois-story-review` and `jois-story-propose` MAY write `resolve` rows (see "Resolve clarification rows"); `jois-story-review` writes one only for a question that the story's own text already answers. Such rows SHALL be shown in the story form and the Review tab like any other suggestion (the Review tab SHALL list the `Clarification` Area with the others). **Apply** SHALL add a new pair at the end of the story's `Clarifications` with the suggested text as the question and an empty answer, set the row to `applied`, and be autosaved like any edit; the story's "N open" badge SHALL then count it. **Dismiss** SHALL behave as for any suggestion. A row SHALL be stale when its story is no longer found or the story already has a question with the same text (ignoring case and extra spaces). A clarification suggestion for a frozen story SHALL be rejected by the writer, as any row for a frozen story is.
+
+#### Scenario: Apply a suggested question
+- **WHEN** the user applies an open clarification suggestion on story `B1-IAM-0003`
+- **THEN** `B1-IAM-0003` has a new question with an empty answer, the row is `applied`, and the story shows one more open question
+
+#### Scenario: Already asked
+- **WHEN** the story already has a question with the suggested text
+- **THEN** the row is shown as out of date with Dismiss only
+
+#### Scenario: Frozen story
+- **WHEN** a clarification suggestion targets a frozen story
+- **THEN** the writer rejects it and writes nothing
+
+#### Scenario: Review skill writes a resolve row
+- **WHEN** `jois-story-review` finds that a story's Notes already state the answer to an open question
+- **THEN** it may write a `resolve` row for that question, and the row is applied and shown like one written by `jois-story-propose`
+
+### Requirement: Script validates review rows
+The script SHALL reject the whole input, write nothing, and report every problem found when any finding: names a Story ID that is not in the backlog (other than `NEW-<n>` on an `add-story` row); names a story that is frozen; uses a Field, Action, Area or Confidence outside the allowed values (`unlock` is no longer an allowed Action); has an empty `Suggested`; uses an Action that does not fit the Field (for example `add` on `Title`, `remove` on a Field other than `Depends On` and `User Acceptance Criteria`, or `add` on a Field other than `Depends On` and `User Acceptance Criteria`); has an `add-story` row without a Group or a `NEW-<n>` ID, or a new story without a Title; belongs to a Group whose rows do not all have `Confidence` = `confirm`; or is a `Depends On` `add` row whose entry is not a story ID in the backlog, is the story itself, or is a `NEW-<n>` that is not in the same Group. A `Depends On` `remove` row SHALL be accepted when the story lists the entry in its `Depends On`, whether or not a story holds that entry, and SHALL be rejected when the story does not list it; the entry may be a code no story holds, the story's own code or a `NEW-<n>`. Each problem about a finding SHALL name the finding by its position in the input. When the input is not valid JSON, the script SHALL report the parser's message and the position of the failure. The script SHALL ignore any `Current` or `Status` the caller supplies.
+
+#### Scenario: Unknown story
+- **WHEN** a finding names `ZZ-0009`, which is not in the backlog
+- **THEN** the script exits with an error naming `ZZ-0009` and no review file is created or changed
+
+#### Scenario: Empty suggestion
+- **WHEN** a finding has an empty `Suggested`
+- **THEN** the script rejects it, because every finding must carry a field edit
+
+#### Scenario: All problems reported together
+- **WHEN** the input has an unknown Story ID and an invalid Action
+- **THEN** the error output lists both
+
+#### Scenario: Malformed JSON
+- **WHEN** the input has a missing comma after the 3rd finding
+- **THEN** the error includes the JSON parser's message and the position it reports, and nothing is written
+
+#### Scenario: Row for a frozen story
+- **WHEN** a batch has a `replace` row for a frozen story
+- **THEN** the batch is rejected, naming the story and saying it is frozen, and nothing is written
+
+#### Scenario: Unlock action refused
+- **WHEN** a finding has `Action` = `unlock`
+- **THEN** the batch is rejected as an unknown Action and nothing is written
+
+#### Scenario: Remove a link to a story that does not exist
+- **WHEN** `B1-IAM-0003` lists `B1-IAM-0099` in `Depends On`, no story holds `B1-IAM-0099`, and a `Depends On` `remove` row for `B1-IAM-0003` has `suggested` `B1-IAM-0099`
+- **THEN** the row is accepted and written
+
+#### Scenario: Remove a link to the story itself
+- **WHEN** `B1-IAM-0003` lists `B1-IAM-0003` in `Depends On` and a `remove` row for it has `suggested` `B1-IAM-0003`
+- **THEN** the row is accepted and written
+
+#### Scenario: Remove a link to a proposed story
+- **WHEN** `B1-IAM-0003` lists `NEW-4` in `Depends On` and a `remove` row for it has `suggested` `NEW-4`
+- **THEN** the row is accepted and written, without a Group
+
+#### Scenario: Remove a link the story does not list
+- **WHEN** a `Depends On` `remove` row has `suggested` `B1-IAM-0099` and the story does not list it
+- **THEN** the batch is rejected, saying the story does not depend on `B1-IAM-0099`
+
+#### Scenario: Add keeps its checks
+- **WHEN** a `Depends On` `add` row has `suggested` `B1-IAM-0099`, which no story holds, or the story's own code
+- **THEN** the batch is rejected and nothing is written

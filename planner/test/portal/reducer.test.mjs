@@ -2,15 +2,18 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { reducer } from '../../portal/web/backlog-portal/hooks/useBacklog.js';
 import { loadBacklog, applyBulk } from '../../logic/backlog/model.js';
+import { moveToProposed } from '../../logic/backlog/proposals.js';
 
 const FILE = 'Epic,Title,Depends On\r\nBilling,A,\r\nBilling,B,\r\nOnboarding,C,\r\n';
 
-function opened(text = FILE) {
-  const backlog = loadBacklog(text);
+const INITIALS = 'B1';
+
+function opened(text = FILE, initials = INITIALS) {
+  const backlog = loadBacklog(text, { initials });
   let state = {
-    files: [], current: 'x.csv', backlog: null, selectedId: null, view: 'editor', checked: new Set(), lastChecked: null, edits: 0,
+    files: [], current: 'x.csv', backlog: null, initials: '', selectedId: null, view: 'editor', checked: new Set(), lastChecked: null, edits: 0,
   };
-  state = reducer(state, { type: 'loaded', name: 'x.csv', backlog });
+  state = reducer(state, { type: 'loaded', name: 'x.csv', backlog, initials });
   return state;
 }
 const byTitle = (state, f) => state.backlog.stories.find((s) => s.title === f);
@@ -19,8 +22,8 @@ const edit = (state, id, change) => reducer(state, { type: 'edit', id, change })
 test('loaded: IDs assigned on load count as an edit so they get saved; an up-to-date file does not', () => {
   const state = opened();
   assert.equal(state.edits, 1);
-  assert.deepEqual(state.backlog.stories.map((s) => s.code), ['B-0001', 'B-0002', 'O-0001']);
-  const clean = opened('ID,Epic,Title,Depends On\r\nB-0001,Billing,A,\r\n');
+  assert.deepEqual(state.backlog.stories.map((s) => s.code), ['B1-B-0001', 'B1-B-0002', 'B1-O-0001']);
+  const clean = opened('ID,Epic,Title,Depends On\r\nB1-B-0001,Billing,A,\r\n');
   assert.equal(clean.edits, 0);
 });
 
@@ -29,18 +32,18 @@ test('delete: closes the gap, strips links, keeps another story selected', () =>
   const [a, b, c] = state.backlog.stories;
   state = edit(state, c.id, (d) => { d.dependsOn = [a.code, b.code]; });
   state = reducer(state, { type: 'delete', id: a.id });
-  assert.deepEqual(state.backlog.stories.map((s) => s.code), ['B-0001', 'O-0001']);
-  assert.deepEqual(state.backlog.stories[1].dependsOn, ['B-0001']); // story b
+  assert.deepEqual(state.backlog.stories.map((s) => s.code), ['B1-B-0001', 'B1-O-0001']);
+  assert.deepEqual(state.backlog.stories[1].dependsOn, ['B1-B-0001']); // story b
 });
 
 test('commitEpic: typing changes no ID; committing does; a second commit is a no-op that bumps nothing', () => {
   let state = opened();
   const a = byTitle(state, 'A');
   state = edit(state, a.id, (d) => { d.epic = 'Onboarding'; });
-  assert.equal(byTitle(state, 'A').code, 'B-0001');
+  assert.equal(byTitle(state, 'A').code, 'B1-B-0001');
   state = reducer(state, { type: 'commitEpic', id: a.id });
-  assert.equal(byTitle(state, 'A').code, 'O-0002');
-  assert.equal(byTitle(state, 'B').code, 'B-0001');
+  assert.equal(byTitle(state, 'A').code, 'B1-O-0002');
+  assert.equal(byTitle(state, 'B').code, 'B1-B-0001');
   const after = reducer(state, { type: 'commitEpic', id: a.id });
   assert.equal(after, state);
 });
@@ -53,8 +56,8 @@ test('move: reorders, keeps the dragged story selected, same position bumps noth
   const moved = reducer(state, { type: 'move', id: b.id, epic: 'Billing', beforeId: a.id });
   assert.equal(moved.selectedId, b.id);
   assert.equal(moved.edits, edits + 1);
-  assert.equal(byTitle(moved, 'B').code, 'B-0001');
-  assert.equal(byTitle(moved, 'A').code, 'B-0002');
+  assert.equal(byTitle(moved, 'B').code, 'B1-B-0001');
+  assert.equal(byTitle(moved, 'A').code, 'B1-B-0002');
   assert.equal(reducer(state, { type: 'move', id: a.id, epic: 'Billing', beforeId: b.id }), state);
 });
 
@@ -65,11 +68,11 @@ test('bulk epic change: moved stories go to the bottom of the new epic and links
   state = reducer(state, { type: 'check', ids: [a.id, b.id], on: true, anchor: a.id });
   state = reducer(state, { type: 'bulk', patch: { epic: 'Onboarding' } });
   assert.deepEqual(state.backlog.stories.map((s) => s.title), ['C', 'A', 'B']);
-  assert.deepEqual(state.backlog.stories.map((s) => s.code), ['O-0001', 'O-0002', 'O-0003']);
-  assert.deepEqual(state.backlog.stories[0].dependsOn, ['O-0002']);
+  assert.deepEqual(state.backlog.stories.map((s) => s.code), ['B1-O-0001', 'B1-O-0002', 'B1-O-0003']);
+  assert.deepEqual(state.backlog.stories[0].dependsOn, ['B1-O-0002']);
   // priority only: IDs untouched
   const prio = reducer(state, { type: 'bulk', patch: { priority: 'High' } });
-  assert.deepEqual(prio.backlog.stories.map((s) => s.code), ['O-0001', 'O-0002', 'O-0003']);
+  assert.deepEqual(prio.backlog.stories.map((s) => s.code), ['B1-O-0001', 'B1-O-0002', 'B1-O-0003']);
   assert.ok(applyBulk);
 });
 
@@ -99,14 +102,14 @@ test('addDependency / removeDependency: edit links, ignore self, repeats, cycles
 // ---- review suggestions ----
 
 const sRow = (over) => ({
-  storyId: 'B-0001', field: 'Title', action: 'replace', current: 'A', suggested: 'Renamed', reason: 'r', area: 'INVEST',
+  storyId: 'B1-B-0001', field: 'Title', action: 'replace', current: 'A', suggested: 'Renamed', reason: 'r', area: 'INVEST',
   confidence: 'ready', group: '', status: 'open', ...over,
 });
 
 test('applySuggestions: replace goes through the reducer as an edit (bumps edits so it autosaves)', () => {
   const state = opened();
   const next = reducer(state, { type: 'applySuggestions', rows: [sRow()] });
-  assert.equal(byTitle(next, 'Renamed').code, 'B-0001');
+  assert.equal(byTitle(next, 'Renamed').code, 'B1-B-0001');
   assert.equal(next.edits, state.edits + 1);
 });
 
@@ -122,7 +125,7 @@ test('applySuggestions: changing the Epic renumbers and moves links with the sto
   state = edit(state, b.id, (d) => { d.dependsOn = [a.code]; });
   const next = reducer(state, { type: 'applySuggestions', rows: [sRow({ field: 'Epic', current: 'Billing', suggested: 'Onboarding' })] });
   const moved = byTitle(next, 'A');
-  assert.match(moved.code, /^O-/);
+  assert.match(moved.code, /^B1-O-/);
   assert.deepEqual(byTitle(next, 'B').dependsOn, [moved.code]);
 });
 
@@ -130,10 +133,10 @@ test('applySuggestions: Depends On cycle is refused, a valid link is added', () 
   let state = opened();
   const [a, b] = state.backlog.stories;
   state = edit(state, b.id, (d) => { d.dependsOn = [a.code]; });
-  const cycle = reducer(state, { type: 'applySuggestions', rows: [sRow({ field: 'Depends On', action: 'add', current: '', suggested: 'B-0002' })] });
+  const cycle = reducer(state, { type: 'applySuggestions', rows: [sRow({ field: 'Depends On', action: 'add', current: '', suggested: 'B1-B-0002' })] });
   assert.equal(cycle, state);
-  const ok = reducer(state, { type: 'applySuggestions', rows: [sRow({ storyId: 'O-0001', field: 'Depends On', action: 'add', current: '', suggested: 'B-0001' })] });
-  assert.deepEqual(byTitle(ok, 'C').dependsOn, ['B-0001']);
+  const ok = reducer(state, { type: 'applySuggestions', rows: [sRow({ storyId: 'B1-O-0001', field: 'Depends On', action: 'add', current: '', suggested: 'B1-B-0001' })] });
+  assert.deepEqual(byTitle(ok, 'C').dependsOn, ['B1-B-0001']);
 });
 
 test('applySuggestions: a split group narrows the original and adds stories in one edit', () => {
@@ -146,7 +149,7 @@ test('applySuggestions: a split group narrows the original and adds stories in o
   assert.equal(next.backlog.stories.length, state.backlog.stories.length + 1);
   assert.equal(next.edits, state.edits + 1);
   assert.equal(byTitle(next, 'A second part').epic, 'Billing');
-  assert.equal(byTitle(next, 'A second part').code, 'B-0003');
+  assert.equal(byTitle(next, 'A second part').code, 'B1-B-0003');
 });
 
 test('replaceStories: stores the list, marks it edited, keeps the selection when it survives', () => {
@@ -189,7 +192,7 @@ test('proposals: editing the Epic and committing it keeps the ID', () => {
 
 test('proposals: add takes a number above the proposals and the backlog Depends On; delete and move keep IDs', () => {
   let state = proposalsOpened();
-  const backlogStories = loadBacklog('ID,Epic,Title,Depends On\r\nB-0001,Billing,X,NEW-9\r\n').stories;
+  const backlogStories = loadBacklog('ID,Epic,Title,Depends On\r\nB1-B-0001,Billing,X,NEW-9\r\n', { initials: INITIALS }).stories;
   state = proposalsReducer(state, { type: 'add', story: { ...state.backlog.stories[0], id: 99, code: '' }, backlogStories });
   assert.equal(state.backlog.stories[2].code, 'NEW-10');
   assert.equal(state.selectedId, 99);
@@ -210,60 +213,102 @@ test('proposals: replaceStories marks an edit', () => {
   assert.equal(next.selectedId, state.backlog.stories[1].id);
 });
 
-test('lock: locks a story with an ID, skips none for unlock, a no-op bumps nothing', () => {
-  let state = opened();
-  const a = byTitle(state, 'A');
+// B1-B-0001 is frozen; B1-B-0002 and B1-O-0001 are not.
+const FROZEN_FILE = 'ID,Epic,Title,Depends On,Frozen\r\nB1-B-0001,Billing,A,,Yes\r\nB1-B-0002,Billing,B,,\r\nB1-O-0001,Onboarding,C,,\r\n';
+
+test('initials: loading with B1 gives B1-IAM-0001', () => {
+  const state = opened('Epic,Title\r\nIdentity & Access Management,A\r\n');
+  assert.equal(state.initials, 'B1');
+  assert.equal(state.backlog.stories[0].code, 'B1-IAM-0001');
+});
+
+test('setInitials: renumbers the stories that are not frozen, keeps the frozen one and the links', () => {
+  let state = opened(FROZEN_FILE);
+  const [a, b, c] = state.backlog.stories;
+  state = edit(state, c.id, (d) => { d.dependsOn = [a.code, b.code]; });
   const before = state.edits;
-  state = reducer(state, { type: 'lock', ids: new Set([a.id]), on: true });
-  assert.equal(byTitle(state, 'A').locked, true);
+  state = reducer(state, { type: 'setInitials', initials: 'OPS' });
+  assert.equal(state.initials, 'OPS');
+  assert.deepEqual(state.backlog.stories.map((s) => s.code), ['B1-B-0001', 'OPS-B-0001', 'OPS-O-0001']);
+  assert.deepEqual(state.backlog.stories[2].dependsOn, ['B1-B-0001', 'OPS-B-0001']);
   assert.equal(state.edits, before + 1);
-  assert.equal(reducer(state, { type: 'lock', ids: new Set([a.id]), on: true }), state);
-  state = reducer(state, { type: 'lock', ids: new Set([a.id]), on: false });
-  assert.equal(byTitle(state, 'A').locked, false);
 });
 
-test('a story without an ID cannot be locked', () => {
-  let state = opened('Epic,Title\r\n,Loose\r\nBilling,A\r\n');
-  const loose = byTitle(state, 'Loose');
-  const next = reducer(state, { type: 'lock', ids: new Set([loose.id]), on: true });
-  assert.equal(next, state);
+test('setInitials: the same initials change nothing', () => {
+  const state = opened();
+  assert.equal(reducer(state, { type: 'setInitials', initials: 'B1' }), state);
 });
 
-test('locked story: edit cannot change the Epic, other fields still change; delete does nothing', () => {
-  let state = opened();
+test('setInitials: an empty backlog only stores the initials', () => {
+  const state = opened('Epic,Title\r\n');
+  const next = reducer(state, { type: 'setInitials', initials: 'OPS' });
+  assert.equal(next.initials, 'OPS');
+  assert.equal(next.edits, state.edits);
+});
+
+test('frozen story: every field edit and the Epic commit return the same state', () => {
+  const state = opened(FROZEN_FILE);
   const a = byTitle(state, 'A');
-  state = reducer(state, { type: 'lock', ids: new Set([a.id]), on: true });
-  state = edit(state, a.id, (d) => { d.epic = 'Onboarding'; d.title = 'A2'; d.points = '3'; });
-  const locked = state.backlog.stories.find((s) => s.id === a.id);
-  assert.deepEqual([locked.epic, locked.title, locked.points], ['Billing', 'A2', '3']);
-  const after = reducer(state, { type: 'delete', id: a.id });
-  assert.equal(after, state);
+  assert.equal(a.frozen, true);
+  const fields = {
+    epic: 'Onboarding', feature: 'F', title: 'A2', asA: 'x', iWant: 'y', soThat: 'z', points: '3', priority: 'High',
+    dependsOn: ['B1-O-0001'], notes: 'n',
+  };
+  for (const [field, value] of Object.entries(fields)) {
+    assert.equal(edit(state, a.id, (d) => { d[field] = value; }), state, field);
+  }
+  assert.equal(edit(state, a.id, (d) => { d.criteria.push({}); }), state, 'criteria');
+  assert.equal(edit(state, a.id, (d) => { d.clarifications.push({ q: 'Q', a: '' }); }), state, 'clarifications');
+  assert.equal(reducer(state, { type: 'commitEpic', id: a.id }), state);
 });
 
-test('locked story: move and commitEpic leave it alone, other stories shift around its fixed ID', () => {
-  let state = opened();
-  const [a, b] = state.backlog.stories;
-  state = reducer(state, { type: 'lock', ids: new Set([b.id]), on: true });
-  assert.equal(reducer(state, { type: 'move', id: b.id, epic: 'Onboarding', beforeId: null }), state);
-  state = reducer(state, { type: 'delete', id: a.id });
-  assert.deepEqual(state.backlog.stories.map((s) => s.code), ['B-0002', 'O-0001']);
+test('frozen story: a dependency from it is refused, a dependency on it is saved', () => {
+  const state = opened(FROZEN_FILE);
+  const [a, , c] = state.backlog.stories;
+  assert.equal(reducer(state, { type: 'addDependency', id: a.id, code: c.code }), state);
+  const linked = reducer(state, { type: 'addDependency', id: c.id, code: a.code });
+  assert.deepEqual(byTitle(linked, 'C').dependsOn, [a.code]);
+  assert.equal(byTitle(linked, 'A'), byTitle(state, 'A'));
 });
 
-test('bulk: an Epic change skips locked stories, Priority still applies to them', () => {
-  let state = opened();
+test('frozen story: delete does nothing and deleteMany keeps it', () => {
+  let state = opened(FROZEN_FILE);
   const [a, b] = state.backlog.stories;
-  state = reducer(state, { type: 'lock', ids: new Set([a.id]), on: true });
+  assert.equal(reducer(state, { type: 'delete', id: a.id }), state);
+  state = reducer(state, { type: 'deleteMany', ids: new Set([a.id, b.id]) });
+  assert.deepEqual(state.backlog.stories.map((s) => s.title), ['A', 'C']);
+});
+
+test('frozen story: move and drag leave it alone, other stories shift around its fixed ID', () => {
+  let state = opened(FROZEN_FILE);
+  const [a, b] = state.backlog.stories;
+  assert.equal(reducer(state, { type: 'move', id: a.id, epic: 'Onboarding', beforeId: null }), state);
+  state = reducer(state, { type: 'move', id: b.id, epic: 'Onboarding', beforeId: null });
+  assert.deepEqual(state.backlog.stories.map((s) => s.code), ['B1-B-0001', 'B1-O-0001', 'B1-O-0002']);
+});
+
+test('frozen story: Move to Proposed is refused and a story that is not frozen can move', () => {
+  const state = opened(FROZEN_FILE);
+  const [a, b] = state.backlog.stories;
+  const refused = moveToProposed(state.backlog.stories, [], a.id, state.backlog.headers, state.initials);
+  assert.match(refused.error, /frozen/);
+  assert.equal(moveToProposed(state.backlog.stories, [], b.id, state.backlog.headers, state.initials).error, undefined);
+});
+
+test('frozen story: bulk edit skips it entirely and changes the others', () => {
+  let state = opened(FROZEN_FILE);
+  const [a, b] = state.backlog.stories;
   state = reducer(state, { type: 'checkAll', on: true, ids: [a.id, b.id] });
   state = reducer(state, { type: 'bulk', patch: { epic: 'Onboarding', priority: 'High' } });
-  const lockedA = state.backlog.stories.find((s) => s.id === a.id);
-  assert.deepEqual([lockedA.epic, lockedA.priority, lockedA.code], ['Billing', 'High', 'B-0001']);
-  assert.equal(state.backlog.stories.find((s) => s.id === b.id).epic, 'Onboarding');
+  const frozenA = state.backlog.stories.find((s) => s.id === a.id);
+  assert.deepEqual([frozenA.epic, frozenA.priority, frozenA.code], ['Billing', '', 'B1-B-0001']);
+  const changedB = state.backlog.stories.find((s) => s.id === b.id);
+  assert.deepEqual([changedB.epic, changedB.priority], ['Onboarding', 'High']);
 });
 
-test('applySuggestions on a locked story leaves the state alone', () => {
-  let state = opened();
+test('frozen story: applySuggestions on it leaves the state alone', () => {
+  const state = opened(FROZEN_FILE);
   const a = byTitle(state, 'A');
-  state = reducer(state, { type: 'lock', ids: new Set([a.id]), on: true });
   const row = { storyId: a.code, field: 'Title', action: 'replace', current: 'A', suggested: 'New', reason: 'r', area: 'INVEST', confidence: 'ready', group: '', status: 'open' };
   assert.equal(reducer(state, { type: 'applySuggestions', rows: [row] }), state);
 });

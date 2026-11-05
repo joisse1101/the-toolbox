@@ -15,7 +15,9 @@ export const REVIEW_COLUMNS = [
 export const FIELDS = [
   'Epic', 'Feature', 'Title', 'User Story', 'Sprint points', 'Depends On', 'User Acceptance Criteria', 'Notes', 'Clarifications',
 ];
-export const ACTIONS = ['replace', 'add', 'remove', 'append', 'resolve', 'add-story', 'unlock'];
+export const ACTIONS = ['replace', 'add', 'remove', 'append', 'resolve', 'add-story'];
+// Actions an older version wrote. The writer rejects them; a file that holds one still loads, and the row is shown as stale.
+const LEGACY_ACTIONS = ['unlock'];
 export const AREAS = ['Hierarchy', 'INVEST', 'Acceptance criteria', 'Clarification', 'Consistency'];
 export const CONFIDENCES = ['ready', 'confirm'];
 export const STATUSES = ['open', 'applied', 'dismissed'];
@@ -79,8 +81,9 @@ export function parseReview(text) {
       group: get('Group').trim(),
       status: STATUSES.includes(get('Status').trim()) ? get('Status').trim() : 'open',
     };
-    const fieldOk = row.action === 'unlock' ? row.field === '' : FIELDS.includes(row.field); // an unlock row has no Field
-    if (!row.storyId || !fieldOk || !ACTIONS.includes(row.action)) {
+    const legacy = LEGACY_ACTIONS.includes(row.action);
+    const fieldOk = legacy ? row.field === '' : FIELDS.includes(row.field); // an old unlock row has no Field
+    if (!row.storyId || !fieldOk || !(legacy || ACTIONS.includes(row.action))) {
       skipped++;
       continue;
     }
@@ -162,11 +165,10 @@ const pairNumber = (v) => (typeof v === 'number' ? v : Number(/^\s*Q?(\d+)\s*$/i
 // ---------- validation (the write script runs this on the model's findings) ----------
 
 // findings: [{ storyId, field, action, suggested, reason, area, confidence, group }]. Returns every problem found.
-// `existingRows`: the rows the review file keeps next to these findings (an --append batch); a field edit on a locked
-// story needs an unlock row for it among them or among the findings. A finding may carry `storyTitle` (the Title of the story it
+// A finding on a frozen story is rejected. A finding may carry `storyTitle` (the Title of the story it
 // names) and a Depends On finding `targetTitle` (the Title of the story in Suggested): a Title that is given is checked against the
 // backlog, and with `requireTitles` it must be given. The Titles are not part of the stored row.
-export function validateFindings(findings, backlog, { existingRows = [], requireTitles = false } = {}) {
+export function validateFindings(findings, backlog, { requireTitles = false } = {}) {
   if (!Array.isArray(findings)) return ['The input must be a JSON array of findings.'];
   const errors = [];
   const stories = backlog.stories;
@@ -190,20 +192,15 @@ export function validateFindings(findings, backlog, { existingRows = [], require
     if (r.field === 'Title' && r.suggested) newTitles.set(`${r.group}|${r.storyId}`, true);
   }
 
-  const unlocked = new Set([...rows, ...existingRows].filter((r) => r.action === 'unlock').map((r) => r.storyId));
-
   rows.forEach((r, i) => {
     const at = `Finding ${i + 1}${r.storyId ? ` (${r.storyId} ${r.field})` : ''}`;
     const bad = (msg) => errors.push(`${at}: ${msg}`);
 
-    const unlock = r.action === 'unlock';
-    if (!unlock && !FIELDS.includes(r.field)) bad(`Field "${r.field}" is not one of ${FIELDS.join(', ')}.`);
+    if (!FIELDS.includes(r.field)) bad(`Field "${r.field}" is not one of ${FIELDS.join(', ')}.`);
     if (!ACTIONS.includes(r.action)) bad(`Action "${r.action}" is not one of ${ACTIONS.join(', ')}.`);
     if (!AREAS.includes(r.area)) bad(`Area "${r.area}" is not one of ${AREAS.join(', ')}.`);
     if (!CONFIDENCES.includes(r.confidence)) bad(`Confidence "${r.confidence}" is not one of ${CONFIDENCES.join(', ')}.`);
-    if (unlock) {
-      if (r.field || r.suggested || r.group) bad('an unlock row has an empty Field, Suggested and Group.');
-    } else if (!r.suggested) bad('Suggested is empty: every finding must carry a field edit.');
+    if (!r.suggested) bad('Suggested is empty: every finding must carry a field edit.');
     if (!r.reason) bad('Reason is empty.');
     if (!r.storyId) {
       bad('Story ID is empty.');
@@ -227,12 +224,8 @@ export function validateFindings(findings, backlog, { existingRows = [], require
       if (!matches.length) bad(`the backlog has no story ${r.storyId}.`);
       else if (matches.length > 1) bad(`${r.storyId} is held by more than one story.`);
       else story = matches[0];
-      if (unlock) {
-        if (story && !story.locked) bad(`${r.storyId} is not locked, so there is nothing to unlock.`);
-      } else if (story?.locked && !unlocked.has(r.storyId)) {
-        bad(`${r.storyId} is locked: add an unlock row for it, or leave it out of the review.`);
-      }
-      if (!unlock && FIELDS.includes(r.field) && ACTIONS.includes(r.action) && !ALLOWED_ACTIONS[r.field].includes(r.action)) {
+      if (story?.frozen) bad(`${r.storyId} is frozen: leave it out of the review and suggest a superseding story in the report.`);
+      if (FIELDS.includes(r.field) && ACTIONS.includes(r.action) && !ALLOWED_ACTIONS[r.field].includes(r.action)) {
         bad(`Action ${r.action} does not fit Field ${r.field} (allowed: ${ALLOWED_ACTIONS[r.field].join(', ')}).`);
       }
     }
@@ -315,7 +308,7 @@ export function fillCurrent(findings, backlog) {
       row.current = readPairs(story)[pairNumber(f.pair) - 1]?.q ?? '';
       return row;
     }
-    if (!story || row.action === 'unlock' || row.action === 'add' || row.action === 'add-story' || row.field === 'Clarifications') return row;
+    if (!story || row.action === 'add' || row.action === 'add-story' || row.field === 'Clarifications') return row;
     if (row.field === 'User Acceptance Criteria') {
       const n = Number(AC_NUMBER.exec(row.suggested)?.[1]);
       const c = story.criteria[n - 1];
@@ -342,17 +335,13 @@ const findStory = (stories, code) => {
   return hits.length === 1 ? hits[0] : null;
 };
 
-// { state: 'open' }, { state: 'stale', why } or { state: 'locked' } (current, but its story is locked, so it cannot be
-// applied until the story is unlocked). add-story rows are never stale on their own (their group decides).
-// An unlock row is current while its story exists and is locked.
+// { state: 'open' }, { state: 'stale', why } or { state: 'frozen' } (current, but its story is frozen, so it can never
+// be applied). add-story rows are never stale on their own (their group decides).
+// An old unlock row is always stale: a story cannot be unlocked or unfrozen any more.
 export function suggestionState(row, stories) {
-  if (row.action === 'unlock') {
-    const story = findStory(stories, row.storyId);
-    if (!story) return { state: 'stale', why: `${row.storyId} no longer exists or was renumbered` };
-    return story.locked ? { state: 'open' } : { state: 'stale', why: `${row.storyId} is no longer locked` };
-  }
+  if (LEGACY_ACTIONS.includes(row.action)) return { state: 'stale', why: 'unlock rows are no longer used: a frozen story cannot be unfrozen' };
   const base = editState(row, stories);
-  if (base.state === 'open' && row.action !== 'add-story' && findStory(stories, row.storyId)?.locked) return { state: 'locked' };
+  if (base.state === 'open' && row.action !== 'add-story' && findStory(stories, row.storyId)?.frozen) return { state: 'frozen' };
   return base;
 }
 
@@ -419,29 +408,28 @@ export function unitsOf(rows) {
   return units;
 }
 
-// { state: 'open' }, { state: 'stale', why } or { state: 'locked' } for a whole unit (stale wins over locked).
+// { state: 'open' }, { state: 'stale', why } or { state: 'frozen' } for a whole unit (stale wins over frozen).
 export function unitState(unit, stories) {
-  let locked = false;
+  let frozen = false;
   for (const row of unit.rows) {
     const s = suggestionState(row, stories);
     if (s.state === 'stale') return s;
-    if (s.state === 'locked') locked = true;
+    if (s.state === 'frozen') frozen = true;
   }
-  return locked ? { state: 'locked' } : { state: 'open' };
+  return frozen ? { state: 'frozen' } : { state: 'open' };
 }
 
-// Why Accept all leaves a unit alone before trying it, or null when it may be tried: an unlock row is not an edit, a
-// `confirm` default needs a human check, and a locked story cannot be edited.
+// Why Accept all leaves a unit alone before trying it, or null when it may be tried: a `confirm` default needs a
+// human check, and a frozen story cannot be edited.
 function skipReason(unit, stories) {
-  if (unit.rows.some((r) => r.action === 'unlock')) return 'unlock';
   if (unit.rows.some((r) => r.confidence === 'confirm')) return 'check';
-  return unitState(unit, stories).state === 'locked' ? 'locked' : null;
+  return unitState(unit, stories).state === 'frozen' ? 'frozen' : null;
 }
 
 // Accept all: apply the units in order, each on the stories the previous one left. A unit that is skipped, stale or
 // refused stays open and the run goes on. Returns { stories, applied: [units], skipped: [{ unit, reason }] } with
-// reason `unlock`, `check`, `locked` or `failed`; `stories` is the input when nothing was applied.
-export function acceptAll(stories, units, headers) {
+// reason `check`, `frozen` or `failed`; `stories` is the input when nothing was applied. `initials` are the backlog's.
+export function acceptAll(stories, units, headers, initials) {
   let current = stories;
   const applied = [];
   const skipped = [];
@@ -451,7 +439,7 @@ export function acceptAll(stories, units, headers) {
       skipped.push({ unit, reason });
       continue;
     }
-    const result = unitState(unit, current).state === 'stale' ? { error: true } : applySuggestions(current, unit.rows, headers);
+    const result = unitState(unit, current).state === 'stale' ? { error: true } : applySuggestions(current, unit.rows, headers, initials);
     if (result.error) {
       skipped.push({ unit, reason: 'failed' });
       continue;
@@ -462,7 +450,7 @@ export function acceptAll(stories, units, headers) {
   return { stories: current, applied, skipped };
 }
 
-const SKIP_LABEL = { unlock: 'unlock row', locked: 'locked story', check: 'needs a check', failed: 'could not be applied' };
+const SKIP_LABEL = { frozen: 'frozen story', check: 'needs a check', failed: 'could not be applied' };
 
 // One line for the end of an Accept all run: how many were applied and how many stayed open, by reason.
 export function acceptSummaryText(appliedCount, skipped) {
@@ -570,13 +558,12 @@ function buildNewStory(headers, rows, original) {
 
 // Apply the rows of one unit (one row, or a whole group) to the stories. Pure: returns { stories } or { error }
 // and never changes the input. Edits go through the same helpers as manual edits (commitEpics / renumber), so IDs
-// and Depends On links keep following their stories.
-export function applySuggestions(stories, rows, headers) {
+// and Depends On links keep following their stories. `initials` are the backlog's.
+export function applySuggestions(stories, rows, headers, initials) {
   for (const row of rows) {
     const s = suggestionState(row, stories);
     if (s.state === 'stale') return { error: `Cannot apply: ${s.why}.` };
-    if (s.state === 'locked') return { error: `Cannot apply: ${row.storyId} is locked. Unlock it first.` };
-    if (row.action === 'unlock') return { error: 'An unlock row unlocks the story; it is not applied as an edit.' };
+    if (s.state === 'frozen') return { error: `Cannot apply: ${row.storyId} is frozen and cannot be edited.` };
   }
 
   const idOf = (code) => findStory(stories, code)?.id;
@@ -626,8 +613,8 @@ export function applySuggestions(stories, rows, headers) {
     next = [...next, s];
   }
 
-  next = commitEpics(next, epicChanged);
-  next = renumber(next);
+  next = commitEpics(next, epicChanged, initials);
+  next = renumber(next, initials);
 
   // Depends On last, once every story has its final code. Targets are resolved by story, not by old code.
   const codeOf = (id) => next.find((s) => s.id === id)?.code ?? '';
@@ -665,7 +652,7 @@ export function applySuggestions(stories, rows, headers) {
 // on the story it narrows). undefined for a unit that only creates stories.
 export const unitStoryCode = (unit) => unit.rows.find((r) => r.action !== 'add-story')?.storyId;
 
-// Open suggestions per story code (stale ones do not count; ones held back by a lock and open unlock rows do). A group counts once.
+// Open suggestions per story code (stale ones do not count; ones held back because the story is frozen do). A group counts once.
 export function openCounts(rows, stories) {
   const counts = new Map();
   for (const unit of unitsOf(rows)) {

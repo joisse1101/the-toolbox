@@ -1,8 +1,10 @@
 // GENERATED. Do not edit this copy.
 // Story IDs and dependencies. Pure functions over the stories array, no DOM.
-// A story ID is <PREFIX>-<NNNN>: the prefix comes from the epic, the number is the story's position among the
-// stories of that epic in array (file) order. IDs are therefore derived: `renumber` recomputes every ID and rewrites
-// `dependsOn` so each link keeps pointing at the same story. Stories are never mutated, changed ones are replaced.
+// A story ID is <INITIALS>-<PREFIX>-<NNNN>: the initials belong to the backlog, the prefix comes from the epic, the
+// number is the story's position among the stories of that epic in array (file) order. IDs are therefore derived:
+// `renumber` recomputes every ID and rewrites `dependsOn` so each link keeps pointing at the same story. A frozen story
+// keeps its whole code and pins the epic part of it for its epic. Stories are never mutated, changed ones are replaced.
+// Every function that recomputes IDs takes the backlog's `initials` as its last parameter.
 //
 // `codedEpic` is the epic the ID was last computed for. It follows `epic` only when the epic is committed
 // (blur / suggestion chosen), so typing in the Epic field does not change IDs.
@@ -15,9 +17,9 @@ export function epicPrefix(epic) {
   return words(String(epic ?? '')).map((w) => w.slice(0, 1)).join('').toUpperCase();
 }
 
-// Prefix per epic key, in order of first occurrence. A prefix an earlier epic already holds is lengthened with
-// letters of the first word, then of the later words, then a digit. `fixed` (epic key -> prefix) holds the prefixes
-// that locked stories pin; they are taken first and kept as they are.
+// Prefix per epic key, in order of first occurrence. A prefix an earlier epic already holds gets the next free digit
+// appended (IAM, IAM1, IAM2). `fixed` (epic key -> prefix) holds the prefixes that frozen stories pin; they are taken
+// first and kept as they are.
 function prefixesFor(stories, fixed = new Map()) {
   const result = new Map(fixed);
   const taken = new Set(fixed.values());
@@ -29,11 +31,8 @@ function prefixesFor(stories, fixed = new Map()) {
       result.set(key, '');
       continue;
     }
-    const w = words(key);
-    const extra = (w[0].slice(1) + w.slice(1).map((x) => x.slice(1)).join('')).toUpperCase();
     let prefix = base;
-    for (let k = 1; taken.has(prefix) && k <= extra.length; k++) prefix = base + extra.slice(0, k);
-    for (let n = 2; taken.has(prefix); n++) prefix = base + n;
+    for (let n = 1; taken.has(prefix); n++) prefix = base + n;
     taken.add(prefix);
     result.set(key, prefix);
   }
@@ -41,40 +40,43 @@ function prefixesFor(stories, fixed = new Map()) {
 }
 
 const same = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
-const CODE = /^(.+)-(\d+)$/;
+const FROZEN_CODE = /^([^-]+)-(.+)-(\d+)$/; // initials, epic prefix, number
 
-// Locked stories whose code can stay: well-formed, unique, with an epic, and the epic's prefix not held by another
-// epic. Returns Map(story -> { prefix, n }). The others lose the lock for numbering (hand-edited files).
+// Frozen stories whose code can stay: well-formed (initials, epic prefix, number), unique, with an epic, and the
+// epic's prefix not held by another epic. Returns Map(story -> { full, n }) with full = `<initials>-<epic prefix>`,
+// and the epic prefix each epic pins. The others lose the flag for numbering (hand-edited files).
 function anchoredStories(stories) {
   const anchored = new Map();
   const prefixOfEpic = new Map();
   const epicOfPrefix = new Map();
   const codes = new Set();
   for (const s of stories) {
-    if (!s.locked) continue;
-    const m = CODE.exec(String(s.code ?? ''));
+    if (!s.frozen) continue;
+    const m = FROZEN_CODE.exec(String(s.code ?? ''));
     const key = epicKey(s);
     if (!m || !key || codes.has(s.code)) continue;
-    const prefix = m[1];
+    const prefix = m[2];
     if (prefixOfEpic.has(key) ? prefixOfEpic.get(key) !== prefix : epicOfPrefix.has(prefix)) continue;
     prefixOfEpic.set(key, prefix);
     epicOfPrefix.set(prefix, key);
     codes.add(s.code);
-    anchored.set(s, { prefix, n: Number(m[2]) });
+    anchored.set(s, { full: `${m[1]}-${prefix}`, n: Number(m[3]) });
   }
   return { anchored, prefixOfEpic };
 }
 
-// Recompute all IDs and rewrite references. Returns the same array when nothing changed. A locked story keeps its
-// code (its number is reserved), and its epic keeps the prefix written in it; the other stories take the lowest free
-// numbers in order, so numbering may have gaps.
-export function renumber(stories) {
+// Recompute all IDs and rewrite references. Returns the same array when nothing changed. A frozen story keeps its
+// code (its number is reserved under its own initials and epic prefix), and its epic keeps the epic prefix written in
+// it; the other stories take `initials`, the epic's prefix and the lowest free numbers in order, so numbering may
+// have gaps.
+export function renumber(stories, initials) {
+  if (typeof initials !== 'string' || !initials.trim()) throw new TypeError('renumber needs the initials of the backlog');
   const { anchored, prefixOfEpic } = anchoredStories(stories);
   const prefixes = prefixesFor(stories, prefixOfEpic);
-  const reserved = new Map(); // prefix -> numbers held by locked stories
-  for (const { prefix, n } of anchored.values()) {
-    if (!reserved.has(prefix)) reserved.set(prefix, new Set());
-    reserved.get(prefix).add(n);
+  const reserved = new Map(); // `<initials>-<epic prefix>` -> numbers held by frozen stories
+  for (const { full, n } of anchored.values()) {
+    if (!reserved.has(full)) reserved.set(full, new Set());
+    reserved.get(full).add(n);
   }
   const counters = new Map();
   const codes = stories.map((s) => {
@@ -82,11 +84,12 @@ export function renumber(stories) {
     const key = epicKey(s);
     const prefix = prefixes.get(key);
     if (!prefix) return '';
-    const taken = reserved.get(prefix);
+    const full = `${initials}-${prefix}`;
+    const taken = reserved.get(full);
     let n = counters.get(key) ?? 0;
     do n++; while (taken?.has(n));
     counters.set(key, n);
-    return `${prefix}-${String(n).padStart(4, '0')}`;
+    return `${full}-${String(n).padStart(4, '0')}`;
   });
 
   const oldCount = new Map();
@@ -104,42 +107,42 @@ export function renumber(stories) {
       if (target && !deps.includes(target)) deps.push(target);
     }
     const ambiguous = [...new Set([...s.ambiguous, ...deps.filter((e) => oldCount.get(e) > 1)])].filter((e) => deps.includes(e));
-    const locked = anchored.has(s);
-    if (s.code === codes[i] && s.locked === locked && same(s.dependsOn, deps) && same(s.ambiguous, ambiguous)) return s;
+    const frozen = anchored.has(s);
+    if (s.code === codes[i] && s.frozen === frozen && same(s.dependsOn, deps) && same(s.ambiguous, ambiguous)) return s;
     changed = true;
-    return { ...s, code: codes[i], locked, dependsOn: deps, ambiguous };
+    return { ...s, code: codes[i], frozen, dependsOn: deps, ambiguous };
   });
   return changed ? out : stories;
 }
 
-// Put a story at the bottom of `epic`, or before `beforeId`, and make it belong to that epic. Dragging within the
-// story's own epic only rearranges that epic's stories among the rows they already occupy, so other rows and the
-// order of the groups do not move. Blank target epics and no-op moves return the same array.
-export function moveStory(stories, id, epic, beforeId = null) {
+// Put a story at the bottom of `epic` (`beforeId` null), or before `beforeId`, and make it belong to that epic.
+// Dragging within the story's own epic only rearranges that epic's stories among the rows they already occupy, so
+// other rows and the order of the groups do not move. Blank target epics and no-op moves return the same array.
+export function moveStory(stories, id, epic, beforeId, initials) {
   const s = stories.find((x) => x.id === id);
   const target = String(epic ?? '').trim();
-  if (!s || s.locked || !target || beforeId === id) return stories; // a locked story stays where it is
+  if (!s || s.frozen || !target || beforeId === id) return stories; // a frozen story stays where it is
 
   if (liveEpic(s) === target && epicKey(s) === target) {
     const slots = [];
     stories.forEach((x, i) => { if (liveEpic(x) === target) slots.push(i); });
     const group = slots.map((i) => stories[i]).filter((x) => x.id !== id);
-    const at = beforeId === null ? -1 : group.findIndex((x) => x.id === beforeId);
+    const at = beforeId == null ? -1 : group.findIndex((x) => x.id === beforeId);
     group.splice(at < 0 ? group.length : at, 0, s);
     if (group.every((x, k) => x === stories[slots[k]])) return stories;
     const next = stories.slice();
     slots.forEach((i, k) => { next[i] = group[k]; });
-    return renumber(next);
+    return renumber(next, initials);
   }
 
   const rest = stories.filter((x) => x.id !== id);
-  let at = beforeId === null ? -1 : rest.findIndex((x) => x.id === beforeId);
+  let at = beforeId == null ? -1 : rest.findIndex((x) => x.id === beforeId);
   if (at < 0) {
     const last = rest.map((x) => liveEpic(x)).lastIndexOf(target);
     at = last < 0 ? rest.length : last + 1;
   }
   rest.splice(at, 0, { ...s, epic: target, codedEpic: target });
-  return renumber(rest);
+  return renumber(rest, initials);
 }
 
 const liveFeature = (s) => String(s.feature ?? '').trim();
@@ -172,11 +175,11 @@ function refillEpic(stories, epic, ordered) {
 // Move a whole group as one block: { epic } before the epic `beforeKey`, or { epic, feature } before the feature
 // `beforeKey` of the same epic (null = last). Stories keep their relative order inside the group. An epic move gathers
 // the rows of every epic into blocks; a feature move only rearranges the rows its epic already occupies. The group
-// order unchanged, a blank epic or an unknown group or target returns the same array. A locked story moves with its group.
-export function moveGroup(stories, group, beforeKey = null) {
+// order unchanged, a blank epic or an unknown group or target returns the same array. A frozen story moves with its group.
+export function moveGroup(stories, group, beforeKey, initials) {
   const epic = String(group.epic ?? '').trim();
   if (!epic) return stories;
-  const target = beforeKey === null ? null : String(beforeKey).trim();
+  const target = beforeKey == null ? null : String(beforeKey).trim();
 
   if (group.feature === undefined) {
     const epics = groupBy(stories, liveEpic);
@@ -185,7 +188,7 @@ export function moveGroup(stories, group, beforeKey = null) {
     const order = reorderKeys(keys, epic, target);
     if (order.every((k, i) => k === keys[i])) return stories;
     const byEpic = new Map(epics);
-    return renumber(order.flatMap((k) => byEpic.get(k)));
+    return renumber(order.flatMap((k) => byEpic.get(k)), initials);
   }
 
   const feature = String(group.feature).trim();
@@ -195,19 +198,19 @@ export function moveGroup(stories, group, beforeKey = null) {
   const order = reorderKeys(keys, feature, target);
   if (order.every((k, i) => k === keys[i])) return stories;
   const byFeature = new Map(features);
-  return renumber(refillEpic(stories, epic, order.flatMap((k) => byFeature.get(k))));
+  return renumber(refillEpic(stories, epic, order.flatMap((k) => byFeature.get(k))), initials);
 }
 
 // Put the rows of each feature together inside its epic, features in the order they are shown, then renumber.
-// Other epics' rows keep their positions and a locked story keeps its ID. Same array when nothing changes.
-export function gatherFeatures(stories) {
+// Other epics' rows keep their positions and a frozen story keeps its ID. Same array when nothing changes.
+export function gatherFeatures(stories, initials) {
   let out = stories;
   for (const [epic, rows] of groupBy(stories, liveEpic)) {
     if (!epic) continue;
     const gathered = groupBy(rows, liveFeature).flatMap(([, group]) => group);
     if (gathered.some((s, i) => s !== rows[i])) out = refillEpic(out, epic, gathered);
   }
-  return renumber(out);
+  return renumber(out, initials);
 }
 
 // Old code -> new code of the stories (matched by id) whose ID changed between two versions of the list; a code that
@@ -224,35 +227,35 @@ export function recodedBetween(before, after) {
 }
 
 // The Epic field was left. A changed epic moves the story to the bottom of it; a blank one takes its ID away.
-export function commitEpic(stories, id) {
+export function commitEpic(stories, id, initials) {
   const s = stories.find((x) => x.id === id);
-  if (!s || s.locked || liveEpic(s) === epicKey(s)) return stories; // the Epic of a locked story is read-only
-  if (!liveEpic(s)) return renumber(stories.map((x) => (x === s ? { ...s, codedEpic: '' } : x)));
-  return moveStory(stories, id, s.epic, null);
+  if (!s || s.frozen || liveEpic(s) === epicKey(s)) return stories; // the Epic of a frozen story is read-only
+  if (!liveEpic(s)) return renumber(stories.map((x) => (x === s ? { ...s, codedEpic: '' } : x)), initials);
+  return moveStory(stories, id, s.epic, null, initials);
 }
 
 // Commit the epic of every listed story, in array order (after a bulk epic change).
-export function commitEpics(stories, ids) {
+export function commitEpics(stories, ids, initials) {
   let out = stories;
-  for (const s of stories) if (ids.has(s.id)) out = commitEpic(out, s.id);
+  for (const s of stories) if (ids.has(s.id)) out = commitEpic(out, s.id, initials);
   return out;
 }
 
-export function removeStory(stories, id) {
+export function removeStory(stories, id, initials) {
   const s = stories.find((x) => x.id === id);
-  if (!s || s.locked) return stories; // unlock it first
+  if (!s || s.frozen) return stories; // a frozen story is never deleted
   const unique = s.code && stories.filter((x) => x.code === s.code).length === 1;
   const rest = stories
     .filter((x) => x.id !== id)
     .map((x) => (unique && x.dependsOn.includes(s.code) ? { ...x, dependsOn: x.dependsOn.filter((e) => e !== s.code) } : x));
-  return renumber(rest);
+  return renumber(rest, initials);
 }
 
-// Remove the listed stories, except locked ones (unlock them first). Their codes leave every Depends On, then the rest
-// is renumbered once. Returns the new list and how many listed stories were locked and kept. Same array when none is removed.
-export function removeStories(stories, ids) {
+// Remove the listed stories, except frozen ones. Their codes leave every Depends On, then the rest
+// is renumbered once. Returns the new list and how many listed stories were frozen and kept. Same array when none is removed.
+export function removeStories(stories, ids, initials) {
   const listed = stories.filter((s) => ids.has(s.id));
-  const gone = new Set(listed.filter((s) => !s.locked).map((s) => s.id));
+  const gone = new Set(listed.filter((s) => !s.frozen).map((s) => s.id));
   const skipped = listed.length - gone.size;
   if (!gone.size) return { stories, skipped };
   const stripped = new Set(
@@ -261,35 +264,24 @@ export function removeStories(stories, ids) {
   const rest = stories
     .filter((s) => !gone.has(s.id))
     .map((s) => (s.dependsOn.some((c) => stripped.has(c)) ? { ...s, dependsOn: s.dependsOn.filter((c) => !stripped.has(c)) } : s));
-  return { stories: renumber(rest), skipped };
+  return { stories: renumber(rest, initials), skipped };
 }
 
-// Lock or unlock the listed stories. Only a story with an ID can be locked. Returns the new list and how many
-// stories were skipped (no ID when locking). Same array when nothing changes.
-function setLocked(stories, ids, locked) {
-  let skipped = 0;
+// Freeze the listed stories. Only a story with an ID can be frozen; the ones without come back in `skipped`.
+// A story that is already frozen is left as it is. Same array when nothing changes. This is the only way to set the flag.
+export function freezeStories(stories, ids) {
+  const skipped = [];
   let changed = false;
   const out = stories.map((s) => {
-    if (!ids.has(s.id) || Boolean(s.locked) === locked) return s;
-    if (locked && !s.code) {
-      skipped++;
+    if (!ids.has(s.id) || s.frozen) return s;
+    if (!s.code) {
+      skipped.push(s);
       return s;
     }
     changed = true;
-    return { ...s, locked };
+    return { ...s, frozen: true };
   });
   return { stories: changed ? out : stories, skipped };
-}
-
-export const lockStories = (stories, ids) => setLocked(stories, ids, true);
-export const unlockStories = (stories, ids) => setLocked(stories, ids, false);
-
-// How much of a group is locked: 'all', 'some' or 'none'. Every listed story counts, so a group holding a story
-// without an ID (which cannot be locked) is never 'all' and its lock button keeps offering Lock.
-export function groupLockState(stories) {
-  const locked = stories.filter((s) => s.locked).length;
-  if (!locked) return 'none';
-  return locked === stories.length ? 'all' : 'some';
 }
 
 export const dependentsOf =(stories, code) => (code ? stories.filter((s) => s.dependsOn.includes(code)) : []);

@@ -23,7 +23,7 @@ const sliceDir = (root, slice = 'sign-in') => path.join(slicesPath(root, 'sample
 const snapshot = (dir) => Object.fromEntries(fs.readdirSync(dir).sort().map((f) => [f, fs.readFileSync(path.join(dir, f), 'utf8')]));
 const fixtureFiles = () => fs.readdirSync(FIXTURE_SLICE).filter((f) => f !== 'source.json').map((name) => ({ name, content: fs.readFileSync(path.join(FIXTURE_SLICE, name), 'utf8') }));
 const SCOPE = { type: 'feature', epic: 'Identity and access', feature: 'Sign in' };
-const PAIRS = [{ id: 'IAM-0001', title: 'Sign in with email' }, { id: 'IAM-0002', title: 'Reset a password' }];
+const PAIRS = [{ id: 'B1-IAM-0001', title: 'Sign in with email' }, { id: 'B1-IAM-0002', title: 'Reset a password' }];
 const input = (root, over = {}) => ({ dataDir: root, name: 'sample', slice: 'sign-in', scope: SCOPE, stories: PAIRS, files: fixtureFiles(), ...over });
 
 const csvPath = (root) => pathOf(root, 'sample', 'backlog');
@@ -45,21 +45,21 @@ test('read: the committed mock is up to date and its files are returned', () => 
 test('read: a renumber is healed in source.json and the specification list, and no diagram changes', () => {
   const root = setup({ withSlice: true });
   // A story added ahead of "Reset a password" shifts its derived ID; the locked story keeps its code.
-  editCsv(root, (t) => t.replace('IAM-0002,Identity and access,Sign in,Reset a password', ',Identity and access,Sign in,Verify the email,"As a member, I want to verify my email, so that it is mine.",2,Low,,"AC1: Given a, when b, then c.",,,\nIAM-0002,Identity and access,Sign in,Reset a password'));
+  editCsv(root, (t) => t.replace('B1-IAM-0002,Identity and access,Sign in,Reset a password', ',Identity and access,Sign in,Verify the email,"As a member, I want to verify my email, so that it is mine.",2,Low,,"AC1: Given a, when b, then c.",,,\nB1-IAM-0002,Identity and access,Sign in,Reset a password'));
   const before = snapshot(sliceDir(root));
   const r = readDiagrams({ dataDir: root, name: 'sample', slice: 'sign-in' });
   const [slice] = r.slices;
-  assert.deepEqual(slice.healed.map((h) => [h.title, h.from, h.to]), [['Reset a password', 'IAM-0002', 'IAM-0003']]);
+  assert.deepEqual(slice.healed.map((h) => [h.title, h.from, h.to]), [['Reset a password', 'B1-IAM-0002', 'B1-IAM-0003']]);
   assert.deepEqual(slice.added.map((a) => a.title), ['Verify the email']);
   assert.equal(slice.stale, true);
   const after = snapshot(sliceDir(root));
-  assert.equal(JSON.parse(after['source.json']).stories[1].id, 'IAM-0003');
-  assert.match(after['UC-sign-in.md'], /- IAM-0003 Reset a password/);
+  assert.equal(JSON.parse(after['source.json']).stories[1].id, 'B1-IAM-0003');
+  assert.match(after['UC-sign-in.md'], /- B1-IAM-0003 Reset a password/);
   const blocks = (text) => text.match(/```mermaid[\s\S]*?```/g);
   assert.equal(blocks(before['UC-sign-in.md']).length, 3);
   assert.deepEqual(blocks(after['UC-sign-in.md']), blocks(before['UC-sign-in.md']), 'every mermaid block is byte-for-byte as before');
-  assert.equal(after['UC-sign-in.md'].replace(/- IAM-0003/, '- IAM-0002'), before['UC-sign-in.md'], 'only the generated list changed in the specification');
-  assert.match(formatDiagrams(r), /healed: "Reset a password" is now IAM-0003 \(was IAM-0002\)/);
+  assert.equal(after['UC-sign-in.md'].replace(/- B1-IAM-0003/, '- B1-IAM-0002'), before['UC-sign-in.md'], 'only the generated list changed in the specification');
+  assert.match(formatDiagrams(r), /healed: "Reset a password" is now B1-IAM-0003 \(was B1-IAM-0002\)/);
 });
 
 test('read: a reworded story is changed and nothing is rewritten', () => {
@@ -99,7 +99,7 @@ test('write: the slice is written, read back, and the hashes are the writer\'s',
   const fixture = snapshot(FIXTURE_SLICE);
   for (const f of Object.keys(fixture).filter((n) => n !== 'source.json')) assert.equal(written[f], fixture[f].replace(/\r\n/g, '\n'), f);
   const source = JSON.parse(written['source.json']);
-  assert.deepEqual(source.stories.map((s) => [s.id, s.hash]), [['IAM-0001', 'baf514d489ee'], ['IAM-0002', 'ddf31b439280']]);
+  assert.deepEqual(source.stories.map((s) => [s.id, s.hash]), [['B1-IAM-0001', 'baf514d489ee'], ['B1-IAM-0002', 'ddf31b439280']]);
   assert.match(formatDiagrams(readDiagrams({ dataDir: root, name: 'sample' })), /up to date/);
 });
 
@@ -118,17 +118,17 @@ test('write: the same slice twice changes no byte and says nothing changed', asy
 
 test('write: a Title that does not match is refused and says what the ID holds', async () => {
   const root = setup();
-  const r = await writeDiagram(input(root, { stories: [{ id: 'IAM-0001', title: 'Reset a password' }, PAIRS[1]] }));
+  const r = await writeDiagram(input(root, { stories: [{ id: 'B1-IAM-0001', title: 'Reset a password' }, PAIRS[1]] }));
   assert.equal(r.ok, false);
-  assert.match(r.text, /IAM-0001 is now "Sign in with email" \(Identity and access > Sign in\), not "Reset a password"/);
+  assert.match(r.text, /B1-IAM-0001 is now "Sign in with email" \(Identity and access > Sign in\), not "Reset a password"/);
   assert.equal(fs.existsSync(slicesPath(root, 'sample')), false);
-  assert.match((await writeDiagram(input(root, { stories: [{ id: 'IAM-0001' }, PAIRS[1]] }))).text, /needs the story's current Title/);
+  assert.match((await writeDiagram(input(root, { stories: [{ id: 'B1-IAM-0001' }, PAIRS[1]] }))).text, /needs the story's current Title/);
 });
 
 test('write: a story of the scope that was not listed, and a story outside the scope, are refused', async () => {
   const root = setup();
   assert.match((await writeDiagram(input(root, { stories: [PAIRS[0]] }))).text, /"Reset a password" is in the scope but was not listed/);
-  assert.match((await writeDiagram(input(root, { stories: [...PAIRS, { id: 'R-0001', title: 'Export a list as CSV' }] }))).text, /"Export a list as CSV" is not in the scope/);
+  assert.match((await writeDiagram(input(root, { stories: [...PAIRS, { id: 'B1-R-0001', title: 'Export a list as CSV' }] }))).text, /"Export a list as CSV" is not in the scope/);
   assert.match((await writeDiagram(input(root, { scope: { type: 'feature', epic: 'Identity and access', feature: 'Nowhere' } }))).text, /No story of sample is in the scope/);
 });
 
@@ -179,10 +179,10 @@ test('write: a changed slice is rewritten, a file that was not sent is left alon
 
 test('write: the specification\'s generated list is written by the writer whatever the model put in it', async () => {
   const root = setup();
-  const files = fixtureFiles().map((f) => (f.name === 'UC-sign-in.md' ? { ...f, content: f.content.replace('- IAM-0001 Sign in with email', '- ZZZ-9999 invented') } : f));
+  const files = fixtureFiles().map((f) => (f.name === 'UC-sign-in.md' ? { ...f, content: f.content.replace('- B1-IAM-0001 Sign in with email', '- ZZZ-9999 invented') } : f));
   assert.equal((await writeDiagram(input(root, { files }))).ok, true);
   const spec = fs.readFileSync(path.join(sliceDir(root), 'UC-sign-in.md'), 'utf8');
-  assert.match(spec, /- IAM-0001 Sign in with email/);
+  assert.match(spec, /- B1-IAM-0001 Sign in with email/);
   assert.doesNotMatch(spec, /ZZZ-9999/);
 });
 
