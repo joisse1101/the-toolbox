@@ -19,11 +19,11 @@ It never reads a parent folder, so a skill started in a sub-folder finds nothing
 
 ## The generated copy
 
-`node planner/scripts/sync-skill-logic.mjs` copies the shared logic into each skill's `lib/` and the guidelines into its `references/`. Each copy starts with a `GENERATED. Do not edit this copy.` line. The map of what each skill gets is `SKILLS` in that script.
+`node planner/scripts/sync-skill-logic.mjs` copies the shared logic into each skill's `lib/` and the guidelines into its `references/`. Each copy starts with a `GENERATED. Do not edit this copy.` line. The map of what each skill gets is `SKILLS` in that script. The script reads every source as LF, whatever the checkout converted, so its copies are the same bytes on every machine and a CRLF checkout stays clean after a run.
 
 `planner/test/skill-sync.test.mjs` runs the script into a temp folder and fails when a committed copy differs. After changing `planner/logic/` or `planner/guidelines/`, run the script and commit the copies, so the skills never run on stale logic.
 
-`planner/logic/diagrams/` was moved into `toolkit/skills/jois-story-plan/diagrams/` and is not copied. Only that skill imports the `mermaid` and `jsdom` packages (in `toolkit/skills/jois-story-plan/parse-mermaid.mjs`), so the portal build and `planner/logic/` never see them.
+`planner/logic/diagrams/` was moved into `toolkit/skills/jois-story-plan/diagrams/` and is not copied. Only that skill imports the `mermaid` and `jsdom` packages (in `toolkit/skills/jois-story-plan/parse-mermaid.mjs`), so the portal build and `planner/logic/` never see them. <!-- docs-check: ignore -->
 
 ## How a skill reads and writes
 
