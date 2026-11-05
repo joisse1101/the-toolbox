@@ -13,8 +13,8 @@
 **Stories**
 
 <!-- stories:start -->
-- IAM-0001 Sign in with email
-- IAM-0002 Reset a password
+- B1-IAM-0001 Sign in with email
+- B1-IAM-0002 Reset a password
 <!-- stories:end -->
 
 ## Description

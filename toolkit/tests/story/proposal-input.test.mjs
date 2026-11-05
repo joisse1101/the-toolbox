@@ -6,11 +6,11 @@ import { loadBacklog, serializeBacklog, criteriaCellText, storyCellText, proposa
 const HEAD = 'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes,Team\r\n';
 const BACKLOG =
   HEAD +
-  'IAM-0001,Identity & Access Management,Auth,Login,"As a user, I want to log in, so that I can access the portal",5,High,,"AC1: Given a, when b, then c",,Blue\r\n' +
-  'IAM-0002,Identity & Access Management,SSO,SSO Login,"As a user, I want SSO, so that no credentials",3,,IAM-0001;NEW-9,,,\r\n';
+  'B1-IAM-0001,Identity & Access Management,Auth,Login,"As a user, I want to log in, so that I can access the portal",5,High,,"AC1: Given a, when b, then c",,Blue\r\n' +
+  'B1-IAM-0002,Identity & Access Management,SSO,SSO Login,"As a user, I want SSO, so that no credentials",3,,B1-IAM-0001;NEW-9,,,\r\n';
 
-const backlog = () => loadBacklog(BACKLOG);
-const proposals = (rows = '') => loadBacklog(HEAD + rows, { placeholderIds: true });
+const backlog = () => loadBacklog(BACKLOG, { initials: 'B1' });
+const proposals = (rows = '') => loadBacklog(HEAD + rows, { placeholderIds: true, initials: 'B1' });
 
 const story = (over = {}) => ({
   epic: 'Identity & Access Management',
@@ -89,7 +89,7 @@ test('Notes may have several lines, stored with \\n', () => {
 
 test('unknown keys are refused, and Priority says why', () => {
   assert.match(errorsOf([story({ priority: 'High' })]).join(), /unknown key "priority".*Priority is not set/);
-  assert.match(errorsOf([story({ id: 'IAM-0009' })]).join(), /id must be a proposed story ID/);
+  assert.match(errorsOf([story({ id: 'B1-IAM-0009' })]).join(), /id must be a proposed story ID/);
   assert.match(errorsOf([story({ code: 'x' })]).join(), /unknown key "code"/);
 });
 
@@ -108,7 +108,7 @@ test('numbers continue after the proposals file and rise per story in input orde
   const p = proposals(
     'NEW-1,Identity & Access Management,Auth,A,,,,,,,\r\nNEW-4,Identity & Access Management,Auth,B,,,,,,,\r\n',
   );
-  const r = buildProposals({ input: [story(), story({ title: 'Two' })], backlog: loadBacklog(HEAD), proposals: p });
+  const r = buildProposals({ input: [story(), story({ title: 'Two' })], backlog: loadBacklog(HEAD, { initials: 'B1' }), proposals: p });
   assert.deepEqual(r.ids, ['NEW-5', 'NEW-6']);
 });
 
@@ -117,8 +117,8 @@ test('a number named only by the backlog is not reused', () => {
 });
 
 test('Depends On: a backlog ID is kept, an unknown one is refused', () => {
-  assert.deepEqual(build([story({ dependsOn: ['IAM-0001'] })]).stories[0].dependsOn, ['IAM-0001']);
-  assert.match(errorsOf([story({ dependsOn: ['IAM-0099'] })]).join(), /IAM-0099/);
+  assert.deepEqual(build([story({ dependsOn: ['B1-IAM-0001'] })]).stories[0].dependsOn, ['B1-IAM-0001']);
+  assert.match(errorsOf([story({ dependsOn: ['B1-IAM-0099'] })]).join(), /B1-IAM-0099/);
 });
 
 test('Depends On: NEW-<k> names the k-th story of the input and is stored as its allocated ID', () => {
@@ -137,16 +137,16 @@ test('Depends On: proposed:NEW-<n> must exist in the proposals file', () => {
 });
 
 test('Depends On: repeats and a cycle inside the input are refused', () => {
-  assert.match(errorsOf([story({ dependsOn: ['IAM-0001', 'IAM-0001'] })]).join(), /more than once/);
+  assert.match(errorsOf([story({ dependsOn: ['B1-IAM-0001', 'B1-IAM-0001'] })]).join(), /more than once/);
   const errors = errorsOf([story({ dependsOn: ['NEW-2'] }), story({ title: 'Two', dependsOn: ['NEW-1'] })]);
   assert.match(errors.join(), /Story 1 .*cycle/);
   assert.match(errors.join(), /Story 2 .*cycle/);
 });
 
 test('built stories round-trip through the file with no raw-text fallback', () => {
-  const r = build([story({ notes: 'n' }), story({ title: 'Two', points: '5', dependsOn: ['IAM-0001', 'NEW-1'] })]);
+  const r = build([story({ notes: 'n' }), story({ title: 'Two', points: '5', dependsOn: ['B1-IAM-0001', 'NEW-1'] })]);
   const file = { headers: proposalHeaders(backlog().headers), stories: r.stories, hasBom: true };
-  const back = loadBacklog(serializeBacklog(file), { placeholderIds: true });
+  const back = loadBacklog(serializeBacklog(file), { placeholderIds: true, initials: 'B1' });
   assert.equal(back.stories.length, 2);
   back.stories.forEach((s, i) => {
     const want = r.stories[i];
@@ -160,7 +160,7 @@ test('built stories round-trip through the file with no raw-text fallback', () =
     assert.equal(s.cells.length, 14); // the Team and Benched columns are padded
     assert.equal(s.cells[11], '');
   });
-  assert.deepEqual(back.stories[1].dependsOn, ['IAM-0001', 'NEW-10']);
+  assert.deepEqual(back.stories[1].dependsOn, ['B1-IAM-0001', 'NEW-10']);
 });
 
 // --- patches: an item with an "id" changes the named fields of a proposed story in place ---
@@ -181,7 +181,7 @@ const ROW = (code, over = {}) =>
     over.benched ?? '',
   ].join(',') + '\r\n';
 const PHEAD = HEAD.replace(/\r\n$/, ',Benched\r\n');
-const withRows = (...rows) => loadBacklog(PHEAD + rows.join(''), { placeholderIds: true });
+const withRows = (...rows) => loadBacklog(PHEAD + rows.join(''), { placeholderIds: true, initials: 'B1' });
 const patch = (over = {}) => ({ id: 'NEW-10', ...over });
 const patchOf = (input, rows = [ROW('NEW-10')]) => {
   const r = buildProposals({ input, backlog: backlog(), proposals: withRows(...rows) });
@@ -234,7 +234,7 @@ test('patch rejections', () => {
     [patch({ benched: 'Yes' }), /unknown key "benched"/],
     [patch({ nope: 1 }), /unknown key "nope"/],
     [{ id: 'NEW-10' }, /changes no field/],
-    [patch({ id: 'IAM-0001', title: 'x' }), /id must be a proposed story ID/],
+    [patch({ id: 'B1-IAM-0001', title: 'x' }), /id must be a proposed story ID/],
     [patch({ id: 12, title: 'x' }), /id must be a proposed story ID/],
     [patch({ id: 'NEW-99', title: 'x' }), /proposals file has no NEW-99/],
     [patch({ id: 'NEW-11', title: 'x' }), /NEW-11, which is benched/],
@@ -274,7 +274,7 @@ test('a patch is validated as the merged story', () => {
 test('a patch can set Depends On with the three forms, and omitting it keeps the stored list', () => {
   const rows = [ROW('NEW-9'), ROW('NEW-10', { dependsOn: 'NEW-9' })];
   assert.deepEqual(patchOf([patch({ title: 'x' })], rows).proposed[1].dependsOn, ['NEW-9']);
-  assert.deepEqual(patchOf([patch({ dependsOn: ['IAM-0001', 'proposed:NEW-9'] })], rows).proposed[1].dependsOn, ['IAM-0001', 'NEW-9']);
+  assert.deepEqual(patchOf([patch({ dependsOn: ['B1-IAM-0001', 'proposed:NEW-9'] })], rows).proposed[1].dependsOn, ['B1-IAM-0001', 'NEW-9']);
   assert.deepEqual(patchOf([patch({ dependsOn: [] })], rows).proposed[1].dependsOn, []);
 });
 
@@ -395,22 +395,22 @@ test('requireTitles: a patch without storyTitle is refused; without it the patch
 test('dependsOn entries { id, title }: backlog and proposed stories are checked, NEW-<k> stays bare', () => {
   const p = proposals('NEW-7,Identity & Access Management,Auth,Seven,,,,,,,\r\n');
   const dep = (...dependsOn) => buildProposals({ input: [story({ dependsOn }), story({ title: 'Second', dependsOn: ['NEW-1'] })], backlog: backlog(), proposals: p, ...STRICT });
-  const ok = dep({ id: 'IAM-0001', title: 'login' }, { id: 'proposed:NEW-7', title: 'Seven' });
+  const ok = dep({ id: 'B1-IAM-0001', title: 'login' }, { id: 'proposed:NEW-7', title: 'Seven' });
   assert.equal(ok.ok, true, JSON.stringify(ok.errors));
-  assert.deepEqual(ok.stories[0].dependsOn, ['IAM-0001', 'NEW-7']);
+  assert.deepEqual(ok.stories[0].dependsOn, ['B1-IAM-0001', 'NEW-7']);
   assert.deepEqual(ok.stories[1].dependsOn, [ok.ids[0]]);
-  const bad = dep({ id: 'IAM-0001', title: 'SSO Login' }, { id: 'proposed:NEW-7', title: 'Other' });
+  const bad = dep({ id: 'B1-IAM-0001', title: 'SSO Login' }, { id: 'proposed:NEW-7', title: 'Other' });
   assert.equal(bad.ok, false);
   assert.equal(bad.errors.length, 2);
-  assert.match(bad.errors[0], /^Story 1 Depends On: IAM-0001 is now "Login".*Stories titled "SSO Login": IAM-0002/);
+  assert.match(bad.errors[0], /^Story 1 Depends On: B1-IAM-0001 is now "Login".*Stories titled "SSO Login": B1-IAM-0002/);
   assert.match(bad.errors[1], /^Story 1 Depends On: NEW-7 is now "Seven"/);
 });
 
 test('requireTitles: a bare ID for a stored story in dependsOn is refused; without it the CLI form works', () => {
-  const strict = build([story({ dependsOn: ['IAM-0001'] })], STRICT);
+  const strict = build([story({ dependsOn: ['B1-IAM-0001'] })], STRICT);
   assert.equal(strict.ok, false);
-  assert.match(strict.errors[0], /Depends On: IAM-0001 needs the story's current Title next to it \(title\)/);
-  assert.equal(build([story({ dependsOn: ['IAM-0001'] })]).ok, true);
-  assert.match(errorsOf([story({ dependsOn: [{ id: 'IAM-0099', title: 'Nope' }] })]).join(), /IAM-0099 is not in the file/);
+  assert.match(strict.errors[0], /Depends On: B1-IAM-0001 needs the story's current Title next to it \(title\)/);
+  assert.equal(build([story({ dependsOn: ['B1-IAM-0001'] })]).ok, true);
+  assert.match(errorsOf([story({ dependsOn: [{ id: 'B1-IAM-0099', title: 'Nope' }] })]).join(), /B1-IAM-0099 is not in the file/);
   assert.match(errorsOf([story({ dependsOn: [5] })]).join(), /list of IDs, or of \{ id, title \} objects/);
 });

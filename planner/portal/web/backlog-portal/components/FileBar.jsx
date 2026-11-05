@@ -3,14 +3,21 @@ import AddProjectDialog from './AddProjectDialog.jsx';
 
 const ADD_PROJECT = 'add-project';
 
-// Project dropdown, Backlog dropdown, rename, New, Open folder and Refresh, plus the message banners.
+// Project dropdown, Backlog dropdown, rename, Initials, New, Open folder and Refresh, plus the message banners.
 // `projects` is the useProjects hook's result; the Add Project dialog is shown from here.
-export default function FileBar({ files, current, message, olderLayout = [], focusNameToken, projects, onSelect, onRename, onNew, onOpenFolder, onRefresh }) {
+export default function FileBar({ files, current, initials = '', message, olderLayout = [], focusNameToken, projects, onSelect, onRename, onSetInitials, onNew, onOpenFolder, onRefresh }) {
   const [draft, setDraft] = useState(current ?? '');
   const nameRef = useRef(null);
   const cancelled = useRef(false);
+  const [initialsDraft, setInitialsDraft] = useState(initials);
+  const [initialsError, setInitialsError] = useState('');
+  const initialsCancelled = useRef(false);
 
   useEffect(() => setDraft(current ?? ''), [current]);
+  useEffect(() => {
+    setInitialsDraft(initials);
+    setInitialsError('');
+  }, [current, initials]);
 
   useEffect(() => {
     if (!focusNameToken) return;
@@ -27,6 +34,25 @@ export default function FileBar({ files, current, message, olderLayout = [], foc
     if (!current || wanted === current) return setDraft(current ?? '');
     const renamed = await onRename(wanted);
     if (!renamed) setDraft(current);
+  };
+
+  // Committed when the box is left, like the name. A refusal keeps the old initials and shows the server's message.
+  const commitInitials = async () => {
+    if (initialsCancelled.current) {
+      initialsCancelled.current = false;
+      setInitialsError('');
+      return setInitialsDraft(initials);
+    }
+    if (!current || initialsDraft.trim().toUpperCase() === initials) {
+      setInitialsError('');
+      return setInitialsDraft(initials);
+    }
+    const result = await onSetInitials(initialsDraft);
+    if (result.error) {
+      setInitialsError(result.error);
+      return setInitialsDraft(initials);
+    }
+    setInitialsError('');
   };
 
   const onProjectChange = (e) => {
@@ -68,6 +94,24 @@ export default function FileBar({ files, current, message, olderLayout = [], foc
             }}
           />
         </div>
+        <div className="initials-field">
+          <label htmlFor="initials">Initials</label>
+          <input
+            type="text" id="initials" autoComplete="off" spellCheck={false}
+            value={initialsDraft} disabled={!current}
+            aria-invalid={initialsError ? 'true' : undefined} aria-describedby={initialsError ? 'initialsError' : undefined}
+            title="Starts the ID of every story in this backlog, for example B1-IAM-0003. Frozen stories keep the initials they have."
+            onChange={(e) => setInitialsDraft(e.target.value)}
+            onBlur={commitInitials}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') e.target.blur();
+              if (e.key === 'Escape') {
+                initialsCancelled.current = true;
+                e.target.blur();
+              }
+            }}
+          />
+        </div>
         <button type="button" id="newBtn" onClick={onNew}>New</button>
         <button type="button" id="openBtn" onClick={onOpenFolder}>Open folder</button>
         <button type="button" id="refreshBtn" className="icon-only" title="Refresh from the CSV files" aria-label="Refresh from the CSV files" onClick={onRefresh}>
@@ -81,6 +125,7 @@ export default function FileBar({ files, current, message, olderLayout = [], foc
           No backlog folder here, but this data folder holds the older layout. Open the Settings tab and choose "Migrate older layout" to copy it.
         </p>
       )}
+      {initialsError && <p id="initialsError" className="error" role="alert">{initialsError}</p>}
       {projects.error && !projects.dialog && <p id="projectError" className="error" role="alert">{projects.error}</p>}
       <p id="message" className="warning" hidden={!message}>{message || ''}</p>
       <AddProjectDialog projects={projects} />

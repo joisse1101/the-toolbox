@@ -6,22 +6,25 @@ import {
   unitsOf, unitState, acceptAll, acceptSummaryText, criterionNumberOf, displayRow, openCounts, openUnitsFor, retargetRows, reviewOverview, REVIEW_COLUMNS,
 } from '../../logic/review/review.js';
 
+const INITIALS = 'B1';
+const load = (text) => loadBacklog(text, { initials: INITIALS });
+
 const CSV =
   'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes\r\n' +
-  'IAM-0001,Identity & Access Management,Auth,Login,"As a user, I want to log in, so that I can access the portal",5,High,,"AC1: Given a, when b, then c\nAC2: Given d, when e, then f",\r\n' +
-  'IAM-0002,Identity & Access Management,Auth,Logout,"As a user, I want to log out, so that I end my session",3,High,IAM-0001,"AC1: Given g, when h, then i",note one\r\n' +
-  'IAM-0003,Identity & Access Management,SSO,SSO Login,"As a user, I want SSO, so that no credentials",55,,,,\r\n';
+  'B1-IAM-0001,Identity & Access Management,Auth,Login,"As a user, I want to log in, so that I can access the portal",5,High,,"AC1: Given a, when b, then c\nAC2: Given d, when e, then f",\r\n' +
+  'B1-IAM-0002,Identity & Access Management,Auth,Logout,"As a user, I want to log out, so that I end my session",3,High,B1-IAM-0001,"AC1: Given g, when h, then i",note one\r\n' +
+  'B1-IAM-0003,Identity & Access Management,SSO,SSO Login,"As a user, I want SSO, so that no credentials",55,,,,\r\n';
 
-const backlog = () => loadBacklog(CSV);
+const backlog = () => load(CSV);
 
 const finding = (over = {}) => ({
-  storyId: 'IAM-0001', field: 'Title', action: 'replace', suggested: 'Log in with a password', reason: 'Clearer title',
+  storyId: 'B1-IAM-0001', field: 'Title', action: 'replace', suggested: 'Log in with a password', reason: 'Clearer title',
   area: 'Hierarchy', confidence: 'ready', group: '', ...over,
 });
 
 test('review CSV round-trips values with commas, quotes and line breaks', () => {
   const rows = [{
-    storyId: 'IAM-0001', field: 'User Acceptance Criteria', action: 'add', current: '',
+    storyId: 'B1-IAM-0001', field: 'User Acceptance Criteria', action: 'add', current: '',
     suggested: 'AC3: Given "x", when y,\nz, then w', reason: 'Missing, "failure" path', area: 'Acceptance criteria',
     confidence: 'ready', group: '', status: 'open',
   }];
@@ -86,19 +89,19 @@ test('criterion replace needs an existing AC label', () => {
 
 test('Depends On targets and removal are checked', () => {
   const b = backlog();
-  const dep = (over) => finding({ field: 'Depends On', action: 'add', suggested: 'IAM-0003', ...over });
+  const dep = (over) => finding({ field: 'Depends On', action: 'add', suggested: 'B1-IAM-0003', ...over });
   assert.deepEqual(validateFindings([dep({})], b), []);
   assert.ok(validateFindings([dep({ suggested: 'ZZ-1' })], b).length);
-  assert.ok(validateFindings([dep({ suggested: 'IAM-0001' })], b).some((e) => e.includes('itself')));
-  assert.ok(validateFindings([dep({ storyId: 'IAM-0002', action: 'remove', suggested: 'IAM-0003' })], b).some((e) => e.includes('does not depend')));
+  assert.ok(validateFindings([dep({ suggested: 'B1-IAM-0001' })], b).some((e) => e.includes('itself')));
+  assert.ok(validateFindings([dep({ storyId: 'B1-IAM-0002', action: 'remove', suggested: 'B1-IAM-0003' })], b).some((e) => e.includes('does not depend')));
 });
 
 test('split groups need NEW ids, a Title per new story and all rows confirm', () => {
   const b = backlog();
   const group = (over = {}) => [
-    finding({ storyId: 'IAM-0003', field: 'Title', suggested: 'SSO sign-in', confidence: 'confirm', group: 'split-3' }),
+    finding({ storyId: 'B1-IAM-0003', field: 'Title', suggested: 'SSO sign-in', confidence: 'confirm', group: 'split-3' }),
     finding({ storyId: 'NEW-1', field: 'Title', action: 'add-story', suggested: 'SSO sign-out', confidence: 'confirm', group: 'split-3' }),
-    finding({ storyId: 'NEW-1', field: 'Depends On', action: 'add-story', suggested: 'IAM-0003', confidence: 'confirm', group: 'split-3' }),
+    finding({ storyId: 'NEW-1', field: 'Depends On', action: 'add-story', suggested: 'B1-IAM-0003', confidence: 'confirm', group: 'split-3' }),
     ...(over.extra ?? []),
   ];
   assert.deepEqual(validateFindings(group(), b), []);
@@ -116,13 +119,13 @@ test('fillCurrent reads Current from the backlog and ignores what the caller sen
     { ...finding({ field: 'User Story', suggested: 'As a user, I want x, so that y' }), current: 'LIES', status: 'applied' },
     finding({ field: 'User Acceptance Criteria', action: 'replace', suggested: 'AC2: Given x, when y, then z' }),
     finding({ field: 'User Acceptance Criteria', action: 'add', suggested: 'AC3: Given x, when y, then z' }),
-    finding({ storyId: 'IAM-0002', field: 'Depends On', action: 'remove', suggested: 'IAM-0001' }),
+    finding({ storyId: 'B1-IAM-0002', field: 'Depends On', action: 'remove', suggested: 'B1-IAM-0001' }),
   ], b);
   assert.equal(rows[0].current, 'As a user, I want to log in, so that I can access the portal');
   assert.equal(rows[0].status, 'open');
   assert.equal(rows[1].current, 'AC2: Given d, when e, then f');
   assert.equal(rows[2].current, '');
-  assert.equal(rows[3].current, 'IAM-0001');
+  assert.equal(rows[3].current, 'B1-IAM-0001');
 });
 
 test('re-run keeps the status of identical rows', () => {
@@ -140,7 +143,7 @@ test('replace is open until the field is edited, then stale', () => {
   const b = backlog();
   const [row] = rowsFor([finding()], b);
   assert.equal(suggestionState(row, b.stories).state, 'open');
-  const edited = b.stories.map((s) => (s.code === 'IAM-0001' ? { ...s, title: 'Changed by hand' } : s));
+  const edited = b.stories.map((s) => (s.code === 'B1-IAM-0001' ? { ...s, title: 'Changed by hand' } : s));
   assert.equal(suggestionState(row, edited).state, 'stale');
   assert.equal(suggestionState(row, []).state, 'stale');
 });
@@ -149,119 +152,119 @@ test('applying replace, append and criterion add/replace', () => {
   const b = backlog();
   const rows = rowsFor([
     finding({ field: 'Title', suggested: 'New title' }),
-    finding({ storyId: 'IAM-0002', field: 'Notes', action: 'append', suggested: 'Question: split or merge?', confidence: 'confirm' }),
+    finding({ storyId: 'B1-IAM-0002', field: 'Notes', action: 'append', suggested: 'Question: split or merge?', confidence: 'confirm' }),
     finding({ field: 'User Acceptance Criteria', action: 'replace', suggested: 'AC1: Given A, when B, then C' }),
     finding({ field: 'User Acceptance Criteria', action: 'add', suggested: 'AC3: Given x, when y, then z' }),
   ], b);
-  const r = applySuggestions(b.stories, rows, b.headers);
+  const r = applySuggestions(b.stories, rows, b.headers, INITIALS);
   assert.equal(r.error, undefined);
-  const s1 = r.stories.find((s) => s.code === 'IAM-0001');
+  const s1 = r.stories.find((s) => s.code === 'B1-IAM-0001');
   assert.equal(s1.title, 'New title');
   assert.deepEqual(s1.criteria.map((c) => c.given), ['A', 'd', 'x']);
-  assert.equal(r.stories.find((s) => s.code === 'IAM-0002').notes, 'note one\nQuestion: split or merge?');
-  assert.equal(b.stories.find((s) => s.code === 'IAM-0001').title, 'Login', 'input is not mutated');
+  assert.equal(r.stories.find((s) => s.code === 'B1-IAM-0002').notes, 'note one\nQuestion: split or merge?');
+  assert.equal(b.stories.find((s) => s.code === 'B1-IAM-0001').title, 'Login', 'input is not mutated');
 });
 
 test('applying a User Story replace parses it into the three fields', () => {
   const b = backlog();
   const rows = rowsFor([finding({ field: 'User Story', suggested: 'As a visitor, I want in, so that I see things' })], b);
-  const s = applySuggestions(b.stories, rows, b.headers).stories.find((x) => x.code === 'IAM-0001');
+  const s = applySuggestions(b.stories, rows, b.headers, INITIALS).stories.find((x) => x.code === 'B1-IAM-0001');
   assert.deepEqual([s.asA, s.iWant, s.soThat], ['a visitor', 'in', 'I see things']);
 });
 
 test('applying a User Story replace with "As an" keeps the sentence as written', () => {
   const b = backlog();
   const rows = rowsFor([finding({ field: 'User Story', suggested: 'As an auditor, I want in, so that I see things' })], b);
-  const s = applySuggestions(b.stories, rows, b.headers).stories.find((x) => x.code === 'IAM-0001');
+  const s = applySuggestions(b.stories, rows, b.headers, INITIALS).stories.find((x) => x.code === 'B1-IAM-0001');
   assert.equal(s.asA, 'an auditor');
 });
 
 test('adding a criterion to a story with only the blank placeholder replaces the placeholder', () => {
   const b = backlog();
-  const rows = rowsFor([finding({ storyId: 'IAM-0003', field: 'User Acceptance Criteria', action: 'add', suggested: 'AC1: Given x, when y, then z' })], b);
-  const s = applySuggestions(b.stories, rows, b.headers).stories.find((x) => x.code === 'IAM-0003');
+  const rows = rowsFor([finding({ storyId: 'B1-IAM-0003', field: 'User Acceptance Criteria', action: 'add', suggested: 'AC1: Given x, when y, then z' })], b);
+  const s = applySuggestions(b.stories, rows, b.headers, INITIALS).stories.find((x) => x.code === 'B1-IAM-0003');
   assert.equal(s.criteria.length, 1);
   assert.equal(s.criteria[0].then, 'z');
 });
 
 test('Depends On add and remove, and a cycle is refused', () => {
   const b = backlog();
-  const add = rowsFor([finding({ storyId: 'IAM-0003', field: 'Depends On', action: 'add', suggested: 'IAM-0002' })], b);
-  const r = applySuggestions(b.stories, add, b.headers);
-  assert.deepEqual(r.stories.find((s) => s.code === 'IAM-0003').dependsOn, ['IAM-0002']);
+  const add = rowsFor([finding({ storyId: 'B1-IAM-0003', field: 'Depends On', action: 'add', suggested: 'B1-IAM-0002' })], b);
+  const r = applySuggestions(b.stories, add, b.headers, INITIALS);
+  assert.deepEqual(r.stories.find((s) => s.code === 'B1-IAM-0003').dependsOn, ['B1-IAM-0002']);
 
-  const remove = rowsFor([finding({ storyId: 'IAM-0002', field: 'Depends On', action: 'remove', suggested: 'IAM-0001' })], b);
-  assert.deepEqual(applySuggestions(b.stories, remove, b.headers).stories.find((s) => s.code === 'IAM-0002').dependsOn, []);
+  const remove = rowsFor([finding({ storyId: 'B1-IAM-0002', field: 'Depends On', action: 'remove', suggested: 'B1-IAM-0001' })], b);
+  assert.deepEqual(applySuggestions(b.stories, remove, b.headers, INITIALS).stories.find((s) => s.code === 'B1-IAM-0002').dependsOn, []);
 
-  const cycle = rowsFor([finding({ storyId: 'IAM-0001', field: 'Depends On', action: 'add', suggested: 'IAM-0002' })], b);
-  const bad = applySuggestions(b.stories, cycle, b.headers);
+  const cycle = rowsFor([finding({ storyId: 'B1-IAM-0001', field: 'Depends On', action: 'add', suggested: 'B1-IAM-0002' })], b);
+  const bad = applySuggestions(b.stories, cycle, b.headers, INITIALS);
   assert.match(bad.error, /cycle/);
   assert.equal(bad.stories, undefined);
 });
 
-// IAM-0003 lists a missing code, itself, a proposed story and a real one.
-const DANGLING_CSV = CSV.replace('SSO Login,"As a user, I want SSO, so that no credentials",55,,,,', 'SSO Login,"As a user, I want SSO, so that no credentials",55,,IAM-0099;IAM-0003;NEW-4;IAM-0001,,');
-const danglingBacklog = () => loadBacklog(DANGLING_CSV);
-const removeRow = (suggested, over = {}) => finding({ storyId: 'IAM-0003', field: 'Depends On', action: 'remove', suggested, storyTitle: 'SSO Login', area: 'INVEST', ...over });
+// B1-IAM-0003 lists a missing code, itself, a proposed story and a real one.
+const DANGLING_CSV = CSV.replace('SSO Login,"As a user, I want SSO, so that no credentials",55,,,,', 'SSO Login,"As a user, I want SSO, so that no credentials",55,,B1-IAM-0099;B1-IAM-0003;NEW-4;B1-IAM-0001,,');
+const danglingBacklog = () => load(DANGLING_CSV);
+const removeRow = (suggested, over = {}) => finding({ storyId: 'B1-IAM-0003', field: 'Depends On', action: 'remove', suggested, storyTitle: 'SSO Login', area: 'INVEST', ...over });
 
 test('a Depends On remove is accepted for an entry no story holds, itself or a proposed story', () => {
   const b = danglingBacklog();
-  for (const entry of ['IAM-0099', 'IAM-0003', 'NEW-4']) assert.deepEqual(validateFindings([removeRow(entry)], b), [], entry);
-  assert.ok(validateFindings([removeRow('IAM-0098')], b).some((e) => e.includes('does not depend on IAM-0098')));
+  for (const entry of ['B1-IAM-0099', 'B1-IAM-0003', 'NEW-4']) assert.deepEqual(validateFindings([removeRow(entry)], b), [], entry);
+  assert.ok(validateFindings([removeRow('B1-IAM-0098')], b).some((e) => e.includes('does not depend on B1-IAM-0098')));
   // add keeps its checks
   const add = (suggested) => removeRow(suggested, { action: 'add' });
-  for (const entry of ['IAM-0099', 'IAM-0003', 'NEW-4']) assert.ok(validateFindings([add(entry)], b).length, entry);
+  for (const entry of ['B1-IAM-0099', 'B1-IAM-0003', 'NEW-4']) assert.ok(validateFindings([add(entry)], b).length, entry);
 });
 
 test('a Depends On remove names the Title only when a story holds the code', () => {
   const b = danglingBacklog();
   const opts = { requireTitles: true };
-  assert.deepEqual(validateFindings([removeRow('IAM-0099'), removeRow('IAM-0003'), removeRow('NEW-4')], b, opts), []);
-  assert.ok(validateFindings([removeRow('IAM-0001')], b, opts).some((e) => e.includes('targetTitle')));
-  assert.deepEqual(validateFindings([removeRow('IAM-0001', { targetTitle: 'Login' })], b, opts), []);
-  assert.ok(validateFindings([removeRow('IAM-0001', { targetTitle: 'Logout' })], b, opts).length);
+  assert.deepEqual(validateFindings([removeRow('B1-IAM-0099'), removeRow('B1-IAM-0003'), removeRow('NEW-4')], b, opts), []);
+  assert.ok(validateFindings([removeRow('B1-IAM-0001')], b, opts).some((e) => e.includes('targetTitle')));
+  assert.deepEqual(validateFindings([removeRow('B1-IAM-0001', { targetTitle: 'Login' })], b, opts), []);
+  assert.ok(validateFindings([removeRow('B1-IAM-0001', { targetTitle: 'Logout' })], b, opts).length);
 });
 
 test('applying a Depends On remove drops only the entry, held by a story or not', () => {
   const b = danglingBacklog();
-  const apply = (entry) => applySuggestions(b.stories, rowsFor([removeRow(entry)], b), b.headers);
-  const deps = (r) => r.stories.find((s) => s.code === 'IAM-0003').dependsOn;
-  assert.deepEqual(deps(apply('IAM-0099')), ['IAM-0003', 'NEW-4', 'IAM-0001']);
-  assert.deepEqual(deps(apply('IAM-0003')), ['IAM-0099', 'NEW-4', 'IAM-0001']);
-  assert.deepEqual(deps(apply('NEW-4')), ['IAM-0099', 'IAM-0003', 'IAM-0001']);
-  assert.deepEqual(deps(apply('IAM-0001')), ['IAM-0099', 'IAM-0003', 'NEW-4']);
+  const apply = (entry) => applySuggestions(b.stories, rowsFor([removeRow(entry)], b), b.headers, INITIALS);
+  const deps = (r) => r.stories.find((s) => s.code === 'B1-IAM-0003').dependsOn;
+  assert.deepEqual(deps(apply('B1-IAM-0099')), ['B1-IAM-0003', 'NEW-4', 'B1-IAM-0001']);
+  assert.deepEqual(deps(apply('B1-IAM-0003')), ['B1-IAM-0099', 'NEW-4', 'B1-IAM-0001']);
+  assert.deepEqual(deps(apply('NEW-4')), ['B1-IAM-0099', 'B1-IAM-0003', 'B1-IAM-0001']);
+  assert.deepEqual(deps(apply('B1-IAM-0001')), ['B1-IAM-0099', 'B1-IAM-0003', 'NEW-4']);
 });
 
 test('a Depends On remove stays open while the entry is listed and is stale once it is gone', () => {
   const b = danglingBacklog();
-  const [row] = rowsFor([removeRow('IAM-0099')], b);
+  const [row] = rowsFor([removeRow('B1-IAM-0099')], b);
   assert.equal(suggestionState(row, b.stories).state, 'open');
-  const edited = b.stories.map((s) => (s.code === 'IAM-0003' ? { ...s, dependsOn: s.dependsOn.filter((c) => c !== 'IAM-0099') } : s));
+  const edited = b.stories.map((s) => (s.code === 'B1-IAM-0003' ? { ...s, dependsOn: s.dependsOn.filter((c) => c !== 'B1-IAM-0099') } : s));
   assert.equal(suggestionState(row, edited).state, 'stale');
   // an unrelated renumber leaves the row as written
-  assert.equal(retargetRows([row], new Map([['IAM-0001', 'B-0001']]))[0].suggested, 'IAM-0099');
+  assert.equal(retargetRows([row], new Map([['B1-IAM-0001', 'B1-B-0001']]))[0].suggested, 'B1-IAM-0099');
 });
 
 test('changing the Epic renumbers and links follow the story', () => {
   const b = backlog();
-  const rows = rowsFor([finding({ storyId: 'IAM-0001', field: 'Epic', suggested: 'Billing' })], b);
-  const r = applySuggestions(b.stories, rows, b.headers);
+  const rows = rowsFor([finding({ storyId: 'B1-IAM-0001', field: 'Epic', suggested: 'Billing' })], b);
+  const r = applySuggestions(b.stories, rows, b.headers, INITIALS);
   const moved = r.stories.find((s) => s.title === 'Login');
-  assert.match(moved.code, /^B-/);
+  assert.match(moved.code, /^B1-B-/);
   assert.deepEqual(r.stories.find((s) => s.title === 'Logout').dependsOn, [moved.code]);
 });
 
 test('a split group narrows the original and creates new stories', () => {
   const b = backlog();
   const rows = rowsFor([
-    finding({ storyId: 'IAM-0003', field: 'Title', suggested: 'SSO sign-in', confidence: 'confirm', group: 'split-3' }),
-    finding({ storyId: 'IAM-0003', field: 'Sprint points', suggested: '13', confidence: 'confirm', group: 'split-3' }),
+    finding({ storyId: 'B1-IAM-0003', field: 'Title', suggested: 'SSO sign-in', confidence: 'confirm', group: 'split-3' }),
+    finding({ storyId: 'B1-IAM-0003', field: 'Sprint points', suggested: '13', confidence: 'confirm', group: 'split-3' }),
     finding({ storyId: 'NEW-1', field: 'Title', action: 'add-story', suggested: 'SSO sign-out', confidence: 'confirm', group: 'split-3' }),
     finding({ storyId: 'NEW-1', field: 'Sprint points', action: 'add-story', suggested: '5', confidence: 'confirm', group: 'split-3' }),
     finding({ storyId: 'NEW-1', field: 'User Acceptance Criteria', action: 'add-story', suggested: 'AC1: Given a, when b, then c', confidence: 'confirm', group: 'split-3' }),
-    finding({ storyId: 'NEW-1', field: 'Depends On', action: 'add-story', suggested: 'IAM-0003', confidence: 'confirm', group: 'split-3' }),
+    finding({ storyId: 'NEW-1', field: 'Depends On', action: 'add-story', suggested: 'B1-IAM-0003', confidence: 'confirm', group: 'split-3' }),
   ], b);
-  const r = applySuggestions(b.stories, rows, b.headers);
+  const r = applySuggestions(b.stories, rows, b.headers, INITIALS);
   assert.equal(r.error, undefined);
   assert.equal(r.stories.length, 4);
   const orig = r.stories.find((s) => s.title === 'SSO sign-in');
@@ -269,7 +272,7 @@ test('a split group narrows the original and creates new stories', () => {
   const created = r.stories.find((s) => s.title === 'SSO sign-out');
   assert.equal(created.epic, "Identity & Access Management");
   assert.equal(created.feature, 'SSO');
-  assert.equal(created.code, 'IAM-0004');
+  assert.equal(created.code, 'B1-IAM-0004');
   assert.deepEqual(created.dependsOn, [orig.code]);
   assert.equal(created.criteria.length, 1);
 });
@@ -277,23 +280,23 @@ test('a split group narrows the original and creates new stories', () => {
 test('a group is stale as a whole when one row is stale, and nothing is applied', () => {
   const b = backlog();
   const rows = rowsFor([
-    finding({ storyId: 'IAM-0003', field: 'Title', suggested: 'SSO sign-in', confidence: 'confirm', group: 'g' }),
+    finding({ storyId: 'B1-IAM-0003', field: 'Title', suggested: 'SSO sign-in', confidence: 'confirm', group: 'g' }),
     finding({ storyId: 'NEW-1', field: 'Title', action: 'add-story', suggested: 'Other', confidence: 'confirm', group: 'g' }),
   ], b);
-  const edited = b.stories.map((s) => (s.code === 'IAM-0003' ? { ...s, title: 'By hand' } : s));
+  const edited = b.stories.map((s) => (s.code === 'B1-IAM-0003' ? { ...s, title: 'By hand' } : s));
   const [unit] = unitsOf(rows);
   assert.equal(unitState(unit, edited).state, 'stale');
-  assert.ok(applySuggestions(edited, rows, b.headers).error);
+  assert.ok(applySuggestions(edited, rows, b.headers, INITIALS).error);
 });
 
 test('open counts skip stale and decided rows and do not count new-story rows', () => {
   const b = backlog();
-  const rows = rowsFor([finding(), finding({ suggested: 'Second' }), finding({ storyId: 'IAM-0002', field: 'Title', suggested: 'X' })], b);
+  const rows = rowsFor([finding(), finding({ suggested: 'Second' }), finding({ storyId: 'B1-IAM-0002', field: 'Title', suggested: 'X' })], b);
   rows[1].status = 'dismissed';
-  const edited = b.stories.map((s) => (s.code === 'IAM-0002' ? { ...s, title: 'edited' } : s));
+  const edited = b.stories.map((s) => (s.code === 'B1-IAM-0002' ? { ...s, title: 'edited' } : s));
   const counts = openCounts(rows, edited);
-  assert.equal(counts.get('IAM-0001'), 1);
-  assert.equal(counts.get('IAM-0002'), undefined);
+  assert.equal(counts.get('B1-IAM-0001'), 1);
+  assert.equal(counts.get('B1-IAM-0002'), undefined);
 });
 
 // ---- criterion remove, Priority not reviewed, Review tab overview ----
@@ -310,7 +313,7 @@ test('remove on User Acceptance Criteria takes the label alone and needs an exis
   assert.deepEqual(validateFindings([removeAc(2)], b), []);
   assert.ok(validateFindings([removeAc(9)], b).some((e) => e.includes('no criterion AC9')));
   assert.ok(validateFindings([removeAc(1, { suggested: 'AC1: Given a, when b, then c' })], b).some((e) => e.includes('just the label')));
-  assert.ok(validateFindings([removeAc(1, { storyId: 'IAM-0003' })], b).length, 'blank placeholder criteria cannot be removed');
+  assert.ok(validateFindings([removeAc(1, { storyId: 'B1-IAM-0003' })], b).length, 'blank placeholder criteria cannot be removed');
 });
 
 test('remove fills Current with the criterion text and is stale when that criterion changed', () => {
@@ -318,17 +321,17 @@ test('remove fills Current with the criterion text and is stale when that criter
   const [row] = fillCurrent([removeAc(2)], b);
   assert.equal(row.current, 'AC2: Given d, when e, then f');
   assert.equal(suggestionState(row, b.stories).state, 'open');
-  const edited = b.stories.map((s) => (s.code === 'IAM-0001' ? { ...s, criteria: [s.criteria[0], { ...s.criteria[1], then: 'changed' }] } : s));
+  const edited = b.stories.map((s) => (s.code === 'B1-IAM-0001' ? { ...s, criteria: [s.criteria[0], { ...s.criteria[1], then: 'changed' }] } : s));
   assert.equal(suggestionState(row, edited).state, 'stale');
 });
 
 test('applying remove drops the criterion; several removes use the labels the review saw', () => {
   const b = backlog();
-  const one = applySuggestions(b.stories, fillCurrent([removeAc(1)], b), b.headers);
-  assert.deepEqual(one.stories.find((s) => s.code === 'IAM-0001').criteria.map((c) => c.given), ['d']);
+  const one = applySuggestions(b.stories, fillCurrent([removeAc(1)], b), b.headers, INITIALS);
+  assert.deepEqual(one.stories.find((s) => s.code === 'B1-IAM-0001').criteria.map((c) => c.given), ['d']);
 
-  const both = applySuggestions(b.stories, fillCurrent([removeAc(1), removeAc(2)], b), b.headers);
-  const left = both.stories.find((s) => s.code === 'IAM-0001').criteria;
+  const both = applySuggestions(b.stories, fillCurrent([removeAc(1), removeAc(2)], b), b.headers, INITIALS);
+  const left = both.stories.find((s) => s.code === 'B1-IAM-0001').criteria;
   assert.equal(left.length, 1, 'a story keeps one (blank) criterion row');
   assert.equal(left[0].given, '');
 
@@ -336,25 +339,25 @@ test('applying remove drops the criterion; several removes use the labels the re
     removeAc(1),
     finding({ field: 'User Acceptance Criteria', action: 'replace', suggested: 'AC2: Given x, when y, then z' }),
     finding({ field: 'User Acceptance Criteria', action: 'add', suggested: 'AC3: Given n, when o, then p' }),
-  ], b), b.headers);
-  assert.deepEqual(mixed.stories.find((s) => s.code === 'IAM-0001').criteria.map((c) => c.given), ['x', 'n']);
+  ], b), b.headers, INITIALS);
+  assert.deepEqual(mixed.stories.find((s) => s.code === 'B1-IAM-0001').criteria.map((c) => c.given), ['x', 'n']);
 });
 
 test('overview groups open suggestions by Area in backlog order and lists out-of-date ones apart', () => {
   const b = backlog();
   const rows = fillCurrent([
-    finding({ storyId: 'IAM-0002', field: 'Title', suggested: 'Log out', area: 'INVEST' }),
-    finding({ storyId: 'IAM-0001', field: 'Title', suggested: 'Log in', area: 'INVEST' }),
-    finding({ storyId: 'IAM-0001', field: 'Feature', suggested: 'Sign in', area: 'Hierarchy' }),
-    finding({ storyId: 'IAM-0003', field: 'Title', suggested: 'SSO', area: 'Acceptance criteria' }),
+    finding({ storyId: 'B1-IAM-0002', field: 'Title', suggested: 'Log out', area: 'INVEST' }),
+    finding({ storyId: 'B1-IAM-0001', field: 'Title', suggested: 'Log in', area: 'INVEST' }),
+    finding({ storyId: 'B1-IAM-0001', field: 'Feature', suggested: 'Sign in', area: 'Hierarchy' }),
+    finding({ storyId: 'B1-IAM-0003', field: 'Title', suggested: 'SSO', area: 'Acceptance criteria' }),
     finding({ storyId: 'ZZ-0001', field: 'Title', suggested: 'Gone', area: 'INVEST' }),
   ].filter((f) => f.storyId !== 'ZZ-0001'), b);
   rows.push({ ...rows[0], storyId: 'ZZ-0001', suggested: 'Gone' });
-  const staleRow = rows.find((r) => r.storyId === 'IAM-0003');
-  const edited = b.stories.map((s) => (s.code === 'IAM-0003' ? { ...s, title: 'By hand' } : s));
+  const staleRow = rows.find((r) => r.storyId === 'B1-IAM-0003');
+  const edited = b.stories.map((s) => (s.code === 'B1-IAM-0003' ? { ...s, title: 'By hand' } : s));
   const o = reviewOverview(rows, edited);
   assert.deepEqual(o.sections.map((s) => [s.area, s.units.length]), [['Hierarchy', 1], ['INVEST', 2], ['Acceptance criteria', 0], ['Clarification', 0], ['Consistency', 0]]);
-  assert.deepEqual(o.sections[1].units.map((u) => u.rows[0].storyId), ['IAM-0001', 'IAM-0002']);
+  assert.deepEqual(o.sections[1].units.map((u) => u.rows[0].storyId), ['B1-IAM-0001', 'B1-IAM-0002']);
   assert.equal(o.outOfDate.length, 2, 'the hand-edited title and the missing story');
   assert.equal(o.openCount, 3);
   assert.ok(o.outOfDate.some((u) => u.rows[0] === staleRow));
@@ -363,7 +366,7 @@ test('overview groups open suggestions by Area in backlog order and lists out-of
 test('overview shows a split group once, under the story it narrows', () => {
   const b = backlog();
   const rows = fillCurrent([
-    finding({ storyId: 'IAM-0003', field: 'Title', suggested: 'SSO sign-in', confidence: 'confirm', group: 'g', area: 'INVEST' }),
+    finding({ storyId: 'B1-IAM-0003', field: 'Title', suggested: 'SSO sign-in', confidence: 'confirm', group: 'g', area: 'INVEST' }),
     finding({ storyId: 'NEW-1', field: 'Title', action: 'add-story', suggested: 'Other', confidence: 'confirm', group: 'g', area: 'INVEST' }),
   ], b);
   const o = reviewOverview(rows, b.stories);
@@ -373,143 +376,143 @@ test('overview shows a split group once, under the story it narrows', () => {
 
 test('openUnitsFor: open and stale units of the story, not applied or dismissed ones', () => {
   const b = backlog();
-  const rows = rowsFor([finding(), finding({ suggested: 'Second' }), finding({ storyId: 'IAM-0002', field: 'Title', suggested: 'X' })], b);
+  const rows = rowsFor([finding(), finding({ suggested: 'Second' }), finding({ storyId: 'B1-IAM-0002', field: 'Title', suggested: 'X' })], b);
   rows[1].status = 'dismissed';
-  assert.deepEqual(openUnitsFor(rows, 'IAM-0001').map((u) => u.indexes), [[0]]);
-  assert.equal(openUnitsFor(rows, 'IAM-0002').length, 1);
+  assert.deepEqual(openUnitsFor(rows, 'B1-IAM-0001').map((u) => u.indexes), [[0]]);
+  assert.equal(openUnitsFor(rows, 'B1-IAM-0002').length, 1);
   rows[0].status = 'applied';
-  assert.equal(openUnitsFor(rows, 'IAM-0001').length, 0);
+  assert.equal(openUnitsFor(rows, 'B1-IAM-0001').length, 0);
   assert.equal(openUnitsFor(rows, ''). length, 0);
 });
 
 test('openUnitsFor: a stale suggestion still counts, a split group is one unit', () => {
   const b = backlog();
   const rows = rowsFor([finding({ group: 'g1' }), finding({ group: 'g1', suggested: 'B' })], b);
-  const edited = b.stories.map((s) => (s.code === 'IAM-0001' ? { ...s, title: 'Changed by hand' } : s));
-  assert.equal(unitState(openUnitsFor(rows, 'IAM-0001')[0], edited).state, 'stale');
-  assert.deepEqual(openUnitsFor(rows, 'IAM-0001').map((u) => u.indexes), [[0, 1]]);
+  const edited = b.stories.map((s) => (s.code === 'B1-IAM-0001' ? { ...s, title: 'Changed by hand' } : s));
+  assert.equal(unitState(openUnitsFor(rows, 'B1-IAM-0001')[0], edited).state, 'stale');
+  assert.deepEqual(openUnitsFor(rows, 'B1-IAM-0001').map((u) => u.indexes), [[0, 1]]);
 });
 
 test('retargetRows: open rows follow renumbered stories, history stays, Depends On targets follow too', () => {
   const b = backlog();
   const rows = rowsFor([
-    finding({ storyId: 'IAM-0002', field: 'Title', suggested: 'X' }),
-    finding({ storyId: 'IAM-0002', field: 'Depends On', action: 'add', suggested: 'IAM-0003' }),
-    finding({ storyId: 'IAM-0003', field: 'Title', suggested: 'Y' }),
+    finding({ storyId: 'B1-IAM-0002', field: 'Title', suggested: 'X' }),
+    finding({ storyId: 'B1-IAM-0002', field: 'Depends On', action: 'add', suggested: 'B1-IAM-0003' }),
+    finding({ storyId: 'B1-IAM-0003', field: 'Title', suggested: 'Y' }),
   ], b);
   rows[2].status = 'dismissed';
-  const out = retargetRows(rows, new Map([['IAM-0002', 'IAM-0001'], ['IAM-0003', 'IAM-0002']]));
-  assert.deepEqual(out.map((r) => r.storyId), ['IAM-0001', 'IAM-0001', 'IAM-0003']);
-  assert.equal(out[1].suggested, 'IAM-0002');
+  const out = retargetRows(rows, new Map([['B1-IAM-0002', 'B1-IAM-0001'], ['B1-IAM-0003', 'B1-IAM-0002']]));
+  assert.deepEqual(out.map((r) => r.storyId), ['B1-IAM-0001', 'B1-IAM-0001', 'B1-IAM-0003']);
+  assert.equal(out[1].suggested, 'B1-IAM-0002');
   assert.equal(retargetRows(rows, new Map()), rows);
 });
 
-// ---------- locked stories ----------
+// ---------- frozen stories ----------
 
-// IAM-0002 (Logout) locked.
-const lockedBacklog = () => {
+// B1-IAM-0002 (Logout) frozen.
+const frozenBacklog = () => {
   const b = backlog();
-  b.stories = b.stories.map((s) => (s.code === 'IAM-0002' ? { ...s, locked: true } : s));
+  b.stories = b.stories.map((s) => (s.code === 'B1-IAM-0002' ? { ...s, frozen: true } : s));
   return b;
 };
-const unlockFinding = (over = {}) => ({
-  storyId: 'IAM-0002', field: '', action: 'unlock', suggested: '', reason: 'Far too vague to build', area: 'INVEST', confidence: 'ready', group: '', ...over,
+// A row an older version wrote: it has no Field, and the story was locked.
+const oldUnlockRow = (over = {}) => ({
+  storyId: 'B1-IAM-0002', field: '', action: 'unlock', current: '', suggested: '', reason: 'Far too vague to build', area: 'INVEST', confidence: 'ready', group: '', status: 'open', ...over,
 });
-const editLogout = (over = {}) => finding({ storyId: 'IAM-0002', ...over });
+const editLogout = (over = {}) => finding({ storyId: 'B1-IAM-0002', ...over });
 
-test('an unlock row round-trips through the review CSV and is valid for a locked story', () => {
-  assert.deepEqual(validateFindings([unlockFinding()], lockedBacklog()), []);
-  const rows = fillCurrent([unlockFinding()], lockedBacklog());
-  assert.equal(rows[0].current, '');
-  assert.equal(rows[0].status, 'open');
-  const back = parseReview(serializeReview(rows));
-  assert.deepEqual(back.rows, rows);
-  assert.equal(back.skipped, 0);
+test('the writer rejects a finding for a frozen story and names it', () => {
+  const errors = validateFindings([editLogout()], frozenBacklog());
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /B1-IAM-0002 is frozen/);
+  assert.deepEqual(validateFindings([editLogout()], backlog()), []); // the same finding on an unfrozen story is fine
+  assert.deepEqual(validateFindings([finding()], frozenBacklog()), []); // other stories are not affected
 });
 
-test('unlock rows: the story must be locked, Field/Suggested/Group must be empty', () => {
-  assert.ok(validateFindings([unlockFinding({ storyId: 'IAM-0001' })], lockedBacklog()).some((e) => e.includes('not locked')));
-  assert.ok(validateFindings([unlockFinding({ storyId: 'ZZ-0001' })], lockedBacklog()).some((e) => e.includes('ZZ-0001')));
-  for (const over of [{ field: 'Title' }, { suggested: 'x' }, { group: 'g' }]) {
-    assert.ok(validateFindings([unlockFinding(over)], lockedBacklog()).some((e) => e.includes('empty Field, Suggested and Group')), JSON.stringify(over));
+test('the writer rejects the unlock action, on a frozen story and on any other', () => {
+  const unlock = { storyId: 'B1-IAM-0002', field: '', action: 'unlock', suggested: '', reason: 'Far too vague to build', area: 'INVEST', confidence: 'ready', group: '' };
+  for (const b of [frozenBacklog(), backlog()]) {
+    const errors = validateFindings([unlock], b);
+    assert.ok(errors.some((e) => e.includes('Action "unlock"')), errors.join('|'));
   }
-  assert.ok(validateFindings([unlockFinding({ reason: '' })], lockedBacklog()).some((e) => e.includes('Reason')));
 });
 
-test('a field edit on a locked story needs an unlock row in the batch or in the existing rows', () => {
-  const b = lockedBacklog();
-  const without = validateFindings([editLogout()], b);
-  assert.ok(without.some((e) => e.includes('IAM-0002') && e.includes('locked')));
-  assert.deepEqual(validateFindings([editLogout(), unlockFinding()], b), []);
-  const earlier = fillCurrent([unlockFinding()], b);
-  assert.deepEqual(validateFindings([editLogout()], b, { existingRows: earlier }), []);
-  // an unlock row for another story does not count
-  assert.ok(validateFindings([editLogout()], b, { existingRows: [{ ...earlier[0], storyId: 'IAM-0003' }] }).length > 0);
-  // unlocked stories need nothing
-  assert.deepEqual(validateFindings([finding()], b), []);
-});
-
-test('a split group that narrows a locked story needs an unlock row too', () => {
+test('a split group that narrows a frozen story is rejected', () => {
   const group = [
     editLogout({ confidence: 'confirm', group: 'split', suggested: 'Sign out' }),
     { storyId: 'NEW-1', field: 'Title', action: 'add-story', suggested: 'Expire session', reason: 'r', area: 'INVEST', confidence: 'confirm', group: 'split' },
   ];
-  assert.ok(validateFindings(group, lockedBacklog()).some((e) => e.includes('locked')));
-  assert.deepEqual(validateFindings([...group, unlockFinding()], lockedBacklog()), []);
+  assert.ok(validateFindings(group, frozenBacklog()).some((e) => e.includes('frozen')));
+  assert.deepEqual(validateFindings(group, backlog()), []);
 });
 
-test('suggestions on a locked story are in the locked state, unlock rows are open while locked', () => {
-  const b = lockedBacklog();
-  const [edit, unlock] = fillCurrent([editLogout({ suggested: 'Sign out' }), unlockFinding()], b);
-  assert.deepEqual(suggestionState(edit, b.stories), { state: 'locked' });
-  assert.deepEqual(suggestionState(unlock, b.stories), { state: 'open' });
-  const plain = backlog();
-  assert.deepEqual(suggestionState(edit, plain.stories), { state: 'open' });
-  assert.equal(suggestionState(unlock, plain.stories).state, 'stale');
-  assert.equal(suggestionState({ ...unlock, storyId: 'ZZ-0001' }, b.stories).state, 'stale');
-  // stale wins over locked: the field was edited since the review
-  const edited = b.stories.map((s) => (s.code === 'IAM-0002' ? { ...s, title: 'Other' } : s));
+test('an old unlock row loads without error and is stale, with or without a frozen story', () => {
+  const back = parseReview(serializeReview([oldUnlockRow()]));
+  assert.equal(back.ok, true);
+  assert.equal(back.skipped, 0);
+  assert.deepEqual(back.rows, [oldUnlockRow()]);
+  for (const b of [backlog(), frozenBacklog()]) {
+    assert.equal(suggestionState(back.rows[0], b.stories).state, 'stale');
+    const overview = reviewOverview(back.rows, b.stories);
+    assert.equal(overview.openCount, 0);
+    assert.equal(overview.outOfDate.length, 1);
+    assert.equal(openCounts(back.rows, b.stories).size, 0);
+    assert.ok(applySuggestions(b.stories, back.rows, b.headers, INITIALS).error);
+  }
+});
+
+test('Accept all leaves an old unlock row open and counts it as not applied', () => {
+  const b = backlog();
+  const [unit] = unitsOf([oldUnlockRow()]);
+  const r = acceptAll(b.stories, [unit], b.headers, INITIALS);
+  assert.equal(r.applied.length, 0);
+  assert.deepEqual(r.skipped.map((s) => s.reason), ['failed']);
+  assert.equal(r.stories, b.stories);
+});
+
+test('suggestions on a frozen story are in the frozen state; stale wins over frozen', () => {
+  const b = frozenBacklog();
+  const [edit] = fillCurrent([editLogout({ suggested: 'Sign out' })], backlog());
+  assert.deepEqual(suggestionState(edit, b.stories), { state: 'frozen' });
+  assert.deepEqual(suggestionState(edit, backlog().stories), { state: 'open' });
+  // the field was edited since the review
+  const edited = b.stories.map((s) => (s.code === 'B1-IAM-0002' ? { ...s, title: 'Other' } : s));
   assert.equal(suggestionState(edit, edited).state, 'stale');
 });
 
-test('unitState: a group with a locked story is locked; applying it is refused', () => {
-  const b = lockedBacklog();
+test('a suggestion written before the story was frozen can never be applied', () => {
+  const [row] = fillCurrent([editLogout({ suggested: 'Sign out' })], backlog());
+  const b = frozenBacklog();
+  assert.match(applySuggestions(b.stories, [row], b.headers, INITIALS).error, /frozen/);
+});
+
+test('unitState: a group with a frozen story is frozen; applying it is refused', () => {
   const rows = fillCurrent([
     editLogout({ confidence: 'confirm', group: 'split', suggested: 'Sign out' }),
     { storyId: 'NEW-1', field: 'Title', action: 'add-story', suggested: 'Expire session', reason: 'r', area: 'INVEST', confidence: 'confirm', group: 'split' },
-  ], b);
+  ], backlog());
   const [unit] = unitsOf(rows);
-  assert.equal(unitState(unit, b.stories).state, 'locked');
-  assert.ok(applySuggestions(b.stories, unit.rows, b.headers).error.includes('locked'));
+  const b = frozenBacklog();
+  assert.equal(unitState(unit, b.stories).state, 'frozen');
+  assert.ok(applySuggestions(b.stories, unit.rows, b.headers, INITIALS).error.includes('frozen'));
   const open = backlog();
   assert.equal(unitState(unit, open.stories).state, 'open');
-  assert.ok(applySuggestions(open.stories, unit.rows, open.headers).stories);
+  assert.ok(applySuggestions(open.stories, unit.rows, open.headers, INITIALS).stories);
 });
 
-test('applySuggestions refuses an unlock row; counts include locked-held and unlock rows', () => {
-  const b = lockedBacklog();
-  const rows = fillCurrent([editLogout({ suggested: 'Sign out' }), unlockFinding()], b);
-  assert.ok(applySuggestions(b.stories, [rows[1]], b.headers).error);
-  assert.equal(openCounts(rows, b.stories).get('IAM-0002'), 2);
+test('a suggestion held back by a frozen story still counts as open', () => {
+  const rows = fillCurrent([editLogout({ suggested: 'Sign out' })], backlog());
+  const b = frozenBacklog();
+  assert.equal(openCounts(rows, b.stories).get('B1-IAM-0002'), 1);
   const overview = reviewOverview(rows, b.stories);
-  assert.equal(overview.openCount, 2);
+  assert.equal(overview.openCount, 1);
   assert.equal(overview.outOfDate.length, 0);
-  // once unlocked by hand the unlock row is out of date and the edit is a normal suggestion
-  const free = reviewOverview(rows, backlog().stories);
-  assert.equal(free.outOfDate.length, 1);
-  assert.equal(free.openCount, 1);
-});
-
-test('re-run keeps the status of an identical unlock row', () => {
-  const [row] = fillCurrent([unlockFinding()], lockedBacklog());
-  const merged = mergeStatus([row], [{ ...row, status: 'dismissed' }]);
-  assert.equal(merged[0].status, 'dismissed');
 });
 
 const ask = (over = {}) => finding({ field: 'Clarifications', action: 'append', suggested: 'Which export format?', area: 'Clarification', confidence: 'confirm', ...over });
 
 test('clarification suggestions: valid rows pass, labels, groups and other actions are rejected', () => {
-  assert.deepEqual(validateFindings([ask(), ask({ area: 'Hierarchy', storyId: 'IAM-0002' })], backlog()), []);
+  assert.deepEqual(validateFindings([ask(), ask({ area: 'Hierarchy', storyId: 'B1-IAM-0002' })], backlog()), []);
   assert.match(validateFindings([ask({ suggested: 'Q1: Which?' })], backlog())[0], /without a "Q<n>:" label/);
   assert.match(validateFindings([ask({ group: 'g' })], backlog())[0], /takes no Group/);
   assert.match(validateFindings([ask({ action: 'replace' })], backlog())[0], /does not fit Field Clarifications/);
@@ -520,8 +523,8 @@ test('clarification suggestion: Apply adds an open question; asking twice is out
   const [row] = fillCurrent([ask()], b);
   assert.equal(row.current, '');
   assert.equal(suggestionState(row, b.stories).state, 'open');
-  const out = applySuggestions(b.stories, [row], b.headers);
-  const story = out.stories.find((s) => s.code === 'IAM-0001');
+  const out = applySuggestions(b.stories, [row], b.headers, INITIALS);
+  const story = out.stories.find((s) => s.code === 'B1-IAM-0001');
   assert.deepEqual(story.clarifications, [{ q: 'Which export format?', a: '' }]);
   assert.equal(b.stories[0].clarifications.length, 0, 'input is not mutated');
   const again = suggestionState(row, out.stories);
@@ -531,13 +534,13 @@ test('clarification suggestion: Apply adds an open question; asking twice is out
   assert.equal(suggestionState(dup, out.stories).state, 'stale');
 });
 
-test('clarification suggestion on a locked story waits for an unlock; free text cells are stale', () => {
+test('clarification suggestion on a frozen story waits for nothing, it is never applied; free text cells are stale', () => {
   const b = backlog();
-  const locked = b.stories.map((s) => (s.code === 'IAM-0001' ? { ...s, locked: true } : s));
+  const frozen = b.stories.map((s) => (s.code === 'B1-IAM-0001' ? { ...s, frozen: true } : s));
   const [row] = fillCurrent([ask()], b);
-  assert.equal(suggestionState(row, locked).state, 'locked');
-  assert.match(applySuggestions(locked, [row], b.headers).error, /locked/);
-  const raw = b.stories.map((s) => (s.code === 'IAM-0001' ? { ...s, rawClarifications: 'Ask Sam' } : s));
+  assert.equal(suggestionState(row, frozen).state, 'frozen');
+  assert.match(applySuggestions(frozen, [row], b.headers, INITIALS).error, /frozen/);
+  const raw = b.stories.map((s) => (s.code === 'B1-IAM-0001' ? { ...s, rawClarifications: 'Ask Sam' } : s));
   assert.equal(suggestionState(row, raw).state, 'stale');
 });
 
@@ -554,7 +557,7 @@ test('clarification rows round trip through the review CSV and show in the Clari
 
 const withPairs = (pairs = [{ q: 'Who owns approvals?', a: '' }, { q: 'Is SSO needed?', a: 'Yes' }, { q: 'Which format?', a: '' }]) => {
   const b = backlog();
-  return { ...b, stories: b.stories.map((s) => (s.code === 'IAM-0001' ? { ...s, clarifications: pairs, notes: 'Existing.' } : s)) };
+  return { ...b, stories: b.stories.map((s) => (s.code === 'B1-IAM-0001' ? { ...s, clarifications: pairs, notes: 'Existing.' } : s)) };
 };
 const resolveRow = (over = {}) => finding({
   field: 'Clarifications', action: 'resolve', pair: 1, suggested: 'Approvals are owned by Finance', area: 'Clarification', confidence: 'ready', ...over,
@@ -568,8 +571,8 @@ test('resolve findings: valid rows pass; pair, labels, groups and free text are 
   assert.match(validateFindings([resolveRow({ pair: 0 })], b)[0], /no question 0/);
   assert.match(validateFindings([resolveRow({ suggested: 'A1: Finance' })], b)[0], /without a "Q<n>:" or "A<n>:" label/);
   assert.match(validateFindings([resolveRow({ group: 'g' })], b)[0], /takes no Group/);
-  assert.match(validateFindings([resolveRow({ pair: 1, storyId: 'IAM-0002' })], b)[0], /has no questions/);
-  const raw = { ...b, stories: b.stories.map((s) => (s.code === 'IAM-0001' ? { ...s, rawClarifications: 'Ask Sam' } : s)) };
+  assert.match(validateFindings([resolveRow({ pair: 1, storyId: 'B1-IAM-0002' })], b)[0], /has no questions/);
+  const raw = { ...b, stories: b.stories.map((s) => (s.code === 'B1-IAM-0001' ? { ...s, rawClarifications: 'Ask Sam' } : s)) };
   assert.match(validateFindings([resolveRow()], raw)[0], /free text, so a question cannot be resolved/);
 });
 
@@ -584,15 +587,15 @@ test('resolve: Apply adds the note on a new line and removes the question; the i
   const b = withPairs();
   const [row] = fillCurrent([resolveRow()], b);
   assert.equal(suggestionState(row, b.stories).state, 'open');
-  const out = applySuggestions(b.stories, [row], b.headers);
-  const story = out.stories.find((s) => s.code === 'IAM-0001');
+  const out = applySuggestions(b.stories, [row], b.headers, INITIALS);
+  const story = out.stories.find((s) => s.code === 'B1-IAM-0001');
   assert.equal(story.notes, 'Existing.\nApprovals are owned by Finance');
   assert.deepEqual(story.clarifications.map((p) => p.q), ['Is SSO needed?', 'Which format?']);
   assert.equal(b.stories[0].clarifications.length, 3, 'input is not mutated');
   assert.equal(b.stories[0].notes, 'Existing.');
   assert.equal(suggestionState(row, out.stories).state, 'stale');
-  const noNotes = b.stories.map((s) => (s.code === 'IAM-0001' ? { ...s, notes: '' } : s));
-  assert.equal(applySuggestions(noNotes, [row], b.headers).stories.find((s) => s.code === 'IAM-0001').notes, 'Approvals are owned by Finance');
+  const noNotes = b.stories.map((s) => (s.code === 'B1-IAM-0001' ? { ...s, notes: '' } : s));
+  assert.equal(applySuggestions(noNotes, [row], b.headers, INITIALS).stories.find((s) => s.code === 'B1-IAM-0001').notes, 'Approvals are owned by Finance');
 });
 
 test('resolve: rows of one story apply in any order because the pair is found by its text', () => {
@@ -602,24 +605,24 @@ test('resolve: rows of one story apply in any order because the pair is found by
     let stories = b.stories;
     for (const row of order) {
       assert.equal(suggestionState(row, stories).state, 'open');
-      stories = applySuggestions(stories, [row], b.headers).stories;
+      stories = applySuggestions(stories, [row], b.headers, INITIALS).stories;
     }
-    const story = stories.find((s) => s.code === 'IAM-0001');
+    const story = stories.find((s) => s.code === 'B1-IAM-0001');
     assert.deepEqual(story.clarifications.map((p) => p.q), ['Is SSO needed?']);
     assert.equal(story.notes.split('\n').length, 3);
   }
 });
 
-test('resolve: stale when the question is gone, repeated, or the note is already in Notes; locked and free text too', () => {
+test('resolve: stale when the question is gone, repeated, or the note is already in Notes; frozen and free text too', () => {
   const b = withPairs();
   const [row] = fillCurrent([resolveRow()], b);
-  const set = (patch) => b.stories.map((s) => (s.code === 'IAM-0001' ? { ...s, ...patch } : s));
+  const set = (patch) => b.stories.map((s) => (s.code === 'B1-IAM-0001' ? { ...s, ...patch } : s));
   assert.match(suggestionState(row, set({ clarifications: [] })).why, /edited or removed/);
   assert.match(suggestionState(row, set({ clarifications: [{ q: 'who OWNS approvals?', a: '' }, { q: 'Who owns approvals?', a: '' }] })).why, /same text/);
   assert.match(suggestionState(row, set({ notes: 'x\napprovals are owned by finance' })).why, /Notes already contain/);
   assert.equal(suggestionState(row, set({ rawClarifications: 'Ask Sam' })).state, 'stale');
-  assert.equal(suggestionState(row, set({ locked: true })).state, 'locked');
-  assert.match(applySuggestions(set({ locked: true }), [row], b.headers).error, /locked/);
+  assert.equal(suggestionState(row, set({ frozen: true })).state, 'frozen');
+  assert.match(applySuggestions(set({ frozen: true }), [row], b.headers, INITIALS).error, /frozen/);
 });
 
 test('resolve: Accept all applies it, rows round trip through the CSV, and the Clarification section lists it', () => {
@@ -627,14 +630,14 @@ test('resolve: Accept all applies it, rows round trip through the CSV, and the C
   const rows = fillCurrent([resolveRow({ reason: 'Matters, "a lot"' })], b);
   const back = parseReview(serializeReview(rows));
   assert.deepEqual(back.rows, rows);
-  const result = acceptAll(b.stories, unitsOf(back.rows), b.headers);
+  const result = acceptAll(b.stories, unitsOf(back.rows), b.headers, INITIALS);
   assert.equal(result.applied.length, 1);
-  assert.equal(result.stories.find((s) => s.code === 'IAM-0001').clarifications.length, 2);
+  assert.equal(result.stories.find((s) => s.code === 'B1-IAM-0001').clarifications.length, 2);
   assert.equal(reviewOverview(back.rows, b.stories).sections.find((s) => s.area === 'Clarification').units.length, 1);
 });
 
 test('criterionNumberOf places a replace or remove row on the criterion its Current text names, only', () => {
-  const story = backlog().stories.find((s) => s.code === 'IAM-0001');
+  const story = backlog().stories.find((s) => s.code === 'B1-IAM-0001');
   const unit = (over, group = '') => ({ group, rows: [finding({
     field: 'User Acceptance Criteria', suggested: 'AC2: Given d, when e, then x', current: 'AC2: Given d, when e, then f', ...over,
   })] });
@@ -652,13 +655,13 @@ test('criterionNumberOf places a replace or remove row on the criterion its Curr
 const criteriaCsv = (count) => {
   const cells = Array.from({ length: count }, (_, i) => `AC${i + 1}: Given g${i + 1}, when w${i + 1}, then t${i + 1}`).join('\n');
   return 'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes\r\n' +
-    `DAM-0001,Data Asset Management,Sets,Big,"As a user, I want data, so that I know",5,High,,"${cells}",\r\n`;
+    `B1-DAM-0001,Data Asset Management,Sets,Big,"As a user, I want data, so that I know",5,High,,"${cells}",\r\n`;
 };
-const acRow = (action, suggested) => finding({ storyId: 'DAM-0001', field: 'User Acceptance Criteria', action, suggested });
-const givens = (stories) => stories.find((s) => s.code === 'DAM-0001').criteria.map((c) => c.given);
+const acRow = (action, suggested) => finding({ storyId: 'B1-DAM-0001', field: 'User Acceptance Criteria', action, suggested });
+const givens = (stories) => stories.find((s) => s.code === 'B1-DAM-0001').criteria.map((c) => c.given);
 
 test('rows on one story can be applied one at a time after a removal', () => {
-  const b = loadBacklog(criteriaCsv(17));
+  const b = load(criteriaCsv(17));
   const rows = fillCurrent([
     acRow('remove', 'AC12'),
     acRow('remove', 'AC15'),
@@ -668,37 +671,37 @@ test('rows on one story can be applied one at a time after a removal', () => {
   let stories = b.stories;
   for (const row of rows) {
     assert.equal(suggestionState(row, stories).state, 'open', `${row.action} ${row.suggested} stays current`);
-    const out = applySuggestions(stories, [row], b.headers);
+    const out = applySuggestions(stories, [row], b.headers, INITIALS);
     assert.equal(out.error, undefined);
     stories = out.stories;
   }
   const left = givens(stories);
   assert.equal(left.length, 16);
   assert.ok(!left.includes('g12') && !left.includes('g15'));
-  assert.equal(stories.find((s) => s.code === 'DAM-0001').criteria[left.indexOf('g16')].then, 'new');
+  assert.equal(stories.find((s) => s.code === 'B1-DAM-0001').criteria[left.indexOf('g16')].then, 'new');
   assert.equal(left.at(-1), 'extra');
 });
 
 test('rows applied in any order give the same story', () => {
-  const b = loadBacklog(criteriaCsv(17));
+  const b = load(criteriaCsv(17));
   const rows = fillCurrent([acRow('remove', 'AC12'), acRow('remove', 'AC15'), acRow('replace', 'AC16: Given g16, when w16, then new')], b);
-  const run = (order) => order.reduce((stories, i) => applySuggestions(stories, [rows[i]], b.headers).stories, b.stories);
+  const run = (order) => order.reduce((stories, i) => applySuggestions(stories, [rows[i]], b.headers, INITIALS).stories, b.stories);
   assert.deepEqual(givens(run([0, 1, 2])), givens(run([2, 1, 0])));
   assert.deepEqual(givens(run([1, 0, 2])), givens(run([0, 2, 1])));
 });
 
 test('a criterion deleted by hand moves the rows of the others instead of staling them', () => {
-  const b = loadBacklog(criteriaCsv(5));
+  const b = load(criteriaCsv(5));
   const rows = fillCurrent([acRow('replace', 'AC5: Given g5, when w5, then new'), acRow('remove', 'AC4')], b);
   const handDeleted = b.stories.map((s) => ({ ...s, criteria: s.criteria.filter((_, i) => i !== 1) }));
   assert.equal(suggestionState(rows[0], handDeleted).state, 'open');
   assert.equal(suggestionState(rows[1], handDeleted).state, 'open');
-  const out = applySuggestions(handDeleted, [rows[1]], b.headers);
+  const out = applySuggestions(handDeleted, [rows[1]], b.headers, INITIALS);
   assert.deepEqual(givens(out.stories), ['g1', 'g3', 'g5']);
 });
 
 test('a criterion edited by hand, or whose text appears twice away from its slot, is stale', () => {
-  const b = loadBacklog(criteriaCsv(4));
+  const b = load(criteriaCsv(4));
   const [row] = fillCurrent([acRow('remove', 'AC3')], b);
   const edit = (fn) => b.stories.map((s) => ({ ...s, criteria: fn(s.criteria) }));
 
@@ -715,11 +718,11 @@ test('a criterion edited by hand, or whose text appears twice away from its slot
 });
 
 test('displayRow shows the number a criterion has now, not the one the review saw; the stored row is untouched', () => {
-  const b = loadBacklog(criteriaCsv(17));
+  const b = load(criteriaCsv(17));
   const rows = fillCurrent([
     acRow('remove', 'AC12'), acRow('remove', 'AC15'), acRow('replace', 'AC16: Given g16, when w16, then new'), acRow('add', 'AC18: Given x, when y, then z'),
   ], b);
-  const after = applySuggestions(b.stories, [rows[0]], b.headers).stories; // AC12 gone: g15 is AC14, g16 is AC15, 16 criteria
+  const after = applySuggestions(b.stories, [rows[0]], b.headers, INITIALS).stories; // AC12 gone: g15 is AC14, g16 is AC15, 16 criteria
   const [, rm, rep, add] = rows.map((r) => displayRow(r, after));
   assert.equal(rm.suggested, 'AC14');
   assert.equal(rm.current, 'AC14: Given g15, when w15, then t15');
@@ -739,28 +742,28 @@ const unitsFor = (rows) => unitsOf(rows);
 
 test('acceptAll applies every eligible unit in order', () => {
   const b = backlog();
-  const rows = [open(), open({ storyId: 'IAM-0002', suggested: 'Sign out', current: 'Logout' })];
-  const r = acceptAll(b.stories, unitsFor(rows), b.headers);
+  const rows = [open(), open({ storyId: 'B1-IAM-0002', suggested: 'Sign out', current: 'Logout' })];
+  const r = acceptAll(b.stories, unitsFor(rows), b.headers, INITIALS);
   assert.equal(r.applied.length, 2);
   assert.equal(r.skipped.length, 0);
-  assert.equal(r.stories.find((s) => s.code === 'IAM-0001').title, 'Log in with a password');
-  assert.equal(r.stories.find((s) => s.code === 'IAM-0002').title, 'Sign out');
+  assert.equal(r.stories.find((s) => s.code === 'B1-IAM-0001').title, 'Log in with a password');
+  assert.equal(r.stories.find((s) => s.code === 'B1-IAM-0002').title, 'Sign out');
 });
 
-test('acceptAll skips a confirm default and an unlock row and leaves them untouched', () => {
+test('acceptAll skips a confirm default and leaves it untouched', () => {
   const b = backlog();
-  const rows = [open({ confidence: 'confirm' }), open({ storyId: 'IAM-0002', field: '', action: 'unlock', suggested: '' })];
-  const r = acceptAll(b.stories, unitsFor(rows), b.headers);
+  const rows = [open({ confidence: 'confirm' })];
+  const r = acceptAll(b.stories, unitsFor(rows), b.headers, INITIALS);
   assert.equal(r.applied.length, 0);
-  assert.deepEqual(r.skipped.map((s) => s.reason), ['check', 'unlock']);
+  assert.deepEqual(r.skipped.map((s) => s.reason), ['check']);
   assert.equal(r.stories, b.stories);
 });
 
-test('acceptAll skips a unit of a locked story', () => {
+test('acceptAll skips a unit of a frozen story', () => {
   const b = backlog();
-  const stories = b.stories.map((s) => (s.code === 'IAM-0001' ? { ...s, locked: true } : s));
-  const r = acceptAll(stories, unitsFor([open()]), b.headers);
-  assert.deepEqual(r.skipped.map((s) => s.reason), ['locked']);
+  const stories = b.stories.map((s) => (s.code === 'B1-IAM-0001' ? { ...s, frozen: true } : s));
+  const r = acceptAll(stories, unitsFor([open()]), b.headers, INITIALS);
+  assert.deepEqual(r.skipped.map((s) => s.reason), ['frozen']);
   assert.equal(r.applied.length, 0);
 });
 
@@ -769,17 +772,17 @@ test('acceptAll skips a unit made stale by an earlier one and still applies the 
   const rows = [
     open({ suggested: 'First' }),
     open({ suggested: 'Second' }), // expects the old title, gone after the first
-    open({ storyId: 'IAM-0002', suggested: 'Sign out', current: 'Logout' }),
+    open({ storyId: 'B1-IAM-0002', suggested: 'Sign out', current: 'Logout' }),
   ];
-  const r = acceptAll(b.stories, unitsFor(rows), b.headers);
+  const r = acceptAll(b.stories, unitsFor(rows), b.headers, INITIALS);
   assert.equal(r.applied.length, 2);
   assert.deepEqual(r.skipped.map((s) => s.reason), ['failed']);
-  assert.equal(r.stories.find((s) => s.code === 'IAM-0001').title, 'First');
+  assert.equal(r.stories.find((s) => s.code === 'B1-IAM-0001').title, 'First');
 });
 
 test('acceptAll with nothing eligible returns the stories unchanged', () => {
   const b = backlog();
-  const r = acceptAll(b.stories, [], b.headers);
+  const r = acceptAll(b.stories, [], b.headers, INITIALS);
   assert.equal(r.stories, b.stories);
   assert.deepEqual(r.applied, []);
 });
@@ -787,10 +790,10 @@ test('acceptAll with nothing eligible returns the stories unchanged', () => {
 test('acceptAll skips a unit whose apply is refused (dependency cycle) and applies the rest', () => {
   const b = backlog();
   const rows = [
-    open({ field: 'Depends On', action: 'add', current: '', suggested: 'IAM-0002' }), // IAM-0002 already depends on IAM-0001
-    open({ storyId: 'IAM-0002', suggested: 'Sign out', current: 'Logout' }),
+    open({ field: 'Depends On', action: 'add', current: '', suggested: 'B1-IAM-0002' }), // B1-IAM-0002 already depends on B1-IAM-0001
+    open({ storyId: 'B1-IAM-0002', suggested: 'Sign out', current: 'Logout' }),
   ];
-  const r = acceptAll(b.stories, unitsFor(rows), b.headers);
+  const r = acceptAll(b.stories, unitsFor(rows), b.headers, INITIALS);
   assert.deepEqual(r.skipped.map((s) => s.reason), ['failed']);
   assert.equal(r.applied.length, 1);
 });
@@ -798,10 +801,10 @@ test('acceptAll skips a unit whose apply is refused (dependency cycle) and appli
 test('acceptAll counts a split group as one unit; groups are always confirm defaults, so it is skipped as a check', () => {
   const b = backlog();
   const group = [
-    open({ storyId: 'IAM-0003', field: 'Title', current: 'SSO Login', suggested: 'SSO sign-in', confidence: 'confirm', group: 'split-3' }),
+    open({ storyId: 'B1-IAM-0003', field: 'Title', current: 'SSO Login', suggested: 'SSO sign-in', confidence: 'confirm', group: 'split-3' }),
     open({ storyId: 'NEW-1', field: 'Title', action: 'add-story', current: '', suggested: 'SSO sign-out', confidence: 'confirm', group: 'split-3' }),
   ];
-  const r = acceptAll(b.stories, unitsFor(group), b.headers);
+  const r = acceptAll(b.stories, unitsFor(group), b.headers, INITIALS);
   assert.equal(r.skipped.length, 1);
   assert.equal(r.skipped[0].reason, 'check');
   assert.equal(r.skipped[0].unit.rows.length, 2);
@@ -809,8 +812,8 @@ test('acceptAll counts a split group as one unit; groups are always confirm defa
 
 test('acceptSummaryText says how many were applied and why the rest stayed open', () => {
   assert.equal(acceptSummaryText(3, []), 'Applied 3.');
-  const skipped = [{ reason: 'check' }, { reason: 'locked' }, { reason: 'check' }];
-  assert.equal(acceptSummaryText(0, skipped), 'Applied 0. Left 3 open (1 locked story, 2 needs a check).');
+  const skipped = [{ reason: 'check' }, { reason: 'frozen' }, { reason: 'check' }];
+  assert.equal(acceptSummaryText(0, skipped), 'Applied 0. Left 3 open (1 frozen story, 2 needs a check).');
 });
 
 test('Consistency is an allowed Area, and an unknown Area names the five allowed ones', () => {
@@ -823,8 +826,8 @@ test('Consistency is an allowed Area, and an unknown Area names the five allowed
 test('overview puts Consistency rows in their own section after the others', () => {
   const b = backlog();
   const rows = fillCurrent([
-    finding({ storyId: 'IAM-0002', field: 'Title', suggested: 'Log out', area: 'Consistency' }),
-    finding({ storyId: 'IAM-0001', field: 'Feature', suggested: 'Sign in', area: 'Hierarchy' }),
+    finding({ storyId: 'B1-IAM-0002', field: 'Title', suggested: 'Log out', area: 'Consistency' }),
+    finding({ storyId: 'B1-IAM-0001', field: 'Feature', suggested: 'Sign in', area: 'Hierarchy' }),
   ], b);
   const o = reviewOverview(rows, b.stories);
   assert.equal(o.sections.at(-1).area, 'Consistency');

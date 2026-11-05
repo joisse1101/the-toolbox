@@ -2,26 +2,7 @@ import { useState } from 'react';
 import { groupByEpic, storyIssues, storyLabel } from '../../../../logic/backlog/model.js';
 import { openCount } from '../../../../logic/backlog/story-text.js';
 import { anyOpen, epicKey, featureKey } from '../../lib/collapse.js';
-import { groupLockState } from '../../../../logic/backlog/ids.js';
 import { issueClass, rowTooltip } from './issues.js';
-
-const LOCK_MARK = { all: '🔒', some: '◐', none: '🔓' };
-
-// The head's lock button: its mark is the group's state (derived from its stories) and a click locks the group, or
-// unlocks it when every story is locked. It must neither fold the group nor start a drag of it.
-function GroupLock({ name, stories, onLockGroup }) {
-  const state = groupLockState(stories);
-  const lock = state !== 'all';
-  const n = stories.length;
-  const label = `${lock ? 'Lock' : 'Unlock'} ${n === 1 ? '1 story' : `${n} stories`} in ${name}`;
-  const stop = (e) => e.stopPropagation();
-  return (
-    <button
-      type="button" className={`group-lock ${state}`} title={label} aria-label={label} draggable={false}
-      onClick={(e) => { e.stopPropagation(); onLockGroup(stories, lock); }} onKeyDown={stop} onDragStart={(e) => { e.preventDefault(); e.stopPropagation(); }}
-    >{LOCK_MARK[state]}</button>
-  );
-}
 
 // Drag a story to reorder it inside its epic, or onto another epic's group to move it there. Dropping on the
 // "(No epic)" group does nothing. `drag` is the story being dragged, `drop` = { epic, beforeId } where it would land
@@ -32,7 +13,7 @@ function GroupLock({ name, stories, onLockGroup }) {
 // stands for "before the next group". A feature can only land among the features of its own epic.
 // With `collapse` ({ closed, toggleKey, toggleLevel }, from useCollapsed) the folded groups live outside the list and the
 // panel offers buttons to fold every epic or every feature; without it the list keeps its own folds, forgotten on reload.
-export default function StoryList({ stories, problems, suggestionCounts = new Map(), selectedId, onSelect, onAdd, onMove, onMoveGroup, onLockGroup, onRenumber, renumberDisabled, heading = 'Stories', checked, onToggle, collapse }) {
+export default function StoryList({ stories, problems, suggestionCounts = new Map(), selectedId, onSelect, onAdd, onMove, onMoveGroup, onRenumber, renumberDisabled, heading = 'Stories', checked, onToggle, collapse }) {
   const [drag, setDrag] = useState(null);
   const [drop, setDrop] = useState(null);
   const [groupDrag, setGroupDrag] = useState(null);
@@ -144,7 +125,6 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
             onClick={() => toggle(epicKey(group.epic))} onKeyDown={(e) => toggleKey(e, epicKey(group.epic))}
             onDragOver={(e) => (groupDrag ? groupOver(e, epicCtx) : over(e, group, group.stories[0]?.id ?? null))} onDrop={dropHere}
           >
-            {onLockGroup && <GroupLock name={group.label} stories={group.stories} onLockGroup={onLockGroup} />}
             {`${epicClosed ? '▸' : '▾'} ${group.label} (${group.stories.length})`}
           </li>,
           ...(epicClosed ? [] : group.features.flatMap((fg, fi) => {
@@ -162,7 +142,6 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
               onClick={() => toggle(featureKey(group.epic, fg.feature))} onKeyDown={(e) => toggleKey(e, featureKey(group.epic, fg.feature))}
               onDragOver={(e) => (groupDrag ? groupOver(e, headCtx) : over(e, group, fg.stories[0]?.id ?? null))} onDrop={dropHere}
             >
-              {onLockGroup && <GroupLock name={fg.label} stories={fg.stories} onLockGroup={onLockGroup} />}
               {`${featureClosed ? '▸' : '▾'} ${fg.label} (${fg.stories.length})`}
             </li>,
             ...(featureClosed ? [] : fg.stories.map((s, i) => {
@@ -177,10 +156,10 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
                 key={s.id}
                 className={['in-feature', s.id === selectedId ? 'selected' : '', (s.benched ? '' : issueClass(errors, warnings)), s.id === drag ? 'dragging' : '', marker].join(' ').trim()}
                 title={rowTooltip(s, errors, warnings)}
-                draggable={!s.locked}
+                draggable={!s.frozen}
                 onClick={() => onSelect(s.id)}
                 onDragStart={(e) => {
-                  if (s.locked) return e.preventDefault(); // a locked story stays where it is
+                  if (s.frozen) return e.preventDefault(); // a frozen story stays where it is
                   e.dataTransfer.effectAllowed = 'move';
                   e.dataTransfer.setData('text/plain', String(s.id)); // Firefox needs data to start a drag
                   setDrag(s.id);
@@ -200,7 +179,7 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
                     onClick={(e) => e.stopPropagation()} onChange={() => onToggle(s.id)}
                   />
                 )}
-                {s.locked && <span className="lock-mark" title="Locked: reference only" aria-label="Locked">🔒</span>}
+                {s.frozen && <span className="frozen-mark" title="Frozen: reference only, read-only" aria-label="Frozen">{'\u2744'}</span>}
                 {s.benched && <span className="lock-mark" title="Benched: ignored by the explore and propose skills" aria-label="Benched">🪑</span>}
                 {s.code && <span className="code">{s.code}</span>}
                 <span className="title">{storyLabel(s)}</span>
@@ -225,7 +204,7 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
         {onRenumber && (
           <button
             type="button" id="renumberBtn" onClick={onRenumber} disabled={renumberDisabled}
-            title={renumberDisabled ? 'The IDs already follow the order shown' : "Put each feature's stories together, in the order shown, and renumber them. Locked stories keep their IDs."}
+            title={renumberDisabled ? 'The IDs already follow the order shown' : "Put each feature's stories together, in the order shown, and renumber them. Frozen stories keep their IDs."}
           >Renumber</button>
         )}
       </div>}

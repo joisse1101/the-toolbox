@@ -97,7 +97,7 @@ const CRITERIA_WARNING = 'The User Acceptance Criteria cell does not follow "AC1
 // `focusRequest` = { id } or null: focus the element with that id (default: Epic) once rendered, then call onFocused.
 // `suggestions`: the open review units for this story ({ key, group, rows }); see review.js. Ungrouped ones sit next to
 // their field, split groups in their own section.
-export default function StoryForm({ story: s, stories, problems, suggestions = [], focusRequest, onFocused, onEdit, onCommitEpic, onOpen, onApplySuggestion, onDismissSuggestion, onUnlockSuggestion, onMoveToProposed, onDelete, onLock, onBench }) {
+export default function StoryForm({ story: s, stories, problems, suggestions = [], focusRequest, onFocused, onEdit, onCommitEpic, onOpen, onApplySuggestion, onDismissSuggestion, onMoveToProposed, onDelete, onBench }) {
   const [depInput, setDepInput] = useState('');
   useEffect(() => {
     if (!focusRequest) return;
@@ -105,6 +105,7 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
     onFocused();
   }, [focusRequest, onFocused]);
 
+  const frozen = !!s.frozen; // every field is read-only; the reducer refuses an edit too
   const edit = (change) => onEdit(s.id, change);
   const setField = (key) => (e) => {
     const value = e.target.value;
@@ -152,11 +153,10 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
   const missing = (key) => (noValue(s[key]) ? 'missing' : undefined);
   const partMissing = (key) => (s.rawUserStory === null && noValue(s[key]) ? 'missing' : undefined);
   const optional = (key) => (noValue(s[key]) ? 'missing-optional' : undefined);
-  const unlockUnits = suggestions.filter((u) => u.rows[0].action === 'unlock');
   const forField = (...fields) => suggestions.filter((u) => !u.group && fields.includes(u.rows[0].field));
   const groups = suggestions.filter((u) => u.group);
   const listOf = (units) => (
-    <SuggestionList units={units} stories={stories} onApply={onApplySuggestion} onDismiss={onDismissSuggestion} onUnlock={onUnlockSuggestion} />
+    <SuggestionList units={units} stories={stories} onApply={onApplySuggestion} onDismiss={onDismissSuggestion} />
   );
   const list = (...fields) => listOf(forField(...fields));
   // A criterion's replace/remove suggestions sit under it; adds and ones naming a missing criterion stay below the list.
@@ -172,18 +172,13 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
   return (
     <section
       id="storyForm"
-      className={`card story-form${cls === 'incomplete' ? ' incomplete' : ''}${cls === 'warn' ? ' warn' : ''}${s.locked ? ' locked' : ''}`}
+      className={`card story-form${cls === 'incomplete' ? ' incomplete' : ''}${cls === 'warn' ? ' warn' : ''}${frozen ? ' frozen' : ''}`}
       onKeyDown={(e) => onNavKeyDown(e, s)}
     >
       <div className="story-header" id="storyHeader">
         <div className="story-code" id="storyCode">
           {s.code ? <>ID: <strong>{s.code}</strong></> : 'No ID yet: one is assigned once an Epic is set.'}
-          {onLock && (
-            <label className="lock-toggle" title={s.code ? (s.locked ? 'Locked: reference only. It is not reviewed, reordered, moved or deleted, and its Epic and ID stay.' : 'Lock this story: reference only, not submitted for review') : 'Set an Epic first'}>
-              <input type="checkbox" id="lockToggle" checked={!!s.locked} disabled={!s.code} onChange={(e) => onLock(s.id, e.target.checked)} />
-              {' '}Locked
-            </label>
-          )}
+          {frozen && <span className="frozen-mark" id="frozenMark" title="Frozen: reference only">{'\u2744'} Frozen</span>}
           {onBench && (
             <label className="lock-toggle" title="Bench this story: the jois-story-explore and jois-story-propose skills ignore it. Nothing else changes.">
               <input type="checkbox" id="benchToggle" checked={!!s.benched} onChange={(e) => onBench(s.id, e.target.checked)} />
@@ -194,8 +189,8 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
         <div className="story-actions" id="storyActions">
           {onMoveToProposed && (
             <button
-              type="button" id="moveToProposedBtn" disabled={!s.code || s.locked}
-              title={!s.code ? 'Set an Epic first' : s.locked ? 'Unlock the story first' : 'Remove this story from the backlog and make it a proposed story'}
+              type="button" id="moveToProposedBtn" disabled={!s.code || frozen}
+              title={!s.code ? 'Set an Epic first' : frozen ? 'A frozen story cannot be moved to Proposed' : 'Remove this story from the backlog and make it a proposed story'}
               onClick={() => onMoveToProposed(s)}
             >
               Move to Proposed
@@ -203,8 +198,8 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
           )}
           {onDelete && (
             <button
-              type="button" id="deleteStoryBtn" className="danger" disabled={s.locked}
-              title={s.locked ? 'Unlock the story first' : 'Delete this story'}
+              type="button" id="deleteStoryBtn" className="danger" disabled={frozen}
+              title={frozen ? 'A frozen story cannot be deleted' : 'Delete this story'}
               onClick={() => onDelete()}
             >
               Delete story
@@ -213,32 +208,27 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
         </div>
       </div>
 
-      {unlockUnits.length > 0 && (
-        <div className="unlock-banner" id="unlockBanner" role="status">
-          {unlockUnits.map((u) => (
-            <Suggestion
-              key={u.key} unit={u} stories={stories} onApply={onApplySuggestion} onDismiss={onDismissSuggestion} onUnlock={onUnlockSuggestion}
-              heading={<p className="unlock-banner-title">The review suggests unlocking and reviewing this story.</p>}
-            />
-          ))}
-        </div>
+      {frozen && (
+        <p className="frozen-note" id="frozenNote" role="status">
+          This story is frozen and read-only. It keeps its ID, and a change needs a new story that supersedes it.
+        </p>
       )}
 
       <fieldset>
         <legend>Where it fits</legend>
         <div className="grid3">
-          <div><label htmlFor="epic">Epic</label><input type="text" id="epic" className={missing('epic')} list="epicList" autoComplete="off" readOnly={!!s.locked} title={s.locked ? 'Unlock the story to change its Epic' : undefined} value={s.epic} onChange={onEpicInput} onBlur={() => onCommitEpic(s.id)} />{list('Epic')}</div>
-          <div><label htmlFor="feature">Feature</label><input type="text" id="feature" className={missing('feature')} list="featureList" autoComplete="off" value={s.feature} onChange={setField('feature')} />{list('Feature')}</div>
-          <div><label htmlFor="title">Title</label><input type="text" id="title" className={missing('title')} autoComplete="off" value={s.title} onChange={setField('title')} />{list('Title')}</div>
+          <div><label htmlFor="epic">Epic</label><input type="text" id="epic" className={missing('epic')} list="epicList" autoComplete="off" readOnly={frozen} value={s.epic} onChange={onEpicInput} onBlur={() => onCommitEpic(s.id)} />{list('Epic')}</div>
+          <div><label htmlFor="feature">Feature</label><input type="text" id="feature" className={missing('feature')} list="featureList" autoComplete="off" readOnly={frozen} value={s.feature} onChange={setField('feature')} />{list('Feature')}</div>
+          <div><label htmlFor="title">Title</label><input type="text" id="title" className={missing('title')} autoComplete="off" readOnly={frozen} value={s.title} onChange={setField('title')} />{list('Title')}</div>
         </div>
       </fieldset>
 
       <fieldset>
         <legend>User story</legend>
         <div className="grid3">
-          <div><label htmlFor="asA">As</label><input type="text" id="asA" placeholder="a team lead" className={partMissing('asA')} value={s.asA} onChange={setStoryPart('asA')} /></div>
-          <div><label htmlFor="iWant">I want</label><input type="text" id="iWant" className={partMissing('iWant')} value={s.iWant} onChange={setStoryPart('iWant')} /></div>
-          <div><label htmlFor="soThat">So that</label><input type="text" id="soThat" className={partMissing('soThat')} value={s.soThat} onChange={setStoryPart('soThat')} /></div>
+          <div><label htmlFor="asA">As</label><input type="text" id="asA" placeholder="a team lead" className={partMissing('asA')} readOnly={frozen} value={s.asA} onChange={setStoryPart('asA')} /></div>
+          <div><label htmlFor="iWant">I want</label><input type="text" id="iWant" className={partMissing('iWant')} readOnly={frozen} value={s.iWant} onChange={setStoryPart('iWant')} /></div>
+          <div><label htmlFor="soThat">So that</label><input type="text" id="soThat" className={partMissing('soThat')} readOnly={frozen} value={s.soThat} onChange={setStoryPart('soThat')} /></div>
         </div>
         {list('User Story')}
         <CellWarning id="storyWarning" raw={s.rawUserStory} message={STORY_WARNING} />
@@ -259,7 +249,7 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
                 <button
                   key={p} type="button" role="radio" data-points={String(p)}
                   className={p > SPLIT_ABOVE ? 'big' : undefined} title={p > SPLIT_ABOVE ? 'Consider splitting' : undefined}
-                  aria-checked={String(s.points) === String(p)}
+                  aria-checked={String(s.points) === String(p)} disabled={frozen}
                   // Clicking the selected one again clears it.
                   onClick={() => edit((d) => { d.points = String(d.points) === String(p) ? '' : String(p); })}
                 >
@@ -271,7 +261,7 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
           </div>
           <div>
             <label htmlFor="priority">Priority</label>
-            <select id="priority" className={optional('priority')} value={s.priority} onChange={setField('priority')}>
+            <select id="priority" className={optional('priority')} disabled={frozen} value={s.priority} onChange={setField('priority')}>
               {priorityOptions.map((p) => <option key={p} value={p}>{p || 'None'}</option>)}
             </select>
             {list('Priority')}
@@ -301,7 +291,7 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
                 }}
               >
                 <span
-                  className="criterion-handle" draggable title="Drag to reorder" aria-hidden="true"
+                  className="criterion-handle" draggable={!frozen} title="Drag to reorder" aria-hidden="true"
                   onDragStart={(e) => {
                     e.dataTransfer.effectAllowed = 'move';
                     e.dataTransfer.setData('text/plain', String(i)); // Firefox needs data to start a drag
@@ -317,7 +307,7 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
                     <div key={key}>
                       <label htmlFor={`criterion-${i}-${key}`}>{label}</label>
                       <input
-                        type="text" id={`criterion-${i}-${key}`} value={c[key]}
+                        type="text" id={`criterion-${i}-${key}`} readOnly={frozen} value={c[key]}
                         className={s.rawCriteria === null && noValue(c[key]) ? 'missing' : undefined}
                         onChange={(e) => {
                           const value = e.target.value;
@@ -337,7 +327,7 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
                 </div>
                 <button
                   type="button" className="danger criterion-remove" aria-label="Remove criterion"
-                  disabled={last} // every story keeps at least one criterion
+                  disabled={last || frozen} // every story keeps at least one criterion
                   title={last ? 'A story needs at least one criterion' : 'Remove criterion'}
                   onClick={() => edit((d) => { d.criteria.splice(i, 1); d.rawCriteria = null; })}
                 >
@@ -348,7 +338,7 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
             );
           })}
         </div>
-        <button type="button" id="addCriterionBtn" onClick={addCriterion}>Add criterion</button>
+        <button type="button" id="addCriterionBtn" disabled={frozen} onClick={addCriterion}>Add criterion</button>
         {listOf(unitsBelowCriteria)}
         <CellWarning id="criteriaWarning" raw={s.rawCriteria} message={CRITERIA_WARNING} />
         <div className="preview-label">Saved as</div>
@@ -366,14 +356,14 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
                 {target
                   ? <button type="button" className="link-btn" title={storyLabel(target)} onClick={() => onOpen(target.id)}>{`${code} ${storyLabel(target)}`}</button>
                   : <span title={/^NEW-\d+$/.test(code) ? 'This story is still proposed' : 'No story has this ID'}>{code}</span>}
-                <button type="button" className="remove" aria-label={`Remove ${code}`} onClick={() => edit((d) => { d.dependsOn = d.dependsOn.filter((c) => c !== code); })}>✕</button>
+                <button type="button" className="remove" aria-label={`Remove ${code}`} disabled={frozen} onClick={() => edit((d) => { d.dependsOn = d.dependsOn.filter((c) => c !== code); })}>✕</button>
               </li>
             );
           })}
         </ul>
         <input
-          type="text" id="dependsOn" list="dependsOnChoices" autoComplete="off" disabled={!s.code}
-          placeholder={s.code ? 'Type or pick a story ID' : 'Set an Epic first'} value={depInput} onChange={pickDependency}
+          type="text" id="dependsOn" list="dependsOnChoices" autoComplete="off" disabled={!s.code || frozen}
+          placeholder={frozen ? 'Frozen' : s.code ? 'Type or pick a story ID' : 'Set an Epic first'} value={depInput} onChange={pickDependency}
         />
         <datalist id="dependsOnChoices">
           {choices.map((o) => <option key={o.id} value={o.code}>{storyLabel(o)}</option>)}
@@ -391,7 +381,7 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
       <fieldset>
         <legend>Notes</legend>
         <label htmlFor="notes" className="sr-only">Notes</label>
-        <textarea id="notes" rows={3} value={s.notes} onChange={setField('notes')} />
+        <textarea id="notes" rows={3} readOnly={frozen} value={s.notes} onChange={setField('notes')} />
         {list('Notes')}
       </fieldset>
 
@@ -404,23 +394,23 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
                 <div>
                   <label htmlFor={`clarification-${i}-q`}>{`Question ${i + 1}`}</label>
                   <input
-                    type="text" id={`clarification-${i}-q`} autoComplete="off" value={p.q}
+                    type="text" id={`clarification-${i}-q`} autoComplete="off" readOnly={frozen} value={p.q}
                     onChange={(e) => { const value = e.target.value; editClarifications((c) => { c[i].q = value; }); }}
                   />
                 </div>
                 <div>
                   <label htmlFor={`clarification-${i}-a`}>{`Answer ${i + 1}`}</label>
                   <textarea
-                    id={`clarification-${i}-a`} rows={2} value={p.a} placeholder="Open until answered"
+                    id={`clarification-${i}-a`} rows={2} readOnly={frozen} value={p.a} placeholder="Open until answered"
                     onChange={(e) => { const value = e.target.value; editClarifications((c) => { c[i].a = value; }); }}
                   />
                 </div>
               </div>
-              <button type="button" className="danger criterion-remove" aria-label={`Remove question ${i + 1}`} title="Remove question" onClick={() => editClarifications((c) => { c.splice(i, 1); })}>✕</button>
+              <button type="button" className="danger criterion-remove" aria-label={`Remove question ${i + 1}`} title="Remove question" disabled={frozen} onClick={() => editClarifications((c) => { c.splice(i, 1); })}>✕</button>
             </div>
           ))}
         </div>
-        <button type="button" id="addClarificationBtn" onClick={() => editClarifications((c) => { c.push(emptyClarification()); })}>Add question</button>
+        <button type="button" id="addClarificationBtn" disabled={frozen} onClick={() => editClarifications((c) => { c.push(emptyClarification()); })}>Add question</button>
         {list('Clarifications')}
         <CellWarning id="clarificationsWarning" raw={s.rawClarifications} message={CLARIFICATIONS_WARNING} />
       </fieldset>
@@ -428,7 +418,7 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
       {groups.length > 0 && (
         <fieldset>
           <legend>Suggested split</legend>
-          <SuggestionList units={groups} stories={stories} onApply={onApplySuggestion} onDismiss={onDismissSuggestion} onUnlock={onUnlockSuggestion} />
+          <SuggestionList units={groups} stories={stories} onApply={onApplySuggestion} onDismiss={onDismissSuggestion} />
         </fieldset>
       )}
 

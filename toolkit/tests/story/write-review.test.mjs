@@ -13,8 +13,8 @@ const SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..
 
 const CSV =
   'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes\r\n' +
-  'IAM-0001,Identity & Access Management,Auth,Login,"As a user, I want to log in, so that I can access the portal",5,High,,"AC1: Given a, when b, then c",\r\n' +
-  'IAM-0002,Identity & Access Management,SSO,SSO Login,"As a user, I want SSO, so that no credentials",55,,,,\r\n';
+  'B1-IAM-0001,Identity & Access Management,Auth,Login,"As a user, I want to log in, so that I can access the portal",5,High,,"AC1: Given a, when b, then c",\r\n' +
+  'B1-IAM-0002,Identity & Access Management,SSO,SSO Login,"As a user, I want SSO, so that no credentials",55,,,,\r\n';
 
 function temp() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'review-test-'));
@@ -24,7 +24,7 @@ function temp() {
 }
 
 const finding = (over = {}) => ({
-  storyId: 'IAM-0001', field: 'Title', action: 'replace', suggested: 'Log in with a password', reason: 'Clearer',
+  storyId: 'B1-IAM-0001', field: 'Title', action: 'replace', suggested: 'Log in with a password', reason: 'Clearer',
   area: 'Hierarchy', confidence: 'ready', group: '', ...over,
 });
 const run = (root, findings, name = 'data.csv') => writeReview({ dataDir: root, name, input: JSON.stringify(findings) });
@@ -33,7 +33,7 @@ const reviewPath = (root) => pathOf(root, 'data', 'review');
 test('valid input writes reviews/<name> and leaves the backlog untouched', () => {
   const root = temp();
   const before = fs.readFileSync(pathOf(root, 'data', 'backlog'));
-  const r = run(root, [finding(), finding({ storyId: 'IAM-0002', field: 'Sprint points', suggested: '8', confidence: 'confirm' })]);
+  const r = run(root, [finding(), finding({ storyId: 'B1-IAM-0002', field: 'Sprint points', suggested: '8', confidence: 'confirm' })]);
   assert.deepEqual([r.ok, r.count], [true, 2]);
   assert.deepEqual(fs.readFileSync(pathOf(root, 'data', 'backlog')), before);
   const rows = parseReview(fs.readFileSync(reviewPath(root), 'utf8')).rows;
@@ -79,7 +79,7 @@ test('a split group and multi-line values are written and read back intact', () 
   const reason = 'Line one\nline two, "quoted"';
   const r = run(root, [
     finding({ field: 'User Acceptance Criteria', action: 'add', suggested: multi, reason }),
-    finding({ storyId: 'IAM-0002', field: 'Title', suggested: 'SSO sign-in', confidence: 'confirm', group: 'split-2' }),
+    finding({ storyId: 'B1-IAM-0002', field: 'Title', suggested: 'SSO sign-in', confidence: 'confirm', group: 'split-2' }),
     finding({ storyId: 'NEW-1', field: 'Title', action: 'add-story', suggested: 'SSO sign-out', confidence: 'confirm', group: 'split-2' }),
   ]);
   assert.equal(r.ok, true, JSON.stringify(r.errors));
@@ -160,12 +160,12 @@ const setStatus = (root, index, status) => {
 
 test('malformed JSON reports the parser message with line, column and an excerpt', () => {
   const root = temp();
-  const text = '[\n  {"storyId": "IAM-0001"}\n  {"storyId": "IAM-0002"}\n]';
+  const text = '[\n  {"storyId": "B1-IAM-0001"}\n  {"storyId": "B1-IAM-0002"}\n]';
   const r = writeReview({ dataDir: root, name: 'data.csv', input: text });
   assert.equal(r.ok, false);
   assert.match(r.errors[0], /not valid JSON/);
   assert.match(r.errors[0], /line 3, column 3/);
-  assert.match(r.errors[0], /near ".*IAM-0002/);
+  assert.match(r.errors[0], /near ".*B1-IAM-0002/);
   assert.equal(fs.existsSync(path.dirname(pathOf(root, 'data', 'review'))), false);
 });
 
@@ -198,7 +198,7 @@ test('append creates the review when there is none and leaves the backlog alone'
 test('a Group already in the review is rejected on append and nothing changes', () => {
   const root = temp();
   const grouped = (suggested) => [
-    finding({ storyId: 'IAM-0002', suggested, confidence: 'confirm', group: 'split-1' }),
+    finding({ storyId: 'B1-IAM-0002', suggested, confidence: 'confirm', group: 'split-1' }),
     finding({ storyId: 'NEW-1', action: 'add-story', suggested: 'Other', confidence: 'confirm', group: 'split-1' }),
   ];
   assert.equal(run(root, grouped('SSO sign-in')).ok, true);
@@ -258,51 +258,39 @@ test('CLI: --append prints the batch size and the total; unknown arguments exit 
   assert.match(bad.stderr, /\[--append\] \[--check\]/);
 });
 
-// IAM-0002 locked: a Locked column on the backlog.
-function tempLocked() {
+// B1-IAM-0002 frozen: a Frozen column on the backlog.
+function tempFrozen() {
   const root = temp();
-  const csv = CSV.replace(/\r\n/, ',Locked\r\n').replace(/,,,\r\n$/, ',,,,Yes\r\n');
+  const csv = CSV.replace(/\r\n/, ',Frozen\r\n').replace(/,,,\r\n$/, ',,,,Yes\r\n');
   fs.writeFileSync(pathOf(root, 'data', 'backlog'), csv);
   return root;
 }
-const unlock = (over = {}) => ({ storyId: 'IAM-0002', field: '', action: 'unlock', suggested: '', reason: 'Too big', area: 'INVEST', confidence: 'ready', group: '', ...over });
-const lockedEdit = (over = {}) => finding({ storyId: 'IAM-0002', field: 'Sprint points', suggested: '8', confidence: 'confirm', ...over });
+const unlock = (over = {}) => ({ storyId: 'B1-IAM-0002', field: '', action: 'unlock', suggested: '', reason: 'Too big', area: 'INVEST', confidence: 'ready', group: '', ...over });
+const frozenEdit = (over = {}) => finding({ storyId: 'B1-IAM-0002', field: 'Sprint points', suggested: '8', confidence: 'confirm', ...over });
 
-test('an unlock row for a locked story is accepted and written with empty Field and Current', () => {
-  const root = tempLocked();
-  const r = run(root, [unlock()]);
-  assert.deepEqual([r.ok, r.count], [true, 1], JSON.stringify(r.errors));
-  const [row] = parseReview(fs.readFileSync(reviewPath(root), 'utf8')).rows;
-  assert.deepEqual([row.storyId, row.action, row.field, row.suggested, row.current, row.status], ['IAM-0002', 'unlock', '', '', '', 'open']);
+test('the unlock action is rejected, for a frozen and for an unfrozen story, and nothing is written', () => {
+  const root = tempFrozen();
+  for (const storyId of ['B1-IAM-0002', 'B1-IAM-0001']) {
+    const r = run(root, [unlock({ storyId })]);
+    assert.equal(r.ok, false, storyId);
+    assert.ok(r.errors.length > 0, storyId);
+  }
+  assert.equal(fs.existsSync(path.dirname(pathOf(root, 'data', 'review'))), false);
 });
 
-test('an unlock row for an unlocked story is rejected and nothing is written', () => {
-  const root = tempLocked();
-  const r = run(root, [unlock({ storyId: 'IAM-0001' })]);
+test('a field edit on a frozen story is refused with a superseding-story message and nothing is written', () => {
+  const root = tempFrozen();
+  const r = run(root, [frozenEdit()]);
   assert.equal(r.ok, false);
-  assert.ok(r.errors.some((e) => e.includes('not locked')));
+  assert.ok(r.errors.some((e) => e.includes('B1-IAM-0002') && e.includes('frozen') && e.includes('superseding story')), JSON.stringify(r.errors));
   assert.equal(fs.existsSync(path.dirname(pathOf(root, 'data', 'review'))), false);
 });
 
-test('a field edit on a locked story needs an unlock row: in the batch, or from an earlier batch', () => {
-  const root = tempLocked();
-  const without = run(root, [lockedEdit()]);
-  assert.equal(without.ok, false);
-  assert.ok(without.errors.some((e) => e.includes('IAM-0002') && e.includes('locked')));
-  assert.equal(fs.existsSync(path.dirname(pathOf(root, 'data', 'review'))), false);
-
-  assert.equal(run(root, [lockedEdit(), unlock()]).ok, true);
-
-  const root2 = tempLocked();
-  assert.equal(run(root2, [unlock()]).ok, true);
-  const later = writeReview({ dataDir: root2, name: 'data.csv', input: JSON.stringify([lockedEdit()]), append: true });
-  assert.deepEqual([later.ok, later.count], [true, 2], JSON.stringify(later.errors));
-});
-
-test('a replacing write ignores the unlock row of the review it replaces', () => {
-  const root = tempLocked();
-  assert.equal(run(root, [unlock()]).ok, true);
-  assert.equal(run(root, [lockedEdit()]).ok, false);
+test('an edit of a frozen story is still refused in a batch with an unlock row, and in a later append', () => {
+  const root = tempFrozen();
+  assert.equal(run(root, [frozenEdit(), unlock()]).ok, false);
+  const later = writeReview({ dataDir: root, name: 'data.csv', input: JSON.stringify([frozenEdit()]), append: true });
+  assert.equal(later.ok, false);
 });
 
 test('clarification rows are accepted, also with --append, and existing rows are kept', () => {
@@ -379,9 +367,9 @@ test('with requireTitles each row needs its story Title, a stale pair writes not
   const root = temp();
   const strict = (rows, fn = writeReview) => fn({ dataDir: root, name: 'data.csv', input: JSON.stringify(rows), append: true, requireTitles: true });
   const missing = strict([finding()]);
-  assert.match(missing.errors[0], /IAM-0001 needs the story's current Title next to it \(storyTitle\)/);
+  assert.match(missing.errors[0], /B1-IAM-0001 needs the story's current Title next to it \(storyTitle\)/);
   const stale = strict([finding({ storyTitle: 'SSO Login' })]);
-  assert.match(stale.errors[0], /IAM-0001 is now "Login" \(Identity & Access Management > Auth\), not "SSO Login"\. Stories titled "SSO Login": IAM-0002/);
+  assert.match(stale.errors[0], /B1-IAM-0001 is now "Login" \(Identity & Access Management > Auth\), not "SSO Login"\. Stories titled "SSO Login": B1-IAM-0002/);
   assert.deepEqual(strict([finding({ storyTitle: 'SSO Login' })], checkReview).errors, stale.errors);
   assert.equal(fs.existsSync(reviewPath(root)), false);
   assert.equal(strict([finding({ storyTitle: ' login ' })]).ok, true);
@@ -392,16 +380,10 @@ test('with requireTitles each row needs its story Title, a stale pair writes not
 
 test('a Depends On row names the Title of its target; a stale target writes nothing', () => {
   const root = temp();
-  const dep = (over = {}) => finding({ field: 'Depends On', action: 'add', suggested: 'IAM-0001', storyId: 'IAM-0002', storyTitle: 'SSO Login', area: 'INVEST', ...over });
+  const dep = (over = {}) => finding({ field: 'Depends On', action: 'add', suggested: 'B1-IAM-0001', storyId: 'B1-IAM-0002', storyTitle: 'SSO Login', area: 'INVEST', ...over });
   const strict = (rows) => writeReview({ dataDir: root, name: 'data.csv', input: JSON.stringify(rows), append: true, requireTitles: true });
-  assert.match(strict([dep()]).errors[0], /Suggested: IAM-0001 needs the story's current Title next to it \(targetTitle\)/);
-  assert.match(strict([dep({ targetTitle: 'Logout' })]).errors[0], /Suggested: IAM-0001 is now "Login".*not "Logout"/);
+  assert.match(strict([dep()]).errors[0], /Suggested: B1-IAM-0001 needs the story's current Title next to it \(targetTitle\)/);
+  assert.match(strict([dep({ targetTitle: 'Logout' })]).errors[0], /Suggested: B1-IAM-0001 is now "Login".*not "Logout"/);
   assert.equal(strict([dep({ targetTitle: 'Login' })]).ok, true);
   assert.equal(run(temp(), [dep({ storyTitle: undefined })]).ok, true, 'the CLI form without Titles is unchanged');
-});
-
-test('an unlock row is checked against the Title as well', () => {
-  const root = temp();
-  const r = writeReview({ dataDir: root, name: 'data.csv', append: true, requireTitles: true, input: JSON.stringify([{ storyId: 'IAM-0001', storyTitle: 'Nope', field: '', action: 'unlock', suggested: '', reason: 'r', area: 'INVEST', confidence: 'confirm' }]) });
-  assert.match(r.errors[0], /IAM-0001 is now "Login"/);
 });

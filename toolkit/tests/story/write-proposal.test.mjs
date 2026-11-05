@@ -14,7 +14,7 @@ const SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..
 
 const CSV =
   'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes,Team\r\n' +
-  'IAM-0001,Identity & Access Management,Auth,Login,"As a user, I want to log in, so that I can access the portal",5,High,,"AC1: Given a, when b, then c",,Blue\r\n';
+  'B1-IAM-0001,Identity & Access Management,Auth,Login,"As a user, I want to log in, so that I can access the portal",5,High,,"AC1: Given a, when b, then c",,Blue\r\n';
 
 function temp() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'proposal-test-'));
@@ -35,17 +35,17 @@ const story = (over = {}) => ({
 });
 const run = (root, stories, name = 'data.csv') => writeProposal({ dataDir: root, name, input: JSON.stringify(stories) });
 const proposalPath = (root) => pathOf(root, 'data', 'proposals');
-const load = (root) => loadBacklog(fs.readFileSync(proposalPath(root), 'utf8'), { placeholderIds: true });
+const load = (root) => loadBacklog(fs.readFileSync(proposalPath(root), 'utf8'), { placeholderIds: true, initials: 'B1' });
 
 test('valid input creates proposals/<name> and leaves the backlog byte-for-byte unchanged', () => {
   const root = temp();
   const before = fs.readFileSync(pathOf(root, 'data', 'backlog'));
-  const r = run(root, [story(), story({ title: 'Two', dependsOn: ['NEW-1', 'IAM-0001'] })]);
+  const r = run(root, [story(), story({ title: 'Two', dependsOn: ['NEW-1', 'B1-IAM-0001'] })]);
   assert.deepEqual([r.ok, r.ids, r.count], [true, ['NEW-1', 'NEW-2'], 2]);
   assert.deepEqual(fs.readFileSync(pathOf(root, 'data', 'backlog')), before);
   const p = load(root);
   assert.deepEqual(p.stories.map((s) => s.code), ['NEW-1', 'NEW-2']);
-  assert.deepEqual(p.stories[1].dependsOn, ['NEW-1', 'IAM-0001']);
+  assert.deepEqual(p.stories[1].dependsOn, ['NEW-1', 'B1-IAM-0001']);
   assert.deepEqual(fs.readdirSync(path.dirname(pathOf(root, 'data', 'proposals'))), ['proposals.csv'], 'no temp file left behind');
 });
 
@@ -55,7 +55,7 @@ test('a new file has the backlog columns (extra ones too) and a BOM', () => {
   const text = fs.readFileSync(proposalPath(root), 'utf8');
   assert.equal(text.charCodeAt(0), 0xfeff);
   const p = load(root);
-  assert.deepEqual(p.headers, proposalHeaders(loadBacklog(CSV).headers));
+  assert.deepEqual(p.headers, proposalHeaders(loadBacklog(CSV, { initials: 'B1' }).headers));
   assert.equal(p.stories[0].cells.length, p.headers.length);
 });
 
@@ -405,7 +405,7 @@ test('the result comes from the file read back: row count and the IDs found on d
 });
 
 test('missingAfterWrite names the IDs that are not on disk, or a wrong row count', () => {
-  const stored = loadBacklog(`${CSV.split('\r\n')[0]}\r\nNEW-1,E,F,One,,,,,,,\r\nNEW-3,E,F,Three,,,,,,,\r\n`, { placeholderIds: true });
+  const stored = loadBacklog(`${CSV.split('\r\n')[0]}\r\nNEW-1,E,F,One,,,,,,,\r\nNEW-3,E,F,Three,,,,,,,\r\n`, { placeholderIds: true, initials: 'B1' });
   assert.equal(missingAfterWrite(stored, ['NEW-1', 'NEW-3'], 2), null);
   assert.match(missingAfterWrite(stored, ['NEW-1', 'NEW-2'], 3), /NEW-2 not found \(2 stories on disk, 3 expected\)/);
   assert.match(missingAfterWrite(stored, ['NEW-1'], 3), /2 stories on disk, 3 expected/);
@@ -440,15 +440,15 @@ test('CLI and message: the IDs read back are listed', () => {
 
 test('requireTitles: a bare ID writes nothing, the Title form writes, and check reports the same problem', () => {
   const root = temp();
-  const bare = [story({ dependsOn: ['IAM-0001'] })];
+  const bare = [story({ dependsOn: ['B1-IAM-0001'] })];
   const strict = (stories, fn = writeProposal) => fn({ dataDir: root, name: 'data.csv', input: JSON.stringify(stories), requireTitles: true });
   const refused = strict(bare);
   assert.equal(refused.ok, false);
-  assert.match(refused.errors[0], /IAM-0001 needs the story's current Title/);
+  assert.match(refused.errors[0], /B1-IAM-0001 needs the story's current Title/);
   assert.deepEqual(strict(bare, checkProposal).errors, refused.errors);
   assert.equal(fs.existsSync(proposalPath(root)), false);
-  const stale = strict([story({ dependsOn: [{ id: 'IAM-0001', title: 'Logout' }] })]);
-  assert.match(stale.errors[0], /IAM-0001 is now "Login" \(Identity & Access Management > Auth\), not "Logout"/);
-  assert.equal(strict([story({ dependsOn: [{ id: 'IAM-0001', title: 'Login' }] })]).ok, true);
-  assert.deepEqual(load(root).stories[0].dependsOn, ['IAM-0001']);
+  const stale = strict([story({ dependsOn: [{ id: 'B1-IAM-0001', title: 'Logout' }] })]);
+  assert.match(stale.errors[0], /B1-IAM-0001 is now "Login" \(Identity & Access Management > Auth\), not "Logout"/);
+  assert.equal(strict([story({ dependsOn: [{ id: 'B1-IAM-0001', title: 'Login' }] })]).ok, true);
+  assert.deepEqual(load(root).stories[0].dependsOn, ['B1-IAM-0001']);
 });

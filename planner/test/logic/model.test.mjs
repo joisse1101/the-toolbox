@@ -6,13 +6,15 @@ import {
   groupByEpic, displayOrder, applyBulk,
 } from '../../logic/backlog/model.js';
 
+const load = (text, options = {}) => loadBacklog(text, { initials: 'B1', ...options });
+
 const SAMPLE =
   '﻿Jira Key,Title,Sprint points,Epic,User Story,Feature,User Acceptance Criteria,Priority,Notes\r\n' +
   'ABC-1,Export,4,Reporting,As a lead I want export so that share,Files,"AC1: Given a, when I b, then c\nAC2: Given d, when I e, then f",Urgent,"line1\nline2"\r\n' +
   'ABC-2,Import,100,Reporting,Free text story,Files,,,\r\n';
 
 test('loads by header name in any order, keeps extras and odd values', () => {
-  const b = loadBacklog(SAMPLE);
+  const b = load(SAMPLE);
   assert.equal(b.hasBom, true);
   assert.equal(b.stories.length, 2);
   const s = b.stories[0];
@@ -31,7 +33,7 @@ test('loads by header name in any order, keeps extras and odd values', () => {
 });
 
 test('save keeps extra column, malformed cell, odd points and priority unchanged', () => {
-  const b = loadBacklog(SAMPLE);
+  const b = load(SAMPLE);
   b.stories[0].epic = 'Reporting v2';
   const rows = parseCsv(serializeBacklog(b));
   assert.deepEqual(rows[0], b.headers);
@@ -50,14 +52,14 @@ test('save keeps extra column, malformed cell, odd points and priority unchanged
 });
 
 test('new story round-trips through a header-only file', () => {
-  const b = loadBacklog(newBacklogText());
+  const b = load(newBacklogText());
   assert.deepEqual(b.headers, COLUMNS);
   assert.equal(b.stories.length, 0);
   const s = newStory(b.headers);
   Object.assign(s, { asA: 'lead', iWant: 'x', soThat: 'y', points: '5', notes: 'a\nb' });
   s.criteria = [{ given: 'g', when: 'w', then: 't' }];
   b.stories.push(s);
-  const again = loadBacklog(serializeBacklog(b));
+  const again = load(serializeBacklog(b));
   assert.equal(again.stories[0].asA, 'lead');
   assert.equal(again.stories[0].points, '5');
   assert.equal(again.stories[0].notes, 'a\nb');
@@ -65,7 +67,7 @@ test('new story round-trips through a header-only file', () => {
 });
 
 test('missing recognised columns are appended', () => {
-  const b = loadBacklog('Epic\r\nE1\r\n');
+  const b = load('Epic\r\nE1\r\n');
   assert.deepEqual(b.headers, ['Epic', ...COLUMNS.filter((c) => c !== 'Epic')]);
   assert.equal(b.stories[0].epic, 'E1');
 });
@@ -100,7 +102,7 @@ test('blank title is an error', () => {
 });
 
 test('an old Capability column is kept as an unknown column and not copied into Feature or Title', () => {
-  const b = loadBacklog('Epic,Capability\r\nE,Authentication\r\n');
+  const b = load('Epic,Capability\r\nE,Authentication\r\n');
   const s = b.stories[0];
   assert.equal(s.feature, ''); // headers are matched by name, so nothing is translated
   assert.equal(s.title, '');
@@ -111,7 +113,7 @@ test('an old Capability column is kept as an unknown column and not copied into 
 });
 
 test('a file without a Title column gets one on save', () => {
-  const b = loadBacklog('Epic,Feature\r\nE,F\r\n');
+  const b = load('Epic,Feature\r\nE,F\r\n');
   const rows = parseCsv(serializeBacklog(b));
   assert.ok(rows[0].includes('Title'));
   assert.equal(rows[1][rows[0].indexOf('Feature')], 'F');
@@ -159,8 +161,8 @@ test('storyLabel', () => {
 });
 
 test('loaded story with empty criteria cell shows one blank criterion and saves an empty cell', () => {
-  const text = COLUMNS.join(',') + String.fromCharCode(13,10) + 'E-0001,E,C,F,,,,,,,,' + String.fromCharCode(13,10) + '';
-  const b = loadBacklog(text);
+  const text = COLUMNS.join(',') + String.fromCharCode(13,10) + 'B1-E-0001,E,C,F,,,,,,,,' + String.fromCharCode(13,10) + '';
+  const b = load(text);
   assert.equal(b.changed, false);
   assert.deepEqual(b.stories[0].criteria, [{ given: '', when: '', then: '' }]);
   assert.equal(serializeBacklog(b), text);
@@ -191,8 +193,7 @@ test('groupByEpic splits each epic by feature and displayOrder follows epic then
   assert.deepEqual(stories.map((x) => x.id), [1, 2, 3, 4, 5]);
 });
 
-test('applyBulk sets only the chosen fields on the selected stories', () => {
-  const stories = [1, 2, 3].map((id) => Object.assign(newStory(COLUMNS), { id, epic: 'E', feature: 'C', priority: 'Low' }));
+test('applyBulk sets only the chosen fields on the selected stories', () => {  const stories = [1, 2, 3].map((id) => Object.assign(newStory(COLUMNS), { id, epic: 'E', feature: 'C', priority: 'Low' }));
   assert.deepEqual(applyBulk(stories, new Set([1, 3]), { priority: 'High', epic: ' ', feature: 'New' }), { changed: 2, skipped: 0 });
   assert.deepEqual(stories.map((s) => [s.epic, s.feature, s.priority]), [['E', 'New', 'High'], ['E', 'C', 'Low'], ['E', 'New', 'High']]);
   applyBulk(stories, new Set([1]), { priority: '', epic: 'Billing' });
@@ -207,71 +208,99 @@ const PROPOSED =
   'NEW-1,Billing,Invoices,Send invoice,\r\n';
 
 test('loadBacklog derives IDs by default, placeholderIds keeps the written ones', () => {
-  const derived = loadBacklog(PROPOSED);
-  assert.deepEqual(derived.stories.map((s) => s.code), ['B-0001', 'B-0002']);
+  const derived = load(PROPOSED);
+  assert.deepEqual(derived.stories.map((s) => s.code), ['B1-B-0001', 'B1-B-0002']);
   assert.equal(derived.changed, true);
 
-  const kept = loadBacklog(PROPOSED, { placeholderIds: true });
+  const kept = load(PROPOSED, { placeholderIds: true });
   assert.deepEqual(kept.stories.map((s) => s.code), ['NEW-3', 'NEW-1']);
   assert.deepEqual(kept.stories[0].dependsOn, ['NEW-1', 'IAM-0002']);
   assert.equal(kept.changed, false);
 });
 
 test('placeholder IDs and their Depends On survive a load/serialize round trip', () => {
-  const kept = loadBacklog(PROPOSED, { placeholderIds: true });
-  const again = loadBacklog(serializeBacklog(kept), { placeholderIds: true });
+  const kept = load(PROPOSED, { placeholderIds: true });
+  const again = load(serializeBacklog(kept), { placeholderIds: true });
   assert.deepEqual(again.stories.map((s) => [s.code, s.dependsOn]), [['NEW-3', ['NEW-1', 'IAM-0002']], ['NEW-1', []]]);
 });
 
-test('Locked column: Yes loads as locked and round-trips', () => {
-  const text = COLUMNS.join(',') + '\r\nE-0001,E,F,One,,,,,,,Yes,\r\nE-0002,E,F,Two,,,,,,,,\r\n';
-  const b = loadBacklog(text);
-  assert.deepEqual(b.stories.map((s) => s.locked), [true, false]);
+test('Frozen column: Yes loads as frozen and round-trips', () => {
+  const text = COLUMNS.join(',') + '\r\nB1-E-0001,E,F,One,,,,,,,Yes,\r\nB1-E-0002,E,F,Two,,,,,,,,\r\n';
+  const b = load(text);
+  assert.deepEqual(b.stories.map((s) => s.frozen), [true, false]);
   assert.equal(b.changed, false);
   assert.equal(serializeBacklog(b), text);
 });
 
-test('an older file gains the Locked column on save', () => {
-  const b = loadBacklog('ID,Epic,Title\r\nE-0001,E,One\r\n');
-  assert.ok(b.headers.includes('Locked'));
-  assert.equal(b.stories[0].locked, false);
-  assert.match(serializeBacklog(b), /Locked,Clarifications\r\n/);
+test('an older file gains the Frozen column on save', () => {
+  const b = load('ID,Epic,Title\r\nB1-E-0001,E,One\r\n');
+  assert.ok(b.headers.includes('Frozen'));
+  assert.equal(b.stories[0].frozen, false);
+  assert.match(serializeBacklog(b), /Frozen,Clarifications\r\n/);
 });
 
-test('Locked: Yes without an ID, or any other value, loads unlocked', () => {
-  const b = loadBacklog('ID,Epic,Title,Locked\r\n,,One,Yes\r\nE-0001,E,Two,maybe\r\nE-0002,E,Three, YES \r\n');
-  assert.deepEqual(b.stories.map((s) => s.locked), [false, false, true]);
+test('Frozen: Yes without an ID, or any other value, loads unfrozen', () => {
+  const b = load('ID,Epic,Title,Frozen\r\n,,One,Yes\r\nB1-E-0001,E,Two,maybe\r\nB1-E-0002,E,Three, YES \r\n');
+  assert.deepEqual(b.stories.map((s) => s.frozen), [false, false, true]);
 });
 
-test('proposed stories are never locked', () => {
-  const b = loadBacklog('ID,Epic,Title,Locked\r\nNEW-1,E,One,Yes\r\n', { placeholderIds: true });
-  assert.equal(b.stories[0].locked, false);
+test('an old Locked file loads unfrozen and saves without the Locked column', () => {
+  const text = 'ID,Epic,Title,Locked,Notes\r\nB1-E-0001,E,One,Yes,keep\r\nB1-E-0002,E,Two,,keep too\r\n';
+  const b = load(text);
+  assert.deepEqual(b.stories.map((s) => s.frozen), [false, false]);
+  assert.equal(b.changed, true); // the dropped column needs a save
+  assert.ok(!b.headers.some((h) => h.toLowerCase() === 'locked'));
+  const rows = parseCsv(serializeBacklog(b));
+  assert.ok(!rows[0].some((h) => h.toLowerCase() === 'locked'));
+  assert.equal(rows[0].indexOf('Frozen') > 0, true);
+  assert.equal(rows[1][rows[0].indexOf('Frozen')], '');
+  assert.equal(rows[1][rows[0].indexOf('Notes')], 'keep'); // the other columns keep their values
+  assert.equal(rows[2][rows[0].indexOf('Notes')], 'keep too');
+  assert.equal(load(serializeBacklog(b)).changed, false);
 });
 
-test('applyBulk: an Epic change skips locked stories but Priority and Feature still apply', () => {
-  const stories = [1, 2, 3].map((id) => Object.assign(newStory(COLUMNS), { id, epic: 'E', feature: 'C', priority: 'Low', locked: id === 2 }));
+test('an old Locked column does not hide or replace a Frozen column', () => {
+  const b = load('ID,Locked,Epic,Frozen\r\nB1-E-0001,Yes,E,\r\nB1-E-0002,,E,Yes\r\n');
+  assert.deepEqual(b.stories.map((s) => s.frozen), [false, true]);
+  assert.deepEqual(b.headers.slice(0, 3), ['ID', 'Epic', 'Frozen']);
+});
+
+test('proposed stories are never frozen, and an old Locked column is dropped from a proposals file too', () => {
+  const b = load('ID,Epic,Title,Frozen,Locked\r\nNEW-1,E,One,Yes,Yes\r\n', { placeholderIds: true });
+  assert.equal(b.stories[0].frozen, false);
+  assert.ok(!b.headers.includes('Locked'));
+});
+
+test('load passes the initials to renumber', () => {
+  assert.deepEqual(loadBacklog('ID,Epic\r\n,Billing\r\n', { initials: 'XY' }).stories.map((s) => s.code), ['XY-B-0001']);
+  assert.throws(() => loadBacklog('ID,Epic\r\n,Billing\r\n'), /initials/);
+});
+
+test('applyBulk: a frozen story is skipped completely and counted', () => {
+  const stories = [1, 2, 3].map((id) => Object.assign(newStory(COLUMNS), { id, epic: 'E', feature: 'C', priority: 'Low', frozen: id === 2 }));
   assert.deepEqual(applyBulk(stories, new Set([1, 2, 3]), { epic: 'Billing' }), { changed: 2, skipped: 1 });
   assert.deepEqual(stories.map((s) => s.epic), ['Billing', 'E', 'Billing']);
-  assert.deepEqual(applyBulk(stories, new Set([2]), { priority: 'High', epic: 'Billing', feature: 'F' }), { changed: 1, skipped: 1 });
-  assert.deepEqual([stories[1].epic, stories[1].priority, stories[1].feature], ['E', 'High', 'F']);
-  assert.deepEqual(applyBulk(stories, new Set([2]), { priority: 'Low' }), { changed: 1, skipped: 0 });
+  assert.deepEqual(applyBulk(stories, new Set([2]), { priority: 'High', epic: 'Billing', feature: 'F' }), { changed: 0, skipped: 1 });
+  assert.deepEqual([stories[1].epic, stories[1].priority, stories[1].feature], ['E', 'Low', 'C']);
+  assert.deepEqual(applyBulk(stories, new Set([1, 2]), { priority: 'High' }), { changed: 1, skipped: 1 });
+  assert.deepEqual(stories.map((s) => s.priority), ['High', 'Low', 'Low']);
 });
 
 test('Benched: only a proposals file has the column, and it round-trips', async () => {
-  const { loadBacklog, serializeBacklog, proposalHeaders } = await import('../../logic/backlog/model.js');
-  assert.ok(!loadBacklog('ID,Epic\r\n').headers.includes('Benched'));
-  const loaded = loadBacklog('ID,Epic,Benched\r\nNEW-1,IAM,Yes\r\nNEW-2,IAM,\r\n', { placeholderIds: true });
+  const { serializeBacklog, proposalHeaders } = await import('../../logic/backlog/model.js');
+  assert.ok(!load('ID,Epic\r\n').headers.includes('Benched'));
+  const loaded = load('ID,Epic,Benched\r\nNEW-1,IAM,Yes\r\nNEW-2,IAM,\r\n', { placeholderIds: true });
   assert.deepEqual(loaded.stories.map((s) => s.benched), [true, false]);
   assert.match(serializeBacklog(loaded), /NEW-1,IAM,.*Yes/);
-  assert.ok(loadBacklog('ID,Epic\r\n', { placeholderIds: true }).headers.includes('Benched'));
+  assert.ok(load('ID,Epic\r\n', { placeholderIds: true }).headers.includes('Benched'));
   assert.deepEqual(proposalHeaders(['ID', 'Benched']), ['ID', 'Benched']);
   assert.equal(proposalHeaders(['ID']).at(-1), 'Benched');
 });
 
 test('Clarifications column: pairs load, an open pair is counted, and the cell round-trips', () => {
   const cell = 'Q1: Which format?\nA1: CSV\nQ2: Who owns it?\nA2:';
-  const text = COLUMNS.join(',') + '\r\n' + `E-0001,E,F,One,,,,,,,,"${cell}"\r\n`;
-  const b = loadBacklog(text);
+  const text = COLUMNS.join(',') + '\r\n' + `B1-E-0001,E,F,One,,,,,,,,"${cell}"\r\n`;
+  const b = load(text);
   assert.deepEqual(b.stories[0].clarifications, [{ q: 'Which format?', a: 'CSV' }, { q: 'Who owns it?', a: '' }]);
   assert.equal(b.stories[0].rawClarifications, null);
   assert.equal(b.changed, false);
@@ -279,22 +308,22 @@ test('Clarifications column: pairs load, an open pair is counted, and the cell r
 });
 
 test('Clarifications column: free text is kept raw and saved unchanged', () => {
-  const text = COLUMNS.join(',') + '\r\nE-0001,E,F,One,,,,,,,,Ask Sam first\r\n';
-  const b = loadBacklog(text);
+  const text = COLUMNS.join(',') + '\r\nB1-E-0001,E,F,One,,,,,,,,Ask Sam first\r\n';
+  const b = load(text);
   assert.equal(b.stories[0].rawClarifications, 'Ask Sam first');
   assert.equal(serializeBacklog(b), text);
 });
 
 test('an older file gains the Clarifications column on save with every cell empty', () => {
-  const b = loadBacklog('ID,Epic,Title,Notes\r\nE-0001,E,One,keep\r\n');
+  const b = load('ID,Epic,Title,Notes\r\nB1-E-0001,E,One,keep\r\n');
   assert.ok(b.headers.includes('Clarifications'));
   assert.deepEqual(b.stories[0].clarifications, []);
-  assert.match(serializeBacklog(b), /Clarifications\r\nE-0001,E,One,keep,,,,,,,,\r\n$/);
+  assert.match(serializeBacklog(b), /Clarifications\r\nB1-E-0001,E,One,keep,,,,,,,,\r\n$/);
 });
 
 test('"As an" survives load and save as typed', () => {
   const text = 'Title,Epic,User Story\r\nT,E,"As an approver, I want to sign off, so that it is controlled"\r\n';
-  const b = loadBacklog(text);
+  const b = load(text);
   const s = b.stories[0];
   assert.equal(s.rawUserStory, null);
   assert.equal(s.asA, 'an approver');

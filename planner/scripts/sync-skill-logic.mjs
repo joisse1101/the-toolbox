@@ -26,7 +26,8 @@ const GUIDELINES = path.join(PLANNER, 'guidelines');
 
 export const DEFAULT_SKILLS_DIR = path.join(REPO, 'toolkit', 'skills');
 
-const SUPPORT = ['skill-support/paths.cjs', 'skill-support/write-atomic.mjs', 'skill-support/resolve-data-dir.mjs'];
+// backlog-initials.mjs gives a script the initials to pass to loadBacklog (it reads backlog.json, else the default).
+const SUPPORT = ['skill-support/paths.cjs', 'skill-support/write-atomic.mjs', 'skill-support/resolve-data-dir.mjs', 'skill-support/backlog-initials.mjs'];
 // The skills that may create `.plans` after asking (explore only reports, so it has no init-plans.mjs).
 const INIT = ['skill-support/init-plans.mjs'];
 const STORY_GUIDELINES =['product-backlog.md', 'sprint-points-guideline.md'];
@@ -56,8 +57,8 @@ export const SKILLS = {
     guidelines: STORY_GUIDELINES,
   },
   'jois-story-plan': {
-    // read-diagrams, write-diagram, write-context-map (the diagram logic is the skill's own)
-    logic: ['backlog/model.js', 'backlog/story-ref.js', 'storage/backlog-paths.cjs', ...SUPPORT, ...INIT],
+    // read-diagrams, write-diagram, write-context-map, write-freeze (the diagram logic is the skill's own)
+    logic: ['backlog/model.js', 'backlog/ids.js', 'backlog/story-ref.js', 'storage/backlog-paths.cjs', ...SUPPORT, ...INIT],
     guidelines: [...STORY_GUIDELINES, 'diagram-conventions.md'],
   },
 };

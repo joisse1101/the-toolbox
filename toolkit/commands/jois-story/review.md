@@ -4,8 +4,8 @@ description: Review what is under discussion in this session (the stories shaped
 disable-model-invocation: true
 allowed-tools: Skill, Bash(node *read-story-context.mjs*), Bash(node *read-backlog.mjs*), Bash(node *write-proposal.mjs*), Bash(node *write-lexicon.mjs*), Bash(node *suggest-lexicon.mjs*), Bash(node *write-review.mjs*)
 metadata:
-  version: "1.0.0"
-  last_updated: "2026-11-03"
+  version: "1.1.0"
+  last_updated: "2026-11-05"
 ---
 
 Audit the work of this session now and end with what is left to do. You only read; write nothing, and run a writer only with `--check`, which writes nothing. Extra instructions from the user: $ARGUMENTS
@@ -26,7 +26,7 @@ Audit the work of this session now and end with what is left to do. You only rea
    - **Dependencies:** each `Depends On` points at a story that exists (not benched), in both directions for the stories in scope.
    - **Size and shape:** no story over the guidelines' cap; criteria in `AC<n>: Given…, when…, then…` form with a failure path.
    - **Clarifications:** open questions, listed by story.
-   - **Review rows:** none stale (the `Current` text still matches the story); a field edit on a locked story has an `unlock` row.
+   - **Review rows:** none stale (the `Current` text still matches the story); no row edits a frozen story (the writer rejects it); a change to a frozen story is listed as needing a superseding story.
    - **Waiting for the user:** review rows and lexicon or term suggestions written but still open, and a benched story the session depends on.
 4. Report by Title, never by ID alone. If everything is in sync, say so in one line. Otherwise end with a checklist in three groups, each item one line saying what and where:
    - **You, in the portal** (apply or dismiss a suggestion, unbench, answer a question, edit a field).

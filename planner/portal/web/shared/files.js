@@ -125,6 +125,15 @@ export function createFileStore(kind) {
     async read(name) {
       return (await call('GET', file(name))).content;
     },
+    // Backlog store only: resolves to { content, initials } (the initials the server keeps in backlog.json).
+    async readBacklog(name) {
+      const { content, initials } = await call('GET', file(name));
+      return { content, initials };
+    },
+    // Backlog store only: resolves to the stored initials. A refused value throws (400, or 409 with code 'initials-taken').
+    async setInitials(name, initials) {
+      return (await call('PATCH', file(name), { json: { initials } })).initials;
+    },
     // Resolves to the name actually used (numbered if the requested one was taken).
     async create(name, content = '') {
       return (await call('POST', `${base}/files`, { json: { name, content } })).name;

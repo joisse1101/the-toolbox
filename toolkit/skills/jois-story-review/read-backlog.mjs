@@ -14,6 +14,7 @@ import { pathToFileURL } from 'node:url';
 import { loadBacklog, groupByEpic, serializeBacklog } from './lib/backlog/model.js';
 import { parseLexicon } from './lib/lexicon/lexicon.js';
 import { dataDirOrThrow } from './lib/skill-support/resolve-data-dir.mjs';
+import { initialsOf } from './lib/skill-support/backlog-initials.mjs';
 import { backlogChecks } from './backlog-checks.js';
 
 const require = createRequire(import.meta.url);
@@ -24,19 +25,19 @@ export function listBacklogs({ dataDir = dataDirOrThrow() } = {}) {
   return listBacklogFolders(dataDir);
 }
 
-// How many stories are up for review: { total, locked, submitted }, or null when the CSV cannot be read as a backlog
+// How many stories are up for review: { total, frozen, submitted }, or null when the CSV cannot be read as a backlog
 // (then the review treats every story as submitted).
-export function scopeOf(csv) {
+export function scopeOf(csv, initials) {
   try {
-    const { stories } = loadBacklog(csv);
-    const locked = stories.filter((s) => s.locked).length;
-    return { total: stories.length, locked, submitted: stories.length - locked };
+    const { stories } = loadBacklog(csv, { initials });
+    const frozen = stories.filter((s) => s.frozen).length;
+    return { total: stories.length, frozen, submitted: stories.length - frozen };
   } catch {
     return null;
   }
 }
 
-export const scopeLine = ({ submitted, total, locked }) => `${submitted} of ${total} stories submitted for review, ${locked} locked (reference only)`;
+export const scopeLine = ({ submitted, total, frozen }) => `${submitted} of ${total} stories submitted for review, ${frozen} frozen (reference only)`;
 
 // Returns { ok: true, file, guidelines, scope, csv } or { ok: false, errors: [...] }; `file` is the backlog's name (no .csv).
 export function readBacklog({ dataDir = dataDirOrThrow(), guidelinesDir = GUIDELINES_DIR, name }) {
@@ -50,11 +51,13 @@ export function readBacklog({ dataDir = dataDirOrThrow(), guidelinesDir = GUIDEL
   }
   try {
     const csv = fs.readFileSync(backlogPath, 'utf8');
+    const initials = initialsOf(dataDir, file);
     return {
       ok: true,
       file,
+      initials,
       guidelines: fs.readFileSync(path.join(guidelinesDir, 'product-backlog.md'), 'utf8'),
-      scope: scopeOf(csv),
+      scope: scopeOf(csv, initials),
       csv,
     };
   } catch {
@@ -78,7 +81,7 @@ function openBacklog({ dataDir, guidelinesDir, name }) {
   if (!read.ok) return read;
   const lexiconText = readOptional(backlogFile(dataDir, read.file, 'lexicon'));
   const proposalsText = readOptional(backlogFile(dataDir, read.file, 'proposals'));
-  const backlog = loadBacklog(read.csv);
+  const backlog = loadBacklog(read.csv, { initials: read.initials });
   return {
     ...read,
     backlog,
@@ -86,7 +89,7 @@ function openBacklog({ dataDir, guidelinesDir, name }) {
     lexiconText,
     lexicon: lexiconText === null ? null : parseLexicon(lexiconText),
     proposalsText,
-    proposals: proposalsText === null ? null : loadBacklog(proposalsText, { placeholderIds: true }),
+    proposals: proposalsText === null ? null : loadBacklog(proposalsText, { placeholderIds: true, initials: read.initials }),
   };
 }
 
@@ -100,12 +103,12 @@ function proposalsText(b) {
   return `${left} benched ${left === 1 ? 'story' : 'stories'} left out\n${csv}`;
 }
 
-// One line per problem; a locked story's problems are marked as context only.
+// One line per problem; a frozen story's problems are marked as context only.
 export function checksText(problems) {
   if (!problems.length) return 'No problems found.';
   return problems.map((p) => (p.term !== undefined
     ? `lexicon | term "${p.term}" | ${p.message}`
-    : `${p.storyId} | ${p.title} | ${p.kind} | ${p.message}${p.locked ? ' [locked, reference only]' : ''}`)).join('\n');
+    : `${p.storyId} | ${p.title} | ${p.kind} | ${p.message}${p.frozen ? ' [frozen, reference only]' : ''}`)).join('\n');
 }
 
 const sizeOf = (text) => `${text.length} characters`;

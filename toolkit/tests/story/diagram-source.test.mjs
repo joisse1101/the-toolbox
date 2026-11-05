@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import { loadBacklog } from '../../skills/jois-story-plan/lib/backlog/model.js';
 import { buildSource, compareSource, scopeStories, storyHash, criteriaOf, storiesBlock, applyStoriesBlock } from '../../skills/jois-story-plan/diagrams/source.js';
 
-const HEADER = 'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes,Locked,Clarifications';
+const HEADER = 'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes,Frozen,Clarifications';
 const row = (epic, feature, title, ac = 'AC1: Given a, when b, then c.', notes = '') =>
   `,${epic},${feature},${title},"As a member, I want ${title}, so that it works.",3,High,,"${ac}",${notes},,`;
-const load = (...rows) => loadBacklog([HEADER, ...rows].join('\n')).stories;
+const load = (...rows) => loadBacklog([HEADER, ...rows].join('\n'), { initials: 'B1' }).stories;
 
 const SCOPE = { type: 'feature', epic: 'Identity', feature: 'Sign in' };
 const base = () => load(row('Identity', 'Sign in', 'Sign in with email'), row('Identity', 'Sign in', 'Reset a password'), row('Identity', 'Profile', 'Edit profile'));
@@ -20,7 +20,7 @@ test('a scope covers its Epic, Feature or story', () => {
 
 test('buildSource records id, title, hash, epic and feature, and the hash ignores Notes but not the criteria', () => {
   const source = buildSource(base(), SCOPE, '2026-01-01T00:00:00.000Z');
-  assert.deepEqual(source.stories.map((s) => [s.id, s.title, s.feature]), [['I-0001', 'Sign in with email', 'Sign in'], ['I-0002', 'Reset a password', 'Sign in']]);
+  assert.deepEqual(source.stories.map((s) => [s.id, s.title, s.feature]), [['B1-I-0001', 'Sign in with email', 'Sign in'], ['B1-I-0002', 'Reset a password', 'Sign in']]);
   const [a] = load(row('Identity', 'Sign in', 'Sign in with email', 'AC1: Given a, when b, then c.', 'a note'));
   const [b] = load(row('Identity', 'Sign in', 'Sign in with email', 'AC1: Given a, when b, then d.'));
   assert.equal(storyHash(a), source.stories[0].hash);
@@ -39,9 +39,9 @@ test('a renumber shifts the IDs and the next compare heals them by Title', () =>
   const source = buildSource(base(), SCOPE);
   const shifted = load(row('Identity', 'Sign in', 'Verify the email'), row('Identity', 'Sign in', 'Sign in with email'), row('Identity', 'Sign in', 'Reset a password'));
   const r = compareSource(source, shifted);
-  assert.deepEqual(r.healed, [{ title: 'Sign in with email', from: 'I-0001', to: 'I-0002' }, { title: 'Reset a password', from: 'I-0002', to: 'I-0003' }]);
-  assert.deepEqual(r.source.stories.map((s) => s.id), ['I-0002', 'I-0003']);
-  assert.deepEqual(r.added, [{ id: 'I-0001', title: 'Verify the email' }]);
+  assert.deepEqual(r.healed, [{ title: 'Sign in with email', from: 'B1-I-0001', to: 'B1-I-0002' }, { title: 'Reset a password', from: 'B1-I-0002', to: 'B1-I-0003' }]);
+  assert.deepEqual(r.source.stories.map((s) => s.id), ['B1-I-0002', 'B1-I-0003']);
+  assert.deepEqual(r.added, [{ id: 'B1-I-0001', title: 'Verify the email' }]);
   assert.equal(r.stale, true);
 });
 
@@ -58,7 +58,7 @@ test('a reworded story is changed; a story renamed is missing', () => {
 test('a story added to the Feature is new', () => {
   const source = buildSource(base(), SCOPE);
   const r = compareSource(source, load(...[row('Identity', 'Sign in', 'Sign in with email'), row('Identity', 'Sign in', 'Reset a password'), row('Identity', 'Sign in', 'Sign out')]));
-  assert.deepEqual(r.added, [{ id: 'I-0003', title: 'Sign out' }]);
+  assert.deepEqual(r.added, [{ id: 'B1-I-0003', title: 'Sign out' }]);
   assert.equal(r.stale, true);
 });
 
@@ -66,12 +66,12 @@ test('two stories with one Title in an Epic slice: the recorded Feature breaks t
   const stories = load(row('Identity', 'Sign in', 'Help'), row('Identity', 'Profile', 'Help'));
   const source = buildSource(stories, { type: 'epic', epic: 'Identity' });
   const r = compareSource(source, stories);
-  assert.deepEqual(r.stories.map((s) => [s.status, s.id]), [['ok', 'I-0001'], ['ok', 'I-0002']]);
+  assert.deepEqual(r.stories.map((s) => [s.status, s.id]), [['ok', 'B1-I-0001'], ['ok', 'B1-I-0002']]);
 });
 
 test('an unresolved tie is reported ambiguous and the source is left as it was', () => {
   const stories = load(row('Identity', 'Sign in', 'Help'), row('Identity', 'Sign in', 'Help'));
-  const source = { scope: SCOPE, stories: [{ id: 'I-0009', title: 'Help', hash: 'x', epic: 'Identity', feature: 'Sign in' }] };
+  const source = { scope: SCOPE, stories: [{ id: 'B1-I-0009', title: 'Help', hash: 'x', epic: 'Identity', feature: 'Sign in' }] };
   const r = compareSource(source, stories);
   assert.equal(r.stories[0].status, 'ambiguous');
   assert.deepEqual(r.source.stories, source.stories);
@@ -87,7 +87,7 @@ test('the generated story list is replaced between its markers and nowhere else'
   const source = buildSource(base(), SCOPE);
   const md = `intro\n${storiesBlock({ stories: [] })}\noutro\n`;
   const out = applyStoriesBlock(md, source);
-  assert.match(out, /- I-0001 Sign in with email\n- I-0002 Reset a password\n<!-- stories:end -->\noutro/);
+  assert.match(out, /- B1-I-0001 Sign in with email\n- B1-I-0002 Reset a password\n<!-- stories:end -->\noutro/);
   assert.equal(applyStoriesBlock(out, source), out);
   assert.throws(() => applyStoriesBlock('no markers', source), /stories:start/);
 });

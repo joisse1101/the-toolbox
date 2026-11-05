@@ -10,7 +10,7 @@ import { loadBacklog } from '../../skills/jois-story-review/lib/backlog/model.js
 import { parseCsv } from '../../skills/jois-story-review/lib/backlog/csv.js';
 
 // A backlog file may hold IDs that are not the ones the portal derives (epic initials + position): the sample backlog stores
-// `RPT-0001` for its Reporting story, and the portal would renumber it `R-0001` on open. Every reader and every writer of the
+// `B1-RPT-0001` for its Reporting story, and the portal would renumber it `B1-R-0001` on open. Every reader and every writer of the
 // story skills must show and accept the same ID, the derived one, so a session never gets one form from a reader and a refusal
 // of it from a writer. (Before this change the explore reader showed the stored ID and the writers wanted the derived one.)
 
@@ -19,7 +19,7 @@ const script = (skill, name) => path.join(SKILLS, skill, name);
 
 const csvText = fs.readFileSync(FIXTURE_BACKLOG_CSV, 'utf8');
 const stored = parseCsv(csvText).slice(1).filter((r) => r.some(Boolean));
-const derived = loadBacklog(csvText).stories;
+const derived = loadBacklog(csvText, { initials: 'B1' }).stories;
 const reporting = derived.find((s) => s.title === 'Export a list as CSV');
 const STORED_ID = stored.find((r) => r[3] === 'Export a list as CSV')[0];
 const DERIVED_ID = reporting.code;
@@ -32,8 +32,8 @@ function run(root, skill, name, args, input) {
 }
 
 test('the fixture backlog stores an ID that differs from the derived one', () => {
-  assert.equal(STORED_ID, 'RPT-0001');
-  assert.equal(DERIVED_ID, 'R-0001');
+  assert.equal(STORED_ID, 'B1-RPT-0001');
+  assert.equal(DERIVED_ID, 'B1-R-0001');
 });
 
 for (const skill of ['jois-story-explore', 'jois-story-propose']) {

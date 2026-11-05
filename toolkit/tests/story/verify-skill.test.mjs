@@ -87,9 +87,9 @@ test('the writer-input one-liner in the skill turns the printed slice into the J
   assert.deepEqual(Object.keys(json), ['slice', 'scope', 'stories', 'files']);
   assert.equal(json.slice, 'sign-in');
   assert.deepEqual(json.scope, { type: 'feature', epic: 'Identity and access', feature: 'Sign in' });
-  assert.deepEqual(json.stories.map((s) => s.id), ['IAM-0001', 'IAM-0002']);
+  assert.deepEqual(json.stories.map((s) => s.id), ['B1-IAM-0001', 'B1-IAM-0002']);
   assert.deepEqual(json.files.map((f) => f.name).sort(), ['UC-sign-in.md', 'tasks.md']);
   const uc = json.files.find((f) => f.name === 'UC-sign-in.md').content;
   assert.match(uc, /<!-- stories:start -->\n<!-- stories:end -->/);
-  assert.doesNotMatch(uc, /- IAM-0001 Sign in with email/);
+  assert.doesNotMatch(uc, /- B1-IAM-0001 Sign in with email/);
 });

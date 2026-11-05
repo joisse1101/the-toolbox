@@ -52,7 +52,7 @@ export default function App() {
   const { files, current, backlog, selectedId, view, checked, lastChecked } = state;
   const stories = backlog?.stories ?? [];
   const problems = useMemo(() => backlogProblems(stories), [stories]);
-  const renumberDisabled = useMemo(() => gatherFeatures(stories) === stories, [stories]); // nothing to put in order
+  const renumberDisabled = useMemo(() => !state.initials || gatherFeatures(stories, state.initials) === stories, [stories, state.initials]); // nothing to put in order (and no backlog open yet: no initials)
 
   // Folded epics and features of the story list, remembered per backlog file. A story that turns up inside a folded group
   // (added, accepted from Proposed, or given another Epic or Feature in the form) opens just its feature and that feature's epic.
@@ -83,18 +83,11 @@ export default function App() {
     else review.decide(unit.indexes, 'applied');
   };
   const dismissUnit = (unit) => review.decide(unit.indexes, 'dismissed');
-  // The Unlock button of an unlock row: lift the lock, change nothing else, and mark the row applied.
-  const unlockUnit = (unit) => {
-    const story = stories.find((s) => s.code === unitStoryCode(unit));
-    if (!story) return;
-    actions.lockStory(story.id, false);
-    review.decide(unit.indexes, 'applied');
-  };
   // Accept all (whole review or one Area): confirm with the number a dry run applies, then apply the run as one edit.
   const [acceptSummary, setAcceptSummary] = useState(null);
   useEffect(() => setAcceptSummary(null), [current]);
   const acceptUnits = (units) => {
-    const expected = acceptReviewUnits(stories, units, backlog.headers).applied.length;
+    const expected = acceptReviewUnits(stories, units, backlog.headers, state.initials).applied.length;
     if (expected && !window.confirm(`Apply ${expected} review suggestion${expected > 1 ? 's' : ''}?`)) return;
     const { applied, skipped } = actions.acceptAll(units);
     if (applied.length) review.decide(applied.flatMap((u) => u.indexes), 'applied');
@@ -110,7 +103,7 @@ export default function App() {
   }, [leaveReview, actions]);
 
   // Proposed stories for the open backlog (its proposals file); the tab is always there, the file may not be.
-  const proposals = useProposals(current, backlog?.headers);
+  const proposals = useProposals(current, backlog?.headers, state.initials);
   const refreshProposals = proposals.actions.refreshFromDisk;
   const [proposedNotice, setProposedNotice] = useState(null);
 
@@ -126,7 +119,7 @@ export default function App() {
   // Move proposed stories into the backlog. Nothing changes when acceptProposed refuses. The backlog is replaced
   // first and the proposals second, so a crash between the two saves leaves a duplicate rather than a lost story.
   const accept = (ids) => {
-    const result = acceptProposed(stories, proposals.stories, ids, backlog.headers);
+    const result = acceptProposed(stories, proposals.stories, ids, backlog.headers, state.initials);
     if (result.error) return setProposedNotice({ kind: 'error', text: result.error });
     actions.replaceStories(result.backlog);
     proposals.actions.replaceStories(result.proposals);
@@ -140,7 +133,7 @@ export default function App() {
   // Editor -> Proposed for the open story. Its open review suggestions are marked dismissed (after a confirm, only
   // when there are any). Order: backlog, proposals, review, like accept, so a crash leaves a duplicate, not a lost story.
   const moveToProposed = (story) => {
-    const result = moveStoryToProposed(stories, proposals.stories, story.id, backlog.headers);
+    const result = moveStoryToProposed(stories, proposals.stories, story.id, backlog.headers, state.initials);
     if (result.error) return review.notify(result.error);
     const units = openUnitsFor(review.rows, story.code);
     if (units.length && !window.confirm(`${story.code} has ${units.length} open review suggestion${units.length > 1 ? 's' : ''}. Moving it to Proposed marks ${units.length > 1 ? 'them' : 'it'} as dismissed. Continue?`)) return;
@@ -267,8 +260,8 @@ export default function App() {
         </header>
 
         <FileBar
-          files={files} current={current} message={message} olderLayout={settingsState.settings?.olderLayout} focusNameToken={focusNameToken} projects={projects}
-          onSelect={actions.selectFile} onRename={actions.renameFile} onNew={newBacklog} onOpenFolder={actions.openFolder} onRefresh={refreshAll}
+          files={files} current={current} initials={state.initials} message={message} olderLayout={settingsState.settings?.olderLayout} focusNameToken={focusNameToken} projects={projects}
+          onSelect={actions.selectFile} onRename={actions.renameFile} onSetInitials={actions.setInitials} onNew={newBacklog} onOpenFolder={actions.openFolder} onRefresh={refreshAll}
         />
 
         {(review.message || review.notice || acceptSummary || orphans.length > 0) && (
@@ -312,12 +305,12 @@ export default function App() {
         <div id="editor" className="editor" style={editorList.style} role="tabpanel" aria-labelledby="tabEditor" hidden={!current || view !== 'editor'}>
           {inEditor && (
             <>
-              <StoryList stories={stories} problems={problems} suggestionCounts={suggestionCounts} selectedId={selectedId} onSelect={actions.selectStory} onAdd={addStory} onMove={moveStory} onMoveGroup={moveGroup} onLockGroup={actions.lockGroup} onRenumber={renumberDisplayed} renumberDisabled={renumberDisabled} collapse={collapse} />
+              <StoryList stories={stories} problems={problems} suggestionCounts={suggestionCounts} selectedId={selectedId} onSelect={actions.selectStory} onAdd={addStory} onMove={moveStory} onMoveGroup={moveGroup} onRenumber={renumberDisplayed} renumberDisabled={renumberDisabled} collapse={collapse} />
               {selected && (
                 <StoryForm
                   story={selected} stories={stories} problems={problems} suggestions={selectedUnits} focusRequest={focusRequest}
                   onFocused={() => setFocusRequest(null)} onEdit={actions.editStory} onCommitEpic={actions.commitEpic} onOpen={actions.selectStory}
-                  onApplySuggestion={applyUnit} onDismissSuggestion={dismissUnit} onUnlockSuggestion={unlockUnit} onMoveToProposed={moveToProposed} onDelete={actions.deleteSelected} onLock={actions.lockStory}
+                  onApplySuggestion={applyUnit} onDismissSuggestion={dismissUnit} onMoveToProposed={moveToProposed} onDelete={actions.deleteSelected}
                 />
               )}
             </>
@@ -347,13 +340,13 @@ export default function App() {
 
         <StoriesTab
           stories={stories} headers={backlog?.headers ?? []} problems={problems} checked={checked} lastChecked={lastChecked} hidden={!current || view !== 'stories'}
-          onOpen={openInEditor} onCheck={actions.toggleChecked} onCheckAll={actions.checkAll} onApplyBulk={actions.applyBulkPatch} onLockChecked={actions.lockChecked} onDeleteChecked={actions.deleteChecked}
+          onOpen={openInEditor} onCheck={actions.toggleChecked} onCheckAll={actions.checkAll} onApplyBulk={actions.applyBulkPatch} onDeleteChecked={actions.deleteChecked}
         />
 
         {review.exists && (
           <ReviewTab
             rows={review.rows} stories={stories} hidden={!current || view !== 'review'}
-            onOpen={openInEditor} onApply={applyUnit} onDismiss={dismissUnit} onUnlock={unlockUnit} onAcceptAll={acceptUnits} onClear={review.clear}
+            onOpen={openInEditor} onApply={applyUnit} onDismiss={dismissUnit} onAcceptAll={acceptUnits} onClear={review.clear}
           />
         )}
 

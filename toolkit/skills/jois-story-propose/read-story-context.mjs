@@ -31,6 +31,7 @@ import { parseReview, serializeReview } from './lib/review/review.js';
 import { resolveStoryRef } from './lib/backlog/story-ref.js';
 import { parseSuggestions, composeSuggestions, isOpen } from './lib/lexicon/lexicon-suggestions.js';
 import { dataDirOrThrow } from './lib/skill-support/resolve-data-dir.mjs';
+import { initialsOf } from './lib/skill-support/backlog-initials.mjs';
 
 const require = createRequire(import.meta.url);
 const { backlogDir, backlogFile, listBacklogs: listBacklogFolders, KIND_FILES } = require('./lib/storage/backlog-paths.cjs');
@@ -49,13 +50,14 @@ export const FILE_SECTIONS = { proposals: 'proposals', lexicon: 'lexicon' };
 const RESULT_CAP = 30000;
 
 // The backlog is printed as an index so its section stays small; read-story-context.mjs <name> <ID> gives a full story.
-export const INDEX_COLUMNS = ['ID', 'Epic', 'Feature', 'Title', 'User Story', 'Sprint points', 'Depends On', 'Locked'];
+export const INDEX_COLUMNS = ['ID', 'Epic', 'Feature', 'Title', 'User Story', 'Sprint points', 'Depends On', 'Frozen'];
 
 // The backlog file with its IDs as the portal and the writers derive them (epic initials + position, `Depends On` links following),
-// so a hand-edited file whose stored IDs differ is read under the IDs every writer accepts. Text that cannot be loaded is returned as it is.
-export function withDerivedIds(text) {
+// so a hand-edited file whose stored IDs differ is read under the IDs every writer accepts. The IDs start with the backlog's
+// initials (`initials`). Text that cannot be loaded is returned as it is.
+export function withDerivedIds(text, initials) {
   try {
-    return serializeBacklog(loadBacklog(text));
+    return serializeBacklog(loadBacklog(text, { initials }));
   } catch {
     return text;
   }
@@ -136,7 +138,7 @@ export function readStoryContext({ dataDir = dataDirOrThrow(), guidelinesDir = G
   }
   let csv;
   try {
-    csv = withDerivedIds(fs.readFileSync(backlogPath, 'utf8'));
+    csv = withDerivedIds(fs.readFileSync(backlogPath, 'utf8'), initialsOf(dataDir, file));
   } catch {
     return { ok: false, errors: [`${label(file, 'backlog')} was not found.`] };
   }
@@ -220,6 +222,7 @@ export function searchStories({ dataDir = dataDirOrThrow(), name, query }) {
   if (typeof query !== 'string' || !query.trim()) {
     return { ok: false, errors: ['Give at least one word to search for. To see every story, read the index section (--section index).'] };
   }
+  const initials = initialsOf(dataDir, file);
   const lines = [];
   for (const [kind, source] of [['backlog', 'backlog'], ['proposals', 'proposed']]) {
     let csv;
@@ -229,7 +232,7 @@ export function searchStories({ dataDir = dataDirOrThrow(), name, query }) {
       if (err.code === 'ENOENT' && kind === 'proposals') continue;
       return { ok: false, errors: [err.code === 'ENOENT' ? `${label(file, 'backlog')} was not found.` : `Could not read ${label(file, kind)}: ${err.message}`] };
     }
-    const { headers, stories } = loadBacklog(csv, { placeholderIds: kind === 'proposals' });
+    const { headers, stories } = loadBacklog(csv, { placeholderIds: kind === 'proposals', initials });
     lines.push(...findStories(stories, query, headers, source));
   }
   return { ok: true, text: searchReply(lines) };

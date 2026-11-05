@@ -10,6 +10,8 @@ Epic -> Feature -> User Story -> Acceptance criteria
 
 An Epic contains several Features, a Feature several User Stories, and a Story is validated by several acceptance criteria.
 
+**Story IDs and frozen stories.** A story ID has three parts: the backlog's initials, a short prefix for the Epic, and a number, for example `B1-IAM-0003`. The initials make every ID unique across backlogs. A story with an ID can be **frozen** (the `Frozen` column holds `Yes`) once its slice is confirmed. A frozen story is reference only: it is read-only, it keeps its ID for good, and a change to it needs a superseding story. When you review or write stories, use frozen stories as context and do not edit them.
+
 ---
 
 ## 1. Epic

@@ -22,7 +22,8 @@ Use the Editor, Graph and Stories tabs. The portal saves by itself, so the resul
 2. Fill in Epic, Feature and Title, the "As", "I want" and "So that" parts, the sprint points and the acceptance criteria, including a failure case. Use Clarifications for what is not decided yet.
 3. Set Depends On in the form, or switch to the **Graph** tab and drag from one story's dot to the story it depends on.
 4. Watch the save chip in the header until it reads "Saved". If it reads "Save failed", close the file in Excel and the portal retries.
-5. Use the **Stories** tab to check the whole backlog, to sort and filter it, and to set Priority, Epic or Feature on several stories at once. Lock stories that are settled so reviews and reordering leave them alone.
+5. Use the **Stories** tab to check the whole backlog, to sort and filter it, and to set Priority, Epic or Feature on several stories at once. Stories that the plan skill has frozen are marked and stay as they are.
+6. To change the initials that start every ID of the backlog, edit the **Initials** box next to the backlog name and leave it. The IDs of stories that are not frozen change and their links follow. A value another backlog uses is refused with that backlog's name.
 
 To work out stories in conversation first, use the skills as in the next flow. They do not write to `user-stories.csv`.
 
@@ -41,9 +42,9 @@ A story already in the backlog is not proposed again. A change to it comes back 
 
 Use the review skill, then the Review tab or the story form. The skill writes `<backlog>/user-stories/review.csv`, and applying a suggestion edits `<backlog>/user-stories.csv` and marks the row in `review.csv`.
 
-1. Ask Claude to use `jois-story-review` on the backlog. It reads the backlog Epic by Epic against `planner/guidelines/product-backlog.md`, then writes its findings to `<backlog>/user-stories/review.csv` and reports them in the chat. It never edits `user-stories.csv`, and it treats locked stories as reference only.
+1. Ask Claude to use `jois-story-review` on the backlog. It reads the backlog Epic by Epic against `planner/guidelines/product-backlog.md`, then writes its findings to `<backlog>/user-stories/review.csv` and reports them in the chat. It never edits `user-stories.csv`, and it treats frozen stories as reference only.
 2. Open the **Review** tab, which appears once the review file exists. Each suggestion shows its story, the proposed value, the reason, and Apply and Dismiss. The same suggestion also shows next to its field in the Editor's story form, and the story list shows a count.
-3. Press **Apply** to make the edit, or **Dismiss** to drop it. A suggestion marked out of date can only be dismissed, and one on a locked story can be applied only after you unlock the story. **Accept all** applies a whole area after you confirm the count.
+3. Press **Apply** to make the edit, or **Dismiss** to drop it. A suggestion marked out of date can only be dismissed, and one on a frozen story cannot be applied. **Accept all** applies a whole area after you confirm the count.
 4. Re-run the review after large changes. A later full review replaces the suggestions that are still open, so apply the ones you want first.
 
 `/jois-story:propose` can add review rows too, for changes you agreed to in a session for stories already in the backlog. They appear in the same places. The command `/jois-story:review` is not this flow. It audits the session's own work, reads files only, and writes nothing.

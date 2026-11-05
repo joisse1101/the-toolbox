@@ -8,12 +8,12 @@ const skill = fs.readFileSync(path.join(PLAN_SKILL_DIR, 'SKILL.md'), 'utf8');
 const frontmatter = (text) => Object.fromEntries(/^---\n([\s\S]*?)\n---/.exec(text.replace(/\r\n/g, '\n'))[1].split('\n').filter((l) => /^[a-z-]+:/.test(l)).map((l) => [l.slice(0, l.indexOf(':')), l.slice(l.indexOf(':') + 1).trim()]));
 const body = skill.replace(/\r\n/g, '\n');
 
-test('the skill is named jois-story-plan, versioned, and allows only its four scripts, the init script and the file tools', () => {
+test('the skill is named jois-story-plan, versioned, and allows only its five scripts, the init script and the file tools', () => {
   const meta = frontmatter(skill);
   assert.equal(meta.name, 'jois-story-plan');
-  assert.match(body, /metadata:\n  version: "1\.2\.2"\n  last_updated: "2026-11-05"/);
+  assert.match(body, /metadata:\n  version: "1\.3\.0"\n  last_updated: "2026-11-05"/);
   assert.deepEqual(meta['allowed-tools'].split(/,\s*/).sort(), [
-    'Bash(node *init-plans.mjs*)', 'Bash(node *read-context-map.mjs*)', 'Bash(node *read-diagrams.mjs*)', 'Bash(node *write-context-map.mjs*)', 'Bash(node *write-diagram.mjs*)', 'Glob', 'Grep', 'Read',
+    'Bash(node *init-plans.mjs*)', 'Bash(node *read-context-map.mjs*)', 'Bash(node *read-diagrams.mjs*)', 'Bash(node *write-context-map.mjs*)', 'Bash(node *write-diagram.mjs*)', 'Bash(node *write-freeze.mjs*)', 'Glob', 'Grep', 'Read',
   ]);
 });
 
@@ -47,8 +47,8 @@ test('the map step asks one yes/no, writes only after it, reads back, and leaves
 test('the slice is checked before the question, written only after the yes, and read back', () => {
   const step = /## Check, show, confirm([\s\S]*?)\n## Write and read back/.exec(body)[1];
   assert.match(step, /write-diagram\.mjs <backlog> --check/);
-  assert.match(step, /Write this slice\?/);
-  assert.match(step, /Do not run `write-diagram\.mjs` without `--check` before the user picks "Yes, write"/);
+  assert.match(step, /Write this slice and freeze its stories\?/);
+  assert.match(step, /Do not run `write-diagram\.mjs` or `write-freeze\.mjs` without `--check` before the user picks "Yes, write and freeze"/);
   assert.match(body, /read the slice back in the same turn\*\* with `read-diagrams\.mjs <backlog> --slice <slice>`/);
 });
 
@@ -69,8 +69,8 @@ test('the skill drafts tasks.md unticked, shows it with the document under one c
   assert.match(draft, /Send every task unticked[\s\S]*never send a tick/);
   const step = /## Check, show, confirm([\s\S]*?)\n## Write and read back/.exec(body)[1];
   assert.match(step, /complete `tasks\.md`/);
-  assert.match(step, /covers the document and `tasks\.md` together \(there is no second question for the tasks\)/);
-  assert.equal((step.match(/Write this slice\?/g) || []).length, 1);
+  assert.match(step, /covers the document, `tasks\.md` and the freeze together \(there is no second question for the tasks\)/);
+  assert.equal((step.match(/Write this slice and freeze its stories\?/g) || []).length, 1);
   const write = /## Write and read back([\s\S]*)$/.exec(body)[1];
   assert.match(write, /\*\*reset\*\*[\s\S]*\*\*dropped\*\*/);
   assert.match(write, /no separate check/);

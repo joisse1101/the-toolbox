@@ -11,7 +11,7 @@ const CSV = [
   ',Admin,,delta,,5,High,',
 ].join('\n');
 
-const { stories } = loadBacklog(CSV);
+const { stories } = loadBacklog(CSV, { initials: 'B1' });
 const titles = (list) => list.map((s) => s.title);
 
 test('a blank filter keeps every story', () => {

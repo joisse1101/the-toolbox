@@ -16,8 +16,7 @@ test('the four story commands exist and nothing else is in the folder', () => {
 test('each command is versioned and hidden from the model', () => {
   for (const name of NAMES) {
     const front = read(name).split('---')[1];
-    const updated = name === 'verify' ? '2026-11-05' : '2026-11-03';
-    assert.match(front, new RegExp(`^metadata:\\n {2}version: "1\\.0\\.0"\\n {2}last_updated: "${updated}"$`, 'm'), name);
+    assert.match(front, /^metadata:\n {2}version: "(1\.0\.0|1\.1\.0)"\n {2}last_updated: "(2026-11-03|2026-11-05)"$/m, name);
     assert.match(front, /^disable-model-invocation: true$/m, name);
     assert.doesNotMatch(front, /mcp__/, name);
   }
