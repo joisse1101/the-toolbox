@@ -29,8 +29,8 @@ The older layout had `backlogs/`, `reviews/`, `proposals/`, `lexicons/`, `lexico
 - `planner/logic/storage/file-name.cjs` has `validateBacklogName`, the one set of backlog-name rules. A trailing `.csv` is dropped. Separators, invalid Windows characters and the reserved name `logs` are refused.
 - `planner/logic/storage/backlog-paths.cjs` is the one place that builds the path of a backlog's file from its name and a kind. It has `backlogDir`, `backlogFile`, `reviewDecidedFile`, `slicesDir` and `contextMapFiles`, plus `listBacklogs` and `detectOlderLayout`. `KIND_FILES` registers the kinds, and `PLANS_DIR` names `.plans`.
 - `planner/logic/storage/paths.cjs` holds `DATA_DIR`, the folder named by `dataDir` in the project config as read at load, for short-lived scripts. `getDataDir()` and `setDataDir()` are what the server uses, so a switch takes effect at once. `legacyDataHint` says how to move data an earlier layout left in `data/` or `user-stories/`.
-- `planner/logic/storage/project-config.cjs` reads, validates and saves `planner/planner.config.yaml`, or the file `PLANNER_CONFIG` names.
-- `planner/logic/storage/project-folders.cjs` holds the folder checks, `initFolders`, `copyData` and `migrateOlderLayout` that the Settings tab uses.
+- `planner/logic/storage/project-config.cjs` reads, validates and saves `planner/planner.config.yaml`, or the file `PLANNER_CONFIG` names. `loadConfig` returns `projects` (resolved, with `.plans` applied, and a synthetic entry when the active path is not listed or there is no list) and `activeProject` (its index, matched by resolved path). `addProject` appends an entry, and the first add writes the active path into the list. `replaceActive` gives the active entry the new path without a second entry. Both keep the file's comments.
+- `planner/logic/storage/project-folders.cjs` holds the folder checks, `initFolders`, `planCopy` and `planCopyToCodeBase` (read-only: the files an overwrite would replace), `copyData` and `migrateOlderLayout` that the Settings tab uses. Init creates only the data folder. Copy skips any `backups/` folder and never overwrites unless the `overwrite` option is set, and then it replaces only files present in both places. It reads each copied or overwritten file back and reports `copied`, `overwritten`, `skipped` and `failed`, plus `stopped` when a file could not be written.
 
 ## The project config
 
@@ -39,6 +39,7 @@ The config file is `planner/planner.config.yaml`. It is git-ignored, so copy `pl
 - `projectName` is shown in the portal header. The default is empty.
 - `dataDir` is the folder that holds the data, absolute or relative to the config file's folder. The default is `planner/data/`, which is also used when there is no config file.
 - `codeBase` is the folder of a code base you work on, absolute or relative to the config file's folder. The data folder is then `<codeBase>/.plans/`, with the layout above. You never type `.plans`.
+- `projects` is an optional list of saved projects, each with one path (`codeBase` or `dataDir`) and an optional `name`. The top-level `codeBase` or `dataDir` stays the active project, so the skills, which read only those two keys from a flat file, need nothing new. Without a list, the active folder shows as one project, and the list is written the first time you add a project. Code older than the list refuses the key as unknown, so delete the list to roll back. `planner/planner.config.example.yaml` shows the shape.
 
 A bad key or value fails naming it, and the server stops at startup with that message. A config with both `codeBase` and `dataDir` fails naming both, because the two keys name the same thing in different ways. `saveConfig` writes one and removes the other in one write, so the file never holds both.
 

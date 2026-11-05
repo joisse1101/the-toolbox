@@ -74,8 +74,18 @@ The skill needs the packages in its own folder, installed by `npm ci` there. The
 Use the Settings tab. It reads and writes the config file, `planner/planner.config.yaml` (or the file `PLANNER_CONFIG` names), and copies backlog files between folders.
 
 1. Open the **Settings** tab and press **Change folder** to pick another data folder, or **Change code base** to use a project folder's `.plans` as the data folder. **Move data into a code base** does the same and copies the current data into it first.
-2. If the chosen folder already holds backlogs, the portal switches at once. If it holds none, choose **Copy current data** (existing files there are kept) or **Create empty structure**, or cancel and nothing changes. Choosing a code base saves `codeBase` and removes `dataDir`, because the config accepts only one of them.
+2. The portal copies the current project's backlogs to the chosen folder and replaces the project's saved path, not adding a second entry. An empty or missing folder is copied to without a prompt. If the folder already holds backlogs, the portal lists the files an overwrite would replace and asks **Overwrite**, **Just switch** or **Cancel**. The path is saved only after every file has been read back, so a failed copy changes nothing. Choosing a code base saves `codeBase` and removes `dataDir`, because the config accepts only one of them.
 3. If the tab offers **Migrate older layout**, press it to copy files of the older layout into one folder per backlog. The old files stay where they are.
 4. Restart skill sessions. The tab reminds you that scripts and open Claude sessions use the new folder only after they start again.
 
 The server refuses a relative path, a system folder, a drive root and any folder inside this repository, so the dialog is the only way to set a folder from the portal.
+
+## Switch between saved projects
+
+Use the **Project** dropdown in the file bar. It reads and writes the `projects` list and the active path in `planner/planner.config.yaml` (or the file `PLANNER_CONFIG` names), and it touches no backlog file.
+
+1. Open the **Project** dropdown and choose a saved project. The portal saves its path as the active one and reloads.
+2. To add one, choose **Add Project...**. Link a code base (it offers to create `.plans/` and a first backlog when it has none) or create a project from a name in `planner/data/<name>`. A project already in the list is switched to and not added twice.
+3. Restart skill sessions, because they read the active path only when they start.
+
+A project whose folder has gone is shown disabled.

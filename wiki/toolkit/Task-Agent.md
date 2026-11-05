@@ -63,7 +63,7 @@ The purpose is to commit a checked group without a stop, and to ask only when so
 
 A passing command that shows no code is reported as `exit code 0 (the tool showed no error)`. The command judges the tests by exit codes, never by the agent's wording.
 
-A fixable doubt gets one rerun before it asks. A fixable doubt is a missing exit code or a suite skipped for a folder problem. The rerun puts the exact commands in the prompt, once per group, and the stall watch covers it. A protected branch, a missing agent and an unrelated change are not rerun and go to the confirmation word. A non-zero exit code is not rerun either, because it starts the fix loop.
+A fixable doubt gets one rerun before it asks. A fixable doubt is a missing exit code or a suite skipped for a folder problem. The rerun puts the exact commands in the prompt, once per group, and the stall watch covers it. A protected branch, a missing agent and an unrelated change are not rerun and go to the confirmation word. A non-zero exit code is not rerun either. If a pending task of a later group is named as the fix, the commit waits (see Deferring a commit below). Otherwise it starts the fix loop.
 
 A group of several concerns is split, not stopped on. It is cut by the hygiene rule's one-concern list and by task. The tests run once for the whole group before the first commit. Each concern is staged by explicit path and committed in turn with its own message, and each hash is printed. If a later commit fails, the command stops and reports which commits were made. A commit-stop line in the project's `operationGuidance` does not govern these commits.
 
@@ -92,6 +92,16 @@ A failure is explained only when the `Failures` part gives the command, the exac
 - The agent ends with `blocked: <question>`.
 - A second round ends with a failure still unexplained.
 - The same failure, with the same command and output line, comes back after a round meant to fix it.
+
+## Deferring a commit
+
+A failing test does not always need a fix round, because sometimes a later task of the same change is what makes the test pass. In that case the command holds the commit back and goes on, so that it does not fix a failure that the next group would fix anyway.
+
+A failure is deferrable only when it is explained and also names, as its fix, a task that is still pending in a later group. The failure gives the command, the exact output line, the cause and the task number. The command checks the named task in `tasks.md` itself: the task must exist, sit in a later group and be unticked. "A later group will fix it" with no task named is not deferrable, and neither is a task that is ticked or missing, because the report's word alone is not evidence.
+
+For a deferrable failure the command does not commit, says which task it waits for and takes the next group without asking you. After each later group it reruns the tests. While every failure still names a pending task it keeps holding. When every command exits 0 it commits all the held-back changes by explicit path, cut into commits by concern as the `jois-git-commit-hygiene` rule says, and groups that changed the same file keep that file in one commit. It never commits while any command is red.
+
+The last group cannot defer, because no later task is left to fix anything. A red result there runs the fix loop over the whole change, and the command asks you if a failure stays unexplained.
 
 ## What is enforced
 

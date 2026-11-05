@@ -22,10 +22,13 @@ The API is `/api/<kind>/<backlog name>`. The name carries no `.csv`, and the ser
 
 The settings routes are handled before the store lookup:
 
-- `GET /api/project` answers the name, the served data folder and the config path.
+- `GET /api/project` answers the name, the served data folder, the config path, `projects` (each with an `exists` flag) and `activeProject`.
 - `PUT /api/project` takes `{projectName?, dataDir?, codeBase?}` and saves the config through `saveConfig`. For a `dataDir` or `codeBase` it also switches the served folder at once. A code base is served as `<codeBase>/.plans`, confined by `confineCodeBase`, which has no `planner/data/` exception. The route is refused with `busy` (409) while a write, create, rename, init, copy or migration is running, and with `refused` (400) when `confineDir` or `saveConfig` refuses.
 - `POST /api/project/check` takes `{dir}` or `{codeBase}` and answers `refused`, `has-planner-files` (a backlog folder), `older-layout` (no backlog folder but a folder of the older layout), `empty` or `missing`.
 - `POST /api/project/init` and `POST /api/project/copy` take `{dir}` or `{codeBase}`. Init of a code base creates only `.plans`, confined first. Copy goes from the served folder and never overwrites.
+- `POST /api/project/add` takes `{codeBase, name?, init?}` or `{newName}`. It links a code base or creates `planner/data/<name>`, appends the entry and switches. A project already listed is switched to, not added twice. A code base without planner files answers `needsInit` until it is called again with `init: true`.
+- `POST /api/project/relocate-plan` takes `{dir}` or `{codeBase}` and is read-only. It answers `status`, `action` (`copy`, `choose` or `switch`), `needsChoice` and `exists`, the files an overwrite would replace.
+- `POST /api/project/relocate-apply` takes the same target plus `choice`, one of `overwrite`, `switch` or `cancel`. It plans, copies, reads back and only then calls `replaceActive`, in that order. Any failure answers `copy-failed`, `copy-stopped`, `refused` or `choice-needed` with the config unchanged, and a target that is another saved project answers `exists`. The old folder is never touched.
 - `POST /api/project/migrate` takes no body and needs the same-origin header. It runs `migrateOlderLayout` on the served folder and answers the copied and skipped lists. It never runs unasked.
 - `POST /api/project/pick` takes no body. It opens the system folder dialog and answers `{dir}` or `{cancelled: true}`, or 500 `picker-unavailable` when the dialog cannot open. It saves and switches nothing, and tests replace the dialog through `setFolderDialog`.
 
@@ -64,9 +67,13 @@ With the opt-in `onLockGroup` prop, each Epic and Feature head also has a lock b
 `planner/portal/web/backlog-portal/components/SettingsTab.jsx` works with `planner/portal/web/backlog-portal/hooks/useSettings.js` and handles the project name and the data folder.
 
 - The data folder box is read-only. Change folder opens the system folder dialog through `POST /api/project/pick`, which the server opens because a browser cannot return a full path.
-- The chosen folder goes through check, an offer and a live switch through the settings routes. The offer is to create the data folder, or to copy the data into a new folder.
-- Change code base uses the same dialog. The data folder becomes `<code base>/.plans`, with an offer to move a `dataDir` setup's data into it by copy, never overwriting. Declining changes nothing.
-- A Migrate action shows when the folder holds the older layout.
+- The chosen folder relocates the current project through `relocate-plan` and `relocate-apply`. An empty or missing target is copied to without a prompt. A target with backlog folders shows the files an overwrite would replace and asks Overwrite, Just switch or Cancel. The new path is saved only after the read-back, so a failed copy shows its reason and changes nothing.
+- Change code base is the same flow on `<code base>/.plans`, and Move data into a code base is the same button for a `dataDir` setup.
+- Run init remains, and a Migrate action shows when the folder holds the older layout.
+
+### Project dropdown
+
+`planner/portal/web/backlog-portal/components/FileBar.jsx` has a Project dropdown left of the Backlog dropdown, with `planner/portal/web/backlog-portal/hooks/useProjects.js` and `planner/portal/web/backlog-portal/components/AddProjectDialog.jsx`. Add Project comes first and the saved projects follow, with a missing folder disabled. Choosing one settles pending saves and reuses the live switch, and no file is touched. The dialog links a code base or creates a project from a name, through `POST /api/project/add`.
 
 Skill sessions use the new folder once they are restarted. The FileBar shows a notice when the data folder holds the older layout.
 
