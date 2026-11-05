@@ -304,14 +304,18 @@ The Settings tab SHALL show the code base when the config names one, and SHALL l
 - **THEN** nothing is checked, saved or switched
 
 ### Requirement: Offer to move a data directory into a code base
-When the config uses `dataDir` or no config exists, the Settings tab SHALL offer to move the data into a code base. On the user's choice it SHALL copy the current data into the code base's `.plans` without overwriting a file, and then save `codeBase`. Declining SHALL change nothing.
+When the config uses `dataDir` or no config exists, the Settings tab SHALL offer a Move data into a code base action. It SHALL run the same relocation as a change of folder, applied to the code base's `.plans` folder: an empty or missing `.plans` is copied into without a prompt, a `.plans` that holds planner files asks the user to overwrite, switch or cancel, and `codeBase` is saved only after the copy has been read back. Cancelling the choice SHALL change nothing.
 
-#### Scenario: User accepts the move
-- **WHEN** the user chooses a code base and accepts the copy
-- **THEN** the data is copied to `<code base>\.plans`, existing files there are listed as skipped, and the config then holds `codeBase`
+#### Scenario: Empty .plans
+- **WHEN** the user chooses a code base whose `.plans` is empty or missing
+- **THEN** the data is copied to `<code base>.plans` without a prompt and the config then holds `codeBase`
 
-#### Scenario: User declines
-- **WHEN** the user declines the offer
+#### Scenario: .plans holds planner files
+- **WHEN** the user chooses a code base whose `.plans` holds `iam/user-stories.csv`
+- **THEN** nothing is copied or saved until the user chooses to overwrite, switch or cancel
+
+#### Scenario: User cancels
+- **WHEN** the user cancels at the choice
 - **THEN** the config and both folders are unchanged
 
 #### Scenario: Source data left in place
