@@ -9,7 +9,7 @@ const path = require('path');
 const YAML = require('yaml');
 const { PLANS_DIR } = require('./backlog-paths.cjs');
 const {
-  confineDir, confineCodeBase, checkFolder, checkCodeBase, initFolders, initCodeBase, copyData, copyToCodeBase, migrateOlderLayout,
+  confineDir, confineCodeBase, checkFolder, checkCodeBase, initFolders, initCodeBase, copyData, copyToCodeBase, planCopy, planCopyToCodeBase, migrateOlderLayout,
 } = require('./project-folders.cjs');
 
 const ROOT = path.resolve(__dirname, '..', '..', '..');
@@ -205,5 +205,5 @@ function saveConfig(changes, { file = configPath(), confine } = {}) {
 
 module.exports = {
   ROOT, DEFAULT_CONFIG_PATH, DEFAULT_DATA_DIR, KEYS, configPath, validateConfig, loadConfig, saveConfig,
-  confineDir, confineCodeBase, checkFolder, checkCodeBase, initFolders, initCodeBase, copyData, copyToCodeBase, migrateOlderLayout,
+  confineDir, confineCodeBase, checkFolder, checkCodeBase, initFolders, initCodeBase, copyData, copyToCodeBase, planCopy, planCopyToCodeBase, migrateOlderLayout,
 };
