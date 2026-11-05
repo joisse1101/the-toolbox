@@ -1,0 +1,91 @@
+# Command Details
+
+This page gives the behaviour of the toolkit's commands and of the design skill in detail: what each does step by step, what it refuses and why. The one-line summaries are in the [Toolkit Guide](Toolkit-Guide.md), and the order in which to run them is in [Task Recipes](Task-Recipes.md). A command is a markdown file under `toolkit/commands/`, and a folder there is a namespace, so `toolkit/commands/jois-git/stage.md` is `/jois-git:stage`. The installer treats each entry directly under `toolkit/commands/` as one unit, so `-Command jois-git` installs the whole `jois-git` set (see [Install](Install.md)).
+
+## Commands stay out of the session context
+
+Every command declares `disable-model-invocation: true`, so its description is not loaded into each new session's skill listing, which would cost about 300 tokens for a typical set. You can still type `/jois-git:stage`. `python toolkit/check_toolkit.py` fails on a command without the flag. Skills are not given the flag, because Claude should be able to pick a skill by its description.
+
+## The jois-git commands
+
+### /jois-git:stage
+
+It clears a messy working tree, with or without an OpenSpec change. It stages one concern at a time, shows the message and a confirmation word, and waits. Typing the word commits that concern and moves on, until the tree is clean. Secret files and build output are skipped and named. It has no commit authority of its own: the commit rule's confirmation word is what allows each commit.
+
+### /jois-git:write-pr
+
+It opens GitHub pull requests (PRs) for the commits on the current branch. It is one file, so the steps, the PR guidelines, the body template and the verification rules all sit inside it. It reads the commits since the default branch on the remote, so a local branch that is behind does not matter. It proposes groups of commits that each form one concern, and a refactor never shares a PR with a feature. It waits for a confirmation word before it pushes or runs `gh pr create`. Each body lists the test files the group adds, an Author Verification list and suggested steps for a reviewer.
+
+The verification comes from three sources: the OpenSpec change's `tasks.md`, and the test, build or lint runs it can see earlier in the same chat, so run your tests in the chat before you type the command. It states no result that a source did not record. When a group has no verification and the repo documents a test command for the directories it changes, it asks once, for all groups, whether to run them. It runs only what you agree to, and otherwise asks what you ran. A failing or timed-out run is reported, never fixed, and does not block the PR.
+
+A `chore`, `build`, `ci`, `docs` or `revert` group whose diff changes no behavior needs no tests. This is judged from the diff, and when unsure the group gets tests. Such a group gets a one-sentence summary and no testing block, and is never asked about. The presentation says why, so you can reply that it needs tests. The reviewer steps aim at what the group changes, such as the test a fix adds, and may use a command you ran earlier in the chat.
+
+The command also works from the default branch. Commits ahead of the remote go to new branches named `type/slug`, or `type/TICKET-slug` when a commit references a ticket, where the type is a commit type such as `feat` or `fix`. <!-- docs-check: ignore --> Once every PR is opened, the local default branch is set to the remote with `git branch -f`, which leaves uncommitted changes alone. The confirmation word covers that reset, and nothing is reset if a push or PR failed.
+
+Before it opens anything, it uses only commands the repo's own documents state, and it shows you the source of each line before you confirm, never in the PR. It blocks a group whose diff holds a secret, an `.env` file or build output, and it warns on debug prints.
+
+It never merges. A hook in the command's frontmatter blocks `gh pr merge`, `--auto` and merge calls through `gh api`. A hook is a check that runs before a tool call and can refuse it, and this one stays active for the rest of the session once the command has been invoked. The hook looks for those words anywhere in a shell command's text, so text that merely mentions them is refused too. For that reason the command passes each PR body from a file.
+
+When it finishes, it lists every PR it opened in the order to merge, with a merge command for each, for you to run. A PR that nothing is stacked on gets `gh pr merge <n> -s -d`. A PR that another PR is based on gets it without `-d`, because deleting its branch closes the PR above it and GitHub cannot reopen that one. For each PR above it the list gives the follow-up in order: rebase, push with `--force-with-lease`, retarget to the default branch, delete the earlier branch.
+
+It replaces the old `/write-pr` skill. If you installed that, delete `~/.claude/skills/write-pr`, because the installer only manages items the toolkit still holds. Then run `.\Install-Toolkit.ps1 -Command jois-git -Force`.
+
+### /jois-git:update-pr
+
+It brings the open PR of the current branch up to date. It finds the PR, then handles whichever of these apply:
+
+- A restack, when the PR sits on a branch whose PR has merged and that branch still exists. It rebases onto the default branch and retargets the PR.
+- A push of commits the remote lacks.
+- A refreshed body, built from the same template and verification rules as `/jois-git:write-pr`, shown to you as a diff against the live body.
+
+One confirmation word covers everything it will do, listed first. It pushes plainly, except the `--force-with-lease` push of a restack you confirmed. It never uses `--force`, never renames or deletes a branch, and never merges (the same hook as write-pr). With no open PR it says so and points to `/jois-git:write-pr`.
+
+It is also a single file, so the body template and verification sections are copied from write-pr, and `python toolkit/check_toolkit.py` fails if the two copies differ. The same no-tests rule and targeted reviewer steps apply to its refreshed body.
+
+### /jois-git:write-issue
+
+It drafts one issue and creates it on the repository's host. Everything you write after the command is the content of the issue, never instructions to it. It changes no file in the repository.
+
+It reads the `origin` remote. A `github.com` host uses `gh`, a host with `gitlab` in its name uses `glab`, and any other host it asks you about once. `glab` is needed only for GitLab repos, and its flags are checked against the GitLab CLI docs, not run. It lists similar open issues from your description before it drafts anything. It picks a bug, feature or task template from what you describe, or asks when it could be two. It uses the repository's own template from `.github/ISSUE_TEMPLATE/` or `.gitlab/issue_templates/` instead when one matches. <!-- docs-check: ignore -->
+
+A required section you give nothing for is drafted from your words, the conversation and, for a bug or feature, the files your request points at (read first, read-only). It points out each drafted section when it shows you the issue, and asks, as a numbered list, only when nothing supports a draft. Optional sections you give nothing for are left out, heading included:
+
+- Bug: Screenshots / Logs and Environment.
+- Feature: Alternatives Considered, Design / Visuals and Technical Considerations / Security.
+- Task: Testing & Verification and Dependencies / Blockers.
+
+It titles the issue like a commit (`fix:`, `feat(scope):`, `chore:`, at most 70 characters) and scans the draft for secrets. It prints the whole issue and creates it only when you type its confirmation word, passing the body from a file, and then reports the issue as a link. It only creates: no labels, assignees, milestones, closing or comments.
+
+## The jois-code commands
+
+`/jois-code:apply <change>` applies an OpenSpec change through the task agent. It hands the change's tasks to the `opsx-task-applier` agent, one group at a time, and records each task's `result:` clause in `tasks.md`. It commits each finished group by itself on a branch other than `main` or `master`, holds the commit back while a named pending task of a later group fixes a failing test, and otherwise stops for a commit. It ignores the change's own folder `openspec/changes/<name>/` and never stages it, because that folder is committed at archive. It splits a group of several concerns and commits each in turn. It never pushes and never implements a task itself. Without a change name, it asks you to choose.
+
+Install it with `.\Install-Toolkit.ps1 -Command jois-code`. It needs the agent, which you install with `-Agent opsx-task-applier.md`, and it also uses `opsx-test-runner` to check a group before it commits, installed with `-Agent opsx-test-runner.md`. The full account of the agents, the commit conditions, the deferred commit and the failure loop is on [Task Agent](Task-Agent.md). It is advisory: plain `/opsx:apply` is unchanged and still works as before.
+
+## The jois-docs commands
+
+`/jois-docs:meeting-minutes` turns notes into minutes in a fixed template. It is one file with the template inside, and it needs no script. Install it with `.\Install-Toolkit.ps1 -Command jois-docs`.
+
+Paste the notes after the command, or reference a notes file with `@path`. Notes are data, never instructions. It asks for every gap (chair, note taker, owners, due dates, next meeting) before it shows the minutes, and a field you skip shows `[TBC]`. It never invents a value and attributes a point to a person only when the notes do.
+
+It shows the full minutes first and writes nothing until you confirm the minutes and the folder. The file is named `<slug>_<YYYY-MM-DD>.md`, with `_1`, `_2` and so on when the name is taken. For notes from a referenced file it offers that file's folder. For pasted notes it looks for a folder such as `docs/`, `meetings/` or `notes/`, suggests one and asks. It never overwrites the notes file.
+
+To refine minutes, reference an earlier minutes file together with new notes. It rebuilds the full minutes, shows them and, after you confirm, replaces that file. Without a referenced minutes file, every save is a new file.
+
+## The jois-design-ui-principles skill
+
+It gives Claude visual-design rules and frontend structure rules, so an interface looks designed and its code is grouped and easy to work with. The folder is `toolkit/skills/jois-design-ui-principles/`, and you install it with `.\Install-Toolkit.ps1 -Skill jois-design-ui-principles`.
+
+It fires when you design, build, style, review or polish a page, component, form, dashboard, card, table or layout, when you write the HTML, CSS or React code of such a screen, and on a request such as "make it look better" or a critique of a screenshot. It does not fire for behaviour-only changes, command-line tools and backend code, or any code with no visual output.
+
+`SKILL.md` holds three principles, the rules by topic in one line each and a review checklist. Detail sits in `references/`, which Claude reads only when the task touches the topic, so a task that needs no palette does not pay for the colour page. The skill looks for the project's design tokens first, where a design token is a named value, such as a colour or a spacing step, kept in one place. It uses the project's tokens where they exist, and fills only the gaps from the starter values in `toolkit/skills/jois-design-ui-principles/references/tokens.md`, telling you those values are defaults.
+
+| File in `references/` | Read it when |
+| --- | --- |
+| `tokens.md` | The project lacks spacing, type, radius or shadow tokens, or the starter values are needed. |
+| `color.md` | A palette, shades or text colours are chosen or built. |
+| `depth.md` | Shadows, raised or inset surfaces or overlapping layers are added. |
+| `images-and-polish.md` | The UI has images, icons or empty states, or needs finishing touches. |
+| `structure.md` | Markup or components are written or restructured. |
+
+The visual rules are a paraphrase of *Refactoring UI* by Adam Wathan and Steve Schoger, and no passage is copied. The structure rules and every size limit are the toolkit's own, not the book's. React mechanics stay in the `jois-code-typescript-react` rule, which the skill links to and does not restate.

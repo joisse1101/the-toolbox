@@ -168,19 +168,8 @@ The installer SHALL install both communication rules with the other rules, with 
 - **WHEN** the installer runs for the rules
 - **THEN** `jois-comms-replies.md` and `jois-comms-documents.md` SHALL each be copied as one rule item
 
-### Requirement: README lists the communication rules
-`toolkit/README.md` SHALL list both communication rules. It SHALL say that two rules are unscoped, the commit rule and the replies rule, and SHALL say why the replies rule is short. Its summary of the documents rule SHALL state that bullets are for parallel items and that reasoning is written as a paragraph.
-
-#### Scenario: README names the rules
-- **WHEN** a reader opens the README's rules section
-- **THEN** it SHALL name `jois-comms-replies` and `jois-comms-documents` and say when each loads
-
-#### Scenario: README summary matches the rule
-- **WHEN** a reader reads the README's summary of `jois-comms-documents`
-- **THEN** it SHALL say that bullets are for parallel items and that reasoning is written as a paragraph
-
 ### Requirement: Toolkit markdown follows the documents rule
-The toolkit's own markdown files (`toolkit/rules/`, `toolkit/commands/`, `toolkit/agents/` and `toolkit/README.md`) SHALL follow `jois-comms-documents.md`: purpose or result first, a header per topic nested by hierarchy, bullets only for parallel items, one idea per remaining bullet in one short sentence, technical terms defined on first use, an owner and a date on each next step, and what is known, assumed and unchecked kept apart. A file written before the bullet rules were added SHALL be brought in line when it is next edited, and not before. Each file that changes SHALL have its `metadata.version` and `metadata.last_updated` updated where it has them.
+The toolkit's own markdown files (`toolkit/rules/`, `toolkit/commands/`, `toolkit/agents/`, `toolkit/README.md` and the toolkit pages under `wiki/`) SHALL follow `jois-comms-documents.md`: purpose or result first, a header per topic nested by hierarchy, bullets only for parallel items, one idea per remaining bullet in one short sentence, technical terms defined on first use, an owner and a date on each next step, and what is known, assumed and unchecked kept apart. A file written before the bullet rules were added SHALL be brought in line when it is next edited, and not before. Each file that changes SHALL have its `metadata.version` and `metadata.last_updated` updated where it has them.
 
 #### Scenario: Instruction files are structured
 - **WHEN** a rule, command or agent file is read
