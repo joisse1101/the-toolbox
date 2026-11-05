@@ -55,6 +55,29 @@ test('a task before any group is a problem', () => {
   assert.match(r.problems[0].message, /is not under a "## <flow>" group/);
 });
 
+test('a "# Tasks" title line before the first group is ignored', () => {
+  const r = parseTasks(tasksText());
+  assert.ok(tasksText().startsWith('# Tasks\n'));
+  assert.deepEqual(r.problems, []);
+  assert.equal(r.tasks.length, 2);
+});
+
+test('a blank line between two tasks still reads both tasks', () => {
+  const text = tasksText().replace('## reset\n\n', '\n');
+  const r = parseTasks(text);
+  assert.deepEqual(r.problems, []);
+  assert.deepEqual(r.tasks.map((t) => t.id), [LOGIN_TASK, RESET_TASK]);
+  assert.deepEqual(r.tasks.map((t) => t.flow), ['login', 'login']);
+});
+
+test('bare step ids separated by commas parse as separate steps', () => {
+  assert.deepEqual(parseTasks(tasksText().replace('(steps 1.1, 2.5)', '(steps 1.1,2.5,3.5)')).tasks[0].steps, ['1.1', '2.5', '3.5']);
+});
+
+test('bare step ids separated by spaces parse as separate steps', () => {
+  assert.deepEqual(parseTasks(tasksText().replace('(steps 1.1, 2.5)', '(steps 1.1 2.5 3.5)')).tasks[0].steps, ['1.1', '2.5', '3.5']);
+});
+
 test('a Satisfies line without steps is a problem that names the task', () => {
   const r = parseTasks(tasksText().replace(' (steps 1.1, 2.5)', ''));
   assert.match(r.problems[0].message, new RegExp(`${LOGIN_TASK}.*names no step`));

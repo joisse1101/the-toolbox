@@ -50,6 +50,23 @@ test('a step id that is not in the flow diagram is named with its flow', () => {
   assert.match(messages(text), new RegExp(`${LOGIN_TASK}.*names the step 9\\.9, which the "### Sequence: login" diagram does not contain`));
 });
 
+test('a task naming two criteria passes when its steps are pooled from both rows', () => {
+  // 3.5 is only in the dashboard row's Steps, 2.7 only in the reset row's; both exist in the login diagram
+  const text = tasksText().replace('Satisfies: AC-sign-in-dashboard (steps 1.1, 2.5)', 'Satisfies: AC-sign-in-dashboard, AC-sign-in-reset-link (steps 3.5, 2.7)');
+  assert.deepEqual(check(text), []);
+});
+
+test('a step that exists in the flow but is outside the row Steps column is not refused', () => {
+  // 1.3 is in the login diagram, not in the Steps column of AC-sign-in-dashboard
+  assert.deepEqual(check(tasksText().replace('(steps 1.1, 2.5)', '(steps 1.1, 1.3)')), []);
+});
+
+test('a step written with its flow as a prefix is refused naming the task and the step', () => {
+  const problems = check(tasksText().replace('(steps 1.1, 2.5)', '(steps login 1.1, 2.5)'));
+  const text = problems.map((p) => p.message).join('\n');
+  assert.match(text, new RegExp(`${LOGIN_TASK}.*names the step login, which the "### Sequence: login" diagram does not contain`));
+});
+
 test('a task id that does not follow T-<slice>-<name> is refused', () => {
   assert.match(messages(tasksText().replace(LOGIN_TASK, 'T-other-login')), /the task id "T-other-login" must be T-sign-in-<name> in kebab-case/);
 });
