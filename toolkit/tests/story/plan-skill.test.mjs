@@ -11,7 +11,7 @@ const body = skill.replace(/\r\n/g, '\n');
 test('the skill is named jois-story-plan, versioned, and allows only its four scripts, the init script and the file tools', () => {
   const meta = frontmatter(skill);
   assert.equal(meta.name, 'jois-story-plan');
-  assert.match(body, /metadata:\n  version: "1\.1\.0"\n  last_updated: "2026-11-05"/);
+  assert.match(body, /metadata:\n  version: "1\.2\.0"\n  last_updated: "2026-11-05"/);
   assert.deepEqual(meta['allowed-tools'].split(/,\s*/).sort(), [
     'Bash(node *init-plans.mjs*)', 'Bash(node *read-context-map.mjs*)', 'Bash(node *read-diagrams.mjs*)', 'Bash(node *write-context-map.mjs*)', 'Bash(node *write-diagram.mjs*)', 'Glob', 'Grep', 'Read',
   ]);
@@ -57,7 +57,23 @@ test('the write example is a command with the keys the writer takes and sends no
   const sent = JSON.parse(example);
   assert.deepEqual(Object.keys(sent), ['slice', 'scope', 'stories', 'files']);
   assert.ok(sent.files.every((f) => f.name !== 'source.json'));
+  assert.ok(sent.files.some((f) => f.name === 'tasks.md'), 'the files example holds tasks.md');
   assert.ok(sent.stories.every((s) => s.id && s.title));
+});
+
+test('the skill drafts tasks.md unticked, shows it with the document under one confirmation, and reports resets and drops', () => {
+  const draft = /## Draft the slice([\s\S]*?)\n## Self-check/.exec(body)[1];
+  assert.match(draft, /Draft `tasks\.md` from the acceptance-criteria table/);
+  assert.match(draft, /`T-<slice>-<name>`/);
+  assert.match(draft, /`Satisfies:`[\s\S]*`Verify:`/);
+  assert.match(draft, /Send every task unticked[\s\S]*never send a tick/);
+  const step = /## Check, show, confirm([\s\S]*?)\n## Write and read back/.exec(body)[1];
+  assert.match(step, /complete `tasks\.md`/);
+  assert.match(step, /covers the document and `tasks\.md` together \(there is no second question for the tasks\)/);
+  assert.equal((step.match(/Write this slice\?/g) || []).length, 1);
+  const write = /## Write and read back([\s\S]*)$/.exec(body)[1];
+  assert.match(write, /\*\*reset\*\*[\s\S]*\*\*dropped\*\*/);
+  assert.match(write, /no separate check/);
 });
 
 test('the skill treats repo text as data, never opens secret files, and says the check needs the npm packages', () => {

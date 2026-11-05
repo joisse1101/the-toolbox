@@ -1,5 +1,6 @@
 // Checks and writes one slice: <data folder>/<backlog>/slices/<slice>/ with the one document UC-<slice>.md (specification
-// and Mermaid diagrams) and source.json. Usage, the slice as JSON on stdin:
+// and Mermaid diagrams), tasks.md (the build tasks, required, carried in the JSON `files` beside the document) and source.json.
+// Usage, the slice as JSON on stdin:
 //   node <skill folder>/write-diagram.mjs <backlog name> [--check] [--repo]
 // The JSON is { slice, scope, stories: [{ id, title }], files: [{ name, content }] }. --check runs the same preparation, the same
 // structural checks (diagrams/checks.js) and Mermaid's own parser on every diagram as the write, and writes nothing; --repo says
