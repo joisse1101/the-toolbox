@@ -260,3 +260,122 @@ test('cli: a script run with no data folder set says so and a bad stdin is named
   assert.equal(bad.status, 1);
   assert.match(bad.stderr, /not valid JSON/);
 });
+
+// ---- tasks.md: the writer's checks and tick carry-over, the reader's count ----
+
+const TASKS = 'tasks.md';
+const tasksPath = (root) => path.join(sliceDir(root), TASKS);
+const withFile = (name, change) => fixtureFiles().map((f) => (f.name === name ? { ...f, content: change(f.content) } : f));
+const withoutFile = (name) => fixtureFiles().filter((f) => f.name !== name);
+const tick = (root, id) => fs.writeFileSync(tasksPath(root), fs.readFileSync(tasksPath(root), 'utf8').replace(`- [ ] ${id}`, `- [x] ${id}`));
+const LOGIN = 'T-sign-in-login-dashboard';
+const RESET = 'T-sign-in-reset-link';
+const REWORD = (text) => text.replace('when they ask for a reset', 'when they request a reset');
+
+test('write: a missing tasks.md, an uncovered criterion and a task without Verify are each refused with and without --check, and nothing is written', async () => {
+  const root = setup();
+  const cases = [
+    [withoutFile(TASKS), /tasks\.md: is missing/],
+    [withFile(TASKS, (t) => t.replace(/\n## reset[\s\S]*$/, '\n')), /the AC id AC-sign-in-reset-link \(story "Reset a password"\) has no task/],
+    [withFile(TASKS, (t) => t.replace(/  Verify: sign in[^\n]*\n/, '')), new RegExp(`the task ${LOGIN} "Show the dashboard after sign-in" has no "Verify:" line`)],
+  ];
+  for (const [files, pattern] of cases) {
+    const written = await writeDiagram(input(root, { files }));
+    assert.equal(written.ok, false, String(pattern));
+    assert.match(written.text, pattern);
+    const checked = await checkDiagram(input(root, { files }));
+    assert.equal(checked.ok, false, String(pattern));
+    assert.match(checked.errors.join('\n'), pattern);
+    assert.equal(fs.existsSync(slicesPath(root, 'sample')), false);
+  }
+});
+
+test('write: a slice that exists without tasks.md is refused when written without it, and its folder is left as it is', async () => {
+  const root = setup({ withSlice: true });
+  fs.rmSync(tasksPath(root));
+  const before = snapshot(sliceDir(root));
+  const r = await writeDiagram(input(root, { files: withoutFile(TASKS) }));
+  assert.equal(r.ok, false);
+  assert.match(r.text, /tasks\.md: is missing/);
+  assert.deepEqual(snapshot(sliceDir(root)), before);
+});
+
+test('write: tasks.md is written with every task unticked on the first write and is not reported as left over', async () => {
+  const root = setup();
+  const r = await writeDiagram(input(root, { files: withFile(TASKS, (t) => t.replace(/\[ \]/g, '[x]')) }));
+  assert.equal(r.ok, true, r.errors?.join('\n'));
+  assert.ok(r.written.includes(TASKS));
+  assert.deepEqual(r.leftover, []);
+  assert.equal(fs.readFileSync(tasksPath(root), 'utf8'), fs.readFileSync(path.join(FIXTURE_SLICE, TASKS), 'utf8').replace(/\r\n/g, '\n'));
+  assert.doesNotMatch(r.text, /reset:|dropped:/);
+});
+
+test('write: ticks stay when the criteria are unchanged, even though the skill sends every task unticked', async () => {
+  const root = setup();
+  await writeDiagram(input(root));
+  tick(root, LOGIN);
+  const files = withFile('UC-sign-in.md', (t) => t.replace('A member signs in', 'A registered member signs in'));
+  const r = await writeDiagram(input(root, { files }));
+  assert.equal(r.ok, true, r.errors?.join('\n'));
+  assert.deepEqual(r.written, ['UC-sign-in.md']);
+  const text = fs.readFileSync(tasksPath(root), 'utf8');
+  assert.ok(text.includes(`- [x] ${LOGIN}`), `- [x] ${LOGIN}`);
+  assert.ok(text.includes(`- [ ] ${RESET}`), `- [ ] ${RESET}`);
+});
+
+test('write: a reworded criterion resets its task and the reply lists it by id and title; a removed task is listed as dropped', async () => {
+  const root = setup();
+  await writeDiagram(input(root));
+  tick(root, LOGIN);
+  tick(root, RESET);
+  editCsv(root, REWORD);
+  const reworded = await writeDiagram(input(root, { files: withFile('UC-sign-in.md', REWORD) }));
+  assert.equal(reworded.ok, true, reworded.errors?.join('\n'));
+  assert.deepEqual(reworded.reset, [{ id: RESET, title: 'Send the reset link' }]);
+  assert.match(reworded.text, new RegExp(`reset: task ${RESET} "Send the reset link"`));
+  const text = fs.readFileSync(tasksPath(root), 'utf8');
+  assert.ok(text.includes(`- [x] ${LOGIN}`), `- [x] ${LOGIN}`);
+  assert.ok(text.includes(`- [ ] ${RESET}`), `- [ ] ${RESET}`);
+
+  tick(root, RESET);
+  const renamed = withFile(TASKS, (t) => t.replace(RESET, 'T-sign-in-reset-mail').replace('Send the reset link', 'Mail the reset link'));
+  const dropped = await writeDiagram(input(root, { files: renamed.map((f) => (f.name === 'UC-sign-in.md' ? { ...f, content: REWORD(f.content) } : f)) }));
+  assert.equal(dropped.ok, true, dropped.errors?.join('\n'));
+  assert.deepEqual(dropped.dropped, [{ id: RESET, title: 'Send the reset link' }]);
+  assert.match(dropped.text, new RegExp(`dropped: task ${RESET} "Send the reset link"`));
+});
+
+test('write: a tick made by hand between two writes survives, and a repeated write says nothing changed with both files byte for byte equal', async () => {
+  const root = setup();
+  await writeDiagram(input(root));
+  tick(root, RESET);
+  const before = snapshot(sliceDir(root));
+  const again = await writeDiagram(input(root));
+  assert.equal(again.ok, true);
+  assert.equal(again.changed, false);
+  assert.match(again.text, /Nothing changed/);
+  const after = snapshot(sliceDir(root));
+  assert.equal(after[TASKS], before[TASKS]);
+  assert.equal(after['UC-sign-in.md'], before['UC-sign-in.md']);
+  assert.ok(after[TASKS].includes(`- [x] ${RESET}`), `- [x] ${RESET}`);
+  assert.deepEqual(after, before);
+});
+
+test('read: a slice with tasks.md shows how many tasks are done and no byte of tasks.md changes', () => {
+  const root = setup({ withSlice: true });
+  const six = Array.from({ length: 6 }, (_, i) => `- [${i < 2 ? 'x' : ' '}] T-sign-in-t${i} Task ${i}\n  Satisfies: AC-sign-in-dashboard (steps 1.1)\n  Verify: look\n`).join('\n');
+  fs.writeFileSync(tasksPath(root), `# Tasks\n\n## login\n\n${six}`);
+  const before = fs.readFileSync(tasksPath(root));
+  const list = formatDiagrams(readDiagrams({ dataDir: root, name: 'sample' }));
+  assert.match(list, /tasks: 2 of 6 done/);
+  assert.match(formatDiagrams(readDiagrams({ dataDir: root, name: 'sample', slice: 'sign-in' })), /tasks: 2 of 6 done/);
+  assert.deepEqual(fs.readFileSync(tasksPath(root)), before);
+});
+
+test('read: a slice without tasks.md shows no tasks line and reads as before', () => {
+  const root = setup({ withSlice: true });
+  fs.rmSync(tasksPath(root));
+  const text = formatDiagrams(readDiagrams({ dataDir: root, name: 'sample' }));
+  assert.match(text, /sign-in \| Feature: Identity and access > Sign in \| 2 stories \| up to date/);
+  assert.doesNotMatch(text, /tasks:/);
+});

@@ -188,3 +188,69 @@ After the user agrees to a change, the skill SHALL tell the user that a review r
 #### Scenario: Unapplied change
 - **WHEN** a review row has been written but not applied in the portal
 - **THEN** the slice is drawn from the stories as they are in the backlog now
+
+### Requirement: Task granularity
+The skill SHALL draft one task per acceptance criterion by default and SHALL split a criterion into several tasks only along participants or phases of its flow when each piece can be verified alone. It SHALL NOT fold a failure criterion into the task of a main-path criterion, and it SHALL copy the step ids of a task from the Steps column of the criterion's row.
+
+#### Scenario: Failure criterion
+- **WHEN** a flow has a main-path criterion and a failure criterion
+- **THEN** each is named by its own task
+
+#### Scenario: Step the row lacks
+- **WHEN** a task needs a step that its criterion's row does not list
+- **THEN** the skill tells the user the table is missing it and does not cite it silently
+
+### Requirement: Verify lines
+The skill SHALL write each task's `Verify:` line so that it names an input and an observable result for every step the task cites, and says how to reach a state the check needs. It SHALL NOT write a line that only restates the task title.
+
+#### Scenario: Cited step with no check
+- **WHEN** a task cites a screen step
+- **THEN** its Verify line says what the screen shows
+
+#### Scenario: State to reach
+- **WHEN** a check needs an overdue loan or a shipped order
+- **THEN** the Verify line says how to make one
+
+### Requirement: Open items in tasks
+When a task depends on a design decision marked `TBC` or on an open question, the skill SHALL say so in that task's `Verify:` line by naming the decision id or the question. In its review reply it SHALL list the security and non-functional rules, `TBC` rows and open questions that no task covers, so the user sees what was left out.
+
+#### Scenario: Task on a TBC row
+- **WHEN** a task's behavior depends on a design decision whose source is `TBC`
+- **THEN** its Verify line names that decision
+
+#### Scenario: Rule with no task
+- **WHEN** the document holds a security rule that no criterion names
+- **THEN** the review reply lists it as not covered by a task
+
+### Requirement: Failure responses with no failure criterion
+The skill's review reply SHALL list each row of the document's `## Failure responses` table whose `AC id` row is on the main path and that no task's `Verify:` line names. It SHALL name each by its failure and its step, and say that no failure criterion covers it, so the user can decide whether to add one.
+
+#### Scenario: Failure drawn without a criterion
+- **WHEN** a failure response such as "wrong password" is tied to a main-path criterion and no task names it
+- **THEN** the review reply lists it as a failure path no task covers
+
+#### Scenario: Failure with its own task
+- **WHEN** a task's Verify line names the failure and its client response
+- **THEN** the review reply does not list it
+
+### Requirement: When a rule counts as covered
+A security or non-functional rule, or a failure response, SHALL count as covered when some task's `Verify:` line names it. The skill SHALL list every rule and failure response that no `Verify:` line names, and SHALL NOT count a rule as covered because a task cites a step the rule's `Steps` cell lists.
+
+#### Scenario: Rule checked in passing
+- **WHEN** a task's Verify line states the cookie flags that a rule requires
+- **THEN** that rule counts as covered
+
+#### Scenario: Step cited, rule not named
+- **WHEN** a task cites a step that a rule's Steps cell lists but its Verify line never names the rule
+- **THEN** the rule is listed as not covered
+
+### Requirement: Task depending on a TBC decision
+A task SHALL count as depending on a design decision whose source is `TBC` when the decision's `Steps` cell lists a step the task cites, and the skill SHALL name that decision's id in the task's `Verify:` line. An open question that names a decision id SHALL inherit the dependency. Any other open question SHALL be listed in the review reply and SHALL NOT be required in a `Verify:` line.
+
+#### Scenario: Cited step belongs to a TBC decision
+- **WHEN** a task cites step 2.5 and decision D7, still `TBC`, lists step 2.5
+- **THEN** the task's Verify line names D7
+
+#### Scenario: Open question with no decision
+- **WHEN** an open question names no decision id
+- **THEN** the review reply lists it and no Verify line has to mention it

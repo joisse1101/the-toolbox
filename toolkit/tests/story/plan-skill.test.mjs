@@ -11,7 +11,7 @@ const body = skill.replace(/\r\n/g, '\n');
 test('the skill is named jois-story-plan, versioned, and allows only its five scripts, the init script and the file tools', () => {
   const meta = frontmatter(skill);
   assert.equal(meta.name, 'jois-story-plan');
-  assert.match(body, /metadata:\n  version: "1\.2\.0"\n  last_updated: "2026-11-05"/);
+  assert.match(body, /metadata:\n  version: "1\.3\.0"\n  last_updated: "2026-11-05"/);
   assert.deepEqual(meta['allowed-tools'].split(/,\s*/).sort(), [
     'Bash(node *init-plans.mjs*)', 'Bash(node *read-context-map.mjs*)', 'Bash(node *read-diagrams.mjs*)', 'Bash(node *write-context-map.mjs*)', 'Bash(node *write-diagram.mjs*)', 'Bash(node *write-freeze.mjs*)', 'Glob', 'Grep', 'Read',
   ]);
@@ -57,7 +57,44 @@ test('the write example is a command with the keys the writer takes and sends no
   const sent = JSON.parse(example);
   assert.deepEqual(Object.keys(sent), ['slice', 'scope', 'stories', 'files']);
   assert.ok(sent.files.every((f) => f.name !== 'source.json'));
+  assert.ok(sent.files.some((f) => f.name === 'tasks.md'), 'the files example holds tasks.md');
   assert.ok(sent.stories.every((s) => s.id && s.title));
+});
+
+test('the skill drafts tasks.md unticked, shows it with the document under one confirmation, and reports resets and drops', () => {
+  const draft = /## Draft the slice([\s\S]*?)\n## Self-check/.exec(body)[1];
+  assert.match(draft, /Draft `tasks\.md` from the acceptance-criteria table/);
+  assert.match(draft, /`T-<slice>-<name>`/);
+  assert.match(draft, /`Satisfies:`[\s\S]*`Verify:`/);
+  assert.match(draft, /Send every task unticked[\s\S]*never send a tick/);
+  const step = /## Check, show, confirm([\s\S]*?)\n## Write and read back/.exec(body)[1];
+  assert.match(step, /complete `tasks\.md`/);
+  assert.match(step, /covers the document, `tasks\.md` and the freeze together \(there is no second question for the tasks\)/);
+  assert.equal((step.match(/Write this slice and freeze its stories\?/g) || []).length, 1);
+  const write = /## Write and read back([\s\S]*)$/.exec(body)[1];
+  assert.match(write, /\*\*reset\*\*[\s\S]*\*\*dropped\*\*/);
+  assert.match(write, /no separate check/);
+});
+
+test('the skill names the granularity rule, the Verify rule, the open-items rule and the review-reply list', () => {
+  const draft = /## Draft the slice([\s\S]*?)\n## Self-check/.exec(body)[1];
+  assert.match(draft, /\*\*Task granularity\.\*\*[\s\S]*one task per criterion[\s\S]*never fold it into the task of a main-path criterion[\s\S]*Steps column[\s\S]*table is missing that step/);
+  assert.match(draft, /\*\*Verify lines\.\*\*[\s\S]*an input and an observable result[\s\S]*how to reach it[\s\S]*only restates the task title/);
+  assert.match(draft, /\*\*Open items\.\*\*[\s\S]*`TBC`[\s\S]*`Verify:` line by naming the decision id or the question/);
+  const step = /## Check, show, confirm([\s\S]*?)\n## Write and read back/.exec(body)[1];
+  assert.match(step, /security and non-functional rules[\s\S]*`TBC`[\s\S]*open questions that no task covers/);
+  assert.match(draft, /section 10 of the conventions/);
+});
+
+test('the skill names the failure-response gap, the covered-means-named rule and the decision Steps rule, and points at the Review reply subsection', () => {
+  const draft = /## Draft the slice([\s\S]*?)\n## Self-check/.exec(body)[1];
+  const step = /## Check, show, confirm([\s\S]*?)\n## Write and read back/.exec(body)[1];
+  assert.match(step, /failure responses that no task names/);
+  assert.match(step, /failure path that no failure criterion covers/);
+  assert.match(step, /covered only when a `Verify:` line names it/);
+  assert.match(step, /"Review reply" subsection of section 10/);
+  assert.match(draft, /decision's `Steps` cell lists a step the task cites/);
+  assert.match(draft, /open question that names a decision id inherits/);
 });
 
 test('the skill treats repo text as data, never opens secret files, and says the check needs the npm packages', () => {
