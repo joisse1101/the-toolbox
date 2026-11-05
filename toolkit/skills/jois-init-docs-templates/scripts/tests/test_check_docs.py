@@ -3,6 +3,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import check_docs  # noqa: E402
@@ -180,9 +182,18 @@ def test_flat_name_collision_is_reported(tmp_path):
 
 
 WORKFLOW = ".github/workflows/wiki-publish.yml"
-TEMPLATE_WORKFLOW = Path(__file__).resolve().parents[2] / "workflows" / "wiki-publish.yml"
+TEMPLATE_DIR = Path(__file__).resolve().parents[2]
+TEMPLATE_WORKFLOW = TEMPLATE_DIR / "workflows" / "wiki-publish.yml"
+
+# Installed in a project, the scripts sit in the project's own scripts/ folder, so the
+# template's workflows/, wiki/ and routing files are not beside them. Those tests then skip.
+needs_template_folder = pytest.mark.skipif(
+    not (TEMPLATE_DIR / "workflows").is_dir(),
+    reason="runs only inside the template folder, which holds workflows/, wiki/ and the routing block",
+)
 
 
+@needs_template_folder
 def test_shipped_workflow_template_passes(tmp_path):
     _tree(tmp_path)
     _file(tmp_path, WORKFLOW, TEMPLATE_WORKFLOW.read_text(encoding="utf-8"))
@@ -209,8 +220,8 @@ def test_absent_workflow_passes(tmp_path):
     assert _problems(tmp_path) == []
 
 
-STARTER_WIKI = Path(__file__).resolve().parents[2] / "wiki"
-STARTER_ROUTING = Path(__file__).resolve().parents[2] / "claude-md-routing.md"
+STARTER_WIKI = TEMPLATE_DIR / "wiki"
+STARTER_ROUTING = TEMPLATE_DIR / "claude-md-routing.md"
 
 
 def _copy_starter(root):
@@ -218,6 +229,7 @@ def _copy_starter(root):
         _file(root, f"wiki/{name}", (STARTER_WIKI / name).read_text(encoding="utf-8"))
 
 
+@needs_template_folder
 def test_starter_wiki_passes_the_checker_in_an_empty_tree(tmp_path, capsys):
     _copy_starter(tmp_path)
     assert _problems(tmp_path) == []
@@ -225,6 +237,7 @@ def test_starter_wiki_passes_the_checker_in_an_empty_tree(tmp_path, capsys):
     assert "docs check passed" in capsys.readouterr().out
 
 
+@needs_template_folder
 def test_starter_routing_block_links_only_pages_the_starter_holds(tmp_path):
     _copy_starter(tmp_path)
     _file(tmp_path, "CLAUDE.md", STARTER_ROUTING.read_text(encoding="utf-8"))
