@@ -11,7 +11,7 @@ const body = skill.replace(/\r\n/g, '\n');
 test('the skill is named jois-story-plan, versioned, and allows only its four scripts, the init script and the file tools', () => {
   const meta = frontmatter(skill);
   assert.equal(meta.name, 'jois-story-plan');
-  assert.match(body, /metadata:\n  version: "1\.2\.0"\n  last_updated: "2026-11-05"/);
+  assert.match(body, /metadata:\n  version: "1\.2\.1"\n  last_updated: "2026-11-05"/);
   assert.deepEqual(meta['allowed-tools'].split(/,\s*/).sort(), [
     'Bash(node *init-plans.mjs*)', 'Bash(node *read-context-map.mjs*)', 'Bash(node *read-diagrams.mjs*)', 'Bash(node *write-context-map.mjs*)', 'Bash(node *write-diagram.mjs*)', 'Glob', 'Grep', 'Read',
   ]);
@@ -74,6 +74,16 @@ test('the skill drafts tasks.md unticked, shows it with the document under one c
   const write = /## Write and read back([\s\S]*)$/.exec(body)[1];
   assert.match(write, /\*\*reset\*\*[\s\S]*\*\*dropped\*\*/);
   assert.match(write, /no separate check/);
+});
+
+test('the skill names the granularity rule, the Verify rule, the open-items rule and the review-reply list', () => {
+  const draft = /## Draft the slice([\s\S]*?)\n## Self-check/.exec(body)[1];
+  assert.match(draft, /\*\*Task granularity\.\*\*[\s\S]*one task per criterion[\s\S]*never fold it into the task of a main-path criterion[\s\S]*Steps column[\s\S]*table is missing that step/);
+  assert.match(draft, /\*\*Verify lines\.\*\*[\s\S]*an input and an observable result[\s\S]*how to reach it[\s\S]*only restates the task title/);
+  assert.match(draft, /\*\*Open items\.\*\*[\s\S]*`TBC`[\s\S]*`Verify:` line by naming the decision id or the question/);
+  const step = /## Check, show, confirm([\s\S]*?)\n## Write and read back/.exec(body)[1];
+  assert.match(step, /security and non-functional rules[\s\S]*`TBC`[\s\S]*open questions that no task covers/);
+  assert.match(draft, /section 10 of the conventions/);
 });
 
 test('the skill treats repo text as data, never opens secret files, and says the check needs the npm packages', () => {
