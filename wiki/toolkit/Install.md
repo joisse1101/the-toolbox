@@ -48,6 +48,18 @@ Unchecked: these two version numbers come from memory of the Node release notes 
 
 The story skills read a data folder that the planner also uses. How they find it is on [Story Skills Internals](../planner/architecture/Story-Skills-Internals.md).
 
+## Migrating from the old names
+
+Before the `jois-<domain>-<thing>` naming the items were `coding-standards`, `/jois:*` and unprefixed rules. A machine that has them installed keeps them, and the installer no longer manages them, so a rule would load twice once the new copy is installed. Remove the old items first:
+
+- The skill `~/.claude/skills/coding-standards`.
+- The command folder `~/.claude/commands/jois`.
+- These rules in `~/.claude/rules`: `commit-hygiene.md`, `test-mock-data.md`, `core-principles.md`, `architecture-boundaries.md`, `java.md`, `python.md`, `typescript-react.md`, `config-files.md` and `scripts.md`.
+
+Then run `.\Install-Toolkit.ps1` again (or with `-Scope project -Path <project>`) and check that `-List` shows every item `up to date`. In a project, remove the same names from `<project>\.claude`. Project `CLAUDE.md` files and notes that mention `/jois:stage` and the like need updating by hand.
+
+The `jois-code-standards` skill is now the `jois-code-quality` rule, which loads while code is written instead of on request. Delete `~/.claude/skills/jois-code-standards` (in a project, `<project>\.claude\skills\jois-code-standards`), then run `.\Install-Toolkit.ps1` to add the rule. For a review, use the built-in `code-review` or `simplify` skills.
+
 ## Installing by hand
 
 Copy into the folder your tool reads from. For Claude Code the folders are:
@@ -87,3 +99,22 @@ A rule's frontmatter holds the same `metadata:` block next to its `paths:` list.
 ```powershell
 .\toolkit\install\Get-ItemHash.ps1 -ItemPath ~\.claude\rules\jois-code-python.md
 ```
+
+## Checks
+
+`toolkit/check_toolkit.py` verifies the toolkit against its own standards: rule scoping, versions, the `disable-model-invocation` flag, the write-pr and update-pr shared sections, a `tools` list on every agent, and, for skills that carry scripts, a lock file beside each `package.json` and no import outside the skill folder. It uses only the Python standard library, and only the tests need a package (`pytest`, listed in `toolkit/requirements.txt`). Set up a virtual environment once, then run both from the `toolkit/` folder:
+
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+
+python check_toolkit.py
+python -m pytest        # tests/ covers the checker
+```
+
+The `.venv/` folder ignores itself, so it stays out of git. The story skills' own scripts have tests that run with `node --test toolkit/tests/story/*.test.mjs`, separate from these.
+
+## Specs and history
+
+The root `openspec/` holds the OpenSpec specs for the toolkit's skills, commands, rules and agents (`toolkit-*` and `jois-stage`), and the changes that shaped them, next to the planner's. It is documentation only, and the installer never copies it. The `/opsx:*` commands need the `openspec` CLI, and the `jois-git` commands need `git` and `gh` (`/jois-git:write-issue` also uses `glab` on GitLab repos).

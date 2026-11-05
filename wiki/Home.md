@@ -18,7 +18,10 @@ Welcome. This wiki holds the docs for this project, one page per topic. The proj
 ## Toolkit
 
 - [Toolkit Guide](toolkit/Toolkit-Guide.md)
+- [Command Details](toolkit/Command-Details.md)
 - [Task Recipes](toolkit/Task-Recipes.md)
+- [Task Agent](toolkit/Task-Agent.md)
+- [Docs Setup](toolkit/Docs-Setup.md)
 - [Install](toolkit/Install.md)
 - [Rules](toolkit/Rules.md)
 

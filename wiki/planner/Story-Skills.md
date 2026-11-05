@@ -36,13 +36,15 @@ Use it to save what you agreed. The skill turns the session into four kinds of o
 - New terms go straight into `<backlog>/lexicon.csv` (`write-lexicon.mjs`).
 - An edit, rename or delete of an existing term goes to `<backlog>/lexicon/lexicon-suggestions.csv` (`suggest-lexicon.mjs`). The Lexicon tab shows it, and the term changes only when you apply it.
 
+New stories get the next free placeholder ID `NEW-<n>`, or patch a proposed story in place. A new story whose Epic, Feature and Title are already in the proposals is skipped, so sending a batch again is safe. An agreed change to a story already in the backlog becomes one review row, and review rows from this skill always append. An edit to a locked story comes with an `unlock` row. A benched story is skipped by the skills.
+
 The skill first runs each writer with `--check`, then shows every draft in full and asks one yes or no question, and it writes only after a separate yes. It writes in this order: lexicon, term suggestions, proposals, edits. It never removes a proposed story and never writes `user-stories.csv`.
 
 The command `/jois-story:propose` runs the same skill and skips the yes or no question, because running it is your go-ahead. It drafts from the conversation so far and stops if nothing was agreed. It still prints each draft right before its writer runs, checks first and reads each file back. Add extra instructions after the command and they are passed along.
 
 ## jois-story-review
 
-Use it to review a whole backlog. It reads the backlog in sections (`read-backlog.mjs`: checks, lexicon, proposals, sizing, guidelines, then each epic) against `planner/guidelines/product-backlog.md`. It looks at the hierarchy, the INVEST principles, the acceptance criteria with an edge-case checklist, and consistency across stories, the lexicon and the proposals. Every finding about a story comes with a field edit the portal can apply, written to `<backlog>/user-stories/review.csv` through `write-review.mjs` in batches of about eight to ten rows. Findings about the lexicon or proposals cannot be edited by this skill, so they go in the report as questions.
+Use it to review a whole backlog. It reads the backlog in sections (`read-backlog.mjs`: checks, lexicon, proposals, sizing, guidelines, then each epic) against `planner/guidelines/product-backlog.md`. It looks at the hierarchy, the INVEST principles, the acceptance criteria with an edge-case checklist, and consistency across stories, the lexicon and the proposals. Every finding about a story comes with a field edit the portal can apply, written to `<backlog>/user-stories/review.csv` through `write-review.mjs` in batches of about eight to ten rows. Findings about the lexicon or proposals cannot be edited by this skill, so they go in the report as questions. Open questions about a story are suggested as `Clarifications` rows. A review run without `--append` replaces the whole review, these rows included, so apply the suggestions you want before you run it again.
 
 Locked stories are reference only: they are not reviewed, apart from one `unlock` row when it has a strong objection. The skill ends with a report grouped by area, and tells you the suggestions are applied or dismissed in the portal. It does not apply them itself. There is no slash command to start it, so ask for it by name.
 

@@ -34,11 +34,23 @@ The older layout had `backlogs/`, `reviews/`, `proposals/`, `lexicons/`, `lexico
 
 ## The project config
 
-The config holds `projectName`, `dataDir` and `codeBase`. A bad key fails naming it. A `codeBase` makes the data folder `<codeBase>/.plans`. A config with both `codeBase` and `dataDir` fails naming both, and `saveConfig` writes one and removes the other in one write.
+The config file is `planner/planner.config.yaml`. It is git-ignored, so copy `planner/planner.config.example.yaml` and edit it. The file `PLANNER_CONFIG` names is read instead when that variable is set. All keys are optional, and a missing file means the defaults.
+
+- `projectName` is shown in the portal header. The default is empty.
+- `dataDir` is the folder that holds the data, absolute or relative to the config file's folder. The default is `planner/data/`, which is also used when there is no config file.
+- `codeBase` is the folder of a code base you work on, absolute or relative to the config file's folder. The data folder is then `<codeBase>/.plans/`, with the layout above. You never type `.plans`.
+
+A bad key or value fails naming it, and the server stops at startup with that message. A config with both `codeBase` and `dataDir` fails naming both, because the two keys name the same thing in different ways. `saveConfig` writes one and removes the other in one write, so the file never holds both.
+
+The variables `PLANNER_DATA_DIR` and `TLT_DATA_DIR` are no longer read. If you used one, create `planner/planner.config.yaml` once with `dataDir` set to the same path, then remove the variable.
+
+Committing `.plans/` is the code base owner's choice. Anyone with the code base sees a committed `.plans/`, and it stays in history. The planner never edits `.gitignore`, so add `.plans/` there yourself to keep it private.
 
 ## Folder actions
 
-Init creates only the data folder. Copy skips any `backups/` folder. The migration copies the older layout per backlog on request. It never changes or overwrites a file, reads each copy back and reports the files it could not match.
+Init creates only the data folder. Copy skips any `backups/` folder. The migration copies the older layout per backlog on request. It never changes or overwrites a file, reads each copy back and reports the files it could not match. It never deletes the old files, so remove the old folders by hand when you are satisfied. The portal shows a notice while the data folder holds the older layout.
+
+There is no backup feature. To keep a copy, copy a backlog's folder or keep the data folder under version control of your own.
 
 ## Where skills find the folder
 

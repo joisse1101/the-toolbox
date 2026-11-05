@@ -26,7 +26,7 @@ Every item is named `jois-<domain>-<thing>`. `jois` is the owner, so a name neve
 | `test` | how Claude verifies a change |
 | `init` | setting a project up |
 
-The `/opsx:*` commands are the one exception. The `openspec` command-line tool generates them and overwrites them on every `init` and `update`, so the toolkit keeps no copy. Use `/jois-init:opsx` to set a project up for them.
+Skills and rules are named `jois-<domain>-<thing>`, and a command namespace folder is `jois-<domain>`, so `toolkit/commands/jois-git/stage.md` is `/jois-git:stage`. A new domain picks its own word. The `/opsx:*` commands are the one exception. The `openspec` command-line tool generates them and overwrites them on every `init` and `update`, so the toolkit keeps no copy. Use `/jois-init:opsx` to set a project up for them.
 
 ## Skills
 

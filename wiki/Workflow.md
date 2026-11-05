@@ -22,5 +22,3 @@ Adding a tool takes four steps:
 2. Register a new kind of file in `KIND_FILES` in `planner/logic/storage/backlog-paths.cjs`, with its name and its fixed path inside a backlog folder. The server's `STORES` is built from those kinds, so only registered kinds are reachable.
 3. In the tool, use `createFileStore('<kind>')` for `list`, `read`, `create`, `write`, `rename` and `openFolder`, one file per backlog.
 4. Add a link to the tool in `planner/portal/web/main.jsx`, then run `npm run build`.
-
-The same steps are in the [Add a new tool](../README.md#add-a-new-tool) section of the root `README.md`.
