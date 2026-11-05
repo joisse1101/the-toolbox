@@ -9,6 +9,9 @@ import { readDocument } from './document.js';
 const SLUG = '[a-z0-9]+(?:-[a-z0-9]+)*';
 const STORY_ID = /\b[A-Z][A-Z0-9]*-\d{4}\b/;
 const FILE_PATH = /\b[\w.-]+(?:\/[\w.-]+)*\.(?:py|js|jsx|mjs|cjs|ts|tsx|java|cs|go|rb|php|rs|kt|swift|sql|ya?ml|json|toml|xml|html|css|sh|ps1)\b/;
+const GREENFIELD_MATURITY = /^planned\s*\(greenfield\)/i;
+const CONVENTIONS_MODES = 'section 5, Modes';
+const GREENFIELD_HINT = `a story that builds the code from scratch uses greenfield mode (conventions, ${CONVENTIONS_MODES}): Maturity "planned (greenfield)"`;
 const FAILURE_WORDS = /\b(fail\w*|invalid|wrong|reject\w*|refus\w*|denied|error\w*|expired|unauthori[sz]ed)\b/i;
 const TYPES = { class: 'classDiagram', sequence: 'sequenceDiagram' };
 // The line every sequence diagram opens with (conventions, "Readable in both themes"): it fixes the message text color so
@@ -207,6 +210,29 @@ const tableRows = (lines) =>
     .map(({ text, line }) => ({ line, cells: text.trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim()) }))
     .filter(({ cells }) => !cells.every((c) => /^:?-{3,}:?$/.test(c)));
 
+// Greenfield mode (conventions, section 5): the code does not exist yet, so the Implementation overview is the build plan,
+// each traceability row names a planned `file::symbol`, and a file path needs a user-confirmed layout or stack decision.
+function checkGreenfield({ lines, heading, bodyOf, at }) {
+  const overview = '## Implementation overview';
+  const body = bodyOf(overview).join('\n').trim();
+  if (heading.has(overview) && (body === '' || body === 'TBC')) at(heading.get(overview) + 1, `"${overview}" must hold the build plan in greenfield mode; it may not be empty or read TBC`);
+
+  const trace = bodyOf('## Traceability');
+  if (trace.join('\n').trim() !== 'TBC') {
+    for (const { line, cells } of tableRows(trace).slice(1)) {
+      const code = cells[2] ?? '';
+      const row = heading.get('## Traceability') + 2 + line;
+      if (!/`[^`:]+?::[^`]+`/.test(code)) at(row, `traceability row "${cells[0]}" names no \`file::symbol\``);
+      else if (!/\bplanned\b/i.test(code)) at(row, `traceability row "${cells[0]}" is not marked planned; in greenfield mode the file is not there yet, so write \`file::symbol\` planned`);
+    }
+  }
+
+  const layoutDecided = tableRows(bodyOf('## Design decisions')).slice(1).some(({ cells }) => cells[4] === 'user-confirmed' && /\b(layout|stack)\b/i.test(cells[1] ?? ''));
+  if (!layoutDecided) {
+    lines.forEach((l, i) => FILE_PATH.test(l) && at(i + 1, `names a file path (${FILE_PATH.exec(l)[0]}) but no user-confirmed row of "## Design decisions" records the project layout or stack`));
+  }
+}
+
 // The specification. Returns the problems; `flows` maps each flow to { hasAlt, ids }: whether its diagram has an alt branch
 // and the step ids it holds.
 function checkSpec({ file, text, slice, stories, flows, repo }) {
@@ -236,13 +262,19 @@ function checkSpec({ file, text, slice, stories, flows, repo }) {
   };
   const maturity = /^\|\s*\*{0,2}Maturity\*{0,2}\s*\|\s*(.*?)\s*\|/m.exec(text)?.[1] ?? '';
 
-  if (!repo) {
+  const greenfield = GREENFIELD_MATURITY.test(maturity);
+
+  if (greenfield && repo) {
+    at(null, `Maturity is "${maturity}" (greenfield mode) but --repo was given; greenfield mode and repo mode are not combined (conventions, ${CONVENTIONS_MODES})`);
+  } else if (greenfield) {
+    checkGreenfield({ lines, heading, bodyOf, at });
+  } else if (!repo) {
     if (maturity && !/^planned\b/i.test(maturity)) at(null, `Maturity is "${maturity}"; without a repo it is "planned"`);
     for (const h of ['## Implementation overview', '## Traceability']) {
       const body = bodyOf(h).join('\n').trim();
-      if (heading.has(h) && body !== 'TBC') at(heading.get(h) + 1, `"${h}" must read TBC without a repo`);
+      if (heading.has(h) && body !== 'TBC') at(heading.get(h) + 1, `"${h}" must read TBC without a repo; ${GREENFIELD_HINT}`);
     }
-    lines.forEach((l, i) => FILE_PATH.test(l) && at(i + 1, `names a file path (${FILE_PATH.exec(l)[0]}) with no repo read; a slice without a repo names no path`));
+    lines.forEach((l, i) => FILE_PATH.test(l) && at(i + 1, `names a file path (${FILE_PATH.exec(l)[0]}) with no repo read; a slice without a repo names no path; ${GREENFIELD_HINT}`));
   } else {
     // With a repo the skill names only files and symbols it has read itself; that is the skill's rule and is not checked here.
     const trace = bodyOf('## Traceability');
