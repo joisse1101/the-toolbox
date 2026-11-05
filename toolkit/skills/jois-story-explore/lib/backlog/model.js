@@ -8,8 +8,10 @@ import { renumber } from './ids.js';
 import { composeStory, parseStory, roleIsBlank, composeCriteria, parseCriteria, composeClarifications, parseClarifications } from './story-text.js';
 
 export const COLUMNS = [
-  'ID', 'Epic', 'Feature', 'Title', 'User Story', 'Sprint points', 'Priority', 'Depends On', 'User Acceptance Criteria', 'Notes', 'Locked', 'Clarifications',
+  'ID', 'Epic', 'Feature', 'Title', 'User Story', 'Sprint points', 'Priority', 'Depends On', 'User Acceptance Criteria', 'Notes', 'Frozen', 'Clarifications',
 ];
+// The column the lock used to be stored in. It is ignored on load and dropped on save, never read as frozen.
+const OLD_LOCKED_COLUMN = 'locked';
 // Only a proposals file has this column (see proposalHeaders): `Yes` or empty. A benched proposed story is parked: the
 // explore and propose skills do not see it, and it cannot be accepted until it is un-benched.
 export const BENCHED_COLUMN = 'Benched';
@@ -46,7 +48,7 @@ export function newStory(headers) {
     asA: '', iWant: '', soThat: '',
     points: '', priority: '', notes: '',
     benched: false, // proposed stories only: parked, hidden from the explore and propose skills
-    locked: false, // reference only: keeps its ID, is not reordered, moved, deleted or reviewed (valid only with a code)
+    frozen: false, // reference only: read-only, keeps its ID, is not moved, deleted or reviewed (valid only with a code)
     criteria: [emptyCriterion()],
     rawUserStory: null, // original cell text when it did not follow the syntax
     rawCriteria: null,
@@ -69,7 +71,7 @@ function storyFromCells(cells, idx) {
   story.priority = get('Priority');
   story.notes = get('Notes');
   story.benched = get(BENCHED_COLUMN).trim().toLowerCase() === 'yes';
-  story.locked = get('Locked').trim().toLowerCase() === 'yes' && !!story.code;
+  story.frozen = get('Frozen').trim().toLowerCase() === 'yes' && !!story.code;
 
   const us = parseStory(get('User Story'));
   if (us.ok) {
@@ -97,8 +99,13 @@ function storyFromCells(cells, idx) {
 export const proposalHeaders = (headers) => (headers.some((h) => h.trim().toLowerCase() === 'benched') ? [...headers] : [...headers, BENCHED_COLUMN]);
 
 // `placeholderIds`: a proposals file, whose NEW-<n> IDs are kept as written instead of being derived (see proposals.js).
-export function loadBacklog(text, { placeholderIds = false } = {}) {
-  const rows = parseCsv(text);
+// `initials`: the backlog's initials, which start every derived ID (required unless `placeholderIds`).
+// An old `Locked` column is removed here, so it is neither read as frozen nor written back; `changed` then says the
+// file needs saving.
+export function loadBacklog(text, { placeholderIds = false, initials } = {}) {
+  const parsed = parseCsv(text);
+  const lockedAt = parsed.length ? parsed[0].findIndex((h) => h.trim().toLowerCase() === OLD_LOCKED_COLUMN) : -1;
+  const rows = lockedAt < 0 ? parsed : parsed.map((r) => r.filter((_, i) => i !== lockedAt));
   const headers = rows.length ? rows[0].slice() : [...COLUMNS];
   const idx = columnIndex(headers);
   for (const col of placeholderIds ? [...COLUMNS, BENCHED_COLUMN] : COLUMNS) {
@@ -116,9 +123,10 @@ export function loadBacklog(text, { placeholderIds = false } = {}) {
       return storyFromCells(cells, idx);
     });
   // IDs follow position, so recompute them (this also gives IDs to files that have none). `changed` = needs saving.
-  // Proposed stories are never locked.
-  const stories = placeholderIds ? loaded.map((s) => (s.locked ? { ...s, locked: false } : s)) : renumber(loaded);
-  return { headers, stories, hasBom: text.charCodeAt(0) === 0xfeff, changed: placeholderIds ? false : stories !== loaded };
+  // Proposed stories are never frozen.
+  const stories = placeholderIds ? loaded.map((s) => (s.frozen ? { ...s, frozen: false } : s)) : renumber(loaded, initials);
+  const changed = lockedAt >= 0 || (!placeholderIds && stories !== loaded);
+  return { headers, stories, hasBom: text.charCodeAt(0) === 0xfeff, changed };
 }
 
 // The text written into the User Story / User Acceptance Criteria cells (also feeds the previews).
@@ -149,7 +157,7 @@ export function serializeBacklog(backlog) {
     cells[idx['Depends On']] = s.dependsOn.join(';');
     cells[idx['User Acceptance Criteria']] = criteriaCellText(s);
     cells[idx['Notes']] = s.notes;
-    cells[idx['Locked']] = s.locked && s.code ? 'Yes' : '';
+    cells[idx['Frozen']] = s.frozen && s.code ? 'Yes' : '';
     cells[idx['Clarifications']] = clarificationsCellText(s);
     if (BENCHED_COLUMN in idx) cells[idx[BENCHED_COLUMN]] = s.benched ? 'Yes' : '';
     return cells;
@@ -223,23 +231,22 @@ export function displayOrder(stories) {
 }
 
 // Bulk edit. Only defined fields are set: priority undefined = no change ('' clears it); a blank epic or
-// feature means no change. The Epic of a locked story is read-only, so an Epic change skips it (its other fields
-// still change). Returns { changed, skipped }: the stories changed, and the locked ones whose Epic was not changed.
+// feature means no change. A frozen story is read-only in every field, so it is skipped completely.
+// Returns { changed, skipped }: the stories changed, and the frozen listed ones left as they were.
 export function applyBulk(stories, ids, { priority, epic, feature } = {}) {
   const patch = {};
   if (priority !== undefined) patch.priority = priority;
   if (!blank(epic)) patch.epic = epic.trim();
   if (!blank(feature)) patch.feature = feature.trim();
-  const { epic: newEpic, ...lockedPatch } = patch;
   let changed = 0;
   let skipped = 0;
   for (const s of stories) {
     if (!ids.has(s.id)) continue;
-    const skipEpic = s.locked && newEpic !== undefined;
-    if (skipEpic) skipped++;
-    const apply = skipEpic ? lockedPatch : patch;
-    if (skipEpic && !Object.keys(apply).length) continue;
-    Object.assign(s, apply);
+    if (s.frozen) {
+      skipped++;
+      continue;
+    }
+    Object.assign(s, patch);
     changed++;
   }
   return { changed, skipped };
