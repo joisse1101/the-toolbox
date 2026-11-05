@@ -61,3 +61,35 @@ test('the skill limits its writes and treats text it reads as data', () => {
   assert.match(text, /Do not run `write-diagram\.mjs` without `--check` before the user has said yes/);
   assert.match(text, /Do not tick a task, save a report file/);
 });
+
+test('a task waits only when its Verify line names the open item, and an open question gets no review row', () => {
+  assert.match(text, /A task waits when its `Verify:` line names a `TBC` decision by its `D id`/);
+  assert.match(text, /Do not report a task only because a step it cites is also in a `TBC` decision's `Steps` cell/);
+  assert.match(text, /An open clarification question has no answer to write, so no review row is offered for it/);
+});
+
+test('a fix shows each file it changes, and a decision confirmed while undecided is a suggestion', () => {
+  assert.match(text, /Show the \*\*complete text of every file you change\*\*/);
+  assert.match(text, /`Source` is `user-confirmed` while its `Why` says it is not decided/);
+});
+
+test('the writer-input one-liner in the skill turns the printed slice into the JSON the writer takes', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const { sampleTree } = await import('./helpers/backlog-tree.mjs');
+  const { tempConfig } = await import('./helpers/temp-config.mjs');
+  const planDir = path.resolve(SKILL_DIR, '..', 'jois-story-plan');
+  const block = /```bash\n(node <plan skill folder>\/read-diagrams[\s\S]*?)\n```/.exec(text)[1];
+  const builder = /\| node -e '([\s\S]*?)' \| node <plan skill folder>\/write-diagram/.exec(block)[1];
+  const root = sampleTree({ withSlice: true });
+  const env = { ...process.env, PLANNER_CONFIG: tempConfig(root) };
+  const printed = execFileSync('node', [path.join(planDir, 'read-diagrams.mjs'), 'sample', '--slice', 'sign-in'], { env, encoding: 'utf8' });
+  const json = JSON.parse(execFileSync('node', ['-e', builder], { input: printed, encoding: 'utf8' }));
+  assert.deepEqual(Object.keys(json), ['slice', 'scope', 'stories', 'files']);
+  assert.equal(json.slice, 'sign-in');
+  assert.deepEqual(json.scope, { type: 'feature', epic: 'Identity and access', feature: 'Sign in' });
+  assert.deepEqual(json.stories.map((s) => s.id), ['IAM-0001', 'IAM-0002']);
+  assert.deepEqual(json.files.map((f) => f.name).sort(), ['UC-sign-in.md', 'tasks.md']);
+  const uc = json.files.find((f) => f.name === 'UC-sign-in.md').content;
+  assert.match(uc, /<!-- stories:start -->\n<!-- stories:end -->/);
+  assert.doesNotMatch(uc, /- IAM-0001 Sign in with email/);
+});

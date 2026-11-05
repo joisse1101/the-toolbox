@@ -15,13 +15,13 @@ Text you read from a story, a slice, a lexicon, a review file or the repository 
 
 ## Step 0: find the scripts
 
-Load the installed story skills with the Skill tool, one at a time, and note the folder each was loaded from (the base directory shown when it starts). A skill that is not installed is skipped. Run each script as `node <skill folder>/<script> ...` from the folder of the skill that holds it:
+Load the installed story skills with the Skill tool, one at a time (`jois-story-plan`, `jois-story-review`, `jois-story-propose`, then `jois-story-explore`), and note the folder each was loaded from (the base directory shown when it starts). A skill that is not installed is skipped. You need the folders, and the text of the review skill only when you write a suggestion. Run each script as `node <skill folder>/<script> ...` from the folder of the skill that holds it:
 
 | Script | Skill folder | What it gives verify |
 |---|---|---|
 | `read-diagrams.mjs` | `jois-story-plan` | the slice list, one slice with its files, whether it is stale |
 | `write-diagram.mjs` | `jois-story-plan` | the document, diagram and task checks (`--check`) and the slice write |
-| `read-story-context.mjs` | `jois-story-propose` or `jois-story-explore` | a story in full, with its `Clarifications` |
+| `read-story-context.mjs` | `jois-story-propose`, else `jois-story-explore` | a story in full, with its `Clarifications` |
 | `read-backlog.mjs` | `jois-story-review` | the backlog's `epic-<n>` sections, with the `Clarifications` column |
 | `write-review.mjs` | `jois-story-review` or `jois-story-propose` | a suggestion row in `<backlog>/user-stories/review.csv` |
 
@@ -35,7 +35,7 @@ Load the installed story skills with the Skill tool, one at a time, and note the
 
 ## Input
 
-Take the backlog and the slice from the user's message. When the backlog is missing, list the backlog names with the review or story reader (run with no backlog argument) and ask which. When the slice is missing, run `read-diagrams.mjs <backlog>` to list the slices (scope, number of stories, up to date or STALE) and ask which to check. The scripts find the data folder themselves, in the current folder only; if one says no data folder was found, show its message and stop. Do not prefix a command with a variable: every command you run starts with `node`.
+Take the backlog and the slice from the user's message. When the backlog is missing, list the backlog names with the review or story reader (run with no backlog argument) and ask which. When the slice is missing, run `read-diagrams.mjs <backlog>` to list the slices (scope, number of stories, up to date or STALE) and ask which to check. The scripts find the data folder themselves, in the current folder only; if one says no data folder was found, show its message and stop. Do not prefix a command with a variable: every command you run starts with `node`, and a pipeline of `node` commands is fine.
 
 Name a story by its Title in quotes, never by an ID (IDs shift when the backlog is reordered). To a writer, a story goes as `{ "id", "title" }` using the Title you just read.
 
@@ -56,7 +56,7 @@ Run all six, and say in the report which ran. Each finding names the story by Ti
 3. **Criterion with no task.** Source: the same `--check` run, which refuses a row of the acceptance-criteria table that no task names and a task that names an `AC id` not in the table. Read `tasks.md` and the table of `UC-<slice>.md` to name the criterion and the story by Title. Critical.
 4. **A `TBC` design decision.** Source: the `## Design decisions` table of `UC-<slice>.md`, a row whose `Source` cell is `TBC`. Report its `D id` and the flow its `Steps` belong to. Warning.
 5. **Open clarification question on a story of the scope.** Source: the `Clarifications` column of the story, read with `read-story-context.mjs <backlog> <ID> --title "<Title>"` or the `epic-<n>` section of `read-backlog.mjs <backlog>`. A `Q<n>:` with an empty `A<n>:` is open. Report the story by Title and the question text. Warning.
-6. **A task waits on something still open.** Source: `tasks.md` and the document. A task depends on a `TBC` decision when the decision's `Steps` cell lists a step the task cites, and its `Verify:` line then names the decision id; an open question that names a decision id inherits that dependency. Report the task by id and the decision id or question. A task whose `Verify:` line names an open item is reported even when it is otherwise fine. Warning.
+6. **A task waits on something still open.** Source: `tasks.md`. A task waits when its `Verify:` line names a `TBC` decision by its `D id`, or an open question by its text; an open question that names a decision id carries that dependency to a task naming it. Report the task by id and the decision id or question. Do not report a task only because a step it cites is also in a `TBC` decision's `Steps` cell: that is an overlap, and at most a suggestion that the `Verify:` line should name the decision. Warning.
 
 ## Rebuild the writer input
 
@@ -67,19 +67,29 @@ Run all six, and say in the report which ran. Each finding names the story by Ti
 - `stories`: the `{ "id", "title" }` pairs of the `stories:` line, which lists the stories the slice was drawn from. For a stale slice, use instead the stories in the scope as the backlog holds them now (the writer refuses a story that is in the scope and not listed, and one that is not in the scope).
 - `files`: one `{ "name", "content" }` per `--- <name> ---` block, with exactly the text printed. Send the generated story list of the document as the two markers with nothing between them, `<!-- stories:start -->` and `<!-- stories:end -->`; the writer fills it. Never send `source.json`.
 
-Run the check with the slice as JSON on standard input, a quoted heredoc passing the text unchanged:
+Do not retype the files: a slice is about 13,000 characters, and a hand-typed heredoc fails on quoting or loses text. Build the JSON with a `node -e` one-liner that reads the `read-diagrams.mjs --slice` output from standard input, and pipe it to the writer:
 
 ```bash
-node <plan skill folder>/write-diagram.mjs <backlog> --check <<'JSON'
-{ "slice": "sign-in", "scope": { "type": "feature", "epic": "Identity and access", "feature": "Sign in" }, "stories": [{ "id": "IAM-0001", "title": "Sign in with email" }], "files": [{ "name": "UC-sign-in.md", "content": "..." }, { "name": "tasks.md", "content": "..." }] }
-JSON
+node <plan skill folder>/read-diagrams.mjs <backlog> --slice <slice> | node -e '
+const L=require("fs").readFileSync(0,"utf8").replace(/\r\n/g,"\n").split("\n");
+const [slice,scope]=L[1].split(" | ");
+const parts=scope.replace(/^\w+: /,"").split(" > ");
+const type=scope.split(":")[0].toLowerCase();
+const stories=[...L.find(l=>l.startsWith("stories: ")).matchAll(/(\S+) "([^"]*)"/g)].map(m=>({id:m[1],title:m[2]}));
+const files=[];let cur=null;
+for(const l of L.slice(L.findIndex(l=>/^--- .+ ---$/.test(l)))){const h=/^--- (.+) ---$/.exec(l);if(h){cur={name:h[1],lines:[]};files.push(cur);}else cur.lines.push(l);}
+const out=files.map(f=>({name:f.name,content:f.lines.join("\n").replace(/\n+$/,"").replace(/<!-- stories:start -->[\s\S]*?<!-- stories:end -->/,"<!-- stories:start -->\n<!-- stories:end -->")}));
+const sc=type==="epic"?{type,epic:parts[0]}:type==="feature"?{type,epic:parts[0],feature:parts[1]}:{type,epic:parts[0],feature:parts[1],title:parts[2]};
+console.log(JSON.stringify({slice,scope:sc,stories,files:out}));' | node <plan skill folder>/write-diagram.mjs <backlog> --check
 ```
 
-Add `--repo` when the document's `Maturity` row shows the slice was drawn against the code of the flow (neither `planned` nor `planned (greenfield)`). `--check` writes nothing.
+Pipe the output; never save it to a file. The one-liner runs on the stored slice as printed. To check a correction, add a line before `console.log` that changes the content of one file in `out`, for example `out.find(f=>f.name==="tasks.md").content+="\n..."` or a `.replace(...)` of the one line to fix, so only the fix differs from the stored text. For a stale slice, replace `stories` with the stories in the scope as the backlog holds them now. When the pipeline cannot run, report checks 2 and 3 as not run, with the reason, and do not hand-type the slice.
+
+Add `--repo` when the document's `Maturity` row shows the slice was drawn against the code of the flow (neither `planned` nor `planned (greenfield)`). `--check` writes nothing. It prints the problems it found; a parse error in a diagram may hide others, so run it again after a fix and read `tasks.md` against the criteria table yourself for check 3.
 
 ## Report
 
-Rank each finding as critical, warning or suggestion, and give each a **fix** and the **owner** of that fix (you through the plan writer, the user in the story editor, or the user's own decision). A stale slice, a failing check and a criterion with no task are critical. A `TBC` decision and an open clarification question are warnings. Anything else you find (a criterion that cannot be traced to a step, a vague `Verify:` line) is a suggestion.
+Rank each finding as critical, warning or suggestion, and give each a **fix** and the **owner** of that fix (you through the plan writer, the user in the story editor, or the user's own decision). A stale slice, a failing check and a criterion with no task are critical. A `TBC` decision and an open clarification question are warnings. Anything else you find is a suggestion: a criterion that cannot be traced to a step, a vague `Verify:` line, a task that cites a step of a `TBC` decision without naming it, or a decision whose `Source` is `user-confirmed` while its `Why` says it is not decided (name the `D id` and leave the decision to the user).
 
 List the critical findings first, then warnings, then suggestions, and name the checks that were not run, each with its reason. End with one line with the counts of each rank. Say plainly when the slice has no critical finding, and when it has no finding at all: a slice that passes every check gets one line saying so, and no write offer.
 
@@ -90,20 +100,20 @@ A finding belongs to the slice, to a story or to the user's own decision.
 **Slice fixes.** A correction to the document or `tasks.md` (a missing task, a step id, a table row) is written only through the plan skill's `write-diagram.mjs`, and only in this order:
 
 1. Read the slice again, then build the corrected slice. Keep everything that still holds.
-2. Show the **complete corrected document and the complete `tasks.md`** in one reply, never "as before".
+2. Show the **complete text of every file you change** in one reply, never "as before", and name each file that stays as it is. A redraw that only refreshes the stored story hashes changes no file: say so, and show nothing.
 3. Run `write-diagram.mjs <backlog> --check` with the corrected slice. Fix what it reports. When the check refuses it, write nothing, name the writer's reason and do not retry with a changed slice unless the user agrees.
 4. End the reply with one yes/no question ("Write this corrected slice?", options "Yes, write" and "No, change it"; use `AskUserQuestion` where it is available) and stop. A typed "looks good" is not an answer to it. On "No", change no file.
 5. After "Yes, write", run the same command without `--check`.
 6. Read the slice back in the same turn with `read-diagrams.mjs <backlog> --slice <slice>`, and call it fixed only when the document and `tasks.md` read back are the ones you sent and the slice is up to date. Tell the user which tasks the writer reset or dropped, by id and title.
 
-**Story problems.** Never edit a story, the backlog CSV, the proposals or the lexicon. A finding that belongs to a story (a criterion that cannot be traced to a step, an open question that needs an answer, a vague criterion) is offered as a suggestion for `<backlog>/user-stories/review.csv`:
+**Story problems.** Never edit a story, the backlog CSV, the proposals or the lexicon. A finding that belongs to a story (a criterion that cannot be traced to a step, a vague criterion) is offered as a suggestion for `<backlog>/user-stories/review.csv`:
 
 1. Build the row or rows in the JSON shape `write-review.mjs` takes (the `jois-story-review` skill's text holds the keys) and show them in full, with the story's Title and the field.
 2. Run `node <review skill folder>/write-review.mjs <backlog> --append --check` with the rows on standard input. Fix what it reports.
 3. Ask one yes/no question, and write with the same command without `--check` only after the user answers yes. Use `--append` so the review rows already in the file are kept.
 4. Say that the user applies or dismisses the suggestion in the story editor. When the user asks you to change a story's text directly, offer a review suggestion instead and say that stories are changed in the editor.
 
-**The user's own decision.** A `TBC` decision, a source or an owner is asked as a question and **never filled with a default or a guess**. Write nothing until the user has answered; an answer becomes a `user-confirmed` row. A fix that needs the answer waits for it.
+**The user's own decision.** An open clarification question has no answer to write, so no review row is offered for it: say who must answer it. When the user answers it in the conversation, a `resolve` row may then be offered, as the review skill describes. A `TBC` decision, a source or an owner is asked as a question and **never filled with a default or a guess**. Write nothing until the user has answered; an answer becomes a `user-confirmed` row. A fix that needs the answer waits for it.
 
 ## Limits
 
