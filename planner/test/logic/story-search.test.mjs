@@ -9,7 +9,7 @@ const CSV = [
   ',Billing,Invoices,Other,,1,,,,,',
 ].join('\n');
 
-const open = () => loadBacklog(CSV);
+const open = () => loadBacklog(CSV, { initials: 'B1' });
 const [first, second] = open().stories;
 const headers = open().headers;
 const hit = (story, q) => matchesQuery(story, q, headers);
@@ -58,7 +58,7 @@ test('clarifications are searched', () => {
 });
 
 test('findStories: one line per match with ID, Title, Epic > Feature and source', () => {
-  const { stories } = loadBacklog(CSV);
+  const { stories } = loadBacklog(CSV, { initials: 'B1' });
   const withIds = stories.map((s, i) => ({ ...s, code: `BIL-000${i + 1}` }));
   assert.deepEqual(findStories(withIds, 'csv', headers, 'backlog'), ['BIL-0001 | Export | Billing > Invoices | backlog']);
   assert.deepEqual(findStories(withIds, 'zebra', headers, 'backlog'), []);

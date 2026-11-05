@@ -32,7 +32,7 @@ test('each starting file is a BOM and its own header row, with no rows', () => {
 });
 
 test('each starting file parses as an empty file', () => {
-  const backlog = loadBacklog(textOf('backlog'));
+  const backlog = loadBacklog(textOf('backlog'), { initials: 'B1' });
   assert.equal(backlog.stories.length, 0);
   assert.deepEqual(backlog.headers, COLUMNS);
 

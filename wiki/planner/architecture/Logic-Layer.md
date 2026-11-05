@@ -14,16 +14,16 @@ The code is in three zones that depend in one direction only, and `planner/test/
 
 `planner/logic/backlog/csv.js` parses and serializes CSV. `planner/logic/backlog/story-text.js` composes and parses the "As ... I want ... so that ..." text and the acceptance-criteria cell text. The role keeps its article, so `asA` reads "a team lead" or "an approver", and `roleIsBlank` treats a bare "a" or "an" as empty.
 
-`planner/logic/backlog/model.js` is the pure conversion between CSV and the story model. Known columns (`COLUMNS`, including `Locked`) are matched by header name. `Locked` is `Yes` or empty and is valid only on a story with an ID. Unknown columns round-trip untouched in `story.cells`, and a User Story or User Acceptance Criteria cell that cannot be parsed keeps its raw text.
+`planner/logic/backlog/model.js` is the pure conversion between CSV and the story model. Known columns (`COLUMNS`, including `Frozen`) are matched by header name. `Frozen` is `Yes` or empty and is valid only on a story with an ID. An old `Locked` column is ignored on load and dropped on save (never read as frozen). `loadBacklog(text, { placeholderIds, initials })` passes the backlog's initials to `renumber`. Unknown columns round-trip untouched in `story.cells`, and a User Story or User Acceptance Criteria cell that cannot be parsed keeps its raw text.
 
-`planner/logic/backlog/ids.js` handles story IDs such as `IAM-0003` (the initials of the epic name plus the position within the epic). IDs are derived, not stable. `renumber` recomputes them on add, delete, reorder, move and open, and rewrites the `Depends On` links (IDs separated by `;`) so each link follows its story. Keep this invariant when touching story ordering.
+`planner/logic/backlog/ids.js` handles story IDs such as `B1-IAM-0003`: `<initials>-<epic prefix>-<NNNN>`. The initials belong to the backlog, the epic prefix is the first letters of the epic name's words, and the number is the position within the epic. When two Epics give the same prefix, the later one gets a digit (`IAM`, `IAM1`, `IAM2`). IDs are derived, not stable. `renumber(stories, initials)` recomputes them on add, delete, reorder, move and open, and rewrites the `Depends On` links (IDs separated by `;`) so each link follows its story. Keep this invariant when touching story ordering.
 
-A locked story (`story.locked`) is a fixed point of `renumber`. It keeps its code, its epic keeps that code's prefix, and unlocked stories take the lowest free numbers around it, so gaps are fine. The guards live in the same file:
+A frozen story (`story.frozen`) is read-only and a fixed point of `renumber`. It keeps its whole code, and only the epic part of that code is pinned: its epic keeps that prefix even when the backlog's initials change. Other stories take the current initials and the lowest free numbers around the frozen ones (reserved per full prefix), so gaps are fine. A frozen flag cannot be removed. The guards live in the same file:
 
-- `moveStory`, `removeStory` and `commitEpic` leave a locked story alone.
-- `applyBulk` skips the Epic of locked stories.
-- `lockStories` and `unlockStories` skip stories without an ID.
-- `moveToProposed` refuses a locked story.
+- `moveStory`, `moveGroup`, `removeStory`, `removeStories` and `commitEpic` leave a frozen story alone.
+- `applyBulk` skips a frozen story completely and reports how many it skipped.
+- `freezeStories(stories, ids)` is the only way to set the flag. It skips stories without an ID and returns them.
+- `moveToProposed` refuses a frozen story, and a review suggestion on a frozen story is never applicable. The `unlock` action is gone: the writer rejects it and an old `unlock` row loads as stale.
 
 `planner/logic/review/review.js` and `planner/logic/backlog/proposals.js` hold the review-suggestion and proposed-story logic. The proposal writer's `proposal-input.js` and the review skill's `backlog-checks.js` live in their skill folders in `toolkit/skills/`, not here.
 
