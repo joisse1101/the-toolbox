@@ -1,11 +1,11 @@
 ---
 name: "JOIS: Apply"
-description: "Apply an OpenSpec change one group of tasks at a time: hand each group to opsx-task-applier, record its results in tasks.md, check it with opsx-test-runner, then commit it by itself on an unprotected branch (never main or master, never a push) or stop for the confirmation word"
+description: "Apply an OpenSpec change one group of tasks at a time: hand each group to opsx-task-applier, record its results in tasks.md, check it with opsx-test-runner, then commit it by itself on an unprotected branch (never main or master, never a push), defer the commit while a named pending task fixes a failing test, or stop for the confirmation word"
 allowed-tools: Bash(openspec:*), Bash(git status:*), Bash(git diff:*), Bash(git add:*), Bash(git commit:*), Bash(git branch --show-current:*), Read, Edit, Agent, Monitor
 disable-model-invocation: true
 metadata:
-  version: "1.4.0"
-  last_updated: "2026-11-04"
+  version: "1.5.0"
+  last_updated: "2026-11-05"
 ---
 
 Apply the OpenSpec change named in the argument by handing its tasks to the `opsx-task-applier` agent, one group at a time.
@@ -115,6 +115,11 @@ Apply the OpenSpec change named in the argument by handing its tasks to the `ops
        - A second round ends with a failure still unexplained.
        - A failure has the same command and the same output line as before a round meant to fix it. Ask without a further round.
      - Never take the next group while a failure of the current group is unexplained.
+     - A **deferrable failure** is an explained failure that also names, as its fix, a task that is still pending in a later group.
+       - It gives the command, the exact output line, the cause and the task number.
+       - Check the named task against `tasks.md` yourself: it must exist, sit in a later group and be unticked. The report's word alone is not enough.
+       - "A later group will fix it" with no task named is not deferrable. A task that is ticked, or not in `tasks.md`, is not deferrable.
+       - A deferrable failure does not run the fix loop. Step 10 holds the commit instead.
      - A group whose tasks are all done and whose failures are all explained goes on to step 10.
    - If the agent reached its turn limit:
      - Record the finished tasks.
@@ -147,11 +152,20 @@ Apply the OpenSpec change named in the argument by handing its tasks to the `ops
      - Start the watch (step 8) on the rerun too.
      - If the rerun shows exit code 0 for every command, the tests passed: go on.
      - If the rerun is still doubtful, fall back and say why.
-   - **A non-zero exit code** starts the fix loop of step 9.
-     - Pass it the failing command and its exact output.
-     - Rerun `opsx-test-runner` after each fix round, with the same exit-code judging as above.
-     - Go on only when every command shows exit code 0 and every failure is explained.
-     - If the loop ends in a question to the user, wait for the answer. Then fall back only after the failures are explained.
+   - **A non-zero exit code** is judged first for deferral (the definition is in step 9).
+     - If every failure is deferrable and this is not the last group: do not commit and do not stop.
+       - Say which task each failure waits for.
+       - Keep this group's changes uncommitted and take the next group.
+       - After each later group, rerun `opsx-test-runner` with the same exit-code judging.
+       - Keep holding while every failure still names a pending task.
+       - When every command exits 0, stage and commit all held-back changes by explicit path, cut by concern as in the split rule below, then take the next group.
+       - Never commit while any command is red.
+     - Otherwise it starts the fix loop of step 9.
+       - Pass it the failing command and its exact output.
+       - Rerun `opsx-test-runner` after each fix round, with the same exit-code judging as above.
+       - Go on only when every command shows exit code 0 and every failure is explained.
+       - If the loop ends in a question to the user, wait for the answer. Then fall back only after the failures are explained.
+     - After the last group nothing is deferred: a red result runs the fix loop over the whole change, then asks the user if a failure stays unexplained.
    - **No rerun** for these: fall back at once.
      - No test command found, or a suite that could not run for another reason (such as missing dependencies).
      - A protected branch.
@@ -185,6 +199,8 @@ Apply the OpenSpec change named in the argument by handing its tasks to the `ops
    - After the last commit, take the next group.
 11. **Take the next group.**
     - Repeat from step 6 until no group has a pending task.
+    - While a commit is held back, step 10 reruns the tests after each group and commits the held-back changes once every command exits 0.
+    - After the last group nothing is deferred: if a command is still red, run the fix loop over the whole change, then ask the user if a failure stays unexplained.
     - Then run step 2 again and follow what it says.
 
 ## Resuming

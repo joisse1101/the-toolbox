@@ -106,6 +106,31 @@ def test_apply_command_names_the_fix_loop_limits():
     assert "Never take the next group while a failure of the current group is unexplained" in text
 
 
+def test_apply_command_has_the_deferral_rule():
+    text = APPLY_COMMAND.read_text(encoding="utf-8")
+    assert "A **deferrable failure**" in text
+    assert "A deferrable failure does not run the fix loop" in text
+
+
+def test_apply_command_requires_a_pending_task_checked_against_tasks_md():
+    text = APPLY_COMMAND.read_text(encoding="utf-8")
+    assert "still pending in a later group" in text
+    assert "Check the named task against `tasks.md` yourself" in text
+    assert "with no task named is not deferrable" in text
+
+
+def test_apply_command_commits_held_back_changes_when_green():
+    text = APPLY_COMMAND.read_text(encoding="utf-8")
+    assert "commit all held-back changes by explicit path, cut by concern" in text
+    assert "Never commit while any command is red" in text
+
+
+def test_apply_command_defers_nothing_after_the_last_group():
+    text = APPLY_COMMAND.read_text(encoding="utf-8")
+    assert text.count("After the last group nothing is deferred") == 2
+    assert "run the fix loop over the whole change" in text
+
+
 def test_no_toolkit_file_allows_rm():
     for path in TOOLKIT.rglob("*.md"):
         if ".venv" in path.parts:
