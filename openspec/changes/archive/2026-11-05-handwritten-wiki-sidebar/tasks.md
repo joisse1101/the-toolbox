@@ -1,0 +1,39 @@
+# Tasks
+
+Test commands run from `toolkit/skills/jois-init-docs-templates/` through a project-local `.venv`, as `python -m pytest scripts/tests`. Any scratch repo goes under `.scratch/`, never a real repo.
+
+## 1. Builder without the generator
+
+- [x] 1.1 In `scripts/build_wiki.py`, remove `page_title`, `nav_lines`, `_block`, `render_nav`, `write_nav`, `MD_BEGIN`, `MD_END` and the `--write-nav` option with its call in `main`. Keep `HOME`, `SIDEBAR`, `NAV_PAGES` and the `jois-init:docs` markers. Verify `python scripts/build_wiki.py --root <fixture>` still checks names and `--out` still writes flat pages. 1.1 (result: build_wiki.py --root <fixture> -> exit 1 naming the collision between a-b.md and a/b.md; build_wiki.py --root <fixture> --out <dir> -> wrote 3 flat pages)
+- [x] 1.2 Update the builder docstring to say the sidebar and Home are hand-written and checked by `check_docs.py`, and drop the `--write-nav` line from its usage list. Verify `grep -n "write-nav\|render_nav" scripts/build_wiki.py` finds nothing. 1.2 (result: grep for `write-nav|render_nav` in scripts/build_wiki.py -> no matches)
+- [x] 1.3 In `scripts/tests/test_build_wiki.py`, delete the four `write_nav` tests. Verify `python -m pytest scripts/tests/test_build_wiki.py` passes and the flattening and collision tests are still there. 1.3 (result: python -m pytest scripts/tests/test_build_wiki.py -> 7 passed, 0 failed)
+
+## 2. Checker keeps the sidebar and CLAUDE.md links true
+
+- [x] 2.1 Before editing, diff `5558185~1` against `5558185` in the Ledger repo if it is readable, and prefer its code over the description in design.md. If it is not readable, say so in the report. 2.1 (result: Ledger repo not readable from this session (outside the project); implemented from design.md, not compared with Ledger's code)
+- [x] 2.2 In `scripts/check_docs.py`, replace `check_navigation` with `check_sidebar` as design.md describes (every non-special page linked exactly once, no `Home.md` link, broken links named with `wiki/_Sidebar.md:<line>`). Narrow `check_orphans` to `Home.md`. Add `check_claude_wiki_links` with `import posixpath`. Wire both new checks into `check_docs` and renumber the docstring's check list. Verify the new tests in 2.3 pass. 2.2 (result: pytest scripts/tests -> 30 passed, 0 failed; default temp folder, see 2.3 for why)
+- [x] 2.3 In `scripts/tests/test_check_docs.py`, write the sample tree's `Home.md` and `_Sidebar.md` by hand instead of calling `write_nav`, and replace the two navigation tests. Add tests for a page listed twice, a page missing from the sidebar (reported once), a broken sidebar link, a sidebar that links Home, a non-alphabetical sidebar passing, and `../wiki/Missing.md` in a nested `CLAUDE.md` (names the file and line). Verify `python -m pytest scripts/tests` passes, and that the listed-twice and `CLAUDE.md` tests fail when run against the old checker. 2.3 (result: pytest scripts/tests -> 30 passed, 0 failed; same six new tests against HEAD checker in .scratch/old-check -> 6 failed, incl. listed-twice and CLAUDE.md as required)
+
+## 3. Starter wiki pages
+
+- [x] 3.1 Add `wiki/Home.md` and `wiki/_Sidebar.md` to the template folder, flat, with no markers and no generated block, each saying it is edited by hand. Verify neither file contains `jois-init:docs`. 3.1 (result: grep -c "jois-init:docs" on wiki/Home.md and wiki/_Sidebar.md -> 0 matches in each)
+- [x] 3.2 Add a checker test that copies the two starter files into an empty tree and expects no problems, so the starter always passes the checker. Verify the test passes. 3.2 (result: pytest toolkit/skills/jois-init-docs-templates/scripts/tests -> 32 passed, 0 failed; test_starter_wiki_passes_the_checker_in_an_empty_tree passed)
+- [x] 3.3 Check `claude-md-routing.md` links only pages the starter wiki holds (`Home` today). Verify with `check_claude_wiki_links` run on a `CLAUDE.md` holding the block. 3.3 (result: pytest toolkit/skills/jois-init-docs-templates/scripts/tests -> 32 passed, 0 failed; test_starter_routing_block_links_only_pages_the_starter_holds ran check_claude_wiki_links on a CLAUDE.md holding the block and got no problems)
+
+## 4. Command, skill and README text
+
+- [x] 4.1 In `toolkit/commands/jois-init/docs.md`, change step 4 to ask first, copy the starter `Home.md` and `_Sidebar.md` only when missing, then run the checker and report. Change the step 2 "why" so the builder no longer "makes the navigation". Add a Rules line that a re-run never changes an existing starter page and that these two files carry no markers. Bump `metadata.version` and `last_updated`. Verify `python check_toolkit.py` from `toolkit/` passes. 4.1 (result: `python check_toolkit.py` (venv python, absolute path) -> `toolkit check passed`; docs.md version 1.2.0)
+- [x] 4.2 In `SKILL.md`, update the contents list (no regenerated navigation, the checker's new checks, the two starter files) and bump its version. Verify `grep -n "regenerat" SKILL.md` finds nothing. 4.2 (result: Grep `regenerat` in SKILL.md -> no matches; version 1.1.0)
+- [x] 4.3 In `toolkit/README.md`, replace the generated-sidebar lines in "What it writes" and "The nested layout" with the hand-written wording, and remove the `--write-nav` instruction. Verify `grep -rn "write-nav" toolkit` finds nothing outside archived changes. 4.3 (result: Grep `write-nav` in toolkit -> no matches; `python check_toolkit.py` -> `toolkit check passed`)
+- [x] 4.4 Search the whole template folder and `toolkit/` for `write-nav`, `render_nav`, `write_nav`, `jois-init:docs begin` and `Pages` and confirm each remaining hit is intended. Verify the search output is reviewed and the unintended hits are fixed. 4.4 (result: Grep `write-nav|render_nav|write_nav|jois-init:docs begin|Pages` in toolkit -> every hit reviewed, all intended (markers or prose), no unintended hits; the only stale text is in the main spec `openspec/specs/toolkit-init-docs/spec.md`, which the change's delta replaces at archive)
+
+## 5. Check the result in a scratch repo
+
+- [x] 5.1 Under `.scratch/`, make a git repo, copy the template folder in as a project-level install, and follow `docs.md` by hand with a mock yes to each question. Verify `python scripts/check_docs.py` prints `docs check passed` on the starter wiki. 5.1 (result: checker `python scripts/check_docs.py` in the scratch repo -> `docs check passed` on the starter wiki; sandbox `git status --short --ignored` showed no ignored files)
+- [x] 5.2 Edit the scratch repo's `Home.md` and `_Sidebar.md`, run the command steps again, and verify both files are unchanged and not asked about. Then replace a script block with the old generator and verify the rerun shows a diff and asks. 5.2 (result: hand-walked re-run of `docs.md` -> every marked file equal to template (`diff -r -q` clean), `Home.md` and `_Sidebar.md` unchanged (same `cksum` after) and not compared or asked about; after putting `git show HEAD~3:...build_wiki.py` (HEAD~3 = ed15542) into the sandbox script, `diff` against the template differs (also with `--strip-trailing-cr`) so the command would show a diff and ask; a by-hand reading of the command's rules, not a run of `/jois-init:docs`)
+- [x] 5.3 Run `python -m pytest` and `python check_toolkit.py` from `toolkit/`, and `openspec validate handwritten-wiki-sidebar --strict`. Verify all three pass. Delete the scratch repo afterwards. 5.3 (result: `python -m pytest --rootdir <worktree>/toolkit <worktree>/toolkit -q` -> 117 passed; `python <worktree>/toolkit/check_toolkit.py` -> `toolkit check passed`; `openspec validate handwritten-wiki-sidebar --strict` -> `Change 'handwritten-wiki-sidebar' is valid`; scratch repo deleted by the main session)
+
+## Workflow follow-up
+
+- Archive the change after review so the `toolkit-init-docs` spec takes the delta.
+- Tell the owner of the Ledger repo that old installs fail the new checker on the sidebar's `Home` line until they delete it.
