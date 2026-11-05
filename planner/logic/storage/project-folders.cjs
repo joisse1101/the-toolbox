@@ -1,7 +1,7 @@
 'use strict';
 // Folder work for the project config: init, copy, the folder check and the rules that confine a folder named by the
 // browser. Pure Node, no HTTP. Nothing here overwrites, modifies or deletes an existing file or folder
-// (the one removal is a half-written copy of a file this call created itself).
+// unless the caller asks copyData to overwrite (the one removal is a half-written copy of a file this call created itself).
 
 const fs = require('fs');
 const os = require('os');
@@ -127,8 +127,8 @@ async function initCodeBase(codeBase, options) {
   return initFolders(c.plansDir);
 }
 
-// Copy for a code base: copyData from `source` into `<codeBase>/.plans` (never overwrites, source untouched). Returns
-// the copyData reply or { refused }.
+// Copy for a code base: copyData from `source` into `<codeBase>/.plans` (overwrites only with the `overwrite` option,
+// source untouched). Returns the copyData reply or { refused }.
 function copyToCodeBase(source, codeBase, { confine, ...copyOptions } = {}) {
   const c = confineCodeBase(codeBase, confine);
   if (!c.ok) return { refused: c.reason };
@@ -162,45 +162,118 @@ async function initFolders(dir) {
   };
 }
 
-// Copies every file of `source` to the same relative path in `target`. An existing file is skipped, a link is
-// skipped, a `backups/` folder at any depth is left out (not even listed as skipped), nothing in the source changes. Returns { copied, skipped: [{file, reason}] } plus `stopped: {file, message}`
-// when a file could not be read or written (the files already copied stay; run again to continue), or { refused }.
-// `copyFile` is only for tests.
-function copyData(source, target, { copyFile = fs.copyFileSync } = {}) {
+// The checks and the walk that copyData and planCopy share, so links, `backups/` and the containment refusals live in
+// one place. Returns { src, dst } (real paths) or { refused }.
+function resolvePair(source, target) {
   const src = realResolve(source);
   const dst = realResolve(target);
   if (!isDir(src)) return { refused: 'The current data folder does not exist.' };
   if (inside(src, dst)) return { refused: 'The target is the current data folder or lies inside it.' };
   if (inside(dst, src)) return { refused: 'The target contains the current data folder.' };
   if (fs.existsSync(dst) && !isDir(dst)) return { refused: 'The target is a file, not a folder.' };
-  fs.mkdirSync(dst, { recursive: true });
-  const copied = [];
-  const skipped = [];
+  return { src, dst };
+}
+
+// Walks `src` in name order and calls visit(kind, rel, shown) for each folder ('dir', including the root as ''), link
+// ('link') and regular file ('file'); a `backups/` folder at any depth is left out, not visited. A truthy return from
+// visit stops the walk and is returned.
+function walkSource(src, visit) {
   const walk = (rel) => {
-    fs.mkdirSync(path.join(dst, rel), { recursive: true });
+    const stop = visit('dir', rel, rel.split(path.sep).join('/'));
+    if (stop) return stop;
     for (const name of fs.readdirSync(path.join(src, rel)).sort()) {
       const r = path.join(rel, name);
       const shown = r.split(path.sep).join('/');
       const st = fs.lstatSync(path.join(src, r));
-      if (st.isSymbolicLink()) skipped.push({ file: shown, reason: 'link' });
+      if (st.isSymbolicLink()) visit('link', r, shown);
       else if (st.isDirectory() && name.toLowerCase() === 'backups') continue; // backups are no longer used: left out, not reported
-      else if (st.isDirectory()) { const stop = walk(r); if (stop) return stop; }
-      else if (st.isFile()) {
-        const to = path.join(dst, r);
-        try {
-          copyFile(path.join(src, r), to, fs.constants.COPYFILE_EXCL);
-          copied.push(shown);
-        } catch (err) {
-          if (err.code === 'EEXIST') { skipped.push({ file: shown, reason: 'exists' }); continue; }
-          try { fs.unlinkSync(to); } catch { /* not created */ }
-          return { file: shown, message: err.message };
-        }
-      }
+      else if (st.isDirectory()) { const s = walk(r); if (s) return s; }
+      else if (st.isFile()) { const s = visit('file', r, shown); if (s) return s; }
     }
     return null;
   };
-  const stopped = walk('');
-  return stopped ? { copied, skipped, stopped } : { copied, skipped };
+  return walk('');
+}
+
+// Read-only: the files of `source` that copyData would find already in `target`, as `exists` (paths relative with `/`).
+// Creates nothing, not even a missing target (which has no clashes). Returns { exists } or { refused }, with the same
+// refusals as copyData.
+function planCopy(source, target) {
+  const pair = resolvePair(source, target);
+  if (pair.refused) return { refused: pair.refused };
+  const exists = [];
+  walkSource(pair.src, (kind, rel, shown) => {
+    if (kind !== 'file') return null;
+    try {
+      fs.lstatSync(path.join(pair.dst, rel));
+      exists.push(shown);
+    } catch { /* not there: no clash */ }
+    return null;
+  });
+  return { exists };
+}
+
+// The same plan for a code base: the target is `<codeBase>/.plans`. Returns { exists } or { refused }.
+function planCopyToCodeBase(source, codeBase, { confine } = {}) {
+  const c = confineCodeBase(codeBase, confine);
+  if (!c.ok) return { refused: c.reason };
+  return planCopy(source, c.plansDir);
+}
+
+// Copies every file of `source` to the same relative path in `target`. By default an existing file is skipped. With
+// `overwrite` a file present in both places is replaced and listed as overwritten; nothing else in the target is removed
+// or changed. A link is skipped, a `backups/` folder at any depth is left out (not even listed as skipped), nothing in the
+// source changes. Each copied or overwritten file is read back and compared with its source; one that differs is listed in
+// `failed` as { file, message } (a bad new copy is removed so a rerun can retry it; a bad overwrite stays, because the
+// file it replaced is gone). Returns { copied, overwritten, skipped: [{file, reason}], failed } plus
+// `stopped: {file, message}` when a file could not be read or written (the files already copied stay; run again to
+// continue), or { refused }. `copyFile` and `readFile` are only for tests.
+function copyData(source, target, { overwrite = false, copyFile = fs.copyFileSync, readFile = fs.readFileSync } = {}) {
+  const pair = resolvePair(source, target);
+  if (pair.refused) return { refused: pair.refused };
+  const { src, dst } = pair;
+  fs.mkdirSync(dst, { recursive: true });
+  const copied = [];
+  const overwritten = [];
+  const skipped = [];
+  const failed = [];
+  let stopped = null;
+
+  const readsBack = (from, to) => {
+    try {
+      if (Buffer.compare(readFile(from), readFile(to)) === 0) return null;
+      return 'the copy does not read back the same as the original';
+    } catch (err) {
+      return `the copy could not be read back: ${err.message}`;
+    }
+  };
+
+  walkSource(src, (kind, rel, shown) => {
+    if (kind === 'dir') { fs.mkdirSync(path.join(dst, rel), { recursive: true }); return null; }
+    if (kind === 'link') { skipped.push({ file: shown, reason: 'link' }); return null; }
+    const from = path.join(src, rel);
+    const to = path.join(dst, rel);
+    let present = null; // lstat of an existing target file
+    try { present = fs.lstatSync(to); } catch { /* not there */ }
+    if (present && !overwrite) { skipped.push({ file: shown, reason: 'exists' }); return null; }
+    if (present && present.isSymbolicLink()) { skipped.push({ file: shown, reason: 'link' }); return null; }
+    try {
+      copyFile(from, to, present ? 0 : fs.constants.COPYFILE_EXCL);
+    } catch (err) {
+      if (err.code === 'EEXIST') { skipped.push({ file: shown, reason: 'exists' }); return null; }
+      if (!present) { try { fs.unlinkSync(to); } catch { /* not created */ } }
+      stopped = { file: shown, message: err.message };
+      return stopped;
+    }
+    const bad = readsBack(from, to);
+    if (bad) {
+      if (!present) fs.unlinkSync(to); // the copy this call just made
+      failed.push({ file: shown, message: bad });
+    } else (present ? overwritten : copied).push(shown);
+    return null;
+  });
+  const reply = { copied, overwritten, skipped, failed };
+  return stopped ? { ...reply, stopped } : reply;
 }
 
 // The files of the older layout that belong to a backlog, as [older path, path in the backlog folder] pairs (both relative).
@@ -311,5 +384,5 @@ function migrateOlderLayout(dataDir, { copyFile = fs.copyFileSync, readFile = fs
 
 module.exports = {
   ROOT, inside, realResolve, confineDir, confineCodeBase, checkFolder, checkCodeBase, initFolders, initCodeBase,
-  copyData, copyToCodeBase, migrateOlderLayout,
+  copyData, copyToCodeBase, planCopy, planCopyToCodeBase, migrateOlderLayout,
 };

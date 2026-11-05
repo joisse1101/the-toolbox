@@ -12,3 +12,15 @@ projectName: My project
 # Folder holding the planner data directly. Absolute, or relative to this file's folder.
 # Default when neither key is set: planner/data
 dataDir: ./data
+
+# Saved projects the portal can switch between. Optional; the portal writes it the first time you add a project.
+# The active project stays in codeBase or dataDir above (the skills read only those two keys); the list holds every
+# project you know. Each entry has exactly one of codeBase or dataDir (absolute, or relative to this file's folder)
+# and an optional name. Leave it out to use a single project.
+# Rolling back: code from before this key existed refuses it as an unknown key. Delete the whole projects list
+# (the active codeBase or dataDir above keeps working) to go back.
+# projects:
+#   - name: Payments
+#     codeBase: C:\code\payments
+#   - name: Local notes
+#     dataDir: C:\planner-data\notes

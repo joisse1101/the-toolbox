@@ -8,7 +8,7 @@ const path = require('path');
 const { spawn } = require('child_process');
 const { HttpError, validateBacklogName } = require('../../logic/storage/file-name.cjs');
 const { writeBacklogFiles } = require('../../logic/storage/backlog-files.cjs');
-const { KINDS, BACKLOG_FILE, backlogDir, backlogFile, listBacklogs, detectOlderLayout } =require('../../logic/storage/backlog-paths.cjs');
+const { PLANS_DIR, KINDS, BACKLOG_FILE, backlogDir, backlogFile, listBacklogs, detectOlderLayout } =require('../../logic/storage/backlog-paths.cjs');
 // The config is read when paths.cjs loads. Run as the server, a bad config ends the process with the message that names the key.
 let paths;
 try {
@@ -20,7 +20,7 @@ try {
 }
 const { getDataDir, setDataDir, legacyDataHint } = paths;
 const {
-  loadConfig, saveConfig, configPath, confineDir, confineCodeBase, checkFolder, checkCodeBase, initFolders, initCodeBase, copyData, copyToCodeBase, migrateOlderLayout,
+  ROOT, loadConfig, saveConfig, configPath, confineDir, confineCodeBase, checkFolder, checkCodeBase, initFolders, initCodeBase, copyData, copyToCodeBase, planCopy, migrateOlderLayout,
 } = require('../../logic/storage/project-config.cjs');
 
 const HOST = '127.0.0.1';
@@ -212,7 +212,206 @@ function settingsReply() {
   const reply = { projectName: config.projectName, dataDir, configPath: config.configPath, olderLayout: detectOlderLayout(dataDir) };
   // `codeBase` appears only when the config names one; dataDir is then its `.plans` folder.
   if (config.codeBase) reply.codeBase = config.codeBase;
+  // `projects`: the saved projects (the active path is listed too when the config has no list), each with `label` (its name,
+  // or the last segment of its path) and `exists` (its data folder is there); `activeProject` is the index of the active one.
+  reply.projects = config.projects.map((p) => ({
+    name: p.name,
+    label: p.name || path.basename(p.codeBase || p.dataDir),
+    codeBase: p.codeBase,
+    dataDir: p.dataDir,
+    exists: isFolder(p.dataDir),
+    ...(p.synthetic ? { synthetic: true } : {}),
+  }));
+  reply.activeProject = config.activeProject;
   return reply;
+}
+
+function isFolder(p) {
+  try {
+    return fs.statSync(p).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+// Two data folders are the same when their resolved paths match (ignoring case on Windows).
+function sameFolder(a, b) {
+  const x = path.resolve(a);
+  const y = path.resolve(b);
+  return process.platform === 'win32' ? x.toLowerCase() === y.toLowerCase() : x === y;
+}
+
+// Folder names and project names are compared ignoring case, because Windows folders ignore case.
+function sameName(a, b) {
+  return a.toLowerCase() === b.toLowerCase();
+}
+
+// The folder that holds the folders of new projects: planner/data. Tests point it at a temp folder (setNewProjectParent).
+let newProjectParent = path.join(ROOT, 'planner', 'data');
+function setNewProjectParent(dir) {
+  newProjectParent = dir;
+}
+
+// Options passed to every copy a relocation makes (`copyFile` / `readFile`); only tests set them (setCopyOptions).
+let copyOptions = {};
+function setCopyOptions(options) {
+  copyOptions = options || {};
+}
+
+// A switch or relocation is refused while a write runs. `others` is how many running requests are not the caller's own.
+function refuseWhenBusy(others = 0) {
+  if (busy > others) throw new HttpError(409, 'A save is running. Try again in a moment.', 'busy');
+}
+
+// Saves a switch of the active project and points the served folder at it. No await: no request starts in between.
+function saveAndSwitch(changes) {
+  let saved;
+  try {
+    saved = saveConfig(changes, { file: configPath() });
+  } catch (err) {
+    throw new HttpError(400, err.message, 'refused');
+  }
+  switchTo(saved.dataDir);
+  return saved;
+}
+
+// POST /api/project/add: { codeBase, name?, init? } links a code base, { newName } creates planner/data/<newName>.
+// A project already in the list is switched to, not added twice. Replies the settings plus `added` and `switched`.
+async function addProject(body) {
+  refuseWhenBusy();
+  const config = loadConfig({ file: configPath() });
+  const known = (dir) => config.projects.findIndex((p) => !p.synthetic && sameFolder(p.dataDir, dir));
+  const nameTaken = (name) => config.projects.some((p) => (p.name && sameName(p.name, name)));
+  busy++;
+  try {
+    if (body.newName !== undefined) {
+      if (body.codeBase !== undefined) throw new HttpError(400, 'Add either a code base or a new project, not both.', 'refused');
+      const name = validateBacklogName(body.newName);
+      let taken = nameTaken(name);
+      try {
+        taken = taken || fs.readdirSync(newProjectParent).some((f) => sameName(f, name));
+      } catch { /* the parent folder is not there yet: no folder can clash */ }
+      if (taken) throw new HttpError(409, `A project or folder named "${name}" already exists.`, 'exists');
+      const target = confined(path.join(newProjectParent, name));
+      let init;
+      try {
+        init = await initFolders(target);
+      } catch (err) {
+        throw new HttpError(500, err.message, 'init-failed');
+      }
+      refuseWhenBusy(1);
+      saveAndSwitch({ dataDir: target, addProject: { dataDir: target, name } });
+      return { ...settingsReply(), added: true, switched: true, init };
+    }
+
+    if (typeof body.codeBase !== 'string') throw new HttpError(400, 'Give a code base or a new project name.', 'refused');
+    const c = confinedCodeBase(body.codeBase);
+    const name = body.name === undefined ? '' : body.name;
+    if (typeof name !== 'string') throw new HttpError(400, 'The project name must be text.', 'refused');
+    const entry = known(path.join(c.dir, PLANS_DIR));
+    if (entry >= 0) {
+      // Already saved: no second entry; switch to the existing one.
+      const p = config.projects[entry];
+      if (sameFolder(p.dataDir, config.dataDir)) return { ...settingsReply(), added: false, switched: false };
+      refuseWhenBusy(1);
+      saveAndSwitch(p.codeBase ? { codeBase: p.codeBase } : { dataDir: p.dataDir });
+      return { ...settingsReply(), added: false, switched: true };
+    }
+    if (sameFolder(path.join(c.dir, PLANS_DIR), config.dataDir)) {
+      return { ...settingsReply(), added: false, switched: false };
+    }
+    if (name.trim() && nameTaken(name.trim())) throw new HttpError(409, `A project named "${name.trim()}" already exists.`, 'exists');
+    const status = checkCodeBase(c.dir).status;
+    let init = null;
+    if (status === 'missing' || status === 'empty') {
+      // No planner files there: nothing changes until the user agrees to create them (`init: true`).
+      if (body.init !== true) return { ...settingsReply(), added: false, switched: false, needsInit: true, status };
+      try {
+        init = await initCodeBase(c.dir);
+      } catch (err) {
+        throw new HttpError(500, err.message, 'init-failed');
+      }
+      if (init.refused) throw new HttpError(400, init.refused, 'refused');
+    }
+    refuseWhenBusy(1);
+    saveAndSwitch({ codeBase: c.dir, addProject: { codeBase: c.dir, name } });
+    return { ...settingsReply(), added: true, switched: true, ...(init ? { init } : {}) };
+  } finally {
+    busy--;
+  }
+}
+
+// The target of a relocation named by the browser: { dir (the data folder), status } from the folder check.
+function relocationTarget(body) {
+  let t;
+  if (body.codeBase !== undefined) {
+    const c = confinedCodeBase(body.codeBase);
+    t = { codeBase: c.dir, dir: c.plansDir, status: checkCodeBase(c.dir).status };
+  } else {
+    const dir = confined(body.dir);
+    t = { dir, status: checkFolder(dir).status };
+  }
+  // A path that another saved project already holds would give the list two entries with one path.
+  const config = loadConfig({ file: configPath() });
+  const other = config.projects.findIndex((p, i) => i !== config.activeProject && !p.synthetic && sameFolder(p.dataDir, t.dir));
+  if (other >= 0) throw new HttpError(409, `The folder is already the saved project "${config.projects[other].name || path.basename(config.projects[other].codeBase || config.projects[other].dataDir)}". Choose it in the Project dropdown instead.`, 'exists');
+  return t;
+}
+
+// What a relocation to this target needs: `copy` (empty or missing: copies without a prompt), `choose` (it holds a backlog
+// folder: overwrite, switch or cancel) or `switch` (only the older layout: switch, then the migration can run).
+const RELOCATION_ACTION = { missing: 'copy', empty: 'copy', 'has-planner-files': 'choose', 'older-layout': 'switch' };
+
+// POST /api/project/relocate-plan: read-only. Replies { status, dir, action, needsChoice, exists } (`exists`: the files an overwrite would replace).
+function planRelocation(body) {
+  const t = relocationTarget(body);
+  const plan = planCopy(getDataDir(), t.dir);
+  if (plan.refused) throw new HttpError(400, plan.refused, 'refused');
+  const action = RELOCATION_ACTION[t.status];
+  return { status: t.status, dir: t.dir, action, needsChoice: action === 'choose', exists: action === 'choose' ? plan.exists : [] };
+}
+
+// POST /api/project/relocate-apply: { dir | codeBase, choice? } with choice `overwrite`, `switch` or `cancel`. In order: plan, copy,
+// read-back (inside copyData), then the config save. The config is left alone when any step fails; the old folder is never touched.
+function applyRelocation(body) {
+  refuseWhenBusy();
+  const t = relocationTarget(body);
+  const choice = body.choice;
+  if (choice !== undefined && !['overwrite', 'switch', 'cancel'].includes(choice)) {
+    throw new HttpError(400, 'The choice must be overwrite, switch or cancel.', 'refused');
+  }
+  if (choice === 'cancel') return { ...settingsReply(), relocated: false, cancelled: true };
+  const plan = planCopy(getDataDir(), t.dir);
+  if (plan.refused) throw new HttpError(400, plan.refused, 'refused');
+  const action = RELOCATION_ACTION[t.status];
+  if (action === 'choose' && choice === undefined) {
+    throw new HttpError(409, 'The folder already holds planner files: choose overwrite, switch or cancel.', 'choice-needed');
+  }
+  let result = null;
+  if (action === 'copy' || (action === 'choose' && choice === 'overwrite')) {
+    busy++;
+    try {
+      const overwrite = action === 'choose';
+      result = t.codeBase !== undefined
+        ? copyToCodeBase(getDataDir(), t.codeBase, { overwrite, ...copyOptions })
+        : copyData(getDataDir(), t.dir, { overwrite, ...copyOptions });
+    } finally {
+      busy--;
+    }
+    if (result.refused) throw new HttpError(400, result.refused, 'refused');
+    if (result.stopped) {
+      const e = new HttpError(500, `Copy stopped at ${result.stopped.file}: ${result.stopped.message}`, 'copy-stopped');
+      e.detail = result;
+      throw e;
+    }
+    if (result.failed.length) {
+      const e = new HttpError(500, `Copy failed for ${result.failed.map((f) => f.file).join(', ')}: ${result.failed[0].message}`, 'copy-failed');
+      e.detail = result;
+      throw e;
+    }
+  }
+  saveAndSwitch(t.codeBase !== undefined ? { codeBase: t.codeBase, replaceActive: true } : { dataDir: t.dir, replaceActive: true });
+  return { ...settingsReply(), relocated: true, switched: true, action, ...(result ? { copy: result } : {}) };
 }
 
 // A code base named by the browser: refused with 400 unless confineCodeBase accepts it. Returns { dir, plansDir }.
@@ -229,7 +428,10 @@ function confined(dir) {
   return c.dir;
 }
 
-// /api/project (GET reads, PUT saves and switches), /api/project/check, /api/project/init, /api/project/copy, /api/project/pick, /api/project/migrate.
+// /api/project (GET reads the settings and the saved projects, PUT saves and switches, which is also how a saved project is chosen),
+// /api/project/check, /api/project/init, /api/project/copy, /api/project/pick, /api/project/migrate,
+// /api/project/add (link a code base or create a new project), /api/project/relocate-plan (read-only) and
+// /api/project/relocate-apply (copy, read back, then save the new path of the active project).
 // They reach the config file and the folders init and the copy create, nothing else.
 async function handleProject(req, res, segments) {
   const [, , sub, ...rest] = segments;
@@ -276,9 +478,13 @@ async function handleProject(req, res, segments) {
     throw new HttpError(405, 'Method not allowed');
   }
 
-  if (!['check', 'init', 'copy', 'pick', 'migrate'].includes(sub)) throw new HttpError(404, 'Not found', 'not-found');
+  if (!['check', 'init', 'copy', 'pick', 'migrate', 'add', 'relocate-plan', 'relocate-apply'].includes(sub)) throw new HttpError(404, 'Not found', 'not-found');
   if (req.method !== 'POST') throw new HttpError(405, 'Method not allowed');
   requireHeader(req);
+
+  if (sub === 'add') return send(res, 200, await addProject(await readJson(req)));
+  if (sub === 'relocate-plan') return send(res, 200, planRelocation(await readJson(req)));
+  if (sub === 'relocate-apply') return send(res, 200, applyRelocation(await readJson(req)));
 
   // Runs only when asked: copies the older layout of the served folder into backlog folders (no body).
   if (sub === 'migrate') {
@@ -474,7 +680,7 @@ const server = http.createServer(async (req, res) => {
   } catch (err) {
     const e = mapFsError(err, 'File');
     if (res.headersSent) return res.end();
-    send(res, e.status, { error: e.message, code: e.code });
+    send(res, e.status, { error: e.message, code: e.code, ...(e.detail || {}) });
   }
 });
 
@@ -490,4 +696,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { server, setFolderDialog };
+module.exports = { server, setFolderDialog, setNewProjectParent, setCopyOptions };

@@ -7,14 +7,10 @@ function FolderList({ title, names }) {
   return <p className="muted">{title}: {names.join(', ')}</p>;
 }
 
-const HAS_FILES = ['has-planner-files', 'older-layout'];
-
-// Why the user is asked about a chosen folder. For a code base the status describes its `.plans` folder.
-function offerReason(offer) {
-  const place = offer.isCodeBase ? 'has no .plans folder' : 'does not exist yet';
-  if (offer.status === 'missing') return place;
-  if (HAS_FILES.includes(offer.status)) return offer.isCodeBase ? 'already holds planner files in .plans' : 'already holds planner files';
-  return offer.isCodeBase ? 'has an empty .plans folder' : 'has no planner files';
+// The line after a relocation that copied files; shown once, on the load that follows the switch.
+function copySummary(copy) {
+  const overwritten = copy.overwritten ? `, overwrote ${copy.overwritten}` : '';
+  return `Copied ${copy.copied} file(s)${overwritten}, skipped ${copy.skipped}.`;
 }
 
 // The project name, the data folder and the config file. Always shown, even with no backlog, because an empty new
@@ -56,37 +52,34 @@ export default function SettingsTab({ hidden, settingsState }) {
               <label htmlFor="codeBase">Code base</label>
               <input type="text" id="codeBase" disabled value={settings.codeBase ?? ''} placeholder="Not set: the data folder above is used" readOnly />
             </div>
-            <button type="button" id="changeCodeBaseBtn" disabled={working || !!offer} onClick={() => actions.pickCodeBase(false)}>Change code base</button>
+            <button type="button" id="changeCodeBaseBtn" disabled={working || !!offer} onClick={actions.pickCodeBase}>Change code base</button>
             {!settings.codeBase && (
-              <button type="button" id="moveToCodeBaseBtn" disabled={working || !!offer} onClick={() => actions.pickCodeBase(true)}>Move data into a code base</button>
+              <button type="button" id="moveToCodeBaseBtn" disabled={working || !!offer} onClick={actions.pickCodeBase}>Move data into a code base</button>
             )}
           </div>
           <p className="muted">
-            A code base keeps its backlogs in its <code>.plans</code> folder. Moving copies the current data there without overwriting
-            a file; the current data folder keeps its files.
+            Changing the folder or the code base moves this project: the current backlogs are copied to the new place and the saved
+            project follows. A code base keeps its backlogs in its <code>.plans</code> folder. The old folder keeps its files.
           </p>
           <p className="muted">Config file: <code>{settings.configPath}</code></p>
 
           {offer && !offer.ready && (
             <div id="folderOffer" className="card">
               <p>
-                <code>{offer.dir}</code> {offerReason(offer)}.{' '}
-                {offer.move
-                  ? 'Copy the current data there? Files already there are kept. The code base is saved afterwards.'
-                  : 'Copy the current data there, or create an empty structure? The folder is switched to afterwards.'}
+                <code>{offer.dir}</code> already holds planner files. Overwrite replaces these files with the current data; other
+                files there are left as they are. Just switch copies nothing and shows the files already there.
               </p>
+              <ul id="overwriteList">{offer.exists.map((file) => <li key={file}><code>{file}</code></li>)}</ul>
               <div className="row">
-                <button type="button" id="copyBtn" disabled={working} onClick={() => actions.chooseForNewFolder('copy')}>Copy current data</button>
-                {!offer.move && (
-                  <button type="button" id="createEmptyBtn" disabled={working} onClick={() => actions.chooseForNewFolder('init')}>Create empty structure</button>
-                )}
-                <button type="button" id="cancelOfferBtn" disabled={working} onClick={actions.cancelOffer}>Cancel</button>
+                <button type="button" id="overwriteBtn" disabled={working} onClick={() => actions.chooseRelocation('overwrite')}>Overwrite</button>
+                <button type="button" id="justSwitchBtn" disabled={working} onClick={() => actions.chooseRelocation('switch')}>Just switch</button>
+                <button type="button" id="cancelOfferBtn" disabled={working} onClick={() => actions.chooseRelocation('cancel')}>Cancel</button>
               </div>
             </div>
           )}
           {offer?.ready && (
             <p className="warning">
-              The folder is ready, but a save or backup was running. <button type="button" id="retrySwitchBtn" className="link-btn" disabled={working} onClick={actions.retrySwitch}>Try again</button>
+              A save was running, so the folder was not changed. <button type="button" id="retrySwitchBtn" className="link-btn" disabled={working} onClick={actions.retrySwitch}>Try again</button>
             </p>
           )}
 
@@ -99,7 +92,7 @@ export default function SettingsTab({ hidden, settingsState }) {
               )}
             </div>
           )}
-          {copyResult && <p className="muted">Copied {copyResult.copied.length} file(s), skipped {copyResult.skipped.length}.</p>}
+          {copyResult && <p className="muted" id="copyResult">{copySummary(copyResult)}</p>}
 
           {settings.olderLayout?.length > 0 && (
             <div id="migrateNotice" className="card">
