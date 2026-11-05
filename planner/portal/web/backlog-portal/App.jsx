@@ -52,7 +52,7 @@ export default function App() {
   const { files, current, backlog, selectedId, view, checked, lastChecked } = state;
   const stories = backlog?.stories ?? [];
   const problems = useMemo(() => backlogProblems(stories), [stories]);
-  const renumberDisabled = useMemo(() => gatherFeatures(stories, state.initials) === stories, [stories, state.initials]); // nothing to put in order
+  const renumberDisabled = useMemo(() => !state.initials || gatherFeatures(stories, state.initials) === stories, [stories, state.initials]); // nothing to put in order (and no backlog open yet: no initials)
 
   // Folded epics and features of the story list, remembered per backlog file. A story that turns up inside a folded group
   // (added, accepted from Proposed, or given another Epic or Feature in the form) opens just its feature and that feature's epic.
