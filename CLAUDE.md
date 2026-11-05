@@ -22,6 +22,10 @@ There is no linter or type checker. Tests cover only the pure modules (no DOM/Re
 
 The toolkit has its own tests, separate from `npm test`: `cd toolkit; python check_toolkit.py; python -m pytest` (needs Python and pytest), and `node --test <abs>/toolkit/tests/story/*.test.mjs` for the story skills.
 
+## Line endings
+
+Git stores every tracked file with LF, and each user's `core.autocrlf` setting decides whether their working files are LF or CRLF, so the repo does not force one. `.gitattributes` pins only `planner/test/sample-data/**` and `toolkit/tests/story/fixtures/**` to LF, because tests match fixture text with `\n`. Each generated skill copy has the line ending of its source file, because `planner/scripts/sync-skill-logic.mjs` reads sources as LF and then writes each copy with its source's ending (CRLF in a CRLF checkout, LF otherwise, never a mix), so git reports no change after a run. The data CSVs keep CRLF, because the CSV writer emits it. No test guards line endings.
+
 ## Zones
 
 This repo holds local tools for a team lead's admin work: the backlog planner in `planner/` and the global toolkit in `toolkit/`. The zones depend in one direction only, enforced by `planner/test/zones.test.mjs`:

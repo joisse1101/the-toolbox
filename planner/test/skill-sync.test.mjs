@@ -70,7 +70,7 @@ test('every skill present gets its logic, support helpers and guidelines, each c
     assert.equal(files.some((f) => f === 'lib/storage/paths.cjs' || f === 'lib/storage/project-config.cjs'), false, `${skill} copies the planner's config reader`);
     assert.equal(files.some((f) => f.startsWith('lib/diagrams/')), false, `${skill} copies diagram logic`);
     for (const f of files) {
-      const first = fs.readFileSync(path.join(out, skill, f), 'utf8').split('\n')[0];
+      const first = fs.readFileSync(path.join(out, skill, f), 'utf8').split(/\r?\n/)[0];
       assert.match(first, /^(\/\/|<!--) GENERATED\. Do not edit this copy\.( -->)?$/, `${skill}/${f} has no generated header`);
       assert.doesNotMatch(first, /planner\//, `${skill}/${f} header names a path of this repo`);
     }
@@ -103,4 +103,43 @@ test('the check names a copy that has drifted, is missing or has no source', () 
   assert.ok(problems.includes('jois-story-review/lib/backlog/model.js: differs'));
   assert.ok(problems.includes('jois-story-review/lib/backlog/extra.js: not generated'));
   assert.ok(problems.includes('jois-story-review/references/product-backlog.md: missing'));
+});
+
+test('a copy has its source line ending throughout: CRLF sources give CRLF copies, LF sources give LF copies', () => {
+  const PLANNER = path.resolve(path.dirname(SCRIPT), '..');
+  const scratch = path.resolve(PLANNER, '..', '.scratch');
+  fs.mkdirSync(scratch, { recursive: true });
+  const root = fs.mkdtempSync(path.join(scratch, 'skill-sync-eol-'));
+  try {
+    // Two copies of the planner folders the script reads: one as LF, one as CRLF.
+    const outputs = {};
+    for (const eol of ['lf', 'crlf']) {
+      const planner = path.join(root, eol, 'planner');
+      for (const dir of ['scripts', 'logic', 'guidelines']) fs.cpSync(path.join(PLANNER, dir), path.join(planner, dir), { recursive: true });
+      for (const file of filesUnder(planner)) {
+        const target = path.join(planner, ...file.split('/'));
+        const text = fs.readFileSync(target, 'utf8').replace(/\r\n/g, '\n');
+        fs.writeFileSync(target, eol === 'crlf' ? text.replace(/\n/g, '\r\n') : text, 'utf8');
+      }
+      const skills = path.join(root, eol, 'skills');
+      for (const skill of Object.keys(SKILLS)) fs.mkdirSync(path.join(skills, skill), { recursive: true });
+      const out = path.join(root, eol, 'out');
+      const run = spawnSync(process.execPath, [path.join(planner, 'scripts', 'sync-skill-logic.mjs'), '--skills-dir', skills, '--out', out], { encoding: 'utf8' });
+      assert.equal(run.status, 0, run.stderr);
+      outputs[eol] = out;
+    }
+    const files = filesUnder(outputs.lf);
+    assert.ok(files.length > 0);
+    assert.deepEqual(filesUnder(outputs.crlf), files);
+    for (const file of files) {
+      const lf = fs.readFileSync(path.join(outputs.lf, file), 'utf8');
+      const crlf = fs.readFileSync(path.join(outputs.crlf, file), 'utf8');
+      assert.equal(lf.includes('\r'), false, `${file} of the LF run has a carriage return`);
+      // Every line ends in CRLF: once each CRLF is taken out, no CR or LF is left.
+      assert.doesNotMatch(crlf.replace(/\r\n/g, ''), /[\r\n]/, `${file} of the CRLF run has a line that does not end in CRLF`);
+      assert.equal(crlf.replace(/\r\n/g, '\n'), lf, `${file} differs from the LF run`);
+    }
+  } finally {
+    fs.rmSync(root, { recursive: true });
+  }
 });
