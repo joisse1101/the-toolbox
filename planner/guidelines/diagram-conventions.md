@@ -260,6 +260,14 @@ indented lines:
   exists in the sequence diagram of the task's flow.
 - `Verify` is not empty. The writer checks only that it is there; the review of the complete text is where
   the user judges whether the verification is real.
+- The file may open with a `# Tasks` title line, and blank lines may separate tasks. The writer ignores text
+  outside the `## <flow>` groups and the task lines.
+- Step ids are bare (`2.3`, not `pin 2.3`) and are separated by commas or spaces. The flow is the task's
+  group, so the writer refuses a step written with a flow prefix and names the task and the step it could
+  not find.
+- A task that names several criteria lists one pooled steps list that applies to the task as a whole. The
+  writer checks only that each step exists in the diagram of the task's flow, and does not refuse a step
+  that lies outside the Steps column of a named row.
 
 ### Coverage
 
