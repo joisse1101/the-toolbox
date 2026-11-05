@@ -70,7 +70,7 @@ test('every skill present gets its logic, support helpers and guidelines, each c
     assert.equal(files.some((f) => f === 'lib/storage/paths.cjs' || f === 'lib/storage/project-config.cjs'), false, `${skill} copies the planner's config reader`);
     assert.equal(files.some((f) => f.startsWith('lib/diagrams/')), false, `${skill} copies diagram logic`);
     for (const f of files) {
-      const first = fs.readFileSync(path.join(out, skill, f), 'utf8').split('\n')[0];
+      const first = fs.readFileSync(path.join(out, skill, f), 'utf8').split(/\r?\n/)[0];
       assert.match(first, /^(\/\/|<!--) GENERATED\. Do not edit this copy\.( -->)?$/, `${skill}/${f} has no generated header`);
       assert.doesNotMatch(first, /planner\//, `${skill}/${f} header names a path of this repo`);
     }
@@ -105,7 +105,7 @@ test('the check names a copy that has drifted, is missing or has no source', () 
   assert.ok(problems.includes('jois-story-review/references/product-backlog.md: missing'));
 });
 
-test('CRLF sources give the same LF copies as LF sources', () => {
+test('a copy has its source line ending throughout: CRLF sources give CRLF copies, LF sources give LF copies', () => {
   const PLANNER = path.resolve(path.dirname(SCRIPT), '..');
   const scratch = path.resolve(PLANNER, '..', '.scratch');
   fs.mkdirSync(scratch, { recursive: true });
@@ -134,8 +134,10 @@ test('CRLF sources give the same LF copies as LF sources', () => {
     for (const file of files) {
       const lf = fs.readFileSync(path.join(outputs.lf, file), 'utf8');
       const crlf = fs.readFileSync(path.join(outputs.crlf, file), 'utf8');
-      assert.equal(crlf.includes('\r'), false, `${file} has a carriage return`);
-      assert.equal(crlf, lf, `${file} differs from the LF run`);
+      assert.equal(lf.includes('\r'), false, `${file} of the LF run has a carriage return`);
+      // Every line ends in CRLF: once each CRLF is taken out, no CR or LF is left.
+      assert.doesNotMatch(crlf.replace(/\r\n/g, ''), /[\r\n]/, `${file} of the CRLF run has a line that does not end in CRLF`);
+      assert.equal(crlf.replace(/\r\n/g, '\n'), lf, `${file} differs from the LF run`);
     }
   } finally {
     fs.rmSync(root, { recursive: true });

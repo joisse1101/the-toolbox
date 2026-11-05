@@ -65,6 +65,10 @@ export const SKILLS = {
 // Sources are read as LF whatever the checkout converted, so the copies are the same on every machine.
 const readLf = (file) => fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
 
+// A copy is written with its source's line ending, so git sees the ending of the checkout and a copy never mixes endings.
+// The text is built with \n; this changes each \n to \r\n when the source file had \r\n.
+const withSourceEnding = (file, text) => (fs.readFileSync(file, 'utf8').includes('\r\n') ? text.replace(/\n/g, '\r\n') : text);
+
 const posix = (p) => p.split(path.sep).join('/');
 
 // A relative import or require at the start of a line (the only kind that is followed).
@@ -115,11 +119,11 @@ export function generateSkill(skill) {
   for (const file of files) {
     const dest = destOf.get(file);
     const body = rewriteImports(readLf(file), file, dest, destOf);
-    out.set(posix(dest), `// GENERATED. ${NOTE}\n${body}`);
+    out.set(posix(dest), withSourceEnding(file, `// GENERATED. ${NOTE}\n${body}`));
   }
   for (const name of spec.guidelines) {
     const file = path.join(GUIDELINES, name);
-    out.set(`references/${name}`, `<!-- GENERATED. ${NOTE} -->\n\n${readLf(file)}`);
+    out.set(`references/${name}`, withSourceEnding(file, `<!-- GENERATED. ${NOTE} -->\n\n${readLf(file)}`));
   }
   return out;
 }
