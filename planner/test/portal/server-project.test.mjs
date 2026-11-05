@@ -46,7 +46,10 @@ const switchBack = async () => assert.equal((await save({ dataDir: dirA })).stat
 
 test('read settings: the reply holds the project name, the data directory and the config file path', async () => {
   const body = await (await fetch(`${origin}/api/project`)).json();
-  assert.deepEqual(body, { projectName: 'Alpha', dataDir: dirA, configPath: path.resolve(configFile), olderLayout: [] });
+  const { projects, activeProject, ...rest } = body;
+  assert.deepEqual(rest, { projectName: 'Alpha', dataDir: dirA, configPath: path.resolve(configFile), olderLayout: [] });
+  assert.equal(activeProject, 0);
+  assert.deepEqual(projects.map((p) => [p.dataDir, p.exists]), [[dirA, true]], 'the saved projects are added to the reply');
 });
 
 test('switch while idle: the next list, read and write are answered from the new directory', async () => {
