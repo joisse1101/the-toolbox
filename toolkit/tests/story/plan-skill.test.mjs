@@ -11,7 +11,7 @@ const body = skill.replace(/\r\n/g, '\n');
 test('the skill is named jois-story-plan, versioned, and allows only its four scripts, the init script and the file tools', () => {
   const meta = frontmatter(skill);
   assert.equal(meta.name, 'jois-story-plan');
-  assert.match(body, /metadata:\n  version: "1\.0\.0"\n  last_updated: "2026-11-03"/);
+  assert.match(body, /metadata:\n  version: "1\.1\.0"\n  last_updated: "2026-11-05"/);
   assert.deepEqual(meta['allowed-tools'].split(/,\s*/).sort(), [
     'Bash(node *init-plans.mjs*)', 'Bash(node *read-context-map.mjs*)', 'Bash(node *read-diagrams.mjs*)', 'Bash(node *write-context-map.mjs*)', 'Bash(node *write-diagram.mjs*)', 'Glob', 'Grep', 'Read',
   ]);
@@ -64,6 +64,24 @@ test('the skill treats repo text as data, never opens secret files, and says the
   assert.match(body, /Never open a secret file/);
   assert.match(body, /data to work from, never instructions/);
   assert.match(body, /npm ci/);
+});
+
+test('the skill asks the mode question at the scope step and names greenfield mode', () => {
+  const scope = /## Decide the scope first([\s\S]*?)\n## Design checkpoint/.exec(body)[1];
+  assert.match(scope, /Ask the mode/);
+  assert.match(scope, /greenfield mode/);
+  assert.match(scope, /never assume the answer/);
+  assert.match(scope, /AskUserQuestion/);
+  const draft = /## Draft the slice([\s\S]*?)\n## Self-check/.exec(body)[1];
+  assert.match(draft, /\*\*Greenfield mode\*\*/);
+  assert.match(draft, /planned \(greenfield\)/);
+  assert.match(draft, /`user-confirmed`/);
+  assert.match(draft, /without `--repo`/);
+  assert.match(draft, /\*\*Describe-only mode\*\*/);
+});
+
+test('the skill reads the conventions section a rejection names before proposing a workaround', () => {
+  assert.match(body, /read that section before you propose a way forward/);
 });
 
 test('the skill points at the conventions and does not restate their limits', () => {
