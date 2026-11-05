@@ -20,6 +20,7 @@ import { openRows } from '../../../logic/lexicon/lexicon-suggestions.js';
 import LexiconTab from './components/LexiconTab.jsx';
 import SettingsTab from './components/SettingsTab.jsx';
 import { useSettings } from './hooks/useSettings.js';
+import { useProjects } from './hooks/useProjects.js';
 import ResizeHandle from './components/ResizeHandle.jsx';
 import useListWidth from './hooks/useListWidth.js';
 import useCollapsed from './hooks/useCollapsed.js';
@@ -158,6 +159,7 @@ export default function App() {
   };
   // Project settings; the name goes in the header and the page title. Pending saves are settled before a folder switch.
   const settingsState = useSettings(settleAll, () => refreshAll());
+  const projects = useProjects(settleAll, settingsState);
   const projectName = settingsState.settings?.projectName ?? '';
   useEffect(() => {
     document.title = projectName ? `${projectName} - Backlog portal` : 'Backlog portal';
@@ -265,7 +267,7 @@ export default function App() {
         </header>
 
         <FileBar
-          files={files} current={current} message={message} olderLayout={settingsState.settings?.olderLayout} focusNameToken={focusNameToken}
+          files={files} current={current} message={message} olderLayout={settingsState.settings?.olderLayout} focusNameToken={focusNameToken} projects={projects}
           onSelect={actions.selectFile} onRename={actions.renameFile} onNew={newBacklog} onOpenFolder={actions.openFolder} onRefresh={refreshAll}
         />
 

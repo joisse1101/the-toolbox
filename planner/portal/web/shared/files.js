@@ -84,6 +84,29 @@ export function copyToCodeBase(codeBase) {
   return call('POST', '/api/project/copy', { json: { codeBase } });
 }
 
+// The saved projects come with getProject: `projects` is [{ name, label, codeBase, dataDir, exists, synthetic? }] and
+// `activeProject` the index of the active one. Choosing one is saveProject({ codeBase }) or saveProject({ dataDir }).
+
+// Adds a project and makes it active. Pass { codeBase, name?, init? } to link a code base or { newName } to create
+// planner/data/<newName>. Resolves to the settings plus { added, switched, init? }; for a code base with no planner
+// files it changes nothing and resolves with `needsInit: true` until it is called again with `init: true`.
+// A refused name or folder throws (code 'refused' or 'exists'; 'busy' means try again).
+export function addProject(body) {
+  return call('POST', '/api/project/add', { json: body });
+}
+
+// Read-only look at moving the active project's data into { dir } or { codeBase }.
+// Resolves to { status, dir, action: 'copy' | 'choose' | 'switch', needsChoice, exists } (`exists`: files an overwrite would replace).
+export function planProjectRelocation(target) {
+  return call('POST', '/api/project/relocate-plan', { json: target });
+}
+
+// Runs a relocation: `target` is { dir } or { codeBase }, `choice` is 'overwrite', 'switch' or 'cancel' (needed when the plan says choose).
+// Copies, reads back, then saves the new path; the config is unchanged when it throws. Resolves to the settings plus { relocated, switched, action, copy? }.
+export function applyProjectRelocation(target, choice) {
+  return call('POST', '/api/project/relocate-apply', { json: choice === undefined ? target : { ...target, choice } });
+}
+
 // Copies the older layout of the served data folder into backlog folders; runs only when called.
 // Resolves to { copied, skipped: [{file, reason}], failed: [{file, message}] }.
 export function migrateOlderLayout() {

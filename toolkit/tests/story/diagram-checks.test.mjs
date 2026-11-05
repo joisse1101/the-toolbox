@@ -17,6 +17,7 @@ const SPEC = 'UC-sign-in.md';
 const limits = parseLimits(fs.readFileSync(CONVENTIONS, 'utf8'));
 const stories = scopeStories(loadBacklog(fs.readFileSync(path.join(FIXTURES, 'user-stories.csv'), 'utf8')).stories, { type: 'feature', epic: 'Identity and access', feature: 'Sign in' });
 
+// A Windows checkout may hold CRLF; the tests edit the text with "\n" strings.
 const mock = fs.readFileSync(path.join(SLICE_DIR, SPEC), 'utf8');
 const run = (text, extra = {}) => checkSlice({ slice: 'sign-in', files: { [SPEC]: text }, stories, limits, ...extra });
 const messages = (r) => formatProblems(r.problems).join('\n');
@@ -206,6 +207,62 @@ test('the aggregate boundary: a class outside the namespace may not link to an i
 test('the aggregate boundary: a stub of a root another slice owns needs no namespace', () => {
   const stub = changed('  class SignInForm {', '  class Account {\n    <<root entity>>\n  }\n  note for Account "(see accounts)"\n  class SignInForm {');
   assert.doesNotMatch(messages(run(stub)), /Account/);
+});
+
+const LAYOUT_ROW = '| D7 | Lockout after repeated wrong passwords | none, a delay | not decided | TBC | login 2.5 |';
+const greenfield = ({ code = '`src/auth/login.js::signIn` planned', layout = true, overview = '- Build the sign-in service in `src/auth/login.js`.' } = {}) => {
+  let text = changed('| **Maturity** | planned |', '| **Maturity** | planned (greenfield) |')
+    .replace('## Implementation overview\nTBC', `## Implementation overview\n${overview}`)
+    .replace('## Traceability\nTBC', `## Traceability\n| Step | What | Code |\n|---|---|---|\n| 1.2 | sign in | ${code} |`);
+  if (layout) text = text.replace(LAYOUT_ROW, `${LAYOUT_ROW}\n| D8 | Project layout and stack: a Node service under src/ | none | the user chose it | user-confirmed | login 3.1 |`);
+  return text;
+};
+
+test('greenfield: a valid document passes, with a build plan, planned rows and a layout decision', () => {
+  assert.deepEqual(formatProblems(run(greenfield()).problems), []);
+});
+
+test('greenfield: a planned path with no layout or stack decision is named', () => {
+  assert.match(messages(run(greenfield({ layout: false }))), /names a file path \(src\/auth\/login\.js\) but no user-confirmed row of "## Design decisions" records the project layout or stack/);
+});
+
+test('greenfield: a layout decision that is not user-confirmed does not allow a path', () => {
+  const text = greenfield({ layout: false }).replace(LAYOUT_ROW, `${LAYOUT_ROW}\n| D8 | Project layout and stack | none | guess | TBC | login 3.1 |`);
+  assert.match(messages(run(text)), /no user-confirmed row/);
+});
+
+test('greenfield: a traceability row without the planned mark, or without a file::symbol, is named', () => {
+  assert.match(messages(run(greenfield({ code: '`src/auth/login.js::signIn`' }))), /traceability row "1\.2" is not marked planned/);
+  assert.match(messages(run(greenfield({ code: 'signs in planned' }))), /traceability row "1\.2" names no `file::symbol`/);
+});
+
+test('greenfield: an Implementation overview that reads TBC or is empty is named', () => {
+  assert.match(messages(run(greenfield({ overview: 'TBC' }))), /Implementation overview" must hold the build plan in greenfield mode/);
+  assert.match(messages(run(greenfield({ overview: '' }))), /Implementation overview" must hold the build plan in greenfield mode/);
+});
+
+test('greenfield: a decision with the source repo is refused', () => {
+  const text = greenfield().replace('| the user chose it | user-confirmed |', '| the user chose it | repo |');
+  assert.match(messages(run(text)), /decision "D8" has the source repo, but no repo was read/);
+});
+
+test('greenfield: --repo with a greenfield Maturity reports the contradiction', () => {
+  assert.match(messages(run(greenfield(), { repo: {} })), /\(greenfield mode\) but --repo was given/);
+});
+
+test('the same greenfield document gives the same result every run, since the mode is read from the document', () => {
+  assert.deepEqual(run(greenfield({ layout: false })).problems, run(greenfield({ layout: false })).problems);
+});
+
+test('outside greenfield mode, the TBC and file-path errors name greenfield mode and its conventions section', () => {
+  const overview = messages(run(changed('## Implementation overview\nTBC', '## Implementation overview\nBuild it.')));
+  assert.match(overview, /must read TBC without a repo; a story that builds the code from scratch uses greenfield mode \(conventions, section 5, Modes\)/);
+  const path = messages(run(changed('Set-Cookie sid', 'Set-Cookie sid in session.json')));
+  assert.match(path, /names a file path \(session\.json\).*greenfield mode \(conventions, section 5, Modes\)/);
+});
+
+test('greenfield errors do not carry the greenfield hint', () => {
+  assert.doesNotMatch(messages(run(greenfield({ layout: false }))), /builds the code from scratch/);
 });
 
 test('without a repo, a path in the text is rejected and the message does not call it a lower level', () => {

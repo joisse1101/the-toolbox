@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
+import AddProjectDialog from './AddProjectDialog.jsx';
 
-// Backlog dropdown, rename, New, Open folder and Refresh, plus the message banners.
-export default function FileBar({ files, current, message, olderLayout = [], focusNameToken, onSelect, onRename, onNew, onOpenFolder, onRefresh }) {
+const ADD_PROJECT = 'add-project';
+
+// Project dropdown, Backlog dropdown, rename, New, Open folder and Refresh, plus the message banners.
+// `projects` is the useProjects hook's result; the Add Project dialog is shown from here.
+export default function FileBar({ files, current, message, olderLayout = [], focusNameToken, projects, onSelect, onRename, onNew, onOpenFolder, onRefresh }) {
   const [draft, setDraft] = useState(current ?? '');
   const nameRef = useRef(null);
   const cancelled = useRef(false);
@@ -25,9 +29,23 @@ export default function FileBar({ files, current, message, olderLayout = [], foc
     if (!renamed) setDraft(current);
   };
 
+  const onProjectChange = (e) => {
+    if (e.target.value === ADD_PROJECT) return projects.actions.openDialog();
+    return projects.actions.choose(Number(e.target.value));
+  };
+
   return (
     <section className="card file-bar">
       <div className="row">
+        <div className="grow project-pick">
+          <label htmlFor="projectSelect">Project</label>
+          <select id="projectSelect" value={projects.activeProject < 0 ? '' : String(projects.activeProject)} disabled={projects.working} onChange={onProjectChange}>
+            <option value={ADD_PROJECT}>Add Project…</option>
+            {projects.projects.map((p, i) => (
+              <option key={`${p.label}-${i}`} value={String(i)} disabled={!p.exists}>{p.exists ? p.label : `${p.label} (folder missing)`}</option>
+            ))}
+          </select>
+        </div>
         <div className="grow">
           <label htmlFor="fileSelect">Backlog</label>
           <select id="fileSelect" value={current ?? ''} disabled={!files.length} onChange={(e) => onSelect(e.target.value)}>
@@ -63,7 +81,9 @@ export default function FileBar({ files, current, message, olderLayout = [], foc
           No backlog folder here, but this data folder holds the older layout. Open the Settings tab and choose "Migrate older layout" to copy it.
         </p>
       )}
+      {projects.error && !projects.dialog && <p id="projectError" className="error" role="alert">{projects.error}</p>}
       <p id="message" className="warning" hidden={!message}>{message || ''}</p>
+      <AddProjectDialog projects={projects} />
     </section>
   );
 }

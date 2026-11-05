@@ -28,6 +28,9 @@ function filesUnder(dir) {
     .sort();
 }
 
+// A Windows checkout with core.autocrlf turns a committed LF file into CRLF, so lines are compared, not bytes.
+const readLf = (file) => fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
+
 // What differs between a committed skill folder and the generated one: files named `skill/path`, with why.
 function drift(committedDir, generatedDir) {
   const problems = [];
@@ -39,7 +42,7 @@ function drift(committedDir, generatedDir) {
       for (const file of want) {
         const name = `${skill}/${part}/${file}`;
         if (!have.includes(file)) problems.push(`${name}: missing`);
-        else if (fs.readFileSync(path.join(generatedDir, skill, part, file), 'utf8') !== fs.readFileSync(path.join(committedDir, skill, part, file), 'utf8')) problems.push(`${name}: differs`);
+        else if (readLf(path.join(generatedDir, skill, part, file)) !== readLf(path.join(committedDir, skill, part, file))) problems.push(`${name}: differs`);
       }
       for (const file of have) if (!want.includes(file)) problems.push(`${skill}/${part}/${file}: not generated`);
     }

@@ -7,7 +7,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 
 const pc = createRequire(import.meta.url)('../../logic/storage/project-config.cjs');
-const { initFolders, copyData, migrateOlderLayout, checkFolder, confineDir, confineCodeBase, checkCodeBase, initCodeBase, copyToCodeBase, saveConfig, loadConfig, ROOT } = pc;
+const { initFolders, copyData, migrateOlderLayout, checkFolder, confineDir, confineCodeBase, checkCodeBase, initCodeBase, copyToCodeBase, planCopy, planCopyToCodeBase, saveConfig, loadConfig, ROOT } = pc;
 
 function tmp() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'project-folders-'));
@@ -176,6 +176,136 @@ test('copy stops naming a file it cannot read, and a second run resumes', () => 
   assert.equal(second.stopped, undefined);
   assert.equal(second.skipped.length, 2);
   assert.deepEqual(second.copied, ['reviews/iam.csv']);
+});
+
+// ---- copy plan, overwrite and read-back (mock trees in temp folders)
+
+const listing = (dir) => fs.readdirSync(dir, { recursive: true }).map((n) => n.split(path.sep).join('/')).sort();
+
+test('plan on an empty target lists no clash and creates nothing, not even a missing target', () => {
+  const s = source();
+  const t = tmp();
+  assert.deepEqual(planCopy(s, t), { exists: [] });
+  assert.deepEqual(fs.readdirSync(t), []);
+  const missing = path.join(tmp(), 'nope', 'deeper');
+  assert.deepEqual(planCopy(s, missing), { exists: [] });
+  assert.equal(fs.existsSync(path.dirname(missing)), false);
+});
+
+test('plan lists the one file that clashes and changes nothing', () => {
+  const s = source();
+  const t = tmp();
+  put(t, 'backlogs/iam.csv', 'mine');
+  put(t, 'extra.txt', 'extra');
+  const before = listing(t);
+  assert.deepEqual(planCopy(s, t), { exists: ['backlogs/iam.csv'] });
+  assert.deepEqual(listing(t), before);
+  assert.equal(fs.readFileSync(path.join(t, 'backlogs', 'iam.csv'), 'utf8'), 'mine');
+});
+
+test('plan ignores a backups folder like the copy does', () => {
+  const s = source();
+  put(s, 'iam/backups/x.csv', 'old');
+  const t = tmp();
+  put(t, 'iam/backups/x.csv', 'old');
+  assert.deepEqual(planCopy(s, t), { exists: [] }, 'backups never clash');
+});
+
+test('plan refuses the same folder, a folder inside it, a folder that contains it and a file', () => {
+  const s = source();
+  assert.match(planCopy(s, s).refused, /inside|current/);
+  assert.ok(planCopy(s, path.join(s, 'sub')).refused);
+  assert.equal(fs.existsSync(path.join(s, 'sub')), false);
+  const parent = tmp();
+  const child = path.join(parent, 'child');
+  put(child, 'backlogs/a.csv');
+  assert.match(planCopy(child, parent).refused, /contains/);
+  const file = path.join(tmp(), 'f.txt');
+  fs.writeFileSync(file, 'x');
+  assert.match(planCopy(s, file).refused, /file/);
+});
+
+test('plan for a code base looks in .plans, creates nothing and refuses a missing code base', () => {
+  const s = tmp();
+  put(s, 'iam/user-stories.csv', 'theirs');
+  const cb = tmp();
+  assert.deepEqual(planCopyToCodeBase(s, cb), { exists: [] });
+  assert.equal(fs.existsSync(path.join(cb, '.plans')), false);
+  put(cb, '.plans/iam/user-stories.csv', 'mine');
+  assert.deepEqual(planCopyToCodeBase(s, cb), { exists: ['iam/user-stories.csv'] });
+  assert.match(planCopyToCodeBase(s, path.join(tmp(), 'nope')).refused, /does not exist/);
+});
+
+test('copy by default still skips a clash and reports an empty overwritten list', () => {
+  const s = source();
+  const t = tmp();
+  put(t, 'backlogs/iam.csv', 'mine');
+  const r = copyData(s, t);
+  assert.deepEqual(r.overwritten, []);
+  assert.deepEqual(r.failed, []);
+  assert.deepEqual(r.skipped, [{ file: 'backlogs/iam.csv', reason: 'exists' }]);
+  assert.equal(fs.readFileSync(path.join(t, 'backlogs', 'iam.csv'), 'utf8'), 'mine');
+});
+
+test('overwrite replaces the clash, leaves an extra target file alone and leaves the source unchanged', () => {
+  const s = source();
+  const t = tmp();
+  put(t, 'backlogs/iam.csv', 'mine');
+  put(t, 'extra/keep.txt', 'extra');
+  const srcBefore = listing(s);
+  const r = copyData(s, t, { overwrite: true });
+  assert.deepEqual(r.overwritten, ['backlogs/iam.csv']);
+  assert.deepEqual(r.copied.sort(), ['diagrams/iam/slice/UC-slice.md', 'reviews/iam.csv']);
+  assert.deepEqual(r.skipped, []);
+  assert.deepEqual(r.failed, []);
+  assert.equal(fs.readFileSync(path.join(t, 'backlogs', 'iam.csv'), 'utf8'), 'backlog');
+  assert.equal(fs.readFileSync(path.join(t, 'extra', 'keep.txt'), 'utf8'), 'extra');
+  assert.deepEqual(listing(s), srcBefore);
+  assert.equal(fs.readFileSync(path.join(s, 'backlogs', 'iam.csv'), 'utf8'), 'backlog');
+});
+
+test('overwrite through a code base replaces only the clash in .plans', () => {
+  const s = tmp();
+  put(s, 'iam/user-stories.csv', 'theirs');
+  put(s, 'iam/lexicon.csv', 'lex');
+  const cb = tmp();
+  put(cb, '.plans/iam/user-stories.csv', 'mine');
+  put(cb, '.plans/iam/own.csv', 'own');
+  const r = copyToCodeBase(s, cb, { overwrite: true });
+  assert.deepEqual(r.overwritten, ['iam/user-stories.csv']);
+  assert.deepEqual(r.copied, ['iam/lexicon.csv']);
+  assert.equal(fs.readFileSync(path.join(cb, '.plans', 'iam', 'user-stories.csv'), 'utf8'), 'theirs');
+  assert.equal(fs.readFileSync(path.join(cb, '.plans', 'iam', 'own.csv'), 'utf8'), 'own');
+  assert.equal(fs.readFileSync(path.join(s, 'iam', 'user-stories.csv'), 'utf8'), 'theirs');
+});
+
+test('read-back reports a copy that differs, removes a bad new copy and keeps a bad overwrite listed as failed', () => {
+  const s = source();
+  const t = tmp();
+  put(t, 'backlogs/iam.csv', 'mine');
+  const wrong = (from, to, flags) => {
+    fs.copyFileSync(from, to, flags);
+    if (from.endsWith('iam.csv')) fs.writeFileSync(to, 'garbled');
+  };
+  const r = copyData(s, t, { overwrite: true, copyFile: wrong });
+  assert.deepEqual(r.failed.map((f) => f.file).sort(), ['backlogs/iam.csv', 'reviews/iam.csv']);
+  assert.ok(r.failed.every((f) => /read back/.test(f.message)));
+  assert.deepEqual(r.overwritten, []);
+  assert.deepEqual(r.copied, ['diagrams/iam/slice/UC-slice.md']);
+  assert.equal(fs.existsSync(path.join(t, 'reviews', 'iam.csv')), false, 'the bad new copy is removed');
+  assert.equal(fs.readFileSync(path.join(s, 'backlogs', 'iam.csv'), 'utf8'), 'backlog', 'the source is unchanged');
+});
+
+test('read-back reports a file that cannot be read back', () => {
+  const s = source();
+  const t = tmp();
+  const readFile = (p) => {
+    if (p.includes(path.basename(t)) && p.endsWith('iam.csv')) throw new Error('EBUSY: locked');
+    return fs.readFileSync(p);
+  };
+  const r = copyData(s, t, { readFile });
+  assert.equal(r.failed.length, 2);
+  assert.match(r.failed[0].message, /could not be read back/);
 });
 
 // ---- migration of the older layout (mock tree built here; temp folders only)
