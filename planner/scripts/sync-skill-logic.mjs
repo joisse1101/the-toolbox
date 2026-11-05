@@ -62,6 +62,9 @@ export const SKILLS = {
   },
 };
 
+// Sources are read as LF whatever the checkout converted, so the copies are the same on every machine.
+const readLf = (file) => fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
+
 const posix = (p) => p.split(path.sep).join('/');
 
 // A relative import or require at the start of a line (the only kind that is followed).
@@ -70,7 +73,7 @@ const TOP_LEVEL_IMPORT = /^(?:import\b[^'";]*?from\s*|import\s*|(?:const|let|var
 const ANY_RELATIVE = /((?:from\s*|import\s*\(?\s*|require\(\s*)['"])(\.{1,2}\/[^'"]+)(['"])/g;
 
 function topLevelImports(file) {
-  const text = fs.readFileSync(file, 'utf8');
+  const text = readLf(file);
   return [...text.matchAll(TOP_LEVEL_IMPORT)].map((m) => path.resolve(path.dirname(file), m[1]));
 }
 
@@ -111,12 +114,12 @@ export function generateSkill(skill) {
   const out = new Map();
   for (const file of files) {
     const dest = destOf.get(file);
-    const body = rewriteImports(fs.readFileSync(file, 'utf8'), file, dest, destOf);
+    const body = rewriteImports(readLf(file), file, dest, destOf);
     out.set(posix(dest), `// GENERATED. ${NOTE}\n${body}`);
   }
   for (const name of spec.guidelines) {
     const file = path.join(GUIDELINES, name);
-    out.set(`references/${name}`, `<!-- GENERATED. ${NOTE} -->\n\n${fs.readFileSync(file, 'utf8')}`);
+    out.set(`references/${name}`, `<!-- GENERATED. ${NOTE} -->\n\n${readLf(file)}`);
   }
   return out;
 }
