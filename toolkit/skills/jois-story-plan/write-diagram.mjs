@@ -15,6 +15,7 @@ import { resolveStoryRef } from './lib/backlog/story-ref.js';
 import { parseLimits } from './diagrams/limits.js';
 import { buildSource, scopeStories, applyStoriesBlock } from './diagrams/source.js';
 import { checkSlice, formatProblems } from './diagrams/checks.js';
+import { checkTasks, carryTicks } from './diagrams/tasks.js';
 import { describeParseError, writeAtomic } from './lib/skill-support/write-atomic.mjs';
 import { loadStories, slicePath, readSliceFolder, readConventions, scopeText, SOURCE_FILE } from './read-diagrams.mjs';
 import { parseMermaid, mermaidMissing } from './parse-mermaid.mjs';
@@ -24,6 +25,7 @@ const require = createRequire(import.meta.url);
 const { GUIDELINES_DIR } = require('./lib/skill-support/paths.cjs');
 
 const MAX_FILE_CHARS = 200000;
+const TASKS_FILE = 'tasks.md';
 const norm = (s) => String(s ?? '').trim().toLowerCase();
 const sameScope = (a, b) => a.type === b.type && norm(a.epic) === norm(b.epic) && norm(a.feature) === norm(b.feature) && norm(a.title) === norm(b.title);
 
@@ -93,11 +95,16 @@ async function prepare({ dataDir = dataDirOrThrow(), guidelinesDir = GUIDELINES_
   } catch (err) {
     return { ok: false, errors: [err.message] };
   }
-  const checked = checkSlice({ slice, files, stories: inScope, limits, repo });
   const specName = `UC-${slice}.md`;
+  // tasks.md is checked by checkTasks against the document; checkSlice only knows the document.
+  const { [TASKS_FILE]: tasksText, ...documentFiles } = files;
+  const checked = checkSlice({ slice, files: documentFiles, stories: inScope, limits, repo });
+  const taskProblems = [];
+  if (tasksText === undefined) taskProblems.push({ file: TASKS_FILE, message: `is missing: a slice is written with its ${TASKS_FILE} (conventions, section 10)` });
+  else if (specName in documentFiles) taskProblems.push(...checkTasks({ tasksText, document: documentFiles[specName], slice }));
   const parsed = await Promise.all(checked.diagrams.map(async (d) => ({ d, result: await parseMermaid(d.text) })));
   const parserProblems = parsed.filter(({ result }) => !result.ok).map(({ d, result }) => ({ file: specName, line: d.line + (result.line ?? 0), message: `${d.heading}: does not parse as Mermaid: ${result.message}` }));
-  const all = [...checked.problems, ...parserProblems];
+  const all = [...checked.problems, ...taskProblems, ...parserProblems];
   if (all.length) return { ok: false, errors: formatProblems(all) };
   return { ok: true, loaded, sliceDir, slice, scope, inScope, files, existing, now };
 }
@@ -127,6 +134,14 @@ export async function writeDiagram(input) {
   } catch (err) {
     return { ok: false, errors: [err.message], text: problemsText([err.message]) };
   }
+  // The skill sends every task unticked; the ticks of the folder's tasks.md stay where the criteria did not change.
+  const carried = carryTicks({
+    oldTasksText: (existing?.files[TASKS_FILE] ?? '').replace(/\r\n/g, '\n'),
+    oldDocument: (existing?.files[specName] ?? '').replace(/\r\n/g, '\n'),
+    newTasksText: files[TASKS_FILE],
+    newDocument: files[specName],
+  });
+  files[TASKS_FILE] = carried.text;
   const sourceText = `${JSON.stringify(source, null, 2)}\n`;
 
   const unchanged = existing && sameStories(existing.source, source) && Object.entries(files).every(([f, text]) => existing.files[f]?.replace(/\r\n/g, '\n') === text);
@@ -155,7 +170,11 @@ export async function writeDiagram(input) {
   }
   const written = [...Object.keys(files).filter((f) => existing?.files[f] !== files[f]), ...(sameStories(existing?.source, source) ? [] : [SOURCE_FILE])];
   const note = leftover.length ? ` Files in the folder that were not sent and were left as they are: ${leftover.join(', ')}.` : '';
-  return { ok: true, changed: true, written, leftover, slice, base: loaded.base, text: `Wrote the slice "${slice}" to ${loaded.base}/slices/${slice}/ (${written.join(', ')}); ${Object.keys(files).length} files and ${SOURCE_FILE}.${note}` };
+  const taskLines = [
+    ...carried.reset.map((t) => `\nreset: task ${t.id} "${t.title}" was ticked and is unticked again because a criterion it names changed`),
+    ...carried.dropped.map((t) => `\ndropped: task ${t.id} "${t.title}" was ticked and is no longer in ${TASKS_FILE}`),
+  ].join('');
+  return { ok: true, changed: true, written, leftover, reset: carried.reset, dropped: carried.dropped, slice, base: loaded.base, text: `Wrote the slice "${slice}" to ${loaded.base}/slices/${slice}/ (${written.join(', ')}); ${Object.keys(files).length} files and ${SOURCE_FILE}.${note}${taskLines}` };
 }
 
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
