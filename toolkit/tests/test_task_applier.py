@@ -56,6 +56,35 @@ def _hook_exit_code(command):
     return result.returncode
 
 
+REFUSED_TASKS_PATHS = [
+    "C:/repo/openspec/changes/x/tasks.md",
+    "C:\\repo\\openspec\\changes\\x\\tasks.md",
+    "C:/data/accounts/slices/sign-in/tasks.md",
+    "C:\\data\\accounts\\slices\\sign-in\\tasks.md",
+]
+ALLOWED_EDIT_PATHS = [
+    "C:/repo/src/tasks.md",
+    "C:\\repo\\src\\app.js",
+    "C:/data/accounts/slices/sign-in/UC-sign-in.md",
+    "C:/repo/openspec/changes/x/design.md",
+]
+
+
+def _edit_hook_command():
+    return [
+        line.strip()
+        for line in _frontmatter(AGENT).splitlines()
+        if line.strip().startswith("powershell")
+    ][1]
+
+
+def _edit_hook_result(tool_name, file_path):
+    tool_call = json.dumps({"tool_name": tool_name, "tool_input": {"file_path": file_path}})
+    return subprocess.run(
+        _edit_hook_command(), input=tool_call, shell=True, capture_output=True, text=True, timeout=60
+    )
+
+
 needs_powershell = pytest.mark.skipif(
     sys.platform != "win32" or shutil.which("powershell") is None,
     reason="the hook is a PowerShell command",
@@ -76,6 +105,38 @@ def test_agent_hook_exits_2_for_a_blocked_command(command):
 @pytest.mark.parametrize("command", ALLOWED_COMMANDS)
 def test_agent_hook_lets_other_commands_through(command):
     assert _hook_exit_code(command) == 0
+
+
+@needs_powershell
+@pytest.mark.parametrize("tool_name", ["Edit", "Write"])
+@pytest.mark.parametrize("file_path", REFUSED_TASKS_PATHS)
+def test_edit_hook_refuses_a_change_or_slice_tasks_file(tool_name, file_path):
+    result = _edit_hook_result(tool_name, file_path)
+    assert result.returncode == 2
+    assert "put the result: clause in your report" in result.stderr
+
+
+@needs_powershell
+@pytest.mark.parametrize("file_path", ALLOWED_EDIT_PATHS)
+def test_edit_hook_lets_other_files_through(file_path):
+    assert _edit_hook_result("Edit", file_path).returncode == 0
+
+
+def test_agent_reads_a_slice_task():
+    text = AGENT.read_text(encoding="utf-8")
+    assert "of an OpenSpec change or of a slice" in _frontmatter(AGENT)
+    assert "`Satisfies:`" in text and "`Verify:`" in text
+    assert "`UC-<slice>.md`" in text
+
+
+def test_apply_command_has_the_slice_form():
+    text = APPLY_COMMAND.read_text(encoding="utf-8")
+    assert "/jois-code:apply slice <backlog>/<slice>" in text
+    assert "A bare name is always an OpenSpec change" in text
+    assert "Never suggest `/opsx:archive`" in text
+    allowed = next(line for line in _frontmatter(APPLY_COMMAND).splitlines() if line.startswith("allowed-tools:"))
+    assert "Bash(node *jois-story-plan*read-diagrams.mjs*)" in allowed
+    assert "Bash(node *)" not in allowed and "Bash(node:*)" not in allowed
 
 
 def test_agent_hook_keeps_the_git_and_gh_block():
