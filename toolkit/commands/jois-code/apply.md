@@ -1,11 +1,11 @@
 ---
 name: "JOIS: Apply"
-description: "Apply an OpenSpec change one group of tasks at a time: hand each group to opsx-task-applier, record its results in tasks.md, check it with opsx-test-runner, then commit it by itself on an unprotected branch (never main or master, never a push), defer the commit while a named pending task fixes a failing test, or stop for the confirmation word"
+description: "Apply an OpenSpec change or a slice one group of tasks at a time: hand each group to opsx-task-applier, record its results in tasks.md, check it with opsx-test-runner, then commit it by itself on an unprotected branch (never main or master, never a push), defer the commit while a named pending task fixes a failing test, or stop with nothing committed in a doubtful case"
 allowed-tools: Bash(openspec:*), Bash(git status:*), Bash(git diff:*), Bash(git add:*), Bash(git commit:*), Bash(git branch --show-current:*), Read, Edit, Agent, Monitor
 disable-model-invocation: true
 metadata:
-  version: "1.5.0"
-  last_updated: "2026-11-05"
+  version: "1.6.0"
+  last_updated: "2026-11-06"
 ---
 
 Apply the OpenSpec change named in the argument by handing its tasks to the `opsx-task-applier` agent, one group at a time.
@@ -38,15 +38,15 @@ Apply the OpenSpec change named in the argument by handing its tasks to the `ops
 3. **Read the context.**
    - Read every file under `contextFiles` before the first dispatch.
    - Keep the `context` and `operationGuidance` from the output in mind for the briefs.
-   - A commit-stop line in `operationGuidance` (such as "name a confirmation word and never commit in the turn you stage") does not govern this command's group commits.
-   - Step 10 owns those commits and decides when to commit or stop.
+   - A commit-stop line in `operationGuidance` (an older project's line that tells the agent to stop before each commit) does not govern this command's group commits.
+   - Step 10 owns those commits and decides when to commit or stop with nothing committed.
 4. **Check the agent.**
    - Look for `opsx-task-applier.md` in `~/.claude/agents/` and in this project's `.claude/agents/`.
    - If it is in neither, say so, name `Install-Toolkit.ps1` (`-Agent opsx-task-applier.md`) and stop.
    - Do not copy the agent yourself.
    - Also look for `opsx-test-runner.md` in the same two folders.
    - If it is in neither, say so and name `Install-Toolkit.ps1` (`-Agent opsx-test-runner.md`).
-   - Do not stop for this. Remember it, and step 10 takes the fallback.
+   - Do not stop for this yet. Remember it, and step 10 stops with nothing committed and names this condition.
 5. **Find the groups.**
    - A group is one `##` section of `tasks.md`.
    - Take the groups in file order.
@@ -127,16 +127,17 @@ Apply the OpenSpec change named in the argument by handing its tasks to the `ops
      - Ask the user instead if the report shows a problem.
 10. **Commit the group.**
    - Do this when all of the group's tasks are done.
-   - The purpose is to commit a checked group by itself, and to ask only when something is doubtful.
-   - The agents commit nothing. Only you commit, as below.
-   - **The fallback** is the one way to handle every doubtful case.
-     - Follow the confirmation path of the `jois-git-commit-hygiene` rule: stage by explicit path, print the staged summary and the proposed message, name a confirmation word, end the turn.
-     - Say which condition sent you there.
-     - Take the next group only after that commit is done or the user says to go on.
-   - Below, "fall back" means the fallback.
+   - The purpose is to commit a checked group by itself, and to stop when something is doubtful.
+   - The agents commit nothing. Only you commit, as the "Apply flows" clause of the `jois-git-commit-hygiene` rule says.
+   - **A stop with nothing committed** is the one way to handle every doubtful case.
+     - Commit nothing and stage nothing.
+     - Say which condition failed, and what the user can do about it (switch branch, install the agent, fix the test, move the foreign change).
+     - Name no confirmation word and do not ask for one.
+     - End the command. Work already done stays in the tree and in `tasks.md`, and a rerun resumes from the pending tasks.
+   - Below, "stop" means this stop.
    - Read the branch with `git branch --show-current`.
-     - An empty result (detached HEAD), `main`, `master` or a failed command counts as protected: fall back.
-   - If step 4 found `opsx-test-runner` missing: fall back.
+     - An empty result (detached HEAD), `main`, `master` or a failed command counts as protected: stop and say the branch is protected.
+   - If step 4 found `opsx-test-runner` missing: stop, say the agent is missing and name `Install-Toolkit.ps1` (`-Agent opsx-test-runner.md`).
    - Dispatch `opsx-test-runner` with the Agent tool, in the background.
      - The prompt carries the files the group's reports say were changed.
      - Start the watch (step 8) and wait for the report.
@@ -151,7 +152,7 @@ Apply the OpenSpec change named in the argument by handing its tasks to the `ops
      - Build the commands from `CLAUDE.md` and `package.json`, in the command's own folder-flag form (such as `npm --prefix <abs path> test`), never `cd`.
      - Start the watch (step 8) on the rerun too.
      - If the rerun shows exit code 0 for every command, the tests passed: go on.
-     - If the rerun is still doubtful, fall back and say why.
+     - If the rerun is still doubtful, stop and say why.
    - **A non-zero exit code** is judged first for deferral (the definition is in step 9).
      - If every failure is deferrable and this is not the last group: do not commit and do not stop.
        - Say which task each failure waits for.
@@ -164,9 +165,9 @@ Apply the OpenSpec change named in the argument by handing its tasks to the `ops
        - Pass it the failing command and its exact output.
        - Rerun `opsx-test-runner` after each fix round, with the same exit-code judging as above.
        - Go on only when every command shows exit code 0 and every failure is explained.
-       - If the loop ends in a question to the user, wait for the answer. Then fall back only after the failures are explained.
+       - If the loop ends in a question to the user, wait for the answer. Then stop only after the failures are explained.
      - After the last group nothing is deferred: a red result runs the fix loop over the whole change, then asks the user if a failure stays unexplained.
-   - **No rerun** for these: fall back at once.
+   - **No rerun** for these: stop at once, with nothing committed, and name the condition.
      - No test command found, or a suite that could not run for another reason (such as missing dependencies).
      - A protected branch.
      - A missing agent.
@@ -174,8 +175,8 @@ Apply the OpenSpec change named in the argument by handing its tasks to the `ops
    - Run `git status` and `git diff --stat`.
      - Ignore `openspec/changes/<name>/`, including `tasks.md`, in this check.
      - Never stage that folder in this step. It is committed at archive.
-     - A tracked file outside the group's reported files and outside that folder changed: fall back.
-     - Something unrelated outside that folder already staged or edited: fall back.
+     - A tracked file outside the group's reported files and outside that folder changed: stop and name the file.
+     - Something unrelated outside that folder already staged or edited: stop and name it.
    - **Split the group** when it is more than one concern (over about 200 lines or 5 files, or more than one layer).
      - Cut it by the one-concern list of the `jois-git-commit-hygiene` rule.
        - A deletion, a rename or move, a regenerated asset, a lockfile and a format-only change are each their own concern.
@@ -183,7 +184,7 @@ Apply the OpenSpec change named in the argument by handing its tasks to the `ops
      - Cut the hand-written changes by task, using the files each task's report lists.
        - Tasks that share a file, or a change and its tests, merge into one concern.
      - Run the tests once for the whole group before the first commit. Do not rerun them after each commit.
-     - If one changed file holds two concerns: fall back and name the file. `git add -p` does not work here.
+     - If one changed file holds two concerns: stop with nothing committed and name the file. `git add -p` does not work here.
    - Otherwise stage each concern in turn, in the order of the group's tasks.
      - Stage with `git add <explicit paths>`.
      - Commit with its own `type(scope): subject` message: lowercase, imperative, no trailing period.
@@ -192,8 +193,8 @@ Apply the OpenSpec change named in the argument by handing its tasks to the `ops
      - A group of one concern is one commit.
      - Never use `git add .`, `git add -A`, `git commit -a`, `--amend` or `--no-verify`.
      - Never run `git push`, on any branch. It is not in `allowed-tools` on purpose.
-   - If a pre-commit hook rejects a commit, stop and report it. Do not retry and do not fall back.
-   - If `git commit` fails for another reason, stop and report the error. Do not fall back.
+   - If a pre-commit hook rejects a commit, stop and report it. Do not retry.
+   - If `git commit` fails for another reason, stop and report the error.
    - If a later commit of the split fails, stop and report which commits were made and which were not.
      - Leave the remaining files unstaged. Do not retry and do not use `--no-verify`.
    - After the last commit, take the next group.

@@ -48,13 +48,13 @@ Install both parts, then start the command in a Claude Code session:
 .\Install-Toolkit.ps1 -Rule jois-git-commit-hygiene.md -Force
 ```
 
-The command checks for each agent in `~/.claude/agents/` and in the project's `.claude/agents/`. If `opsx-task-applier` is in neither, the command says so, names `Install-Toolkit.ps1` and stops. If `opsx-test-runner` is in neither, the command says so, names `Install-Toolkit.ps1` and carries on, and that group falls back to the confirmation word. The command never copies an agent itself. <!-- docs-check: ignore -->
+The command checks for each agent in `~/.claude/agents/` and in the project's `.claude/agents/`. If `opsx-task-applier` is in neither, the command says so, names `Install-Toolkit.ps1` and stops. If `opsx-test-runner` is in neither, the command says so, names `Install-Toolkit.ps1`, and the command stops with nothing committed when it reaches the group's commit, because it cannot check the tests. The command never copies an agent itself. <!-- docs-check: ignore -->
 
 Re-install the rule and the test runner for the commit exception to take effect. An older installed rule still says "never commit" next to the new command, and `-Force` overwrites the installed rule, which `-List` shows as `differs`.
 
 ## Committing a group
 
-The purpose is to commit a checked group without a stop, and to ask only when something is doubtful. The command commits by itself only when all of these hold:
+The purpose is to commit a checked group without a stop, and to stop with nothing committed when something is doubtful. The command commits by itself only when all of these hold:
 
 - The branch is a named branch other than `main` or `master`.
 - `opsx-test-runner` ran the tests for the group's files and every reported command shows exit code 0.
@@ -63,11 +63,11 @@ The purpose is to commit a checked group without a stop, and to ask only when so
 
 A passing command that shows no code is reported as `exit code 0 (the tool showed no error)`. The command judges the tests by exit codes, never by the agent's wording.
 
-A fixable doubt gets one rerun before it asks. A fixable doubt is a missing exit code or a suite skipped for a folder problem. The rerun puts the exact commands in the prompt, once per group, and the stall watch covers it. A protected branch, a missing agent and an unrelated change are not rerun and go to the confirmation word. A non-zero exit code is not rerun either. If a pending task of a later group is named as the fix, the commit waits (see Deferring a commit below). Otherwise it starts the fix loop.
+A fixable doubt gets one rerun before it stops. A fixable doubt is a missing exit code or a suite skipped for a folder problem. The rerun puts the exact commands in the prompt, once per group, and the stall watch covers it. A protected branch, a missing agent and an unrelated change are not rerun and stop with nothing committed. A non-zero exit code is not rerun either. If a pending task of a later group is named as the fix, the commit waits (see Deferring a commit below). Otherwise it starts the fix loop.
 
 A group of several concerns is split, not stopped on. It is cut by the hygiene rule's one-concern list and by task. The tests run once for the whole group before the first commit. Each concern is staged by explicit path and committed in turn with its own message, and each hash is printed. If a later commit fails, the command stops and reports which commits were made. A commit-stop line in the project's `operationGuidance` does not govern these commits.
 
-Otherwise the command stages the group, shows the summary and message, names a confirmation word and ends its turn, as the `jois-git-commit-hygiene` rule says. The confirmation word comes only after every failure of the group is explained. A detached HEAD or an unreadable branch name counts as protected, and no test command, a suite that could not run or a missing agent also send it to the confirmation word. It stages by explicit path and never uses `--amend` or `--no-verify`. It never pushes, on any branch, and a rejected commit stops the command and is reported.
+Otherwise the command commits nothing, says which condition failed and what you can do about it (switch branch, install the agent, fix the test, move the foreign change), and stops, as the apply clause of the `jois-git-commit-hygiene` rule says. It names no confirmation word and asks for none. Work already done stays in the tree and in `tasks.md`, and a rerun resumes from the pending tasks. A stop that follows a failing test comes only after every failure of the group is explained. A protected branch, a detached HEAD, an unreadable branch name, no test command, a suite that could not run, a missing test runner, a foreign change and a file that holds two concerns each cause this stop. It stages by explicit path and never uses `--amend` or `--no-verify`. It never pushes, on any branch, and a rejected commit stops the command and is reported.
 
 ## What the agent does
 
