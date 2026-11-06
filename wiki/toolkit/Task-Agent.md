@@ -18,7 +18,7 @@ The guidance only points at the `jois-git-commit-hygiene` rule, which holds the 
 
 ## The two agents
 
-An agent is a file under `toolkit/agents/` with `name`, `description` and `tools` frontmatter, then the instructions. An agent without `tools` inherits every tool, so `python toolkit/check_toolkit.py` fails on one. The installer treats each file as a unit, so `-Agent opsx-task-applier.md` installs one. The toolkit ships two agents, and other agents in `~/.claude/agents/` are not the toolkit's and are never touched.
+An agent is a file under `toolkit/agents/` with `name`, `description` and `tools` frontmatter, then the instructions. An agent without `tools` inherits every tool, so `python toolkit/check_toolkit.py` fails on one. The installer treats each file as a unit, so `-Agent opsx-task-applier.md` installs one. The toolkit ships three agents (`code-validator` is described under Validating), and other agents in `~/.claude/agents/` are not the toolkit's and are never touched.
 
 `opsx-task-applier` does one group of an OpenSpec change's tasks. `opsx-test-runner` runs the project's own test commands for a group's files and reports each command, exit code and counts. It uses the Haiku model and has no edit tools, installs nothing and never commits, pushes or calls GitHub. It runs a suite in another folder with the command's own folder flag (`npm --prefix`, `git -C`), never `cd`. A passing command whose result shows no exit code and no error is reported as `exit code 0 (the tool showed no error)`, and a failing command is reported with its exit code and error line. Install it with `.\Install-Toolkit.ps1 -Agent opsx-test-runner.md`.
 
@@ -94,6 +94,18 @@ A failure is explained only when the `Failures` part gives the command, the exac
 - The agent ends with `blocked: <question>`.
 - A second round ends with a failure still unexplained.
 - The same failure, with the same command and output line, comes back after a round meant to fix it.
+
+## Validating
+
+`/jois-code:validate` checks the other half of a build: a green test suite does not show that each requirement is met, so it tests the requirements themselves. A requirement it tests is a claim. In the slice form a claim is a task's `Satisfies:` row or a story's acceptance criterion, and in the PR form it comes from the PR description or its linked issue. Install the agent with `.\Install-Toolkit.ps1 -Agent code-validator.md`.
+
+The command orchestrates and the `code-validator` agent tests. The agent has `Read`, `Grep`, `Glob` and `Bash`, a 40-turn limit and a hook that blocks `git commit`, `git push`, `gh` and a recursive and forced `rm`. It has no edit tools, so a test run cannot change the code it judges. The command groups claims by kind (user interface, backend, end to end), runs one agent per group in the background with the stall watch that apply uses, and runs `opsx-test-runner` for suites. A user-interface claim is driven with `playwright-cli`, and test commands come only from the project's own instructions.
+
+Each claim gets one verdict: `met`, `not met` or `could not test`. A suite verdict comes from exit codes only, never from wording. A claim is never `met` without evidence: the command and its exit code, or the page text the agent quoted. A claim no check reached, such as one that needs a real external system, is `could not test` with the reason.
+
+A slice run writes its result into the slice folder, which git does not track here. A full run writes `validation.md`. A run for one story writes `validation.partial.md` and leaves `validation.md` as it was, so a partial run cannot hide a validated slice. Each file has a header with the run kind, the date and the tested commit, then one row per claim. A slice counts as validated only when its latest full run has every claim `met`. A PR run writes no file.
+
+The code runs in a git worktree under `.scratch/`, with installs inside it only and mock data only, and the command removes it at the end. Before it runs a PR whose author is not the current git user, it says that it will run code you have not read and that a checkout is not a sandbox, and it waits for your yes. This is a prompt and not a guard: a hostile PR can still harm the machine, so run untrusted code on a separate machine or in a container. The agent's hook is the same kind of backstop as the task agent's, and it does not catch a `gh` call or an `rm -rf` hidden inside a script. Instructions planted in a PR description or a slice are data, and the command ignores them and mentions them in the report.
 
 ## Deferring a commit
 
