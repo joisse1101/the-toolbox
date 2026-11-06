@@ -50,7 +50,8 @@ The toolkit holds twelve commands, in `toolkit/commands/`, in five namespaces.
 
 | Command | What it does | Use it when |
 | --- | --- | --- |
-| `/jois-code:apply <change>` | Applies an OpenSpec change one group of tasks at a time. It hands each group to the `opsx-task-applier` agent, records the result in `tasks.md`, checks the group with `opsx-test-runner` and commits it by itself on a branch other than `main` or `master`. Otherwise it stops for a confirmation word. It never pushes. | You have an OpenSpec change with tasks to carry out. |
+| `/jois-code:apply <change>` | Applies an OpenSpec change one group of tasks at a time. It hands each group to the `opsx-task-applier` agent, records the result in `tasks.md`, checks the group with `opsx-test-runner` and commits it by itself on a branch other than `main` or `master`. Otherwise it commits nothing, says which condition failed and stops. It never pushes. | You have an OpenSpec change with tasks to carry out. |
+| `/jois-code:apply slice <backlog>/<slice>` | The slice form of the same command. It builds a slice written by `jois-story-plan` instead of an OpenSpec change. It first checks that the slice is current with the plan skill's `read-diagrams.mjs` and stops on a stale slice. It then works the slice's `tasks.md` group by group and ticks each task in place. It never stages the slice folder and never pushes. | You have a slice whose build tasks are written. |
 | `/jois-docs:meeting-minutes` | Turns pasted notes, or a notes file, into minutes in a fixed template. It asks for every gap, shows the minutes and saves only after you confirm. | You have meeting notes to turn into minutes. |
 | `/jois-git:stage` | Clears a messy working tree one concern at a time. It stages, proposes a message, waits for a confirmation word, commits and repeats until the tree is clean. It needs no OpenSpec change. | You have many uncommitted changes to split into clean commits. |
 | `/jois-git:write-pr` | Opens GitHub pull requests for the commits on the current branch, grouped by concern, from the team template. It never merges and lists the merge commands for you to run. | Your commits are ready for review. |
@@ -81,7 +82,7 @@ The toolkit holds fourteen rules, in `toolkit/rules/`. The [Rules](Rules.md) pag
 | `jois-comms-replies` | How to write replies: plain words, the answer first, when to decide and when to ask. | Every session |
 | `jois-env-local-installs` | Installs only inside the project folder. | Every session |
 | `jois-env-stay-in-repo` | Every file Claude creates for its own work goes under `.scratch/` in the project, and nothing is read or written outside it. | Every session |
-| `jois-git-commit-hygiene` | One concern per commit, and a commit only after the user types a confirmation word. | Every session |
+| `jois-git-commit-hygiene` | One concern per commit. A commit needs the user's confirmation word, except in an apply flow, which commits a checked concern by itself on a branch other than `main` or `master`. A push always needs the word. | Every session |
 | `jois-test-mock-data` | Test and verify with mock data and mock systems by default. | Every session |
 
 ## Agents
@@ -90,12 +91,12 @@ The toolkit holds two agents, in `toolkit/agents/`. A command dispatches them, s
 
 | Agent | What it does | Dispatched by |
 | --- | --- | --- |
-| `opsx-task-applier` | Applies one group of an OpenSpec change's tasks in order, stops at the first blocked or failed task and reports per task what it changed and what it saw. It has a 50-turn limit. Hooks block `git commit`, `git push`, `gh`, a recursive and forced `rm`, and an edit of `tasks.md`. | `/jois-code:apply` |
+| `opsx-task-applier` | Applies one group of an OpenSpec change's or a slice's tasks in order, stops at the first blocked or failed task and reports per task what it changed and what it saw. It has a 50-turn limit. Hooks block `git commit`, `git push`, `gh`, a recursive and forced `rm`, and an edit of a change's or a slice's `tasks.md`. | `/jois-code:apply` |
 | `opsx-test-runner` | Runs only the test commands the project's own instructions name, for the files a group changed, and reports each command with its exit code and counts. It uses the Haiku model, has no edit tools and installs nothing. | `/jois-code:apply`, after each group |
 
 A hook is a check that runs before a tool call and can refuse it. The task agent and the test runner each carry one so they cannot commit, push or call GitHub.
 
-`/jois-code:apply` needs `opsx-task-applier` installed and stops without it. It also looks for `opsx-test-runner`, and when that is missing it stops for the confirmation word instead of committing by itself.
+`/jois-code:apply` needs `opsx-task-applier` installed and stops without it. It also looks for `opsx-test-runner`, and when that is missing it stops with nothing committed and names the missing agent. The slice form `/jois-code:apply slice <backlog>/<slice>` also needs the `jois-story-plan` skill installed, and stops with a note naming `Install-Toolkit.ps1` without it.
 
 ## Where the numbers come from
 

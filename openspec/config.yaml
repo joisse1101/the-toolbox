@@ -35,7 +35,7 @@ operations:
   apply:
     guidance:
       # jois-init:opsx begin (managed by /jois-init:opsx; edits here are overwritten)
-      - "At the end of each concern, follow the jois-git-commit-hygiene rule. The one exception is /jois-code:apply, which commits a finished group under its own conditions, so this stop does not apply to it. Every other apply stops: stage by explicit path, show the summary and message, name a confirmation word, and end the turn. Never commit in the turn you stage."
+      - "At the end of each concern, commit it as the apply clause of the jois-git-commit-hygiene rule says. Push only when the user types the confirmation word."
       # jois-init:opsx end
   archive:
     guidance:

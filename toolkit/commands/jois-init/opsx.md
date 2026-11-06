@@ -4,8 +4,8 @@ description: "Set OpenSpec up in this project: init when missing, check the glob
 allowed-tools: Bash(openspec:*), Bash(git status:*), Bash(git diff:*), Read, Edit, Write
 disable-model-invocation: true
 metadata:
-  version: "1.4.0"
-  last_updated: "2026-11-02"
+  version: "1.5.0"
+  last_updated: "2026-11-05"
 ---
 
 Set OpenSpec up in the project this runs in.
@@ -34,7 +34,7 @@ Set OpenSpec up in the project this runs in.
    - Run `openspec config get workflows` and note the result.
    - If it lists `apply` and `archive`, say nothing more. The report shows `workflows=ok`.
    - If either is missing:
-     - Say in plain words that the commit-stop guidance will not take effect for the missing operation.
+     - Say in plain words that the commit guidance will not take effect for the missing operation.
      - Ask separately whether to add it with `openspec config set workflows`.
      - Say that this changes a setting for every project on the machine.
      - Change nothing without a yes.
@@ -42,7 +42,7 @@ Set OpenSpec up in the project this runs in.
    - Never read, set or require `delivery`.
    - Never run `openspec update`.
 4. **Merge the guidance.**
-   - This is the essential write. It adds our commit stops to this project's `openspec/config.yaml` and affects only this project.
+   - This is the essential write. It adds our commit guidance to this project's `openspec/config.yaml` and affects only this project.
    - Ask first.
    - Then put the block below into the `guidance:` list of `operations.apply` and `operations.archive`.
    - Create the keys when they are missing.
@@ -57,7 +57,7 @@ Set OpenSpec up in the project this runs in.
    - If that file does not exist, say so and name `Install-Toolkit.ps1`.
    - Do not create the rule yourself.
 6. **Report in one line**, in the form below.
-   - Then add that the commit stops are advisory guidance.
+   - Then add that the commit guidance is advisory.
    - The global rule is what enforces them.
 
    ```
@@ -80,7 +80,7 @@ Set OpenSpec up in the project this runs in.
 
 ```yaml
       # jois-init:opsx begin (managed by /jois-init:opsx; edits here are overwritten)
-      - "At the end of each concern, follow the jois-git-commit-hygiene rule. The one exception is /jois-code:apply, which commits a finished group under its own conditions, so this stop does not apply to it. Every other apply stops: stage by explicit path, show the summary and message, name a confirmation word, and end the turn. Never commit in the turn you stage."
+      - "At the end of each concern, commit it as the apply clause of the jois-git-commit-hygiene rule says. Push only when the user types the confirmation word."
       # jois-init:opsx end
 ```
 
