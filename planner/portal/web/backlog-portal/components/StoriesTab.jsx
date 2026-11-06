@@ -43,7 +43,7 @@ function fittedWidth(table, index) {
 const NO_FILTER = { priority: '', epic: '', feature: '' };
 
 // Every story in one table, with ticks and a bulk edit bar. The table itself is read-only.
-export default function StoriesTab({ stories, headers, problems, checked, lastChecked, hidden, onOpen, onCheck, onCheckAll, onApplyBulk, onLockChecked, onDeleteChecked }) {
+export default function StoriesTab({ stories, headers, problems, checked, lastChecked, hidden, onOpen, onCheck, onCheckAll, onApplyBulk, onDeleteChecked }) {
   const [priority, setPriority] = useState(KEEP);
   const [epic, setEpic] = useState('');
   const [feature, setFeature] = useState('');
@@ -131,26 +131,21 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
     const parts = [];
     if (patch.priority !== undefined) parts.push(patch.priority ? `Priority to "${patch.priority}"` : 'Priority to none');
     if (patch.epic) parts.push(`Epic to "${patch.epic}"`);
-    const lockedKept = patch.epic ? stories.filter((s) => checked.has(s.id) && s.locked).length : 0; // their Epic is read-only
-    const renumbered = patch.epic ? stories.filter((s) => checked.has(s.id) && !s.locked && s.epic.trim() !== patch.epic).length : 0;
+    const frozenSkipped = stories.filter((s) => checked.has(s.id) && s.frozen).length; // read-only, so a bulk edit leaves them
+    const renumbered = patch.epic ? stories.filter((s) => checked.has(s.id) && !s.frozen && s.epic.trim() !== patch.epic).length : 0;
     if (patch.feature) parts.push(`Feature to "${patch.feature}"`);
-    if (!confirm(`Set ${parts.join(', ')} on ${n} ${n === 1 ? 'story' : 'stories'}?${renumbered ? `\n\n${renumbered} ${renumbered === 1 ? 'story gets' : 'stories get'} new IDs, and links to them are updated.` : ''}${lockedKept ? `\n\n${lockedKept} locked ${lockedKept === 1 ? 'story keeps' : 'stories keep'} ${lockedKept === 1 ? 'its' : 'their'} Epic.` : ''}\n\nThis cannot be undone.`)) return;
+    if (!confirm(`Set ${parts.join(', ')} on ${n} ${n === 1 ? 'story' : 'stories'}?${renumbered ? `\n\n${renumbered} ${renumbered === 1 ? 'story gets' : 'stories get'} new IDs, and links to them are updated.` : ''}${frozenSkipped ? `\n\n${frozenSkipped} frozen ${frozenSkipped === 1 ? 'story is' : 'stories are'} skipped.` : ''}\n\nThis cannot be undone.`)) return;
     const { skipped } = onApplyBulk(patch);
-    setNote(skipped ? `${skipped} locked ${skipped === 1 ? 'story' : 'stories'} kept ${skipped === 1 ? 'its' : 'their'} Epic.` : '');
+    setNote(skipped ? `${skipped} frozen ${skipped === 1 ? 'story was' : 'stories were'} skipped.` : '');
     setPriority(KEEP);
     setEpic('');
     setFeature('');
   };
 
-  const lock = (on) => {
-    const { skipped } = onLockChecked(on);
-    setNote(skipped ? `${skipped} skipped (no ID)` : '');
-  };
-
   const remove = () => {
     const { deleted, skipped } = onDeleteChecked();
-    if (deleted) setNote(skipped ? `${skipped} locked ${skipped === 1 ? 'story was' : 'stories were'} kept.` : '');
-    else if (skipped) setNote(`Nothing deleted: ${skipped === 1 ? 'the selected story is' : 'all selected stories are'} locked. Unlock to delete.`);
+    if (deleted) setNote(skipped ? `${skipped} frozen ${skipped === 1 ? 'story was' : 'stories were'} skipped.` : '');
+    else if (skipped) setNote(`Nothing deleted: ${skipped === 1 ? 'the selected story is' : 'all selected stories are'} frozen.`);
   };
 
   return (
@@ -173,9 +168,7 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
           <input type="text" id="bulkFeature" disabled={n === 0} list="bulkFeatureList" autoComplete="off" placeholder="No change" value={feature} onChange={(e) => setFeature(e.target.value)} />
         </div>
         <button type="button" id="bulkApplyBtn" className="primary" disabled={n === 0 || isEmpty} onClick={apply}>Apply to selected</button>
-        <button type="button" id="lockSelectedBtn" disabled={n === 0} onClick={() => lock(true)} title="Lock the selected stories: reference only, not reviewed, reordered, moved or deleted">Lock selected</button>
-        <button type="button" id="unlockSelectedBtn" disabled={n === 0} onClick={() => lock(false)}>Unlock selected</button>
-        <button type="button" id="deleteSelectedBtn" className="danger" disabled={n === 0} onClick={remove} title="Delete the selected stories; locked ones are kept">{`Delete selected (${n})`}</button>
+        <button type="button" id="deleteSelectedBtn" className="danger" disabled={n === 0} onClick={remove} title="Delete the selected stories; frozen ones are skipped">{`Delete selected (${n})`}</button>
         <button type="button" id="deselectAllBtn" disabled={n === 0} onClick={() => onCheckAll(false, [...checked])}>Deselect all</button>
         <span id="bulkNote" className="muted" role="status" aria-live="polite">{note}</span>
       </div>
@@ -241,7 +234,7 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
                       onClick={(e) => tick(s.id, e.currentTarget.checked, e.shiftKey)}
                     />
                   </td>
-                  <td title={cellTitle(s.code, tip)}>{s.locked && <span className="lock-mark" title="Locked: reference only" aria-label="Locked">🔒</span>}{s.code}</td>
+                  <td title={cellTitle(s.code, tip)}>{s.frozen && <span className="frozen-mark" title="Frozen: reference only, read-only" aria-label="Frozen">{'\u2744'}</span>}{s.code}</td>
                   <td title={cellTitle(s.epic, tip)}>{s.epic}</td>
                   <td title={cellTitle(s.feature, tip)}>{s.feature}</td>
                   <td title={cellTitle(storyLabel(s), tip)}><button type="button" className="link-btn" onClick={() => onOpen(s.id)}>{storyLabel(s)}</button></td>

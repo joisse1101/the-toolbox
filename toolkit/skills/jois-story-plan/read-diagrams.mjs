@@ -15,6 +15,7 @@ import { compareSource, applyStoriesBlock } from './diagrams/source.js';
 import { countTasks } from './diagrams/tasks.js';
 import { writeAtomic } from './lib/skill-support/write-atomic.mjs';
 import { dataDirOrThrow } from './lib/skill-support/resolve-data-dir.mjs';
+import { initialsOf } from './lib/skill-support/backlog-initials.mjs';
 
 const require = createRequire(import.meta.url);
 const { backlogDir, backlogFile, slicesDir } = require('./lib/storage/backlog-paths.cjs');
@@ -50,7 +51,7 @@ export function loadStories({ dataDir = dataDirOrThrow(), name }) {
   } catch (err) {
     return { ok: false, errors: [err.code === 'ENOENT' ? `There is no backlog ${f.file}: ${shown(dataDir, csvPath)} was not found.` : `Could not read ${shown(dataDir, csvPath)}: ${err.message}`] };
   }
-  return { ...f, stories: loadBacklog(csv).stories };
+  return { ...f, stories: loadBacklog(csv, { initials: initialsOf(dataDir, f.file) }).stories };
 }
 
 // The slice folders of a backlog, and the path of one slice (null when the name is not a slug).

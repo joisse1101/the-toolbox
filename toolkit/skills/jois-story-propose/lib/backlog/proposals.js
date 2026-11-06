@@ -79,8 +79,9 @@ const cycleIds =(stories) => {
 // Move the proposed stories whose internal `id` is in `ids` into the backlog. Each goes after the last story of its
 // Epic whatever its Feature (a new Epic starts at the end); several keep their order from the proposals file.
 // A benched story is never accepted: the user un-benches it first. Open Clarifications do not block.
+// `initials` are the backlog's. A story accepted into the backlog starts unfrozen.
 // Returns { backlog, proposals, accepted } (accepted: the moved stories with their new IDs), or { error } and nothing moves.
-export function acceptProposed(backlogStories, proposedStories, ids, headers) {
+export function acceptProposed(backlogStories, proposedStories, ids, headers, initials) {
   const chosen = proposedStories.filter((s) => ids.has(s.id));
   if (!chosen.length) return { error: 'There is no proposed story to accept.' };
   const noEpic = chosen.filter((s) => !liveEpic(s));
@@ -100,7 +101,7 @@ export function acceptProposed(backlogStories, proposedStories, ids, headers) {
     const epic = liveEpic(s);
     const cells = s.cells.slice(0, headers.length);
     while (cells.length < headers.length) cells.push('');
-    return { ...s, locked: false, epic, codedEpic: epic, cells, dependsOn: [...s.dependsOn], ambiguous: [...s.ambiguous] };
+    return { ...s, frozen: false, epic, codedEpic: epic, cells, dependsOn: [...s.dependsOn], ambiguous: [...s.ambiguous] };
   });
 
   const placed = backlogStories.slice();
@@ -108,7 +109,7 @@ export function acceptProposed(backlogStories, proposedStories, ids, headers) {
     const last = placed.map(liveEpic).lastIndexOf(c.epic);
     placed.splice(last < 0 ? placed.length : last + 1, 0, c);
   }
-  const backlog = renumber(placed);
+  const backlog = renumber(placed, initials);
 
   const newCode = new Map(); // placeholder -> real ID ('' when the Epic gives no prefix)
   for (const c of copies) newCode.set(c.code, backlog.find((s) => s.id === c.id).code);
@@ -151,19 +152,19 @@ function relink(stories, map) {
 // The reverse of acceptProposed: take the backlog story `id` out of the backlog and append it to the proposals under
 // a new placeholder. Links to it are rewritten to the placeholder first, so renumbering the backlog cannot bind them
 // to whichever story takes its position; then the remaining backlog is renumbered and every link to a backlog story
-// (the moved story's own, and the proposals') follows the new codes. A story without an ID cannot be moved.
+// (the moved story's own, and the proposals') follows the new codes. A story without an ID and a frozen story cannot be moved. `initials` are the backlog's.
 // Returns { backlog, proposals, moved, recoded } (recoded: old code -> new code of the backlog stories whose ID changed,
 // '' when one lost its ID) or { error }.
-export function moveToProposed(backlogStories, proposedStories, id, headers) {
+export function moveToProposed(backlogStories, proposedStories, id, headers, initials) {
   const story = backlogStories.find((s) => s.id === id);
   if (!story) return { error: 'The story is not in the backlog.' };
   if (!story.code) return { error: 'Give the story an Epic before moving it to Proposed.' };
-  if (story.locked) return { error: 'Unlock the story before moving it to Proposed.' };
+  if (story.frozen) return { error: 'A frozen story cannot be moved to Proposed.' };
 
   const placeholder = nextPlaceholder(proposedStories, backlogStories);
   const toPlaceholder = new Map([[story.code, placeholder]]);
   const rest = relink(backlogStories.filter((s) => s.id !== id), toPlaceholder);
-  const backlog = renumber(rest);
+  const backlog = renumber(rest, initials);
 
   const newCode = new Map(); // old backlog code -> code after the renumber ('' when the story lost its ID)
   rest.forEach((s, i) => {

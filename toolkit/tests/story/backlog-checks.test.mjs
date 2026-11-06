@@ -4,17 +4,17 @@ import { loadBacklog } from '../../skills/jois-story-review/lib/backlog/model.js
 import { parseLexicon } from '../../skills/jois-story-review/lib/lexicon/lexicon.js';
 import { backlogChecks } from '../../skills/jois-story-review/backlog-checks.js';
 
-const HEAD = 'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes,Locked,Clarifications';
+const HEAD = 'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes,Frozen,Clarifications';
 const US = 'As a user, I want to do it, so that it is done';
 const AC = 'AC1: Given a, when b, then c';
 const q = (s) => `"${s.replace(/"/g, '""')}"`;
 // A backlog row: overrides by column name.
 const row = (o = {}) => {
-  const v = { ID: '', Epic: 'Data', Feature: 'Export', Title: 'Export a file', 'User Story': US, 'Sprint points': '3', Priority: '', 'Depends On': '', 'User Acceptance Criteria': AC, Notes: '', Locked: '', Clarifications: '', ...o };
+  const v = { ID: '', Epic: 'Data', Feature: 'Export', Title: 'Export a file', 'User Story': US, 'Sprint points': '3', Priority: '', 'Depends On': '', 'User Acceptance Criteria': AC, Notes: '', Frozen: '', Clarifications: '', ...o };
   return HEAD.split(',').map((h) => q(v[h])).join(',');
 };
-const backlog = (...rows) => loadBacklog([HEAD, ...rows].join('\n')).stories;
-const proposed = (...rows) => loadBacklog([`${HEAD},Benched`, ...rows].join('\n'), { placeholderIds: true }).stories;
+const backlog = (...rows) => loadBacklog([HEAD, ...rows].join('\n'), { initials: 'B1' }).stories;
+const proposed = (...rows) => loadBacklog([`${HEAD},Benched`, ...rows].join('\n'), { placeholderIds: true, initials: 'B1' }).stories;
 const lexicon = (...rows) => parseLexicon(['Term,Part of,Definition,Avoid,Notes', ...rows].join('\n'));
 const kinds = (problems) => problems.map((p) => p.kind);
 
@@ -23,11 +23,11 @@ test('a clean backlog has no problems', () => {
 });
 
 test('dangling dependency is reported on the story', () => {
-  const out = backlogChecks({ stories: backlog(row({ 'Depends On': 'D-0099' })) });
+  const out = backlogChecks({ stories: backlog(row({ 'Depends On': 'B1-D-0099' })) });
   assert.equal(out.length, 1);
   assert.equal(out[0].kind, 'dependency');
-  assert.equal(out[0].storyId, 'D-0001');
-  assert.match(out[0].message, /D-0099, which does not exist/);
+  assert.equal(out[0].storyId, 'B1-D-0001');
+  assert.match(out[0].message, /B1-D-0099, which does not exist/);
 });
 
 test('a dependency on a proposed story is reported', () => {
@@ -38,8 +38,8 @@ test('a dependency on a proposed story is reported', () => {
 test('duplicate Epic, Feature and Title name each other, ignoring case and spaces', () => {
   const out = backlogChecks({ stories: backlog(row(), row({ Title: '  export  A FILE ' })) });
   assert.deepEqual(kinds(out), ['duplicate', 'duplicate']);
-  assert.match(out[0].message, /D-0002/);
-  assert.match(out[1].message, /D-0001/);
+  assert.match(out[0].message, /B1-D-0002/);
+  assert.match(out[1].message, /B1-D-0001/);
 });
 
 test('same Title under another Feature is not a duplicate', () => {
@@ -102,8 +102,8 @@ test('an answered Clarifications pair is reported, an open one is not', () => {
   assert.match(out[0].message, /^Q1 is answered/);
 });
 
-test('a locked story is checked and marked locked', () => {
-  const out = backlogChecks({ stories: backlog(row({ ID: 'D-0001', Locked: 'Yes', 'Depends On': 'D-0099' })) });
+test('a frozen story is checked and marked frozen', () => {
+  const out = backlogChecks({ stories: backlog(row({ ID: 'B1-D-0001', Frozen: 'Yes', 'Depends On': 'B1-D-0099' })) });
   assert.equal(out.length, 1);
-  assert.equal(out[0].locked, true);
+  assert.equal(out[0].frozen, true);
 });

@@ -20,7 +20,7 @@ Every item is named `jois-<domain>-<thing>`. `jois` is the owner, so a name neve
 | `git` | commits and pull requests |
 | `docs` | documents written from notes |
 | `design` | how a user interface looks and how its frontend code is structured |
-| `story` | user-story backlogs: exploring, proposing, reviewing and planning stories |
+| `story` | user-story backlogs: exploring, proposing, reviewing, planning and verifying stories |
 | `comms` | how Claude writes replies and documents |
 | `env` | where Claude may install and write |
 | `test` | how Claude verifies a change |
@@ -30,7 +30,7 @@ Skills and rules are named `jois-<domain>-<thing>`, and a command namespace fold
 
 ## Skills
 
-The toolkit holds six skills, in `toolkit/skills/`.
+The toolkit holds seven skills, in `toolkit/skills/`.
 
 | Skill | What it does | Use it when |
 | --- | --- | --- |
@@ -39,13 +39,14 @@ The toolkit holds six skills, in `toolkit/skills/`.
 | `jois-story-explore` | Talks new stories through with you against the backlog guidelines and the existing stories. It never writes a file. | You want to explore, shape or brainstorm stories before saving them. |
 | `jois-story-propose` | Shows full drafts, asks one yes or no, then writes proposed stories, edits to backlog stories, new lexicon terms and term changes through its writer scripts. It never edits the backlog file. | The stories are agreed and you want them saved for the planner to show. |
 | `jois-story-review` | Reviews a whole backlog against the backlog guidelines, reports findings with fixes and writes them as suggestions the planner can apply. It never edits the backlog file. | You want a backlog audited, sanity-checked or INVEST-checked. |
-| `jois-story-plan` | Draws the context map of a backlog and turns the stories of one Epic, Feature or story into a slice: a use-case specification with class and sequence diagrams. It writes only after you confirm. | You want stories planned, drawn or specified, or a stale slice redrawn. |
+| `jois-story-plan` | Draws the context map of a backlog and turns the stories of one Epic, Feature or story into a slice: a use-case specification with class and sequence diagrams. It writes only after you confirm, and the same yes also freezes the stories the slice covers (the `Frozen` column is its one write into the backlog). | You want stories planned, drawn or specified, or a stale slice redrawn. |
+| `jois-story-verify` | Checks one stored slice before it is built: stale, document and diagram checks, a criterion with no task, a `TBC` decision, an open clarification question and a task that waits on an open item. It ranks each finding critical, warning or suggestion with a fix. It writes only after you approve: slice fixes through the plan skill's writer, story problems only as suggestions. It has no scripts of its own and needs `jois-story-plan` installed. | You want a slice verified or sanity-checked before you build from it. |
 
-The four story skills are explained for their users in [Story Skills](../planner/Story-Skills.md), and their internals in [Story Skills Internals](../planner/architecture/Story-Skills-Internals.md).
+The five story skills are explained for their users in [Story Skills](../planner/Story-Skills.md), and their internals in [Story Skills Internals](../planner/architecture/Story-Skills-Internals.md).
 
 ## Commands
 
-The toolkit holds eleven commands, in `toolkit/commands/`, in five namespaces.
+The toolkit holds twelve commands, in `toolkit/commands/`, in five namespaces.
 
 | Command | What it does | Use it when |
 | --- | --- | --- |
@@ -61,6 +62,7 @@ The toolkit holds eleven commands, in `toolkit/commands/`, in five namespaces.
 | `/jois-story:propose` | Writes the stories, backlog edits and lexicon terms agreed in this session straight to the planner's files, without the yes or no step of the skill. The command is your go-ahead. | You finished exploring with `jois-story-explore` and want it saved now. |
 | `/jois-story:re-read` | Re-reads the backlog, proposals, lexicon and the stories under discussion after you changed them outside the session, says what changed and carries on. It writes nothing. | You edited the files in the portal or a spreadsheet during a session. |
 | `/jois-story:review` | Audits what this session shaped and wrote, for sync, and lists what is left to do. It writes nothing. | You want to check the session's work before you stop. |
+| `/jois-story:verify` | Runs `jois-story-verify` on the slice you name and ends with the ranked report. It writes a correction or a suggestion only after you answer yes to the exact change. | You want a written slice checked before you build from it. |
 
 ## Rules
 
@@ -98,4 +100,4 @@ A hook is a check that runs before a tool call and can refuse it. The task agent
 
 ## Where the numbers come from
 
-The counts on this page were read from a listing of each folder, not from the READMEs. The six skills, eleven commands, fourteen rules and two agents are every entry in `toolkit/skills/`, `toolkit/commands/`, `toolkit/rules/` and `toolkit/agents/`.
+The counts on this page were read from a listing of each folder, not from the READMEs. The seven skills, twelve commands, fourteen rules and two agents are every entry in `toolkit/skills/`, `toolkit/commands/`, `toolkit/rules/` and `toolkit/agents/`.

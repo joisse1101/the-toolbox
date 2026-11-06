@@ -17,6 +17,7 @@ import { loadBacklog, serializeBacklog, proposalHeaders } from './lib/backlog/mo
 import { buildProposals } from './proposal-input.js';
 import { describeParseError, writeAtomic } from './lib/skill-support/write-atomic.mjs';
 import { dataDirOrThrow } from './lib/skill-support/resolve-data-dir.mjs';
+import { initialsOf } from './lib/skill-support/backlog-initials.mjs';
 
 const require = createRequire(import.meta.url);
 const { backlogDir, backlogFile } = require('./lib/storage/backlog-paths.cjs'); // same name rules as the file API
@@ -43,11 +44,12 @@ function prepare({ dataDir, name, input, requireTitles }) {
   } catch {
     return { ok: false, errors: [`${shown(dataDir, backlogPath)} was not found.`] };
   }
-  const backlog = loadBacklog(backlogText);
+  const initials = initialsOf(dataDir, file);
+  const backlog = loadBacklog(backlogText, { initials });
 
   let proposals = null;
   try {
-    proposals = loadBacklog(fs.readFileSync(proposalsPath, 'utf8'), { placeholderIds: true });
+    proposals = loadBacklog(fs.readFileSync(proposalsPath, 'utf8'), { placeholderIds: true, initials });
   } catch (err) {
     if (err.code !== 'ENOENT') return { ok: false, errors: [`Could not read ${proposalsShown}: ${err.message}`] };
   }
@@ -60,7 +62,7 @@ function prepare({ dataDir, name, input, requireTitles }) {
   }
   const built = buildProposals({ input: stories, backlog, proposals, requireTitles });
   if (!built.ok) return built;
-  return { ok: true, file, backlog, proposals, built, proposalsPath, proposalsShown };
+  return { ok: true, file, initials, backlog, proposals, built, proposalsPath, proposalsShown };
 }
 
 // Same input and problems as writeProposal, and for valid input what it would do; no file is created or changed.
@@ -94,7 +96,7 @@ export function writeProposal({ dataDir = dataDirOrThrow(), name, input, require
   // Read the file again: what is reported as written is what is on disk now.
   let stored;
   try {
-    stored = loadBacklog(fs.readFileSync(proposalsPath, 'utf8'), { placeholderIds: true });
+    stored = loadBacklog(fs.readFileSync(proposalsPath, 'utf8'), { placeholderIds: true, initials: prepared.initials });
   } catch (err) {
     return { ok: false, errors: [`Wrote ${proposalsShown} but could not read it back: ${err.message}`] };
   }

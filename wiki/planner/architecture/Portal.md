@@ -16,7 +16,7 @@ The portal is the planner's server and web app. It shows and edits the backlog f
 - `lexicon` (the backlog's defined terms)
 - `lexicon-suggestions` (suggested term renames, deletes and edits)
 
-The API is `/api/<kind>/<backlog name>`. The name carries no `.csv`, and the server resolves it to the kind's fixed file in the backlog's folder under the current data folder. `list` returns the backlog folders, create makes the folder with an empty `user-stories.csv` (numbered on a name conflict) and rename renames the folder. Slices, `logs` and everything else are not kinds, so the file API cannot reach them.
+The API is `/api/<kind>/<backlog name>`. The name carries no `.csv`, and the server resolves it to the kind's fixed file in the backlog's folder under the current data folder. `list` returns the backlog folders, create makes the folder with the five empty starting files and a `backlog.json` holding the default initials (numbered on a name conflict; the folder is removed if `backlog.json` cannot be written) and rename renames the folder, so the initials stay. A read of kind `backlog` also returns `initials`, and a backlog without `backlog.json` is given the default, which is saved on that first read. `PATCH /api/backlog/files/<name>` with `{ "initials": "OPS" }` changes the initials: the value is validated (`400` with the rule when invalid), uppercased and refused with `409` (`initials-taken`) when a sibling backlog uses it or holds a frozen ID that starts with it, and the message names that sibling. The check covers the data folder being served only. The rules and the file are described in [Data Folder](Data-Folder.md). Slices, `logs` and everything else are not kinds, so the file API cannot reach them.
 
 ### Settings routes
 
