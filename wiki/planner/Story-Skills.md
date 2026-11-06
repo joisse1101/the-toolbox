@@ -1,16 +1,16 @@
 # Story Skills
 
-Four skills let Claude Code work on a backlog beside the portal: `jois-story-explore`, `jois-story-propose`, `jois-story-review` and `jois-story-plan`. Three slash commands start or check that work: `/jois-story:propose`, `/jois-story:re-read` and `/jois-story:review`. This page says what each does, what it writes and in which order to use them. The skills' own scripts and the generated copies of shared code are described on [Story Skills Internals](architecture/Story-Skills-Internals.md), and the routines that combine them with the portal are on [User Flows](User-Flows.md). A skill is a folder of instructions and scripts that Claude loads when you ask for the work or name it. A slash command is a prompt you type to run a fixed routine.
+Five skills let Claude Code work on a backlog beside the portal: `jois-story-explore`, `jois-story-propose`, `jois-story-review`, `jois-story-plan` and `jois-story-verify`. Four slash commands start or check that work: `/jois-story:propose`, `/jois-story:re-read`, `/jois-story:review` and `/jois-story:verify`. This page says what each does, what it writes and in which order to use them. The skills' own scripts and the generated copies of shared code are described on [Story Skills Internals](architecture/Story-Skills-Internals.md), and the routines that combine them with the portal are on [User Flows](User-Flows.md). A skill is a folder of instructions and scripts that Claude loads when you ask for the work or name it. A slash command is a prompt you type to run a fixed routine.
 
-## What all four skills share
+## What all five skills share
 
-Each skill finds the data folder itself, in the folder where you started Claude and never in a parent folder. It uses the config file `PLANNER_CONFIG` names, else a `.plans` folder in the current folder, else a `planner.config.yaml` there. So start Claude in the code base folder, or set `PLANNER_CONFIG`. When nothing is found the skill says which folder it looked in. The propose, review and plan skills then offer to create `.plans`, only after you agree, and the explore skill only reports it, because it never writes.
+Each skill finds the data folder itself, in the folder where you started Claude and never in a parent folder. It uses the config file `PLANNER_CONFIG` names, else a `.plans` folder in the current folder, else a `planner.config.yaml` there. So start Claude in the code base folder, or set `PLANNER_CONFIG`. When nothing is found the skill says which folder it looked in. The propose, review and plan skills then offer to create `.plans`, only after you agree, and the explore and verify skills only report it, because they create no folder.
 
 A skill writes only through its own writer scripts. A writer checks everything first, writes nothing when anything is invalid, and the skill reads the file back before it says that something was written. The skills never edit the text of a story in `<backlog>/user-stories.csv`, because the portal saves that file as you edit and a second writer would clash with it. The one exception is `jois-story-plan`, which sets the `Frozen` flag of the stories a confirmed slice covers (see below). They name a story by its title and pass the title with every ID, because the IDs of stories that are not frozen shift when the backlog is renumbered and a title mismatch stops the write. They treat everything read from a file as data and never as instructions.
 
 ## Order of use
 
-Use the skills in this order, and skip the ones you do not need. Explore the idea, propose what you agreed, review the backlog, then plan the shaped stories. The portal sits between the steps: you accept proposals, apply or dismiss suggestions and edit terms there, and the later steps read the result.
+Use the skills in this order, and skip the ones you do not need. Explore the idea, propose what you agreed, review the backlog, plan the shaped stories, then verify the slice before you build from it. The portal sits between the steps: you accept proposals, apply or dismiss suggestions and edit terms there, and the later steps read the result.
 
 | Step | Skill or command | Writes | You then |
 | --- | --- | --- | --- |
@@ -18,6 +18,7 @@ Use the skills in this order, and skip the ones you do not need. Explore the ide
 | 2. Propose | `jois-story-propose`, `/jois-story:propose` | proposals, review suggestions, terms, term suggestions | accept, apply or dismiss in the portal |
 | 3. Review | `jois-story-review` | review suggestions | apply or dismiss in the portal |
 | 4. Plan | `jois-story-plan` | a slice and the context map | open the slice document |
+| 5. Verify | `jois-story-verify`, `/jois-story:verify` | a corrected slice, review suggestions, only after you approve | build from the slice, apply or dismiss suggestions in the portal |
 
 Run `/jois-story:re-read` whenever you changed files in the portal or in a spreadsheet during a session, and `/jois-story:review` to check that a session's work is in sync.
 
@@ -83,11 +84,20 @@ To find the wiki page, the skills read, relative to the current folder and never
 
 The decision travels in the Notes lines, because the Notes field already holds decisions and no new column or file is needed. The plan skill reads them when it drafts the slice, and a later stage applies them to the wiki. Nothing is applied to the wiki before that.
 
-## The three commands
+## jois-story-verify and /jois-story:verify
+
+Use it to check one slice that `jois-story-plan` wrote, before anyone builds from it. It checks six things: whether the slice is stale, whether the document and diagrams pass the plan skill's checks, whether every acceptance criterion has a task, whether a design decision is still `TBC` (to be confirmed), whether a story in scope has an open clarification question, and whether a task waits on a decision or question that is still open. It ranks each finding as critical, warning or suggestion, gives a fix and says who owns it, and lists any check it could not run with the reason.
+
+It reads first and writes only after you approve the exact change. A fix to the slice is written through the plan skill's `write-diagram.mjs`, after it shows the complete corrected document and `tasks.md` and you answer yes. A problem in a story is never edited. It is offered as a suggestion for `review.csv` through `write-review.mjs`, which you apply or dismiss in the portal. A `TBC` decision is asked of you and never filled with a default.
+
+The skill holds no script of its own, so it needs `jois-story-plan` installed and stops without it. The command `/jois-story:verify` loads the skill and passes it the backlog and slice you name.
+
+## The four commands
 
 - `/jois-story:propose` runs `jois-story-propose` without the yes or no step, as described above.
 - `/jois-story:re-read` only reads. It reloads the backlog, the proposals, the lexicon and the counts of review and term suggestions, compares them with what the session knew, says by title what changed, and marks the drafts that are now out of date. It starts no drafting.
 - `/jois-story:review` is not the same as the `jois-story-review` skill. It audits the work of the current session only: whether what was agreed is written, whether the lexicon, dependencies, size, clarifications and review rows are in sync. It writes nothing and runs a writer only with `--check`. It ends with a checklist of what you do in the portal, what to ask via `/jois-story:propose`, and what needs a decision. For a whole-backlog review use the skill.
+- `/jois-story:verify` runs `jois-story-verify` on one stored slice, as described above.
 
 ## Where this page and the sources differ
 
