@@ -4,7 +4,7 @@ description: "Apply an OpenSpec change or a slice one group of tasks at a time: 
 allowed-tools: Bash(openspec:*), Bash(git status:*), Bash(git diff:*), Bash(git add:*), Bash(git commit:*), Bash(git branch --show-current:*), Bash(node *jois-story-plan*read-diagrams.mjs*), Read, Edit, Glob, Agent, Monitor
 disable-model-invocation: true
 metadata:
-  version: "1.7.1"
+  version: "1.7.2"
   last_updated: "2026-11-05"
 ---
 
@@ -140,7 +140,7 @@ Both forms run these. "The change" below means the slice in the slice form.
    - Say in one line whether the group is done, failed or blocked.
    - For each task whose report carries a `result:` clause, copy that clause verbatim after the task in `tasks.md`.
    - Tick the box of that task.
-   - Tick nothing else. A task the report calls failed gets no tick, even when it carries a clause.
+   - Tick nothing else. A task the report calls failed gets no tick, even when it carries a clause. Copy its clause under it anyway, unticked.
    - In the slice form, copy the clause on its own indented line directly after the task's `Verify:` line, so the slice's task format stays valid. Tick only a task whose report carries a `result:` clause.
    - If the report ends in `blocked: <question>`:
      - Record the tasks that have a clause.
@@ -219,8 +219,8 @@ Both forms run these. "The change" below means the slice in the slice form.
      - An unrelated change.
    - Run `git status` and `git diff --stat`.
      - Ignore `openspec/changes/<name>/`, including `tasks.md`, in this check.
-     - Never stage that folder in this step. It is committed at archive. If anything under it is already staged, stop and name it.
-     - In the slice form, ignore `<backlog>/slices/` in this check too, and never stage or commit anything under it. It is not tracked by git here, so the ticks stay local.
+     - Never stage that folder in this step. It is committed at archive. If anything under it is already staged, stop and name it. Read the index before any `git add`, and leave what was staged as it is.
+     - In the slice form, ignore `<backlog>/slices/` in this check too, and never stage or commit anything under it. If a file under it is already staged, stop and name it. It is not tracked by git here, so the ticks stay local.
      - A tracked file outside the group's reported files and outside that folder changed: stop and name the file.
      - Something unrelated outside that folder already staged or edited: stop and name it.
    - **Split the group** when it is more than one concern (over about 200 lines or 5 files, or more than one layer).
