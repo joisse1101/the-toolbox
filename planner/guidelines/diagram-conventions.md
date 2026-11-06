@@ -108,8 +108,8 @@ Sections, in this order, with these exact headings: the title line `# UC-<slice>
 table, **Stories**, `## Description`, `## Preconditions`, `## Main flow`,
 `## Alternative and exception flows`, `## Postconditions`, `## Acceptance criteria`, `## Class diagram`,
 `## Sequence diagrams`, `## Design decisions`, `## Interface contracts`, `## Failure responses`,
-`## Non-functional and security rules`, `## Open questions`, `## Implementation overview`,
-`## Traceability`.
+`## Non-functional and security rules`, `## Open questions`, `## Changes to existing specs`,
+`## Implementation overview`, `## Traceability`.
 
 - `## Class diagram` holds exactly one `mermaid` block. `## Sequence diagrams` holds one
   `### Sequence: <flow>` heading per flow (`<flow>` a lowercase slug), each with exactly one `mermaid`
@@ -125,7 +125,8 @@ table, **Stories**, `## Description`, `## Preconditions`, `## Main flow`,
   that draws it, the criterion text **verbatim** (after its `AC<n>:` label), and `Steps` the step ids of
   that flow's diagram that realise it (`1.2, 1.4`). A `failure` row needs an `alt` in that flow's diagram,
   and every id in `Steps` must exist in it.
-- The five design sections are tables, each present and not empty (one that does not apply says so):
+- The design sections are tables, each present and not empty (one that does not apply says so; the
+  last one, `## Changes to existing specs`, is described after this list):
   - `## Design decisions`: `| D id | Decision | Alternatives | Why | Source | Steps |`. `Source` is
     `user-confirmed`, `repo` (only with a repo; refused in greenfield mode, section 5) or `TBC`.
   - `## Interface contracts`: per flow, `| Flow | Method and path or message | Request | Success response | Steps |`.
@@ -133,6 +134,22 @@ table, **Stories**, `## Description`, `## Preconditions`, `## Main flow`,
     of the Acceptance criteria table.
   - `## Non-functional and security rules`: `| Rule | Source | Steps |`.
   - `## Open questions`: `| Item | Blocking |`, `Blocking` being `yes` or `no`.
+
+`## Changes to existing specs` lists the changes this slice makes to what the wiki already specifies, so a
+story that contradicts a wiki page is recorded instead of lost. It is the table
+`| Change | Wiki page | What changes | Reason |`, or the single word `None` when the slice changes no
+existing page.
+
+- `Change` is `added`, `modified` or `removed`.
+- `Wiki page` is a path under `wiki/` that ends in `.md`, written without the `wiki/` prefix (for example
+  `planner/Story-Skills.md`).
+- `What changes` says what the page gains, changes or loses, and `Reason` says why, usually the story
+  that needs it.
+- A row has exactly these four cells. It has no status column.
+
+A row records a change to be made, not one already made. The slice and its checks never read, edit or
+verify a wiki page, so an `added` row may name a page that does not exist yet. Archive applies the rows
+to the wiki, and the slice never marks a row as applied.
 
 What `## Implementation overview` and `## Traceability` hold depends on the mode (section 5). In
 greenfield mode the Implementation overview holds the build plan, because there is no code to describe, and

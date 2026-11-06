@@ -60,6 +60,18 @@ for (const { label, file } of FILES) {
   });
 }
 
+test('explore and propose may read files with Read, Grep and Glob, and explore holds no tool that writes', () => {
+  const tools = (skill) => /^allowed-tools: (.*)$/m.exec(parse(path.join(TOOLKIT, 'skills', skill, 'SKILL.md')).front)[1].split(/,\s*/);
+  for (const skill of ['jois-story-explore', 'jois-story-propose']) {
+    const list = tools(skill);
+    for (const tool of ['Read', 'Grep', 'Glob']) assert.ok(list.includes(tool), `${skill} allows ${tool}`);
+    assert.ok(!list.some((t) => t.startsWith('mcp__')), `${skill} holds no MCP tool`);
+  }
+  const explore = tools('jois-story-explore');
+  assert.deepEqual(explore, ['Bash(node *read-story-context.mjs*)', 'Read', 'Grep', 'Glob']);
+  assert.ok(!explore.some((t) => /^(Write|Edit|MultiEdit|NotebookEdit)$/.test(t) || /write-|init-plans/.test(t)), 'explore holds no tool that writes');
+});
+
 test('the matcher refuses a command that starts with the variable', () => {
   assert.equal(matches('node *read-backlog.mjs*', 'node /x/read-backlog.mjs sample'), true);
   assert.equal(matches('node *read-backlog.mjs*', 'PLANNER_CONFIG=/c.yaml node /x/read-backlog.mjs sample'), false);

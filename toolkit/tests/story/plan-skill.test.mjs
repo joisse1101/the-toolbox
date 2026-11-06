@@ -11,7 +11,7 @@ const body = skill.replace(/\r\n/g, '\n');
 test('the skill is named jois-story-plan, versioned, and allows only its five scripts, the init script and the file tools', () => {
   const meta = frontmatter(skill);
   assert.equal(meta.name, 'jois-story-plan');
-  assert.match(body, /metadata:\n  version: "1\.3\.0"\n  last_updated: "2026-11-05"/);
+  assert.match(body, /metadata:\n  version: "1\.5\.1"\n  last_updated: "2026-11-06"/);
   assert.deepEqual(meta['allowed-tools'].split(/,\s*/).sort(), [
     'Bash(node *init-plans.mjs*)', 'Bash(node *read-context-map.mjs*)', 'Bash(node *read-diagrams.mjs*)', 'Bash(node *write-context-map.mjs*)', 'Bash(node *write-diagram.mjs*)', 'Bash(node *write-freeze.mjs*)', 'Glob', 'Grep', 'Read',
   ]);
@@ -115,6 +115,39 @@ test('the skill asks the mode question at the scope step and names greenfield mo
   assert.match(draft, /`user-confirmed`/);
   assert.match(draft, /without `--repo`/);
   assert.match(draft, /\*\*Describe-only mode\*\*/);
+});
+
+test('the conflicts section covers a wiki page, cites the rule and never edits the wiki', () => {
+  const section = /## Conflicts between stories([\s\S]*?)\n## Decide the scope first/.exec(body)[1];
+  assert.match(section, /a story that contradicts a page of the project's wiki/);
+  assert.match(section, /`story-contradiction-rule` capability/);
+  assert.match(section, /path under `wiki\/`/);
+  assert.match(section, /`Changes existing spec` line in the story's Notes/);
+  assert.match(section, /row of the slice's `## Changes to existing specs`\. You never edit the wiki/);
+});
+
+test('the draft step reads the Notes lines, writes the section or None, asks about an unrecorded contradiction and never marks a row applied', () => {
+  const draft = /## Draft the slice([\s\S]*?)\n## Self-check/.exec(body)[1];
+  assert.match(draft, /Draft `## Changes to existing specs`/);
+  assert.match(draft, /Read the Notes of every story in scope[\s\S]*Changes existing spec: <added\|modified\|removed> wiki\/<path> - <what changes>/);
+  assert.match(draft, /with the path from the Notes line minus the leading `wiki\/`/);
+  assert.match(draft, /Write `None` when no line and no answer changes a spec/);
+  assert.match(draft, /no Notes line records it, put the question whether the page changes into the design checkpoint's list, and write a row only after a yes/);
+  assert.match(draft, /still in the proposals is not in scope, so it adds no row/);
+  assert.match(draft, /Never edit a wiki page and never mark a row as applied/);
+});
+
+test('the design checkpoint lists the unrecorded wiki contradiction before the document is shown', () => {
+  const checkpoint = /## Design checkpoint([\s\S]*?)\n## Draft the slice/.exec(body)[1];
+  assert.match(checkpoint, /each wiki page that a story in scope contradicts and that no `Changes existing spec` Notes line records/);
+  assert.match(checkpoint, /so the user answers before the document is shown/);
+});
+
+test('a superseding story is new, not frozen, and planned only after it is accepted', () => {
+  const draft = /## Draft the slice([\s\S]*?)\n## Self-check/.exec(body)[1];
+  assert.match(draft, /A story with a `Supersedes` line is a new story and is not frozen: plan it only after it is accepted into the backlog/);
+  assert.match(draft, /the slice freezes it only when the slice covers it and the user confirms/);
+  assert.match(draft, /the superseded story stays frozen and unmarked/);
 });
 
 test('the skill reads the conventions section a rejection names before proposing a workaround', () => {
