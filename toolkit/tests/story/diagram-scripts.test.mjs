@@ -39,6 +39,7 @@ test('read: the committed mock is up to date and its files are returned', () => 
   assert.match(formatDiagrams(list), /sign-in \| Feature: Identity and access > Sign in \| 2 stories \| up to date/);
   const one = readDiagrams({ dataDir: root, name: 'sample', slice: 'sign-in' });
   assert.match(formatDiagrams(one), /--- UC-sign-in\.md ---[\s\S]*## Class diagram/);
+  assert.match(formatDiagrams(one), /## Changes to existing specs/);
   assert.deepEqual(listSlices(slicesPath(root, 'sample')), ['sign-in']);
 });
 

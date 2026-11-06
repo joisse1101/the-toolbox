@@ -89,7 +89,7 @@ In the portal, every field of a frozen story SHALL be read-only: Epic, Feature, 
 - **THEN** the dependency is saved and the frozen story is unchanged
 
 ### Requirement: Frozen stories are reference only
-The story skills SHALL treat a frozen story as reference only: `jois-story-review` SHALL NOT review it and SHALL use it as context for the stories it reviews, and no story skill SHALL write a suggestion or a change that edits a frozen story's text. A change to a frozen story SHALL be made by a new story that supersedes it. That superseding story is not part of this capability and is defined by a later change; until then the skills SHALL tell the user that the story is frozen and that a change needs a superseding story, and SHALL write nothing for the edit.
+The story skills SHALL treat a frozen story as reference only: `jois-story-review` SHALL NOT review it and SHALL use it as context for the stories it reviews, and no story skill SHALL write a suggestion or a change that edits a frozen story's text. A change to a frozen story SHALL be made by a new story that supersedes it, drafted through `jois-story-propose` under the `story-contradiction-rule` capability. The frozen story stays frozen and unchanged, and the supersession is recorded only on the new story.
 
 #### Scenario: Review skips a frozen story
 - **WHEN** a backlog has 40 stories and 28 are frozen
@@ -97,7 +97,11 @@ The story skills SHALL treat a frozen story as reference only: `jois-story-revie
 
 #### Scenario: Edit asked for a frozen story
 - **WHEN** the user asks a story skill to change the Title of a frozen story
-- **THEN** the skill says the story is frozen and that a change needs a superseding story, and it writes no row for the edit
+- **THEN** the skill says the story is frozen and that a change needs a superseding story, offers to draft one through `jois-story-propose`, and writes no row for the edit
+
+#### Scenario: Superseding story drafted
+- **WHEN** the user agrees to a superseding story for the frozen story `B1-IAM-0003`
+- **THEN** the draft is a new story whose Notes carry `Supersedes: B1-IAM-0003 <Title>`, and `B1-IAM-0003` is still frozen and unchanged
 
 ### Requirement: A proposed story is never frozen
 A story in the proposals SHALL NOT be frozen, and a proposed story SHALL NOT carry the `Frozen` flag. A story accepted into the backlog SHALL be not frozen. A story that is frozen SHALL NOT be moved to Proposed.

@@ -3,8 +3,8 @@ name: jois-story-plan
 description: Draw the context map of a backlog with the user (bounded contexts, the Epics each holds, the owner and the links between them), and turn the shaped stories of one Epic, one Feature or one story of a backlog (a folder of the data folder that holds `user-stories.csv`) into a slice in `<backlog>/slices/<slice>/`: one markdown document holding the use-case specification, a class diagram and sequence diagrams as fenced Mermaid blocks, drawn to references/diagram-conventions.md, and a `tasks.md` of build tasks, one or more per acceptance criterion, written with it. Decides the scope (Epic, Feature or story) with the user first, holds a design checkpoint (an outline and the open design decisions, asked of the user) before drafting at design level, grounded in the existing code when the current folder holds the code of the flow, shows the complete document, asks one yes/no and writes only after the user confirms. Reports slices and a context map that are stale because stories or Epics changed. Never changes the backlog, the proposals, the reviews, the lexicon or the repo. Use when the user wants to plan, draw, diagram or specify stories, or to redraw a slice.
 allowed-tools: Bash(node *read-diagrams.mjs*), Bash(node *read-context-map.mjs*), Bash(node *write-diagram.mjs*), Bash(node *write-context-map.mjs*), Bash(node *write-freeze.mjs*), Bash(node *init-plans.mjs*), Read, Grep, Glob
 metadata:
-  version: "1.3.0"
-  last_updated: "2026-11-05"
+  version: "1.5.1"
+  last_updated: "2026-11-06"
 ---
 
 # Plan stories into diagrams
@@ -74,10 +74,11 @@ JSON
 
 ## Conflicts between stories
 
-A **conflict** is two stories in scope that contradict each other, or a story that clashes with the lexicon.
+A **conflict** is two stories in scope that contradict each other, a story that clashes with the lexicon, or a story that contradicts a page of the project's wiki (read relative to the current folder with `Read`, `Grep` and `Glob`). The rule is in the `story-contradiction-rule` capability; cite it, do not restate it.
 
-- When you find one the user wants to settle, name the stories by Title and say what would change in each.
-- Offer two ways forward: the change through `jois-story-propose`, or an entry in the slice's `Open questions` section to decide later.
+- When you find one the user wants to settle, name the stories by Title (and the wiki page by its path under `wiki/`) and say what would change in each.
+- Offer two ways forward: the change through `jois-story-propose` (for a wiki page, a `Changes existing spec` line in the story's Notes), or an entry in the slice's `Open questions` section to decide later.
+- A decision that a wiki page changes becomes a row of the slice's `## Changes to existing specs`. You never edit the wiki.
 - If the user defers, record the conflict in `Open questions` and change no story.
 - After the user agrees to a change and `jois-story-propose` has written it, say three things:
   - A review row on a story already in the backlog takes effect only when the user applies it in the portal.
@@ -104,7 +105,8 @@ Every slice is design-level, with or without a repo (section 8 of the convention
 - the participants you plan, by stereotype and name;
 - per flow, its contract (method and path or message, request, success response) as far as the stories, the lexicon or the code establish it;
 - the failure branches you will draw, one per distinct failure;
-- each design decision you cannot ground in the stories, the lexicon or the code (how a session is kept and for how long, the store, the response of each failure, the rule a root entity protects, security behaviour).
+- each design decision you cannot ground in the stories, the lexicon or the code (how a session is kept and for how long, the store, the response of each failure, the rule a root entity protects, security behaviour);
+- each wiki page that a story in scope contradicts and that no `Changes existing spec` Notes line records, as the question whether the page changes, so the user answers before the document is shown.
 
 Ask those decisions, grouped by flow, with `AskUserQuestion` where the choice is real, naming a recommended option when one is defensible. **Never fill a decision with a default.** An answer becomes a `user-confirmed` row of `## Design decisions`; "decide later" is drawn `TBC` and listed under `## Open questions`. Ask the rule of each aggregate once per root. Draft only after the answers.
 
@@ -112,6 +114,7 @@ Ask those decisions, grouped by flow, with `AskUserQuestion` where the choice is
 
 - Name classes and participants after the lexicon's terms by their full name, derive composition from a term's `Part of`, and **never use a word from a term's `Avoid` list**. A concept the lexicon lacks is pointed out to the user and left to `jois-story-propose`; you do not write the lexicon.
 - Draw what the stories and their acceptance criteria say. Every criterion of every story in scope is one row of the acceptance-criteria table, its text verbatim, and a failure criterion has an `alt` in its flow's sequence diagram. A story with no failure path is mentioned to the user, not filled in by guessing.
+- **Draft `## Changes to existing specs`** in every slice (the table and its checks are in the conventions; do not restate them). Read the Notes of every story in scope: each `Changes existing spec: <added|modified|removed> wiki/<path> - <what changes>` line becomes one row, with the path from the Notes line minus the leading `wiki/` (the table drops the prefix, the Notes line keeps it). A `Supersedes` line needs no row, because it is read by the next stage from the new story. A story with a `Supersedes` line is a new story and is not frozen: plan it only after it is accepted into the backlog, and the slice freezes it only when the slice covers it and the user confirms; the superseded story stays frozen and unmarked. Write `None` when no line and no answer changes a spec. When you find a wiki page that a story in scope contradicts and no Notes line records it, put the question whether the page changes into the design checkpoint's list, and write a row only after a yes; never invent a row. A line you cannot parse is asked about, not guessed. A story still in the proposals is not in scope, so it adds no row. Never edit a wiki page and never mark a row as applied: applying it is for a later stage.
 - `<slice>` is a lowercase slug of the Epic, Feature or story Title. Flows are named by what the user does, one sequence diagram each.
 - Send the specification's generated story list as the two markers with nothing between them; the writer fills it. Never send `source.json`.
 - **Draft `tasks.md` from the acceptance-criteria table**, in the layout of section 10 of the conventions (read it; do not restate it). Write one or more tasks per `AC id`, grouped by flow, each with a task id `T-<slice>-<name>`, a `Satisfies:` line naming the `AC id` rows and their step ids, and a `Verify:` line saying how to check the task. Every `AC id` of the table is named by at least one task.
