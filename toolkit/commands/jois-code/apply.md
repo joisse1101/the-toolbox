@@ -4,7 +4,7 @@ description: "Apply an OpenSpec change or a slice one group of tasks at a time: 
 allowed-tools: Bash(openspec:*), Bash(git status:*), Bash(git diff:*), Bash(git add:*), Bash(git commit:*), Bash(git branch --show-current:*), Bash(node *jois-story-plan*read-diagrams.mjs*), Read, Edit, Glob, Agent, Monitor
 disable-model-invocation: true
 metadata:
-  version: "1.7.0"
+  version: "1.7.1"
   last_updated: "2026-11-05"
 ---
 
@@ -140,7 +140,7 @@ Both forms run these. "The change" below means the slice in the slice form.
    - Say in one line whether the group is done, failed or blocked.
    - For each task whose report carries a `result:` clause, copy that clause verbatim after the task in `tasks.md`.
    - Tick the box of that task.
-   - Tick nothing else.
+   - Tick nothing else. A task the report calls failed gets no tick, even when it carries a clause.
    - In the slice form, copy the clause on its own indented line directly after the task's `Verify:` line, so the slice's task format stays valid. Tick only a task whose report carries a `result:` clause.
    - If the report ends in `blocked: <question>`:
      - Record the tasks that have a clause.
@@ -210,7 +210,7 @@ Both forms run these. "The change" below means the slice in the slice form.
        - Pass it the failing command and its exact output.
        - Rerun `opsx-test-runner` after each fix round, with the same exit-code judging as above.
        - Go on only when every command shows exit code 0 and every failure is explained.
-       - If the loop ends in a question to the user, wait for the answer. Then stop only after the failures are explained.
+       - If the loop ends in a question to the user, wait for the answer and rerun `opsx-test-runner`. Commit only when every command shows exit code 0 and every failure is explained. Otherwise stop with nothing committed.
      - After the last group nothing is deferred: a red result runs the fix loop over the whole change, then asks the user if a failure stays unexplained.
    - **No rerun** for these: stop at once, with nothing committed, and name the condition.
      - No test command found, or a suite that could not run for another reason (such as missing dependencies).
@@ -219,21 +219,21 @@ Both forms run these. "The change" below means the slice in the slice form.
      - An unrelated change.
    - Run `git status` and `git diff --stat`.
      - Ignore `openspec/changes/<name>/`, including `tasks.md`, in this check.
-     - Never stage that folder in this step. It is committed at archive.
+     - Never stage that folder in this step. It is committed at archive. If anything under it is already staged, stop and name it.
      - In the slice form, ignore `<backlog>/slices/` in this check too, and never stage or commit anything under it. It is not tracked by git here, so the ticks stay local.
      - A tracked file outside the group's reported files and outside that folder changed: stop and name the file.
      - Something unrelated outside that folder already staged or edited: stop and name it.
    - **Split the group** when it is more than one concern (over about 200 lines or 5 files, or more than one layer).
      - Cut it by the one-concern list of the `jois-git-commit-hygiene` rule.
        - A deletion, a rename or move, a regenerated asset, a lockfile and a format-only change are each their own concern.
-       - Tests and docs go with the change they describe.
+       - Tests and docs go with the change they describe. A config change goes with the task that needs it.
      - Cut the hand-written changes by task, using the files each task's report lists.
        - Tasks that share a file, or a change and its tests, merge into one concern.
      - Run the tests once for the whole group before the first commit. Do not rerun them after each commit.
      - A single task over the size limit has no cut: treat it as one concern and commit it as one.
      - If one changed file holds two concerns: stop with nothing committed and name the file. `git add -p` does not work here.
    - Stage each concern in turn, in the order of the group's tasks. This holds for a group of one concern too.
-     - Stage with `git add <explicit paths>`.
+     - Stage with `git add <explicit paths>`, and commit with `git commit -- <the same paths>` so nothing else staged is swept in.
      - Commit with its own `type(scope): subject` message: lowercase, imperative, no trailing period.
      - Take the type from what the concern does (feat, fix, docs, test and so on, as the rule lists).
      - Build each message from the group's heading and that concern's tasks.
