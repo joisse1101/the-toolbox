@@ -167,6 +167,39 @@ test('a missing design section is named by its heading, and an empty one is repo
   assert.match(messages(run(changed('## Open questions', '## Open questions\n\n## Notes'))), /"## Open questions" is empty/);
 });
 
+const CHANGES_TABLE = '| modified | planner/Story-Skills.md | a reset link is valid for 1 hour | Reset a password sets the link lifetime |\n| added | planner/Sign-in.md | a page describing the sign-in and reset flows | no page describes them yet |\n';
+const withChanges = (body) => changed(`## Changes to existing specs\n\n| Change | Wiki page | What changes | Reason |\n|---|---|---|---|\n${CHANGES_TABLE}`, `## Changes to existing specs\n\n${body}`);
+
+test('changes to existing specs: a valid row is accepted, and an added row may name a page that does not exist', () => {
+  assert.deepEqual(formatProblems(run(mock).problems), []);
+  assert.deepEqual(formatProblems(run(withChanges('| Change | Wiki page | What changes | Reason |\n|---|---|---|---|\n| modified | planner/Story-Skills.md | one role becomes many | Story says a user can hold many roles |\n')).problems), []);
+  assert.deepEqual(formatProblems(run(withChanges('| Change | Wiki page | What changes | Reason |\n|---|---|---|---|\n| added | no/such/Page.md | a new page | nothing covers it |\n')).problems), []);
+});
+
+test('changes to existing specs: the word None is accepted', () => {
+  assert.deepEqual(formatProblems(run(withChanges('None\n')).problems), []);
+});
+
+test('changes to existing specs: a missing heading is named, and an empty section or free text is rejected', () => {
+  assert.match(messages(run(changed('## Changes to existing specs', '## Changes'))), /has no "## Changes to existing specs" heading/);
+  assert.match(messages(run(withChanges(''))), /"## Changes to existing specs" is empty/);
+  assert.match(messages(run(withChanges('some prose\n'))), /"## Changes to existing specs" holds neither a table nor the word None/);
+});
+
+test('changes to existing specs: an unknown change word is rejected and says which words are allowed', () => {
+  assert.match(messages(run(withChanges('| Change | Wiki page | What changes | Reason |\n|---|---|---|---|\n| updated | planner/Story-Skills.md | x | y |\n'))), /the change "updated" must be added, modified, removed/);
+});
+
+test('changes to existing specs: a page that is not a wiki path is rejected and named', () => {
+  const row = (page) => `| Change | Wiki page | What changes | Reason |\n|---|---|---|---|\n| modified | ${page} | x | y |\n`;
+  assert.match(messages(run(withChanges(row('planner/Story-Skills')))), /the wiki page "planner\/Story-Skills" must be a path under wiki\//);
+  assert.match(messages(run(withChanges(row('wiki/planner/Story-Skills.md')))), /the wiki page "wiki\/planner\/Story-Skills\.md" must be a path under wiki\//);
+});
+
+test('changes to existing specs: a fifth cell, such as a status, is rejected', () => {
+  assert.match(messages(run(withChanges('| Change | Wiki page | What changes | Reason | Status |\n|---|---|---|---|---|\n| modified | planner/Story-Skills.md | x | y | applied |\n'))), /must have the four columns Change \| Wiki page \| What changes \| Reason/);
+});
+
 test('the Steps column is required and each step id must exist in the flow of the row', () => {
   assert.match(messages(run(changed('| 1.1, 1.2, 2.1, 2.4, 2.5, 2.8, 3.1, 3.3, 3.5 |', ''))), /must have the six columns/);
   assert.match(messages(run(changed('| 1.1, 1.2, 2.1, 2.4, 2.5, 2.8, 3.1, 3.3, 3.5 |', '| 1.1, 9.9 |'))), /AC-sign-in-dashboard names the step 9\.9, which the "### Sequence: login" diagram does not contain/);

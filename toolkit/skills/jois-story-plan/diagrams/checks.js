@@ -25,9 +25,11 @@ const BLOCK_OPEN = /^(rect|alt|opt|loop|par|critical|break|box)\b/;
 const MESSAGE = /^([A-Za-z_]\w*)\s*(?:-->>|->>|--x|-x|--\)|-\)|-->|->)\s*[+-]?([A-Za-z_]\w*)\s*:\s*(.*)$/;
 const STEP = /^(\d+)\.(\d+)('*)(?=\s|$)/;
 
-const SPEC_HEADINGS = ['## Description', '## Preconditions', '## Main flow', '## Alternative and exception flows', '## Postconditions', '## Acceptance criteria', '## Class diagram', '## Sequence diagrams', '## Design decisions', '## Interface contracts', '## Failure responses', '## Non-functional and security rules', '## Open questions', '## Implementation overview', '## Traceability'];
-const DESIGN_SECTIONS = ['## Design decisions', '## Interface contracts', '## Failure responses', '## Non-functional and security rules', '## Open questions'];
+const SPEC_HEADINGS = ['## Description', '## Preconditions', '## Main flow', '## Alternative and exception flows', '## Postconditions', '## Acceptance criteria', '## Class diagram', '## Sequence diagrams', '## Design decisions', '## Interface contracts', '## Failure responses', '## Non-functional and security rules', '## Open questions', '## Changes to existing specs', '## Implementation overview', '## Traceability'];
+const DESIGN_SECTIONS = ['## Design decisions', '## Interface contracts', '## Failure responses', '## Non-functional and security rules', '## Open questions', '## Changes to existing specs'];
 const DECISION_SOURCES = ['user-confirmed', 'repo', 'TBC'];
+const SPEC_CHANGES = '## Changes to existing specs';
+const SPEC_CHANGE_WORDS = ['added', 'modified', 'removed'];
 const NAMESPACE_OPEN = /^namespace\s+([A-Za-z_]\w*)\s*\{\s*$/;
 const RELATIONSHIP = /^([A-Za-z_]\w*)\s*(?:"[^"]*"\s*)?[<|*o]?(?:--|\.\.)[>|*o]?\s*(?:"[^"]*"\s*)?([A-Za-z_]\w*)/;
 const STUB_NOTE = /^note\s+for\s+([A-Za-z_]\w*)\s+"\(see\s/;
@@ -347,6 +349,25 @@ function checkDesignSections({ bodyOf, heading, at, repo, acIds }) {
   for (const r of dataRowsOf(failures, /^Failure$/i)) {
     const ac = (r.cells[3] ?? '').replace(/\*/g, '');
     if (!acIds.has(ac)) at(rowAt(failures, r), `failure "${r.cells[0] ?? ''}" names the acceptance criterion "${ac}", which is not a row of the Acceptance criteria table`);
+  }
+  checkSpecChanges({ bodyOf, heading, at });
+}
+
+// `## Changes to existing specs` (conventions, section 4): the word None, or rows of Change | Wiki page | What changes | Reason.
+// Structural only: the wiki is never opened, so an `added` row may name a page that does not exist yet.
+function checkSpecChanges({ bodyOf, heading, at }) {
+  if (!heading.has(SPEC_CHANGES)) return;
+  const body = bodyOf(SPEC_CHANGES);
+  if (body.join('\n').trim() === 'None') return;
+  const rows = tableRows(body);
+  const dataRows = rows.length > 0 && /^Change$/i.test(rows[0].cells[0].replace(/\*/g, '')) ? rows.slice(1) : rows;
+  if (body.join('\n').trim() !== '' && dataRows.length === 0) at(heading.get(SPEC_CHANGES) + 1, `"${SPEC_CHANGES}" holds neither a table nor the word None`);
+  for (const r of dataRows) {
+    const row = heading.get(SPEC_CHANGES) + 2 + r.line;
+    const [change = '', page = ''] = r.cells;
+    if (r.cells.length !== 4) at(row, `the row "${change}" must have the four columns Change | Wiki page | What changes | Reason`);
+    if (!SPEC_CHANGE_WORDS.includes(change)) at(row, `the change "${change}" must be ${SPEC_CHANGE_WORDS.join(', ')}`);
+    if (!page.endsWith('.md') || page.startsWith('wiki/')) at(row, `the wiki page "${page}" must be a path under wiki/ that ends in .md, written without the wiki/ prefix`);
   }
 }
 

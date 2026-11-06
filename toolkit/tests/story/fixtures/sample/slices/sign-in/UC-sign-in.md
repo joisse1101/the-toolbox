@@ -266,6 +266,13 @@ sequenceDiagram
 | How many wrong passwords lock an account, and for how long (D7) | no |
 | Which hash function stores the password | no |
 
+## Changes to existing specs
+
+| Change | Wiki page | What changes | Reason |
+|---|---|---|---|
+| modified | planner/Story-Skills.md | a reset link is valid for 1 hour | Reset a password sets the link lifetime |
+| added | planner/Sign-in.md | a page describing the sign-in and reset flows | no page describes them yet |
+
 ## Implementation overview
 TBC
 
