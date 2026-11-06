@@ -10,7 +10,7 @@ const front = text.split('---')[1];
 
 test('the skill is named jois-story-explore, versioned, and may only run the reader script and read files', () => {
   assert.match(front, /^name: jois-story-explore$/m);
-  assert.match(front, /version: "1\.3\.0"/);
+  assert.match(front, /version: "1\.3\.1"/);
   assert.match(front, /last_updated: "2026-11-06"/);
   assert.match(front, /^allowed-tools: Bash\(node \*read-story-context\.mjs\*\), Read, Grep, Glob$/m);
   assert.doesNotMatch(front, /write-|mcp__/);
@@ -29,7 +29,7 @@ test('the skill applies the contradiction rule in four steps and cites its capab
   assert.match(section, /2\. \*\*Ask which one stands\.\*\*[\s\S]*do not decide for them/);
   assert.match(section, /3\. \*\*A winning new story changes the old spec\.\*\*/);
   assert.match(section, /4\. \*\*Never edit a frozen story\.\*\*/);
-  assert.match(section, /Changes existing spec: <added\|modified\|removed> <path under wiki\/> - <what changes>/);
+  assert.match(section, /Changes existing spec: <added\|modified\|removed> wiki\/<path> - <what changes>/);
   assert.match(section, /Supersedes: <ID> <Title>/);
   assert.match(section, /shown in the reply only[\s\S]*`jois-story-propose` writes them, and write nothing yourself/);
 });
@@ -82,6 +82,19 @@ test('indirectly affected stories are raised in one sentence and nothing is draf
   assert.match(section, /say so in one sentence, name it by Title or path, and ask whether to change it/);
   assert.match(section, /Draft nothing for it until the user says yes/);
   assert.match(section, /Say nothing about knock-on effects when you find none/);
+});
+
+test('the Notes line keeps the wiki/ prefix, an unspecified knock-on change is a Clarifications append, and the no-wiki line is not repeated', () => {
+  const section = text.split('## Contradictions')[1].split('## Hand over')[0];
+  assert.match(section, /with the path keeping its `wiki\/` prefix \(for `wiki\/Sign-in\.md` the line says `wiki\/Sign-in\.md`; only the slice's table drops the prefix\)/);
+  assert.doesNotMatch(section, /<path under wiki\/>/);
+  assert.match(section, /has not said what the change is, the suggestion is a Clarifications append asking whether the story is still needed, never a deletion/);
+  assert.match(section, /once per session and not again for later stories/);
+  assert.match(section, /`ls`-style existence check[\s\S]*whatever a loaded `CLAUDE\.md` says/);
+});
+
+test('the related-story search bullet says every word must match, so one or two words work best', () => {
+  assert.match(text, /one or two words from its subject or the terms it uses, because every word must match, so several words find fewer stories/);
 });
 
 test('a frozen story is superseded by a new story that names it', () => {

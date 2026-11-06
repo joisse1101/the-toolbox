@@ -27,7 +27,7 @@ const FULL = (code, title) => `${code},Identity & Access Management,Auth,${title
 
 test('the skill is named jois-story-propose, versioned, and may run only its five scripts and the init script', () => {
   assert.match(front, /^name: jois-story-propose$/m);
-  assert.match(front, /version: "1\.3\.0"/);
+  assert.match(front, /version: "1\.3\.1"/);
   assert.match(front, /last_updated: "2026-11-06"/);
   assert.match(front, /^allowed-tools: Bash\(node \*read-story-context\.mjs\*\), Bash\(node \*write-proposal\.mjs\*\), Bash\(node \*write-lexicon\.mjs\*\), Bash\(node \*suggest-lexicon\.mjs\*\), Bash\(node \*write-review\.mjs\*\), Bash\(node \*init-plans\.mjs\*\), Read, Grep, Glob$/m);
   assert.doesNotMatch(front, /mcp__/);
@@ -51,7 +51,7 @@ test('the skill applies the contradiction rule in four steps, cites its capabili
 
 test('the Notes lines are shown in the draft, covered by the one yes/no and written only by the proposals writer', () => {
   const section = text.split('## Check for contradictions')[1].split('## Confirm before writing')[0];
-  assert.match(section, /Changes existing spec: <added\|modified\|removed> <path under wiki\/> - <what changes>/);
+  assert.match(section, /Changes existing spec: <added\|modified\|removed> wiki\/<path> - <what changes>/);
   assert.match(section, /Supersedes: <ID> <Title>/);
   assert.match(section, /shown in the complete draft, are covered by the one yes\/no, and are written only through the proposals writer/);
   assert.match(section, /Never write to `wiki\/`/);
@@ -105,6 +105,20 @@ test('indirectly affected stories are raised in one sentence and nothing is draf
   assert.match(section, /say so in one sentence, name it by Title or path, and ask whether to change it/);
   assert.match(section, /Draft nothing for it and write nothing for it until the user says yes/);
   assert.match(section, /Say nothing about knock-on effects when you find none/);
+});
+
+test('the Notes line keeps the wiki/ prefix, an unspecified knock-on change is a Clarifications append, and the no-wiki line is not repeated', () => {
+  const section = text.split('## Check for contradictions')[1].split('## Confirm before writing')[0];
+  assert.match(section, /with the path keeping its `wiki\/` prefix \(for `wiki\/Sign-in\.md` the line says `wiki\/Sign-in\.md`; only the slice's table drops the prefix\)/);
+  assert.doesNotMatch(section, /<path under wiki\/>/);
+  assert.match(section, /has not said what the change is, the suggestion is a Clarifications append asking whether the story is still needed[\s\S]*never a deletion/);
+  assert.match(section, /once per session and not again for later stories/);
+  assert.match(section, /`ls`-style existence check[\s\S]*whatever a loaded `CLAUDE\.md` says/);
+});
+
+test('the related-story search bullet says every word must match, so one or two words work best', () => {
+  const section = text.split('## Find related stories')[1].split('## Name stories by Title')[0];
+  assert.match(section, /one or two words from its subject or the terms it uses, because every word must match, so several words find fewer stories/);
 });
 
 test('a frozen story gets a superseding story, not the old promise of a later change', () => {
