@@ -11,7 +11,7 @@ const body = skill.replace(/\r\n/g, '\n');
 test('the skill is named jois-story-plan, versioned, and allows only its five scripts, the init script and the file tools', () => {
   const meta = frontmatter(skill);
   assert.equal(meta.name, 'jois-story-plan');
-  assert.match(body, /metadata:\n  version: "1\.5\.0"\n  last_updated: "2026-11-06"/);
+  assert.match(body, /metadata:\n  version: "1\.5\.1"\n  last_updated: "2026-11-06"/);
   assert.deepEqual(meta['allowed-tools'].split(/,\s*/).sort(), [
     'Bash(node *init-plans.mjs*)', 'Bash(node *read-context-map.mjs*)', 'Bash(node *read-diagrams.mjs*)', 'Bash(node *write-context-map.mjs*)', 'Bash(node *write-diagram.mjs*)', 'Bash(node *write-freeze.mjs*)', 'Glob', 'Grep', 'Read',
   ]);
@@ -129,7 +129,7 @@ test('the conflicts section covers a wiki page, cites the rule and never edits t
 test('the draft step reads the Notes lines, writes the section or None, asks about an unrecorded contradiction and never marks a row applied', () => {
   const draft = /## Draft the slice([\s\S]*?)\n## Self-check/.exec(body)[1];
   assert.match(draft, /Draft `## Changes to existing specs`/);
-  assert.match(draft, /Read the Notes of every story in scope[\s\S]*Changes existing spec: <added\|modified\|removed> <path under wiki\/> - <what changes>/);
+  assert.match(draft, /Read the Notes of every story in scope[\s\S]*Changes existing spec: <added\|modified\|removed> wiki\/<path> - <what changes>/);
   assert.match(draft, /with the path from the Notes line minus the leading `wiki\/`/);
   assert.match(draft, /Write `None` when no line and no answer changes a spec/);
   assert.match(draft, /no Notes line records it, put the question whether the page changes into the design checkpoint's list, and write a row only after a yes/);
