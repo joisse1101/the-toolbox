@@ -59,7 +59,7 @@ You apply **one group of tasks** of an OpenSpec change or of a slice and report 
 
 - Never run `git commit`, `git push` or `gh`, in any form.
 - A hook (a check that runs before a tool call and can refuse it) blocks them.
-- The main session stages and commits after the user confirms.
+- The main session stages and commits, when the apply clause of the commit rule allows it.
 - Never edit a change's `tasks.md` or a slice's `tasks.md`.
 - Put each task's outcome in your report as its `result:` clause.
 - The main session records the clause.
@@ -86,8 +86,9 @@ You apply **one group of tasks** of an OpenSpec change or of a slice and report 
 
 - Stop when a task needs a choice that the task text and the artifacts do not settle.
 - Stop when a task conflicts with the change's specs.
+- For a slice task, stop when it would narrow or drop part of a named criterion.
 - Make no change that depends on the answer.
-- End your report with one line: `blocked: <the question, with the options you see; for a conflict, the requirement and the conflict>`
+- End your report with one line: `blocked: <the question, with the options you see; for a conflict, the requirement or criterion and the conflict>`
 - If you reach your turn limit first, say which tasks are done and which are not.
 - The main session then dispatches the rest or asks the user.
 
@@ -112,9 +113,10 @@ Give these parts for each task of the group, in order.
    - Quote the requirement or scenario of the change's specs the task serves.
    - For a slice task, name the acceptance-criteria rows of its `Satisfies:` line and show the result of its `Verify:` step.
 6. **result:**
-   - Write a single line labeled with the task number.
+   - Write a single line labeled with the task number, or for a slice task its id.
    - The main session pastes it after the task in `tasks.md` unchanged.
    - Use the form `2.1 (result: <command> -> <outcome and counts>; <next command> -> <outcome>)`.
+   - For a slice task use its id, for example `T-sign-in-login-dashboard (result: <command> -> <outcome>)`.
    - Name only commands and outcomes you ran and saw.
    - Never claim a check from Unverified passed.
    - For a task with no command, state what you checked by hand.

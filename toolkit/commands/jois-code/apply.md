@@ -16,7 +16,7 @@ The argument alone picks the form. Never guess between them.
 
 - `/jois-code:apply <change>` is the OpenSpec form. A bare name is always an OpenSpec change, even when a slice has the same name.
 - `/jois-code:apply slice <backlog>/<slice>` is the slice form. It does not call `openspec`.
-- `slice` alone, or `slice <backlog>` with no slice name: ask for `<backlog>/<slice>` and do nothing else.
+- `slice` alone, `slice <backlog>` with no slice name, or `slice <backlog> <slice>` with a space instead of `/`: ask for `<backlog>/<slice>` and do nothing else.
 
 Steps 1 to 3 differ by form. Steps 4 to 11 are shared.
 
@@ -41,8 +41,11 @@ A slice is the folder `<backlog>/slices/<slice>/` of the data folder the plan sk
    - Find `tasks.md` with Glob: `**/<backlog>/slices/<slice>/tasks.md`.
    - Read `tasks.md` and `UC-<slice>.md` from that folder.
    - If the folder or `tasks.md` does not exist, say what is missing, point to `jois-story-plan` and stop.
+   - If Glob finds more than one match (for example a copy under `.trees/`), list them and ask which one. Dispatch nothing until the user answers.
+   - If `tasks.md` has no task line, say the slice has no tasks, point to `jois-story-plan` and stop. Do not say the slice is built.
    - A group is one `## <flow>` section of `tasks.md`.
    - A task is a checkbox line `- [ ] T-<slice>-<name> <title>` with its `Satisfies:` and `Verify:` lines.
+   - If no group has an unticked task, skip step 3 and step 4, say the slice is built, name `jois-story-plan` for the next slice and stop.
 3. **Check the slice is current.**
    - Look for `read-diagrams.mjs` in `~/.claude/skills/jois-story-plan/` and in this project's `.claude/skills/jois-story-plan/`.
    - If it is in neither, say the plan skill is not installed, name `Install-Toolkit.ps1` and stop.
@@ -74,6 +77,7 @@ A slice is the folder `<backlog>/slices/<slice>/` of the data folder the plan sk
    - Keep the `context` and `operationGuidance` from the output in mind for the briefs.
    - A commit-stop line in `operationGuidance` (an older project's line that tells the agent to stop before each commit) does not govern this command's group commits.
    - Step 10 owns those commits and decides when to commit or stop with nothing committed.
+
 ## Shared steps 4 to 11
 
 Both forms run these. "The change" below means the slice in the slice form.
@@ -226,10 +230,12 @@ Both forms run these. "The change" below means the slice in the slice form.
      - Cut the hand-written changes by task, using the files each task's report lists.
        - Tasks that share a file, or a change and its tests, merge into one concern.
      - Run the tests once for the whole group before the first commit. Do not rerun them after each commit.
+     - A single task over the size limit has no cut: treat it as one concern and commit it as one.
      - If one changed file holds two concerns: stop with nothing committed and name the file. `git add -p` does not work here.
-   - Otherwise stage each concern in turn, in the order of the group's tasks.
+   - Stage each concern in turn, in the order of the group's tasks. This holds for a group of one concern too.
      - Stage with `git add <explicit paths>`.
      - Commit with its own `type(scope): subject` message: lowercase, imperative, no trailing period.
+     - Take the type from what the concern does (feat, fix, docs, test and so on, as the rule lists).
      - Build each message from the group's heading and that concern's tasks.
      - Print the short hash and the message after each commit.
      - A group of one concern is one commit.
