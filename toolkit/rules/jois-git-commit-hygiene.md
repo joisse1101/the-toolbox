@@ -5,9 +5,11 @@ metadata:
 ---
 # Commit hygiene
 
-Applies only when you are about to commit.
+Applies when you are about to commit or push.
 
 ## Never commit on your own
+
+Apply flows (below) are the one exception.
 
 - Stage by explicit path.
 - Print the staged summary and the proposed message.

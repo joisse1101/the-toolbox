@@ -80,7 +80,7 @@ The toolkit holds fourteen rules, in `toolkit/rules/`. The [Rules](Rules.md) pag
 | `jois-comms-replies` | How to write replies: plain words, the answer first, when to decide and when to ask. | Every session |
 | `jois-env-local-installs` | Installs only inside the project folder. | Every session |
 | `jois-env-stay-in-repo` | Every file Claude creates for its own work goes under `.scratch/` in the project, and nothing is read or written outside it. | Every session |
-| `jois-git-commit-hygiene` | One concern per commit, and a commit only after the user types a confirmation word. | Every session |
+| `jois-git-commit-hygiene` | One concern per commit. A commit needs the user's confirmation word, except in an apply flow, which commits a checked concern by itself on a branch other than `main` or `master`. A push always needs the word. | Every session |
 | `jois-test-mock-data` | Test and verify with mock data and mock systems by default. | Every session |
 
 ## Agents
