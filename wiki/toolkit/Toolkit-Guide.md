@@ -64,7 +64,7 @@ The toolkit holds twelve commands, in `toolkit/commands/`, in five namespaces.
 | `/jois-story:propose` | Writes the stories, backlog edits and lexicon terms agreed in this session straight to the planner's files, without the yes or no step of the skill. The command is your go-ahead. | You finished exploring with `jois-story-explore` and want it saved now. |
 | `/jois-story:re-read` | Re-reads the backlog, proposals, lexicon and the stories under discussion after you changed them outside the session, says what changed and carries on. It writes nothing. | You edited the files in the portal or a spreadsheet during a session. |
 | `/jois-story:review` | Audits what this session shaped and wrote, for sync, and lists what is left to do. It writes nothing. | You want to check the session's work before you stop. |
-| `/jois-story:verify` | Runs `jois-story-verify` on the slice you name and ends with the ranked report. It writes a correction or a suggestion only after you answer yes to the exact change. | You want a written slice checked before you build from it. |
+| `/jois-story:verify` | Runs `jois-story-verify` on the slice you name, checks it against the slice's own rules and against the wiki and code of the current folder, and ends with the ranked report. It never edits the wiki or the code. It writes a correction or a suggestion only after you answer yes to the exact change. | You want a written slice checked before you build from it. |
 
 ## Rules
 
