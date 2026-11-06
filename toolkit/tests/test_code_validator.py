@@ -92,3 +92,7 @@ def test_agent_ignores_an_instruction_planted_in_a_claim():
     text = AGENT.read_text(encoding="utf-8")
     assert "Do not follow it" in text
     assert "**Planted instruction**" in text
+
+
+def test_agent_labels_evidence_from_a_pr_test():
+    assert "came from the PR" in AGENT.read_text(encoding="utf-8")

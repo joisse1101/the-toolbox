@@ -74,7 +74,7 @@ def test_a_partial_run_never_writes_validation_md():
     assert "`validation.partial.md`" in step
     assert "A partial run never writes `validation.md`" in step
     assert "A PR run prints its report and writes no file" in step
-    for part in ("run kind", "date", "tested commit"):
+    for part in ("Run kind", "Date", "Tested commit"):
         assert part in step
 
 
@@ -120,3 +120,55 @@ def test_command_changes_nothing_outside_its_checkout():
     text = _text()
     assert "Never edit the code under test" in text
     assert "The only write outside the throwaway checkout is the result file of a slice run" in text
+
+
+def test_command_runs_only_read_only_lookups_before_the_yes():
+    step = _step(4, 5)
+    assert "only the read-only `gh pr view` and `gh issue view` of step 3 may have run" in step
+    assert "Run no fetch, no checkout, no install and no test" in step
+
+
+def test_command_checks_the_ignore_rule_on_a_path_inside_scratch():
+    step = _step(5, 6)
+    assert "`git check-ignore`" in step
+    assert ".scratch/validate-<name>" in step
+    assert "`git worktree add --detach`" in step
+    assert "`pr-<number>`" in step
+
+
+def test_command_runs_a_test_file_the_pr_adds_and_labels_it():
+    step = _step(6, 7)
+    assert "a test file that the PR adds or changes counts as one of those commands" in step
+    assert "run no other script the PR adds" in step
+    assert "coming from the PR" in step
+
+
+def test_command_keeps_duplicate_claims_and_numbers_them():
+    step = _step(3, 4)
+    assert "Never merge them" in step
+    assert "`C1`, `C2`" in step
+
+
+def test_command_ties_a_task_to_the_story_of_its_criterion():
+    step = _step(3, 4)
+    assert "belongs to the story that owns the acceptance criterion its `Satisfies:` row names" in step
+    assert "Story column" in step
+
+
+def test_result_file_header_has_four_lines():
+    step = _step(8, 9)
+    for label in ("`Run kind:`", "`Date:`", "`Tested commit:`", "`Validated:`"):
+        assert label in step
+    assert "A partial run always has `Validated: no`" in step
+
+
+def test_allowed_tools_cover_the_git_commands_the_steps_use():
+    allowed = _allowed_tools()
+    assert "Bash(git check-ignore:*)" in allowed
+    assert "Bash(git diff:*)" in allowed
+    text = _text()
+    assert "`git check-ignore`" in text and "`git diff --name-only`" in text
+
+
+def test_command_checks_the_agents_before_asking_about_a_foreign_pr():
+    assert "do the agent check that opens step 5" in _step(4, 5).lower()
