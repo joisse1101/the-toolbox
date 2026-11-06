@@ -45,6 +45,9 @@ test('the project checks cite a path and a quoted line, and an unconfirmed findi
   assert.match(section, /names the wiki page by its path under `wiki\/`, or the code by its file path/);
   assert.match(section, /quotes the line that decides it/);
   assert.match(section, /Do not report a claim you cannot cite/);
+  assert.match(section, /cite the path you looked for and the `Glob` or `Grep` that found nothing/);
+  assert.match(text, /read the files that the tasks and the `Traceability` rows name/);
+  assert.match(text, /no task names, is not a gap in a task/);
   assert.match(section, /could not confirm from what you read is a suggestion, never a warning/);
   assert.match(text, /none of them is critical/);
   assert.match(text, /list what each looked at \(the wiki pages and code files read\)/);

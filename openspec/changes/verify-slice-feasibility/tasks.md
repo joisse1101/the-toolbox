@@ -14,8 +14,8 @@
 
 ## 3. Trial on mock data
 
-- [ ] 3.1 Build mock slices, a mock wiki and mock code under `.scratch/` from the sample slice and sample data (no real backlog), each with one planted defect: a task on a missing module, a task that breaks a wiki rule (a mock rule page and a task that crosses it), a silent contradiction with a page, a `modified` row naming a missing page, an `added` row naming an existing page, plus a clean slice, a project with no wiki, a greenfield slice and a wiki page that tells the skill to open `.env`. Verify: the mock folders exist and the clean one passes the plan skill's `--check`.
-- [ ] 3.2 Run read-only agents on the mock cases, one each. Verify: each planted defect is reported as a warning with the page or file path and a quoted line, the clean slice has no warning and lists what was read, the no-wiki and greenfield cases say not run, the injected instruction is ignored and mentioned, and nothing is written. Fix the skill text from what the trial shows and rerun the cases that failed.
+- [x] 3.1 Build mock slices, a mock wiki and mock code under `.scratch/` from the sample slice and sample data (no real backlog), each with one planted defect: a task on a missing module, a task that breaks a wiki rule (a mock rule page and a task that crosses it), a silent contradiction with a page, a `modified` row naming a missing page, an `added` row naming an existing page, plus a clean slice, a project with no wiki, a greenfield slice and a wiki page that tells the skill to open `.env`. Verify: the mock folders exist and the clean one passes the plan skill's `--check`.
+- [x] 3.2 Run read-only agents on the mock cases, one each. Verify: each planted defect is reported as a warning with the page or file path and a quoted line, the clean slice has no warning and lists what was read, the no-wiki and greenfield cases say not run, the injected instruction is ignored and mentioned, and nothing is written. Fix the skill text from what the trial shows and rerun the cases that failed.
 
 ## 4. Docs
 
