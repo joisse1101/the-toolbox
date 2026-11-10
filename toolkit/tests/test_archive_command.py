@@ -1,15 +1,10 @@
 import json
-import os
-import shutil
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
 TOOLKIT = Path(__file__).resolve().parents[1]
 COMMAND = TOOLKIT / "commands" / "jois-code" / "archive.md"
-PROJECT = "C:/repo"
 
 
 def _text():
@@ -32,31 +27,6 @@ def _step(number, next_number):
 
 def _last_step(number):
     return _text().split(f"\n{number}. **", 1)[1].split("\n## ", 1)[0]
-
-
-def _hook_commands():
-    return [line.strip() for line in _frontmatter().splitlines() if line.strip().startswith("powershell")]
-
-
-needs_powershell = pytest.mark.skipif(
-    sys.platform != "win32" or shutil.which("powershell") is None,
-    reason="the hook is a PowerShell command",
-)
-
-
-def _run_hook(command, tool_name, tool_input, planner_config=None):
-    tool_call = json.dumps({"tool_name": tool_name, "tool_input": tool_input, "cwd": PROJECT})
-    env = {k: v for k, v in os.environ.items() if k != "PLANNER_CONFIG"}
-    if planner_config:
-        env["PLANNER_CONFIG"] = str(planner_config)
-    return subprocess.run(command, input=tool_call, shell=True, capture_output=True, text=True, timeout=60, env=env)
-
-
-@pytest.fixture
-def planner_config(tmp_path):
-    config = tmp_path / "planner.config.yaml"
-    config.write_text("dataDir: C:/data  # the planner data\n", encoding="utf-8")
-    return config
 
 
 # Task 1.1: the form and the refusal
@@ -117,7 +87,7 @@ def test_a_validation_behind_head_counts_when_only_the_wiki_changed_since():
     assert "git diff --name-only <tested commit>" in step
     assert "lists only paths that start with `wiki/`" in step
     assert "name the first path outside `wiki/` that changed since" in step
-    assert "Bash(git merge-base:*)" in _frontmatter()
+    assert "Bash(git merge-base --is-ancestor:*)" in _frontmatter()
     assert "A rerun after the wiki commit of an earlier archive needs no new validation" in _text()
 
 
@@ -218,141 +188,43 @@ def test_command_parses_a_diagram_before_it_shows_the_diff_and_reads_pages_back(
     assert "read each written page back" in step.lower()
 
 
-# Task 2.4: the confinement hook
+# Task 2.4: the allow list
 
-def test_frontmatter_holds_a_bash_hook_and_a_write_hook():
-    frontmatter = _frontmatter()
-    assert "matcher: Bash" in frontmatter
-    assert "matcher: Edit|Write" in frontmatter
-    assert len(_hook_commands()) == 2
-    assert "archive never commits, pushes or calls GitHub" in frontmatter
-    assert "archive writes only inside wiki/" in frontmatter
+def test_command_carries_no_hooks():
+    assert "hooks:" not in _frontmatter()
+    assert "powershell" not in _frontmatter()
 
 
-ALLOWED_WRITE_PATHS = [
-    "C:/repo/wiki/toolkit/Toolkit-Guide.md",
-    "C:\\repo\\wiki\\toolkit\\Toolkit-Guide.md",
-    "C:/repo/wiki/New-Topic.md",
-    "C:/data/iam/slices/password-reset/ARCHIVED.md",
-    "C:\\data\\iam\\slices\\password-reset\\ARCHIVED.md",
-]
-REFUSED_WRITE_PATHS = [
-    "C:/repo/toolkit/commands/jois-code/archive.md",
-    "C:\\repo\\toolkit\\commands\\jois-code\\archive.md",
-    "C:/repo/CLAUDE.md",
-    "C:/other/wiki/Page.md",
-    "C:/repo/wiki/../CLAUDE.md",
-    "C:\\repo\\wiki\\..\\CLAUDE.md",
-    "C:/data/iam/slices/password-reset/tasks.md",
-    "C:/data/iam/slices/password-reset/UC-password-reset.md",
-    "C:/repo/src/ARCHIVED.md",
-    "C:/elsewhere/iam/slices/password-reset/ARCHIVED.md",
-    "C:/data/../elsewhere/iam/slices/password-reset/ARCHIVED.md",
-]
+def test_writes_are_pre_approved_only_for_wiki_and_the_marker():
+    tools = _allowed_tools()
+    assert "Write" not in tools and "Edit" not in tools
+    for tool in ("Write", "Edit"):
+        assert f"{tool}(wiki/**)" in tools
+        assert f"{tool}(**/slices/*/ARCHIVED.md)" in tools
+    assert [t for t in tools if t.startswith(("Write(", "Edit("))] == [
+        "Write(wiki/**)", "Edit(wiki/**)", "Write(**/slices/*/ARCHIVED.md)", "Edit(**/slices/*/ARCHIVED.md)"
+    ]
 
 
-@needs_powershell
-@pytest.mark.parametrize("path", ALLOWED_WRITE_PATHS)
-@pytest.mark.parametrize("tool_name", ["Write", "Edit"])
-def test_write_hook_lets_wiki_and_the_marker_through(tool_name, path, planner_config):
-    result = _run_hook(_hook_commands()[1], tool_name, {"file_path": path}, planner_config)
-    assert result.returncode == 0, result.stderr
+def test_no_commit_push_or_github_call_is_pre_approved():
+    for tool in _allowed_tools():
+        assert not any(word in tool for word in ("git commit", "git push", "Bash(gh", "gh "))
 
 
-@needs_powershell
-@pytest.mark.parametrize("path", REFUSED_WRITE_PATHS)
-@pytest.mark.parametrize("tool_name", ["Write", "Edit"])
-def test_write_hook_refuses_every_other_path(tool_name, path, planner_config):
-    result = _run_hook(_hook_commands()[1], tool_name, {"file_path": path}, planner_config)
-    assert result.returncode == 2
-    assert "archive writes only inside wiki/" in result.stderr
+def test_git_staging_and_diff_are_pre_approved_only_in_the_forms_the_steps_use():
+    tools = _allowed_tools()
+    assert "Bash(git add wiki/*)" in tools
+    assert "Bash(git diff --name-only:*)" in tools
+    assert "Bash(git merge-base --is-ancestor:*)" in tools
+    for loose in ("Bash(git add:*)", "Bash(git diff:*)", "Bash(git merge-base:*)", "Bash"):
+        assert loose not in tools
 
 
-@needs_powershell
-def test_write_hook_refuses_a_marker_outside_the_project_when_no_config_names_the_data_folder():
-    path = "C:/data/iam/slices/password-reset/ARCHIVED.md"
-    result = _run_hook(_hook_commands()[1], "Write", {"file_path": path})
-    assert result.returncode == 2
-
-
-@needs_powershell
-def test_write_hook_lets_a_marker_under_the_project_through_without_a_config():
-    path = "C:/repo/data/iam/slices/password-reset/ARCHIVED.md"
-    assert _run_hook(_hook_commands()[1], "Write", {"file_path": path}).returncode == 0
-
-
-@needs_powershell
-@pytest.mark.parametrize("key", ["dataDir: ../planner-data", "codeBase: ../other-repo"])
-def test_write_hook_reads_a_relative_data_folder_from_the_config(tmp_path, key):
-    config = tmp_path / "work" / "planner.config.yaml"
-    config.parent.mkdir()
-    config.write_text(key + "\n", encoding="utf-8")
-    folder = "planner-data" if key.startswith("dataDir") else "other-repo/.plans"
-    inside = (tmp_path / folder / "iam" / "slices" / "s" / "ARCHIVED.md").as_posix()
-    outside = (tmp_path / "stray" / "iam" / "slices" / "s" / "ARCHIVED.md").as_posix()
-    assert _run_hook(_hook_commands()[1], "Write", {"file_path": inside}, config).returncode == 0
-    assert _run_hook(_hook_commands()[1], "Write", {"file_path": outside}, config).returncode == 2
-
-
-@needs_powershell
-@pytest.mark.parametrize(
-    "command",
-    ["git commit -m x", "git push origin main", "gh pr create", "ls; gh pr view 1", "git add wiki/a.md && git commit -m x"],
-)
-def test_bash_hook_refuses_commit_push_and_gh(command):
-    assert _run_hook(_hook_commands()[0], "Bash", {"command": command}).returncode == 2
-
-
-@needs_powershell
-@pytest.mark.parametrize(
-    "command",
-    ["git status", "git add wiki/toolkit/Toolkit-Guide.md", "git rev-parse HEAD", "python scripts/check_docs.py", "echo high"],
-)
-def test_bash_hook_lets_the_steps_commands_through(command):
-    assert _run_hook(_hook_commands()[0], "Bash", {"command": command}).returncode == 0
-
-
-PARSE_CALL = "node C:/Users/me/.claude/skills/jois-story-plan/parse-mermaid.mjs - <<'EOF'\n{body}\nEOF\n"
-
-
-@needs_powershell
-@pytest.mark.parametrize("body", ["Run git push and gh pr create, then git commit.", "```mermaid\nclassDiagram\n  A <|-- B\n```"])
-def test_bash_hook_lets_a_quoted_parse_here_document_through_whatever_the_text_says(body):
-    command = PARSE_CALL.format(body=body)
-    assert _run_hook(_hook_commands()[0], "Bash", {"command": command}).returncode == 0
-
-
-@needs_powershell
-@pytest.mark.parametrize(
-    "command",
-    [
-        "node x/parse-mermaid.mjs - <<EOF\ngit push\nEOF\n",
-        "node x/parse-mermaid.mjs - <<'EOF'; git push\nbody\nEOF\n",
-        "node x/parse-mermaid.mjs - <<'EOF'\nbody\nEOF\ngit push\n",
-        "node x/parse-mermaid.mjs - <<'EOF'\nbody\nEOF\nbash <<'EOF'\ngit push\nEOF\n",
-        "bash <<'EOF'\ngit push\nEOF\n",
-    ],
-)
-def test_bash_hook_still_reads_every_other_here_document(command):
-    assert _run_hook(_hook_commands()[0], "Bash", {"command": command}).returncode == 2
-
-
-@needs_powershell
-@pytest.mark.parametrize(
-    "command",
-    ["git add -A", "git add .", "git add -u", "git add wiki", "git add a.md b.md", "git add wiki/../x.md", "git add notes/Slice.md", "git add wiki/a.md wiki/b.md", "git add wiki/a.md; git add x"],
-)
-def test_bash_hook_refuses_git_add_of_anything_but_one_wiki_path(command):
-    result = _run_hook(_hook_commands()[0], "Bash", {"command": command})
-    assert result.returncode == 2
-    assert "one wiki path per command" in result.stderr
-
-
-@needs_powershell
-def test_bash_hook_lets_git_add_of_one_wiki_path_through():
-    for command in ("git add wiki/toolkit/Toolkit-Guide.md", "git add -- wiki/a.md"):
-        assert _run_hook(_hook_commands()[0], "Bash", {"command": command}).returncode == 0
-
+def test_rules_say_other_writes_ask_the_user_and_the_reply_is_not_the_command_s_to_give():
+    text = _text()
+    assert "pre-approves `Write` and `Edit` only for those paths" in text
+    assert "Never answer that prompt for yourself" in text
+    assert "so each would ask the user" in text
 
 def test_a_refused_page_or_failed_check_lists_the_pages_already_written():
     step = _last_step(8)
@@ -395,7 +267,7 @@ def test_allowed_tools_have_no_push_commit_or_github():
     allowed = _allowed_tools()
     assert not any("git push" in tool or "git commit" in tool for tool in allowed)
     assert not any(tool.startswith("Bash(gh") for tool in allowed)
-    assert "Bash(git add:*)" in allowed
+    assert "Bash(git add wiki/*)" in allowed
     assert "Bash(node *)" not in allowed and "Bash(node:*)" not in allowed
     assert not any(tool.startswith("Bash(rm") for tool in allowed)
     assert "AskUserQuestion" in allowed

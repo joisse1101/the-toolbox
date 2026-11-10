@@ -46,7 +46,7 @@ The five story skills are explained for their users in [Story Skills](../planner
 
 ## Commands
 
-The toolkit holds twelve commands, in `toolkit/commands/`, in five namespaces.
+The toolkit holds fifteen commands, in `toolkit/commands/`, in five namespaces.
 
 | Command | What it does | Use it when |
 | --- | --- | --- |
@@ -105,4 +105,4 @@ A hook is a check that runs before a tool call and can refuse it. The task agent
 
 ## Where the numbers come from
 
-The counts on this page were read from a listing of each folder, not from the READMEs. The seven skills, twelve commands, fourteen rules and two agents are every entry in `toolkit/skills/`, `toolkit/commands/`, `toolkit/rules/` and `toolkit/agents/`.
+The counts on this page were read from a listing of each folder, not from the READMEs. The seven skills, fifteen commands, fourteen rules and two agents are every entry in `toolkit/skills/`, `toolkit/commands/`, `toolkit/rules/` and `toolkit/agents/`.
