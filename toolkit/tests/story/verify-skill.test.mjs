@@ -10,7 +10,7 @@ const front = text.split('---')[1];
 
 test('the skill is named jois-story-verify, versioned, and may only run the story reader and writer scripts', () => {
   assert.match(front, /^name: jois-story-verify$/m);
-  assert.match(front, /^metadata:\n {2}version: "1\.1\.0"\n {2}last_updated: "\d{4}-\d{2}-\d{2}"$/m);
+  assert.match(front, /^metadata:\n {2}version: "1\.2\.0"\n {2}last_updated: "\d{4}-\d{2}-\d{2}"$/m);
   const allowed = /^allowed-tools: (.*)$/m.exec(front)[1];
   assert.match(allowed, /^Skill, /);
   for (const script of ['read-diagrams', 'write-diagram', 'read-story-context', 'read-backlog', 'write-review']) {

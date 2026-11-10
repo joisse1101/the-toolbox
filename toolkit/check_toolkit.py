@@ -32,9 +32,10 @@ CODE_SCOPED_RULES = (
     "jois-code-quality.md",
 )
 SHARED_PR_SECTIONS = ("PR body template", "Author Verification")
-# `/jois-code:review` starts validate through the Skill tool, which refuses a command with
-# `disable-model-invocation: true`. Validate keeps its own confirmation before it runs a foreign PR.
-MODEL_STARTABLE_COMMANDS = ("commands/jois-code/validate.md",)
+# `/jois-code:review` starts validate through the Skill tool, and `/jois-code:apply` starts review the
+# same way. The Skill tool refuses a command with `disable-model-invocation: true`. Validate keeps
+# its own confirmation before it runs a foreign PR, and review never edits, commits or pushes.
+MODEL_STARTABLE_COMMANDS = ("commands/jois-code/validate.md", "commands/jois-code/review.md")
 # Load in every session on purpose: a commit can contain no code (images, deletions, docs),
 # verification (a push, a deploy, a request for data) touches no code file either, and replies
 # happen without touching a file. Installs (`pip`, `npm -g`) touch no code file either, and the

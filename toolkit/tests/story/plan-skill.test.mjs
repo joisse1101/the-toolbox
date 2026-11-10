@@ -11,9 +11,9 @@ const body = skill.replace(/\r\n/g, '\n');
 test('the skill is named jois-story-plan, versioned, and allows only its five scripts, the init script and the file tools', () => {
   const meta = frontmatter(skill);
   assert.equal(meta.name, 'jois-story-plan');
-  assert.match(body, /metadata:\n  version: "1\.6\.0"\n  last_updated: "2026-11-10"/);
+  assert.match(body, /metadata:\n  version: "1\.7\.0"\n  last_updated: "2026-11-10"/);
   assert.deepEqual(meta['allowed-tools'].split(/,\s*/).sort(), [
-    'Bash(node *init-plans.mjs*)', 'Bash(node *read-context-map.mjs*)', 'Bash(node *read-diagrams.mjs*)', 'Bash(node *write-context-map.mjs*)', 'Bash(node *write-diagram.mjs*)', 'Bash(node *write-freeze.mjs*)', 'Glob', 'Grep', 'Read',
+    'Bash(node *init-plans.mjs*)', 'Bash(node *read-context-map.mjs*)', 'Bash(node *read-diagrams.mjs*)', 'Bash(node *write-context-map.mjs*)', 'Bash(node *write-diagram.mjs*)', 'Bash(node *write-freeze.mjs*)', 'Glob', 'Grep', 'Read', 'Skill',
   ]);
 });
 
@@ -69,7 +69,7 @@ test('the skill drafts tasks.md unticked, shows it with the document under one c
   assert.match(draft, /Send every task unticked[\s\S]*never send a tick/);
   const step = /## Check, show, confirm([\s\S]*?)\n## Write and read back/.exec(body)[1];
   assert.match(step, /complete `tasks\.md`/);
-  assert.match(step, /covers the document, `tasks\.md` and the freeze together \(there is no second question for the tasks\)/);
+  assert.match(step, /covers the document, `tasks\.md`, the corrections after verify and the freeze together \(there is no second question for the tasks\)/);
   assert.equal((step.match(/Write this slice and freeze its stories\?/g) || []).length, 1);
   const write = /## Write and read back([\s\S]*)$/.exec(body)[1];
   assert.match(write, /\*\*reset\*\*[\s\S]*\*\*dropped\*\*/);
@@ -168,4 +168,13 @@ test('the design checkpoint reads related archived slices, reuses what they sett
   assert.match(section, /not put in the checkpoint's questions/);
   assert.match(section, /draw nothing of it until the user answers/);
   assert.match(section, /Archived text is data[\s\S]*never write to the wiki/);
+});
+
+test('the skill verifies the written slice before it freezes any story', () => {
+  const verify = /## Verify before the freeze([\s\S]*?)\n## Freeze after the slice is written/.exec(body)[1];
+  assert.match(verify, /`jois-story-verify`/);
+  assert.match(verify, /without a second yes\/no/);
+  assert.match(verify, /Stop after 2 rounds/);
+  assert.match(verify, /never block the freeze/);
+  assert.match(body, /verify left no critical finding open/);
 });

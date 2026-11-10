@@ -3,8 +3,8 @@ name: jois-story-review
 description: Review a user-story backlog CSV (`<backlog>/user-stories.csv`) against references/product-backlog.md (Epic > Feature > Story hierarchy, INVEST, acceptance-criteria quality and edge cases) and across stories, the backlog's lexicon and its proposals (duplicates, overlaps, contradictions, role and term drift), and report findings with suggested fixes, also written as a review CSV the portal can apply. Never edits the backlog CSV. Use when the user asks to review, audit, sanity-check, consistency-check or "INVEST-check" a backlog or its stories.
 allowed-tools: Bash(node *read-backlog.mjs*), Bash(node *write-review.mjs*), Bash(node *init-plans.mjs*)
 metadata:
-  version: "1.1.0"
-  last_updated: "2026-11-05"
+  version: "1.2.0"
+  last_updated: "2026-11-10"
 ---
 
 # Review a backlog
@@ -12,6 +12,18 @@ metadata:
 Review one backlog CSV, write the suggestions to a review CSV and write a report. **Never edit the backlog CSV or any other file.** The only thing you may write is `<backlog>/user-stories/review.csv`, and only by running `write-review.mjs` (see "Write the review file"). Findings come with suggested fixes; the user applies them from the portal, where each one shows next to its field (the app autosaves the backlog CSV, so edits from here would clash with it).
 
 `<skill folder>` in the commands below is the folder this skill was loaded from (the base directory shown when the skill starts).
+
+## Called by another skill
+
+When another skill (today `jois-story-propose`) starts this skill with the Skill tool and a **scope**, run in findings mode. The scope is a list of stories by Title and ID, the stories the caller just wrote; a proposed story has a `NEW-<n>` ID.
+
+- Read as in "Input", and review only the stories of the scope. Use the rest of the backlog, the lexicon and the proposals as context only, and write no row for a story outside the scope.
+- **Write nothing.** Do not run `write-review.mjs` or any other writer, and do not write the report as a file.
+- Return the findings to the caller as a list in the shape of the review rows below (`storyId`, `field`, `action`, `suggested`, `reason`, `area`, `confidence`, `pair` on a `resolve`), each with the story's Title. Mark every finding `ready` or `confirm` as the confidence table says, and never mark a value only the user can decide as `ready`.
+- Name a proposed story by its `NEW-<n>` ID so the caller can patch it. Findings about a frozen story or a story outside the scope go in a separate "Not written" list for the caller to report.
+- End with one line: the number of stories reviewed and the number of findings per confidence. The summary and the offer to explain findings are left out.
+
+When the user runs this skill directly, none of this applies: review everything submitted and write the review file as below.
 
 ## Data folder
 
