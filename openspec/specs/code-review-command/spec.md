@@ -1,10 +1,10 @@
-# Spec Delta
+# code-review-command Specification
 
 ## Purpose
 
 Reviews a PR, or the current branch, in one step: it runs the static check against the repo's rules and wiki, then the behavioural check against what the change claims, and prints one honest report.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Targets of the review
 The command `/jois-code:review` SHALL accept a PR number, or no target, and SHALL review the current branch against `main` when no target is given. It SHALL announce the resolved target before it runs any check, and SHALL refuse an argument that is neither a PR number nor empty.
@@ -22,7 +22,7 @@ The command `/jois-code:review` SHALL accept a PR number, or no target, and SHAL
 - **THEN** the command says there is nothing to review against `main` and runs no check
 
 ### Requirement: The static check is the built-in code-review skill
-The command SHALL run the built-in `code-review` skill for the static check and SHALL NOT re-implement it. It SHALL tell the skill to report the rule or wiki page behind each finding, as the skill's own output does.
+The command SHALL run the built-in `code-review` skill for the static check and SHALL NOT re-implement it. It SHALL print the skill's findings in the skill's own wording, with the rule or wiki page the skill names, and SHALL NOT parse or re-rank them.
 
 #### Scenario: Static check runs first
 - **WHEN** the target is resolved
