@@ -189,8 +189,8 @@ Both forms run these. "The change" below means the slice in the slice form.
    - Run no test here. Tests run only through the test task in the last group of `tasks.md` (step 7).
    - Run `git status` and `git diff --stat`.
      - Ignore `openspec/changes/<name>/`, including `tasks.md`, in this check.
-     - Never stage that folder in this step. It is committed at archive. If anything under it is already staged, stop and name it. Read the index before any `git add`, and leave what was staged as it is.
-     - In the slice form, ignore `<backlog>/slices/` in this check too, and never stage or commit anything under it. If a file under it is already staged, stop and name it. It is not tracked by git here, so the ticks stay local.
+     - Never stage that folder in this step. `/jois-code:archive` does not stage it either, so it is never committed by these commands. If anything under it is already staged, stop and name it. Read the index before any `git add`, and leave what was staged as it is.
+     - In the slice form, ignore `<backlog>/slices/` in this check too, and never stage or commit anything under it. If a file under it is already staged, stop and name it. It is not tracked by git here, so the ticks stay local, and `/jois-code:archive` does not stage it either.
      - A tracked file outside the group's reported files and outside that folder changed: stop and name the file.
      - Something unrelated outside that folder already staged or edited: stop and name it.
    - **Split the group** when it is more than one concern (over about 200 lines or 5 files, or more than one layer).

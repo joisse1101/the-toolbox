@@ -26,6 +26,8 @@ The change moves through four steps, and the commit rule applies at the end of e
 
 To build a slice written by `jois-story-plan` instead, run `/jois-code:apply slice <backlog>/<slice>`. It checks that the slice is current and stops if it is stale, then works the same group loop and commits the code by itself under the same conditions. It ticks the slice's `tasks.md` in place, never stages the slice folder and never suggests `/opsx:archive`. Redraw a stale slice with `jois-story-plan` and run the command again.
 
+A finished slice goes into the wiki before its PR. After `/jois-code:apply slice <backlog>/<slice>` and `/jois-code:validate slice <backlog>/<slice>` both succeed at the current commit, run `/jois-code:archive slice <backlog>/<slice>`. It folds the slice into the topic pages of `wiki/`, shows every diff before it writes and stops at the confirmation word, so the wiki edits are committed with the code. Then run `/jois-git:write-pr`. A redrawn slice is archived again by running the command again, which replaces the slice's sections in place.
+
 When the change shapes user stories rather than code, the story skills have their own order, described in [Story Skills](../planner/Story-Skills.md).
 
 ## Commit and open a pull request

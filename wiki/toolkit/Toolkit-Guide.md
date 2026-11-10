@@ -46,7 +46,7 @@ The five story skills are explained for their users in [Story Skills](../planner
 
 ## Commands
 
-The toolkit holds twelve commands, in `toolkit/commands/`, in five namespaces.
+The toolkit holds fifteen commands, in `toolkit/commands/`, in five namespaces.
 
 | Command | What it does | Use it when |
 | --- | --- | --- |
@@ -55,6 +55,7 @@ The toolkit holds twelve commands, in `toolkit/commands/`, in five namespaces.
 | `/jois-code:validate slice <backlog>/<slice>` | Tests whether the code does what a slice says. It turns the slice's `Satisfies:` rows and its stories' acceptance criteria into claims, tests each in a throwaway checkout under `.scratch/` with the `code-validator` agent, and reports each as `met`, `not met` or `could not test`, with evidence. It writes `validation.md` into the slice folder after a full run and `validation.partial.md` after a run for one story. It never edits the code, commits or pushes. | A slice is built and you want to know whether its requirements are met. |
 | `/jois-code:validate <PR number>` | The PR form of the same command. It builds the claims from the PR description and the issue it links, so it works for someone else's PR with no slice. It asks for your yes before it runs a PR whose author is not you, and it only prints its report. | You review a PR and want its claims tested. |
 | `/jois-code:review [<PR number>] [slice <backlog>/<slice>] [low\|medium\|high\|xhigh] [--comment]` | Reviews a PR, or the current branch against `main` when you give no number, in one step. It runs the built-in `code-review` skill (the static check against `CLAUDE.md`, the rules and the wiki), then `/jois-code:validate` (the behavioural check), and prints one report with the two parts apart. A branch with no `slice` makes it ask for a slice or a PR number. With `--comment` it asks one yes/no question before the static check, because the skill posts while it runs. It refuses `--fix` and never edits, commits or pushes. | You want a PR or branch checked against the rules and against its claims. |
+| `/jois-code:archive slice <backlog>/<slice>` | Folds a built and validated slice into the existing topic pages of the project's `wiki/`. It refuses a stale or unfinished slice, or one whose `validation.md` is not `Validated: yes` at the current commit. It maps each part of the slice to a page and waits for your approval, applies the slice's `Changes to existing specs` rows as diffs you approve, and writes `ARCHIVED.md` into the slice folder. It stops at the commit rule's confirmation word and never pushes. | A slice is built and validated and its wiki pages must now describe it. |
 | `/jois-docs:meeting-minutes` | Turns pasted notes, or a notes file, into minutes in a fixed template. It asks for every gap, shows the minutes and saves only after you confirm. | You have meeting notes to turn into minutes. |
 | `/jois-git:stage` | Clears a messy working tree one concern at a time. It stages, proposes a message, waits for a confirmation word, commits and repeats until the tree is clean. It needs no OpenSpec change. | You have many uncommitted changes to split into clean commits. |
 | `/jois-git:write-pr` | Opens GitHub pull requests for the commits on the current branch, grouped by concern, from the team template. It never merges and lists the merge commands for you to run. | Your commits are ready for review. |
@@ -104,4 +105,4 @@ A hook is a check that runs before a tool call and can refuse it. The task agent
 
 ## Where the numbers come from
 
-The counts on this page were read from a listing of each folder, not from the READMEs. The seven skills, twelve commands, fourteen rules and two agents are every entry in `toolkit/skills/`, `toolkit/commands/`, `toolkit/rules/` and `toolkit/agents/`.
+The counts on this page were read from a listing of each folder, not from the READMEs. The seven skills, fifteen commands, fourteen rules and two agents are every entry in `toolkit/skills/`, `toolkit/commands/`, `toolkit/rules/` and `toolkit/agents/`.

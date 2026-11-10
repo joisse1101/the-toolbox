@@ -59,8 +59,8 @@ Re-install the rule and the test runner for the commit exception to take effect.
 The purpose is to commit a finished group without a stop, and to stop with nothing committed when something is doubtful. The command commits by itself only when all of these hold:
 
 - The branch is a named branch other than `main` or `master`.
+- Nothing foreign is staged or edited. The change folder `openspec/changes/<name>/` is ignored in this check and never staged, because neither apply nor `/jois-code:archive` commits it. In the slice form the folder `<backlog>/slices/` is ignored and never staged too, because git does not track it here.
 - The group's tasks are all done. No test runs between groups.
-- Nothing foreign is staged or edited. The change folder `openspec/changes/<name>/` is ignored in this check and never staged, because it is committed at archive. In the slice form the folder `<backlog>/slices/` is ignored and never staged too, because git does not track it here.
 - No single file holds two concerns.
 
 
