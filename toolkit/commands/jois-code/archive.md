@@ -42,6 +42,7 @@ The argument alone picks the form. Never guess.
    - Look for `read-diagrams.mjs` in `~/.claude/skills/jois-story-plan/` and in this project's `.claude/skills/jois-story-plan/`. If it is in neither, say the plan skill is not installed, name `Install-Toolkit.ps1` and stop.
    - Run `node <that folder>/read-diagrams.mjs <backlog> --slice <slice>` and read the whole output. `<backlog>` is the bare backlog name, such as `iam`, and never a path. Never re-implement the comparison.
    - Stop and write nothing in each of these cases: the output says `STALE`, it has a `changed:`, `missing:`, `new:` or `ambiguous:` line, or the command fails. Name each story by its Title and say the slice must be redrawn with `jois-story-plan`.
+   - A failure whose message says no data folder was found is its own reason, not a stale slice. The scripts look in `PLANNER_CONFIG`, then a `.plans` folder, then `planner.config.yaml`, all in the folder you run them from. Say the planner data folder could not be found, name those three places, and stop. Run the scripts from the project root.
    - A `healed:` line alone does not make the slice stale. Mention it and go on.
    - If the slice folder holds `ARCHIVED.md`, say it was archived on the date it names and treat this run as a rerun (step 7).
 

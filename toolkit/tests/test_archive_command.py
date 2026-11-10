@@ -81,6 +81,14 @@ def test_command_requires_validation_at_the_current_commit():
     assert "validation is out of date" in step
 
 
+def test_a_missing_data_folder_is_its_own_reason_and_not_a_stale_slice():
+    step = _step(2, 3)
+    assert "no data folder was found is its own reason, not a stale slice" in step
+    for place in ("`PLANNER_CONFIG`", "`.plans`", "`planner.config.yaml`"):
+        assert place in step
+    assert "Run the scripts from the project root" in step
+
+
 def test_a_validation_behind_head_counts_when_only_the_wiki_changed_since():
     step = _step(3, 4)
     assert "git merge-base --is-ancestor <tested commit> HEAD" in step
