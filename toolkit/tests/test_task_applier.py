@@ -197,3 +197,10 @@ def test_no_toolkit_file_allows_rm():
         if ".venv" in path.parts:
             continue
         assert "Bash(rm" not in path.read_text(encoding="utf-8"), path
+
+
+def test_apply_command_does_not_say_the_change_folder_is_committed_at_archive():
+    text = APPLY_COMMAND.read_text(encoding="utf-8")
+    assert "committed at archive" not in text
+    assert "`/jois-code:archive` does not stage it either" in text
+    assert "so the ticks stay local, and `/jois-code:archive` does not stage it either" in text
