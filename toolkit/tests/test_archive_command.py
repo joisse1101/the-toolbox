@@ -300,3 +300,116 @@ def test_allowed_tools_have_no_push_commit_or_github():
     assert "Bash(node *)" not in allowed and "Bash(node:*)" not in allowed
     assert not any(tool.startswith("Bash(rm") for tool in allowed)
     assert "AskUserQuestion" in allowed
+
+
+# Fixes from the mock-repo trials (task 3.2)
+
+def test_rules_say_show_wait_then_write_and_keep_files_inside_the_wiki():
+    text = _text()
+    assert "wait for the answer, before you write it. Never show and write in the same step" in text
+    assert "Build page text in the conversation and never in a scratch file" in text
+    assert "Keep the line endings a page already has" in text
+
+
+def test_command_says_where_each_script_lives_and_takes_a_bare_backlog_name():
+    assert "`<backlog>` is the bare backlog name" in _step(2, 3)
+    step = _step(3, 4)
+    assert "in the `jois-story-propose` skill folder" in step
+    assert "in the `jois-story-review` skill folder" in step
+    assert "count that as a reason" in step
+    assert "the open-question check could not run: install `jois-story-propose` or `jois-story-review` with `Install-Toolkit.ps1`" in step
+    assert "Never read the `Clarifications` column from the backlog file yourself in its place" in step
+    assert "Listing a skill folder to find a script is the only read outside the project" in _step(2, 3)
+
+
+def test_command_stops_after_the_reasons_with_a_fixed_message():
+    step = _step(3, 4)
+    assert "Run every check even when one has failed, then stop" in step
+    assert "`Nothing archived: <each reason>. Pages added 0, replaced 0, unchanged 0, skipped 0.`" in step
+    assert "run no later step" in step
+
+
+def test_command_handles_a_review_question_the_user_cannot_answer():
+    assert "`review: not stated`" in _step(4, 5)
+
+
+def test_new_page_is_linked_from_home_and_overlap_is_asked():
+    step = _step(5, 6)
+    assert "Map a link to it from `wiki/Home.md`" in step
+    assert "`wiki/Home.md` gets no `## Sources` row" in step
+    assert "ask whether to extend that section or add the part beside it" in step
+
+
+def test_write_step_names_contradictions_headings_and_the_stories_cell():
+    step = _step(7, 8)
+    assert "contradicts what the slice adds" in step
+    assert "Never leave it unmentioned" in step
+    assert "one level below the heading of the page section they sit in" in step
+    assert "Put the marked block just before `## Sources`" in step
+    assert "On a new page the slice's sections go under the page's `#` heading" in step
+    assert "`Title (hash); Title (hash)`" in step
+    assert "ask with AskUserQuestion (\"Write it\", \"Change it\") and write only after the answer" in step
+
+
+def test_a_crashed_docs_check_is_a_failed_check_and_never_replaced():
+    step = _last_step(8)
+    assert "When the script itself cannot run" in step
+    assert "Never replace it with a check of your own" in step
+
+
+def test_count_line_defines_each_word_and_a_stop_prints_it_too():
+    step = _last_step(8)
+    for word in ("`added` is a new page", "`replaced` is each existing page that was edited", "`unchanged`", "`skipped`"):
+        assert word in step
+    assert "A stop before the end prints the same line" in step
+
+
+def test_diagram_check_uses_the_command_line_on_standard_input_and_never_reads_silence_as_a_pass():
+    step = _step(7, 8)
+    assert "parse-mermaid.mjs -`" in step
+    assert "on standard input" in step
+    assert "no scratch file is needed" in step
+    assert "Exit code 0 is a pass" in step
+    assert "Never read silence as a pass" in step
+    assert "Parse the exact text that will be written, never the slice's original" in step
+    assert "or the check cannot run, report the error" in step
+
+
+def test_a_row_whose_page_leaves_the_wiki_is_refused_and_counted_as_skipped():
+    step = _step(6, 7)
+    assert "A row whose page path leaves `wiki/` (for example `../CLAUDE.md`) is refused, reported and skipped whatever its change word" in step
+    assert "counts as skipped" in step
+
+
+def test_files_are_written_only_with_the_write_and_edit_tools():
+    text = _text()
+    assert "never through a shell redirect or here-document" in text
+    assert "Change an existing page with `Edit`, and use `Write` only for a new page" in text
+
+
+def test_only_the_design_decisions_table_counts_for_tbc():
+    assert "Only that table counts" in _step(3, 4)
+    assert "`## Implementation overview` or `## Traceability` does not" in _step(3, 4)
+
+
+def test_map_leaves_no_part_out_silently_and_flags_a_decision_the_slice_still_questions():
+    step = _step(5, 6)
+    assert "Map every part. Leave none out. A part you leave out is named in the map with the reason" in step
+    assert "an open question of the slice still asks the same thing" in step
+
+
+def test_a_refused_page_holds_back_its_row_and_leaves_the_slice_unmarked():
+    assert "holds back every edit to the page, including a spec-change row for it, and counts the page as skipped" in _step(7, 8)
+    step = _last_step(8)
+    assert "When a page was refused or no page was written, leave the slice unmarked and say so" in step
+    assert "only when every mapped page was written" in step
+
+
+def test_the_turn_ends_at_the_word_even_for_a_skipped_row_and_without_one_when_nothing_was_staged():
+    step = _last_step(8)
+    assert "even when the only change is a skipped row" in step
+    assert "When nothing was staged, say so and end without a word" in step
+
+
+def test_diagram_check_takes_the_section_that_holds_the_diagrams():
+    assert "the section or page text that holds the diagrams on standard input" in _step(7, 8)
