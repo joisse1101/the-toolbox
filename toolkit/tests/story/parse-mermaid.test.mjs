@@ -6,7 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { planSkillCopy } from './helpers/plan-skill.mjs';
 
 const plan = planSkillCopy();
-const { parseMermaid } = await plan.load('parse-mermaid.mjs');
+const { parseMermaid, mermaidBlocks } = await plan.load('parse-mermaid.mjs');
 
 const CLASS = `classDiagram
   namespace Identity {
@@ -68,16 +68,40 @@ test('the command line parses every mermaid fence on standard input and exits 0'
 test('the command line exits 1 and names the broken diagram and its line', () => {
   const r = cli(['-'], '```mermaid\n' + CLASS + '\n```\n\n```mermaid\nsequenceDiagram\n  actor U\n  U->>>U: x\n```\n');
   assert.equal(r.status, 1);
-  assert.match(r.stdout, /diagram 2 \(from line 16\): FAILED on its line 3/);
+  const secondDiagramLine = CLASS.split('\n').length + 5; // fence, diagram, fence, blank, fence, then the diagram
+  assert.ok(r.stdout.includes(`diagram 2 (from line ${secondDiagramLine}): FAILED on its line 3`), r.stdout);
   assert.match(r.stdout, /2 diagrams, 1 failed/);
 });
 
-test('input with no fence is one diagram, and a file path is read', () => {
+test('--bare reads the whole input as one diagram, from a file path too', () => {
   const file = path.join(plan.dir, 'bare.mmd');
   fs.writeFileSync(file, CLASS);
-  const r = cli([file]);
+  const r = cli(['--bare', file]);
   assert.equal(r.status, 0, r.stdout + r.stderr);
   assert.match(r.stdout, /1 diagram, 0 failed/);
+});
+
+test('input with no fence is 0 diagrams and not a failure', () => {
+  const r = cli(['-'], '# Page\n\nSome text that says git push and gh.\n');
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /0 diagrams, 0 failed/);
+});
+
+test('indented, tilde and empty fences are found, and an indent is taken off', () => {
+  const text = '- item\n\n  ```mermaid\n  ' + SEQUENCE.split('\n').join('\n  ') + '\n  ```\n\n~~~mermaid\n' + SEQUENCE + '\n~~~\n\n```mermaid\n```\n';
+  const blocks = mermaidBlocks(text);
+  assert.equal(blocks.length, 3);
+  assert.equal(blocks[0].text, SEQUENCE);
+  assert.equal(blocks[2].text, '');
+  const r = cli(['-'], text.replace(/```mermaid\n```\n/, ''));
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /2 diagrams, 0 failed/);
+});
+
+test('a script path in another case still runs on Windows, never a silent exit 0', { skip: process.platform !== 'win32' }, () => {
+  const upper = path.join(plan.dir, 'parse-mermaid.mjs').replace(/^./, (c) => c.toUpperCase()).replace(/\parse-mermaid/, '\PARSE-MERMAID');
+  const r = spawnSync(process.execPath, [upper, '-'], { input: '```mermaid\n' + CLASS + '\n```\n', encoding: 'utf8' });
+  assert.match(r.stdout, /1 diagram, 0 failed/, r.stdout + r.stderr);
 });
 
 test('the command line exits 2 with no argument or an unreadable file, and never passes silently', () => {

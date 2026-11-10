@@ -47,22 +47,30 @@ export async function parseMermaid(text) {
   }
 }
 
-// The ```mermaid fences of a markdown text -> [{ text, line }], `line` being the line of the first diagram line.
+// The mermaid fences of a markdown text (``` or ~~~, indented or not, even empty) -> [{ text, line }], `line` being the
+// line of the first diagram line. An indented fence has its indent taken off its lines.
 export function mermaidBlocks(markdown) {
   const text = markdown.replace(/\r\n/g, '\n');
-  return [...text.matchAll(/^```mermaid[ \t]*\n([\s\S]*?)\n```[ \t]*$/gm)].map((m) => ({
-    text: m[1],
+  return [...text.matchAll(/^([ \t]*)(```|~~~)mermaid[ \t]*\n([\s\S]*?)^[ \t]*\2[ \t]*$/gm)].map((m) => ({
+    text: m[3]
+      .replace(/\n$/, '')
+      .split('\n')
+      .map((l) => (l.startsWith(m[1]) ? l.slice(m[1].length) : l))
+      .join('\n'),
     line: text.slice(0, m.index).split('\n').length + 1,
   }));
 }
 
 // Command line, so a command can check a diagram it is about to write:
-//   node parse-mermaid.mjs <file>      a markdown file or a bare diagram; `-` reads standard input
-// Every ```mermaid fence of the input is parsed; input with no fence is one diagram. Prints one line per diagram and
-// exits 0 when all parse, 1 when one fails, 2 when the input cannot be read or the packages are missing.
-async function main(arg) {
+//   node parse-mermaid.mjs [--bare] <file | ->      `-` reads standard input
+// Every mermaid fence of the input is parsed, and input with no fence is "0 diagrams, 0 failed". With --bare the whole
+// input is one diagram (a .mmd file). Prints one line per diagram and exits 0 when all parse, 1 when one fails, 2 when the
+// input cannot be read or the packages are missing.
+async function main(args) {
+  const bare = args.includes('--bare');
+  const arg = args.find((a) => a !== '--bare');
   if (!arg) {
-    console.error('Usage: node parse-mermaid.mjs <file | ->');
+    console.error('Usage: node parse-mermaid.mjs [--bare] <file | ->');
     return 2;
   }
   const missing = mermaidMissing();
@@ -78,7 +86,7 @@ async function main(arg) {
     return 2;
   }
   const blocks = mermaidBlocks(input);
-  const diagrams = blocks.length ? blocks : [{ text: input.replace(/\r\n/g, '\n'), line: 1 }];
+  const diagrams = bare ? [{ text: input.replace(/\r\n/g, '\n'), line: 1 }] : blocks;
   let failed = 0;
   for (const [i, d] of diagrams.entries()) {
     const r = await parseMermaid(d.text);
@@ -94,6 +102,20 @@ async function main(arg) {
   return failed ? 1 : 0;
 }
 
-if (process.argv[1] && pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url) {
-  process.exitCode = await main(process.argv[2]);
+// True when this file is the script node was started with. Real paths are compared, because a drive letter in another case,
+// a short name or a link would make the plain URLs differ and the command would end silently with exit 0.
+function runAsCommand() {
+  if (!process.argv[1]) return false;
+  try {
+    const real = (u) => fs.realpathSync.native(u);
+    const a = real(process.argv[1]);
+    const b = real(fileURLToPath(import.meta.url));
+    return process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b;
+  } catch {
+    return pathToFileURL(path.resolve(process.argv[1])).href === import.meta.url;
+  }
+}
+
+if (runAsCommand()) {
+  process.exitCode = await main(process.argv.slice(2));
 }
