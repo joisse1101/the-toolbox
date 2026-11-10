@@ -50,7 +50,7 @@ The toolkit holds twelve commands, in `toolkit/commands/`, in five namespaces.
 
 | Command | What it does | Use it when |
 | --- | --- | --- |
-| `/jois-code:apply <change>` | Applies an OpenSpec change one group of tasks at a time. It hands each group to the `opsx-task-applier` agent, records the result in `tasks.md`, checks the group with `opsx-test-runner` and commits it by itself on a branch other than `main` or `master`. Otherwise it commits nothing, says which condition failed and stops. It never pushes. | You have an OpenSpec change with tasks to carry out. |
+| `/jois-code:apply <change>` | Applies an OpenSpec change one group of tasks at a time. It hands each group to the `opsx-task-applier` agent, records the result in `tasks.md` and commits the finished group by itself on a branch other than `main` or `master`. It runs the tests once, as the last group's task, with `opsx-test-runner`. Otherwise it commits nothing, says which condition failed and stops. It never pushes. | You have an OpenSpec change with tasks to carry out. |
 | `/jois-code:apply slice <backlog>/<slice>` | The slice form of the same command. It builds a slice written by `jois-story-plan` instead of an OpenSpec change. It first checks that the slice is current with the plan skill's `read-diagrams.mjs` and stops on a stale slice. It then works the slice's `tasks.md` group by group and ticks each task in place. It never stages the slice folder and never pushes. | You have a slice whose build tasks are written. |
 | `/jois-code:validate slice <backlog>/<slice>` | Tests whether the code does what a slice says. It turns the slice's `Satisfies:` rows and its stories' acceptance criteria into claims, tests each in a throwaway checkout under `.scratch/` with the `code-validator` agent, and reports each as `met`, `not met` or `could not test`, with evidence. It writes `validation.md` into the slice folder after a full run and `validation.partial.md` after a run for one story. It never edits the code, commits or pushes. | A slice is built and you want to know whether its requirements are met. |
 | `/jois-code:validate <PR number>` | The PR form of the same command. It builds the claims from the PR description and the issue it links, so it works for someone else's PR with no slice. It asks for your yes before it runs a PR whose author is not you, and it only prints its report. | You review a PR and want its claims tested. |
@@ -94,12 +94,12 @@ The toolkit holds two agents, in `toolkit/agents/`. A command dispatches them, s
 | Agent | What it does | Dispatched by |
 | --- | --- | --- |
 | `opsx-task-applier` | Applies one group of an OpenSpec change's or a slice's tasks in order, stops at the first blocked or failed task and reports per task what it changed and what it saw. It has a 50-turn limit. Hooks block `git commit`, `git push`, `gh`, a recursive and forced `rm`, and an edit of a change's or a slice's `tasks.md`. | `/jois-code:apply` |
-| `opsx-test-runner` | Runs only the test commands the project's own instructions name, for the files a group changed, and reports each command with its exit code and counts. It uses the Haiku model, has no edit tools and installs nothing. | `/jois-code:apply`, after each group |
+| `opsx-test-runner` | Runs only the test commands the project's own instructions name, for the files a change touched, and reports each command with its exit code and counts. It uses the Haiku model, has no edit tools and installs nothing. | `/jois-code:apply`, for the last group's test task |
 | `code-validator` | Tests one group of claims in a throwaway checkout and reports one verdict per claim with its evidence. It has a 40-turn limit and no edit tools. Hooks block `git commit`, `git push`, `gh` and a recursive and forced `rm`. | `/jois-code:validate` |
 
 A hook is a check that runs before a tool call and can refuse it. The task agent and the test runner each carry one so they cannot commit, push or call GitHub.
 
-`/jois-code:apply` needs `opsx-task-applier` installed and stops without it. It also looks for `opsx-test-runner`, and when that is missing it stops with nothing committed and names the missing agent. The slice form `/jois-code:apply slice <backlog>/<slice>` also needs the `jois-story-plan` skill installed, and stops with a note naming `Install-Toolkit.ps1` without it.
+`/jois-code:apply` needs `opsx-task-applier` installed and stops without it. It also looks for `opsx-test-runner`, and when that is missing it names the missing agent and stops before the last group, which holds the test task. The slice form `/jois-code:apply slice <backlog>/<slice>` also needs the `jois-story-plan` skill installed, and stops with a note naming `Install-Toolkit.ps1` without it.
 
 ## Where the numbers come from
 
