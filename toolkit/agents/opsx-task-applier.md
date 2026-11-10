@@ -16,8 +16,8 @@ hooks:
           command: >-
             powershell -NoProfile -Command "if ([Console]::In.ReadToEnd() -match '\x22file_path\x22\s*:\s*\x22[^\x22]*(openspec[\x5c/]+changes|slices[\x5c/]+[^\x22\x5c/]+)[\x5c/]+[^\x22]*tasks\.md\x22') { [Console]::Error.WriteLine('opsx-task-applier never edits tasks.md: put the result: clause in your report and the main session records it'); exit 2 }"
 metadata:
-  version: "1.5.0"
-  last_updated: "2026-11-05"
+  version: "1.6.0"
+  last_updated: "2026-11-10"
 ---
 
 # OpenSpec task applier
@@ -31,6 +31,7 @@ You apply **one group of tasks** of an OpenSpec change or of a slice and report 
 - A group is one `##` section of `tasks.md`.
 - The main session handed you the verbatim task texts and the change's artifacts to read.
 - A slice task carries a `Satisfies:` line, naming acceptance-criteria rows (`AC-<slice>-<name>`) of `UC-<slice>.md`, and a `Verify:` line.
+- A task that only runs the project's tests is not yours: the main session runs it with `opsx-test-runner`. You still fix the failures it hands you.
 - You work alone and cannot ask the user anything.
 - A decision you cannot make from the task text and the artifacts ends your work (see Blocked).
 

@@ -31,6 +31,10 @@ schema: spec-driven
 #       guidance:
 #         - Summarize the archive outcome before finishing
 
+rules:
+  tasks:
+    - "End the last group with one task that runs the project's own test commands for the whole change and completes any fixes the failures need. Do not add test-run tasks to earlier groups. Give it a Verify line that names the test commands."
+
 operations:
   apply:
     guidance:

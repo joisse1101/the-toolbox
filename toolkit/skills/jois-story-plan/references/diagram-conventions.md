@@ -288,6 +288,15 @@ indented lines:
   writer checks only that each step exists in the diagram of the task's flow, and does not refuse a step
   that lies outside the Steps column of a named row.
 
+### The test task
+
+The last task of the last `## <flow>` group runs the tests of the whole slice and completes any fixes the
+failures need. It is the only test task: no other group has one, because `/jois-code:apply` tests once, after
+every group has landed. It is an ordinary task line, so the writer's checks apply to it: its `Satisfies:` line
+names `AC id` rows and step ids of that last flow (the criteria the flow already has), and its `Verify:` line
+names the project's own test commands and what exit code 0 shows. It cannot cite the other flows' criteria,
+so the `Verify:` line carries the whole-slice scope.
+
 ### Coverage
 
 Every `AC id` of the acceptance-criteria table is named by at least one task. The writer refuses a task that
