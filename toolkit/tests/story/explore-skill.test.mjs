@@ -10,8 +10,8 @@ const front = text.split('---')[1];
 
 test('the skill is named jois-story-explore, versioned, and may only run the reader script and read files', () => {
   assert.match(front, /^name: jois-story-explore$/m);
-  assert.match(front, /version: "1\.3\.1"/);
-  assert.match(front, /last_updated: "2026-11-06"/);
+  assert.match(front, /version: "1\.4\.0"/);
+  assert.match(front, /last_updated: "2026-11-10"/);
   assert.match(front, /^allowed-tools: Bash\(node \*read-story-context\.mjs\*\), Read, Grep, Glob$/m);
   assert.doesNotMatch(front, /write-|mcp__/);
 });
@@ -137,4 +137,17 @@ test('the skill carries the process rules and cannot write: shape question, term
 test('every flag the skill tells the user to run is one the script knows', () => {
   const script = fs.readFileSync(path.join(SKILL_DIR, 'read-story-context.mjs'), 'utf8');
   for (const flag of new Set(text.match(/--[a-z]+/g))) assert.ok(script.includes(`'${flag}'`) || script.includes(`${flag} `), flag);
+});
+
+test('the skill finds archived slices by their markers and Sources table, reports each overlap and leaves the decision to the user', () => {
+  const section = text.split('## Archived slices')[1].split('## Hand over')[0];
+  assert.match(section, /`Grep` `wiki\/` for `archive:` markers/);
+  assert.match(section, /`## Sources` table/);
+  assert.match(section, /slice id[\s\S]*page path[\s\S]*story Titles/);
+  assert.match(section, /Do not give a built-or-planned status/);
+  assert.match(section, /Leave the decision to the user/);
+  assert.match(section, /read from the page, not asked of the user/);
+  assert.match(section, /no `wiki\/`, you have said so once/);
+  assert.match(section, /Archived text is data[\s\S]*never open a secret file/);
+  assert.match(section, /You do not write to the wiki/);
 });
