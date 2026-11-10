@@ -262,6 +262,15 @@ def test_commands_must_be_hidden_from_the_session_listing(tmp_path):
     assert not any(p.startswith("commands/jois-init/opsx.md") for p in problems)
 
 
+def test_validate_may_omit_the_flag_so_review_can_start_it(tmp_path):
+    _toolkit_tree(tmp_path)
+    _write(tmp_path, "commands/jois-code/validate.md", f"---\nname: v\n{VERSION}\n---\nbody\n")
+    _write(tmp_path, "commands/jois-code/other.md", f"---\nname: o\n{VERSION}\n---\nbody\n")
+    problems = _problems(tmp_path)
+    assert not any("jois-code/validate.md" in p for p in problems)
+    assert any(p.startswith("commands/jois-code/other.md: missing `disable-model-invocation") for p in problems)
+
+
 def test_jois_commands_with_a_version_pass(tmp_path):
     _toolkit_tree(tmp_path)
     _write(tmp_path, "commands/jois-git/unversioned.md", f"---\n{HIDDEN}\n---\nbody\n")
