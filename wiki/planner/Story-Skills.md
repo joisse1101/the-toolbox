@@ -61,6 +61,8 @@ The skill decides the scope with you first, then shows a design checkpoint with 
 
 Each slice has a `## Changes to existing specs` section, after `## Open questions`. The skill reads the Notes of every story in scope and turns each `Changes existing spec` line into one row (Change, Wiki page, What changes, Reason), or writes `None`. It puts the question about a contradiction that no Notes line records into the design checkpoint, so you answer before it shows the document, and writes a row only after a yes. The row's path is the one in the Notes line minus the leading `wiki/`. A story with a `Supersedes` line is a new story and is not frozen, so the skill plans it only after you accept it into the backlog, and the slice freezes it only when it covers it and you confirm. The skill never edits the wiki and never marks a row applied. Wiki pages are read with `Read`, `Grep` and `Glob`.
 
+A slice that is built and validated is folded into the wiki by `/jois-code:archive`, which applies those rows. It marks the slice folder with `ARCHIVED.md` (the date, the commit and the pages touched) and deletes nothing. The marker file is not a slice file the plan skill reads or checks, and a redraw with `jois-story-plan` leaves it as it is.
+
 The skill reports slices as stale when their stories changed, and redraws only when you ask. It writes the slice, the map and one more thing: the `Frozen` flag, described below. For a change to a story or a term it offers `jois-story-propose`, and it needs its own packages, installed by `npm ci` in the skill folder.
 
 ### Freezing the stories of a slice
