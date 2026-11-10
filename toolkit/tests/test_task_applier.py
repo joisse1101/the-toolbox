@@ -167,29 +167,35 @@ def test_apply_command_names_the_fix_loop_limits():
     assert "Never take the next group while a failure of the current group is unexplained" in text
 
 
-def test_apply_command_has_the_deferral_rule():
+def test_apply_command_has_no_deferral_or_held_back_rule():
     text = APPLY_COMMAND.read_text(encoding="utf-8")
-    assert "A **deferrable failure**" in text
-    assert "A deferrable failure does not run the fix loop" in text
+    for gone in ("deferrable", "held-back", "held back", "One rerun", "nothing is deferred"):
+        assert gone not in text
 
 
-def test_apply_command_requires_a_pending_task_checked_against_tasks_md():
+def step_ten(text):
+    return text.split("10. **Commit the group.**")[1].split("11. **Take the next group.**")[0]
+
+
+def test_apply_command_commits_a_finished_group_without_a_test_run():
+    step = step_ten(APPLY_COMMAND.read_text(encoding="utf-8"))
+    assert "Do this when all of the group's tasks are done." in step
+    assert "Run no test here." in step
+    assert "Dispatch `opsx-test-runner`" not in step
+
+
+def test_apply_command_runs_the_test_task_itself_with_the_runner():
     text = APPLY_COMMAND.read_text(encoding="utf-8")
-    assert "still pending in a later group" in text
-    assert "Check the named task against `tasks.md` yourself" in text
-    assert "with no task named is not deferrable" in text
+    assert "**The test task.**" in text
+    assert "Do not send it to `opsx-task-applier`" in text
+    assert "The tests passed only when every reported command shows exit code 0" in text
+    assert "dispatch `opsx-test-runner` again" in text
 
 
-def test_apply_command_commits_held_back_changes_when_green():
+def test_apply_command_stops_before_the_last_group_without_the_runner():
     text = APPLY_COMMAND.read_text(encoding="utf-8")
-    assert "commit all held-back changes by explicit path, cut by concern" in text
-    assert "Never commit while any command is red" in text
+    assert "Before the dispatch of the last group, say it again and stop" in text
 
-
-def test_apply_command_defers_nothing_after_the_last_group():
-    text = APPLY_COMMAND.read_text(encoding="utf-8")
-    assert text.count("After the last group nothing is deferred") == 2
-    assert "run the fix loop over the whole change" in text
 
 
 def test_no_toolkit_file_allows_rm():

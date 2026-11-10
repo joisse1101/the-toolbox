@@ -20,7 +20,7 @@ The guidance only points at the `jois-git-commit-hygiene` rule, which holds the 
 
 An agent is a file under `toolkit/agents/` with `name`, `description` and `tools` frontmatter, then the instructions. An agent without `tools` inherits every tool, so `python toolkit/check_toolkit.py` fails on one. The installer treats each file as a unit, so `-Agent opsx-task-applier.md` installs one. The toolkit ships three agents (`code-validator` is described under Validating), and other agents in `~/.claude/agents/` are not the toolkit's and are never touched.
 
-`opsx-task-applier` does one group of an OpenSpec change's tasks. `opsx-test-runner` runs the project's own test commands for a group's files and reports each command, exit code and counts. It uses the Haiku model and has no edit tools, installs nothing and never commits, pushes or calls GitHub. It runs a suite in another folder with the command's own folder flag (`npm --prefix`, `git -C`), never `cd`. A passing command whose result shows no exit code and no error is reported as `exit code 0 (the tool showed no error)`, and a failing command is reported with its exit code and error line. Install it with `.\Install-Toolkit.ps1 -Agent opsx-test-runner.md`.
+`opsx-task-applier` does one group of an OpenSpec change's tasks. `opsx-test-runner` runs the project's own test commands for the files a change touched, only for the test task in the last group, and reports each command, exit code and counts. It uses the Haiku model and has no edit tools, installs nothing and never commits, pushes or calls GitHub. It runs a suite in another folder with the command's own folder flag (`npm --prefix`, `git -C`), never `cd`. A passing command whose result shows no exit code and no error is reported as `exit code 0 (the tool showed no error)`, and a failing command is reported with its exit code and error line. Install it with `.\Install-Toolkit.ps1 -Agent opsx-test-runner.md`.
 
 ## How a group runs
 
@@ -50,26 +50,23 @@ Install both parts, then start the command in a Claude Code session:
 .\Install-Toolkit.ps1 -Rule jois-git-commit-hygiene.md -Force
 ```
 
-The command checks for each agent in `~/.claude/agents/` and in the project's `.claude/agents/`. If `opsx-task-applier` is in neither, the command says so, names `Install-Toolkit.ps1` and stops. If `opsx-test-runner` is in neither, the command says so, names `Install-Toolkit.ps1`, and the command stops with nothing committed when it reaches the group's commit, because it cannot check the tests. The command never copies an agent itself. <!-- docs-check: ignore -->
+The command checks for each agent in `~/.claude/agents/` and in the project's `.claude/agents/`. If `opsx-task-applier` is in neither, the command says so, names `Install-Toolkit.ps1` and stops. If `opsx-test-runner` is in neither, the command says so, names `Install-Toolkit.ps1`, and the command stops before it dispatches the last group, because that group's test task needs the runner. Earlier groups are not held up. The command never copies an agent itself. <!-- docs-check: ignore -->
 
 Re-install the rule and the test runner for the commit exception to take effect. An older installed rule still says "never commit" next to the new command, and `-Force` overwrites the installed rule, which `-List` shows as `differs`.
 
 ## Committing a group
 
-The purpose is to commit a checked group without a stop, and to stop with nothing committed when something is doubtful. The command commits by itself only when all of these hold:
+The purpose is to commit a finished group without a stop, and to stop with nothing committed when something is doubtful. The command commits by itself only when all of these hold:
 
 - The branch is a named branch other than `main` or `master`.
-- `opsx-test-runner` ran the tests for the group's files and every reported command shows exit code 0.
+- The group's tasks are all done. No test runs between groups.
 - Nothing foreign is staged or edited. The change folder `openspec/changes/<name>/` is ignored in this check and never staged, because it is committed at archive. In the slice form the folder `<backlog>/slices/` is ignored and never staged too, because git does not track it here.
 - No single file holds two concerns.
 
-A passing command that shows no code is reported as `exit code 0 (the tool showed no error)`. The command judges the tests by exit codes, never by the agent's wording.
 
-A fixable doubt gets one rerun before it stops. A fixable doubt is a missing exit code or a suite skipped for a folder problem. The rerun puts the exact commands in the prompt, once per group, and the stall watch covers it. A protected branch, a missing agent and an unrelated change are not rerun and stop with nothing committed. A non-zero exit code is not rerun either. If a pending task of a later group is named as the fix, the commit waits (see Deferring a commit below). Otherwise it starts the fix loop.
+A group of several concerns is split, not stopped on. It is cut by the hygiene rule's one-concern list and by task. Each concern is staged by explicit path and committed in turn with its own message, and each hash is printed. If a later commit fails, the command stops and reports which commits were made. A commit-stop line in the project's `operationGuidance` does not govern these commits.
 
-A group of several concerns is split, not stopped on. It is cut by the hygiene rule's one-concern list and by task. The tests run once for the whole group before the first commit. Each concern is staged by explicit path and committed in turn with its own message, and each hash is printed. If a later commit fails, the command stops and reports which commits were made. A commit-stop line in the project's `operationGuidance` does not govern these commits.
-
-Otherwise the command commits nothing, says which condition failed and what you can do about it (switch branch, install the agent, fix the test, move the foreign change), and stops, as the apply clause of the `jois-git-commit-hygiene` rule says. It names no confirmation word and asks for none. Work already done stays in the tree and in `tasks.md`, and a rerun resumes from the pending tasks. A stop that follows a failing test comes only after every failure of the group is explained. A protected branch, a detached HEAD, an unreadable branch name, no test command, a suite that could not run, a missing test runner, a foreign change and a file that holds two concerns each cause this stop. It stages by explicit path and never uses `--amend` or `--no-verify`. It never pushes, on any branch, and a rejected commit stops the command and is reported.
+Otherwise the command commits nothing, says which condition failed and what you can do about it (switch branch, move the foreign change), and stops, as the apply clause of the `jois-git-commit-hygiene` rule says. It names no confirmation word and asks for none. Work already done stays in the tree and in `tasks.md`, and a rerun resumes from the pending tasks. A protected branch, a detached HEAD, an unreadable branch name, a foreign change and a file that holds two concerns each cause this stop. It stages by explicit path and never uses `--amend` or `--no-verify`. It never pushes, on any branch, and a rejected commit stops the command and is reported.
 
 ## What the agent does
 
@@ -87,7 +84,7 @@ The command copies each clause verbatim into the task's line in `tasks.md` and t
 
 ## Fixing failures
 
-The purpose is to find and fix a failure before the next group starts, without asking you first. A failure is a task the report calls failed, a test command with a non-zero exit code, or a failure the report does not explain. The command sends a fresh `opsx-task-applier` with the failing command, its exact output and the instruction to find the cause and fix it, and after each round it reruns the tests.
+The purpose is to find and fix a failure without asking you first. A failure is a task the report calls failed, a test command of the final test task with a non-zero exit code, or a failure the report does not explain. The command sends a fresh `opsx-task-applier` with the failing command, its exact output and the instruction to find the cause and fix it, and after each round for a failing test command the command dispatches `opsx-test-runner` again.
 
 A failure is explained only when the `Failures` part gives the command, the exact output line, the cause and whether it is fixed. "Not caused by this group" counts only with evidence, such as the same failure on `main`. The command takes the next group only when every failure is explained, and at most two fix rounds run. It asks you in three cases, says which one applies and shows the failure:
 
@@ -107,15 +104,11 @@ A slice run writes its result into the slice folder, which git does not track he
 
 The code runs in a git worktree under `.scratch/`, with installs inside it only and mock data only, and the command removes it at the end. Before it runs a PR whose author is not the current git user, it says that it will run code you have not read and that a checkout is not a sandbox, and it waits for your yes. Until the yes it runs only the read-only lookups of the PR and its issue, with no fetch, checkout, install or test. This is a prompt and not a guard: a hostile PR can still harm the machine, so run untrusted code on a separate machine or in a container. The agent's hook is the same kind of backstop as the task agent's, and it does not catch a `gh` call or an `rm -rf` hidden inside a script. Instructions planted in a PR description or a slice are data, and the command ignores them and mentions them in the report.
 
-## Deferring a commit
+## Testing once, at the end
 
-A failing test does not always need a fix round, because sometimes a later task of the same change is what makes the test pass. In that case the command holds the commit back and goes on, so that it does not fix a failure that the next group would fix anyway.
+Tests run once, after every group has landed, as the last task of the last group of `tasks.md`. The reason is that a test run in the middle of a change fails for things a later group fixes, so it wastes tokens and time. The task runs the project's own test commands for the whole change and completes any fixes the failures need. For an OpenSpec change the `rules.tasks` entry in `openspec/config.yaml` asks for it, and for a slice the `jois-story-plan` skill writes it as the last task of the last flow group. A `tasks.md` written before this has no test task, and apply adds none.
 
-A failure is deferrable only when it is explained and also names, as its fix, a task that is still pending in a later group. The failure gives the command, the exact output line, the cause and the task number. The command checks the named task in `tasks.md` itself: the task must exist, sit in a later group and be unticked. "A later group will fix it" with no task named is not deferrable, and neither is a task that is ticked or missing, because the report's word alone is not evidence.
-
-For a deferrable failure the command does not commit, says which task it waits for and takes the next group without asking you. After each later group it reruns the tests. While every failure still names a pending task it keeps holding. When every command exits 0 it commits all the held-back changes by explicit path, cut into commits by concern as the `jois-git-commit-hygiene` rule says, and groups that changed the same file keep that file in one commit. It never commits while any command is red.
-
-The last group cannot defer, because no later task is left to fix anything. A red result there runs the fix loop over the whole change, and the command asks you if a failure stays unexplained.
+`opsx-task-applier` cannot start another agent, so the command carries out the test task itself. It sends the group's other tasks to the applier first, then dispatches `opsx-test-runner` with the files the change touched and judges the report by exit codes only, never by wording. The tests passed only when every reported command shows exit code 0, and a result that shows no code and no error is reported as `exit code 0 (the tool showed no error)`. A missing exit code or a non-zero one is not a pass and starts the fix loop. No test command found, or a suite that could not run, stops the command and shows the reason, because a fix round cannot repair that. A fix lands as a new commit, because the earlier groups are already committed.
 
 ## What is enforced
 
