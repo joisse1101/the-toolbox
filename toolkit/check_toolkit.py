@@ -8,7 +8,8 @@ Checks:
   1. code-scoped rules: present and scoped to source-code file types
   2. unscoped and technology rules: `paths:` frontmatter, one rule per file extension
   3. `metadata.version` and `metadata.last_updated` on every skill, rule, agent and jois-git, jois-init, jois-code, jois-docs or jois-story command
-  4. every slash command carries `disable-model-invocation: true`
+  4. every slash command carries `disable-model-invocation: true`, except those in
+     MODEL_STARTABLE_COMMANDS
   5. the PR body template and Author Verification sections of write-pr and update-pr match
   6. every agent declares `tools` (an omitted list inherits every tool)
   7. a skill may hold scripts, `lib/`, `references/` and a `package.json`; a `package.json` needs a
@@ -31,6 +32,9 @@ CODE_SCOPED_RULES = (
     "jois-code-quality.md",
 )
 SHARED_PR_SECTIONS = ("PR body template", "Author Verification")
+# `/jois-code:review` starts validate through the Skill tool, which refuses a command with
+# `disable-model-invocation: true`. Validate keeps its own confirmation before it runs a foreign PR.
+MODEL_STARTABLE_COMMANDS = ("commands/jois-code/validate.md",)
 # Load in every session on purpose: a commit can contain no code (images, deletions, docs),
 # verification (a push, a deploy, a request for data) touches no code file either, and replies
 # happen without touching a file. Installs (`pip`, `npm -g`) touch no code file either, and the
@@ -179,9 +183,15 @@ def _version_problems(rel: str, text: str) -> list[str]:
 
 
 def _check_commands_hidden(root: Path) -> list[str]:
-    """Every slash command must stay out of the session listing (user-only invocation)."""
+    """Every slash command must stay out of the session listing (user-only invocation).
+
+    The commands in MODEL_STARTABLE_COMMANDS are the exception: another command starts them through
+    the Skill tool, which refuses a command that carries the flag.
+    """
     problems = []
     for path in sorted((root / "commands").glob("**/*.md")):
+        if _rel(root, path) in MODEL_STARTABLE_COMMANDS:
+            continue
         frontmatter = _frontmatter(path.read_text(encoding="utf-8")) or ""
         if not re.search(r"^disable-model-invocation:[ 	]*true[ 	]*$", frontmatter, re.MULTILINE):
             problems.append(f"{_rel(root, path)}: missing `disable-model-invocation: true` in the frontmatter")
