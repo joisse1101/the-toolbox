@@ -27,9 +27,9 @@ const FULL = (code, title) => `${code},Identity & Access Management,Auth,${title
 
 test('the skill is named jois-story-propose, versioned, and may run only its five scripts and the init script', () => {
   assert.match(front, /^name: jois-story-propose$/m);
-  assert.match(front, /version: "1\.3\.1"/);
-  assert.match(front, /last_updated: "2026-11-06"/);
-  assert.match(front, /^allowed-tools: Bash\(node \*read-story-context\.mjs\*\), Bash\(node \*write-proposal\.mjs\*\), Bash\(node \*write-lexicon\.mjs\*\), Bash\(node \*suggest-lexicon\.mjs\*\), Bash\(node \*write-review\.mjs\*\), Bash\(node \*init-plans\.mjs\*\), Read, Grep, Glob$/m);
+  assert.match(front, /version: "1\.4\.0"/);
+  assert.match(front, /last_updated: "2026-11-10"/);
+  assert.match(front, /^allowed-tools: Bash\(node \*read-story-context\.mjs\*\), Bash\(node \*write-proposal\.mjs\*\), Bash\(node \*write-lexicon\.mjs\*\), Bash\(node \*suggest-lexicon\.mjs\*\), Bash\(node \*write-review\.mjs\*\), Bash\(node \*init-plans\.mjs\*\), Skill, Read, Grep, Glob$/m);
   assert.doesNotMatch(front, /mcp__/);
 });
 
@@ -259,4 +259,12 @@ test('the skill names stories by Title, passes the Title with every ID and says 
 test('the bundled copies of the explore reader and the review writer are the originals, byte for byte', () => {
   assert.equal(read('jois-story-propose', 'read-story-context.mjs'), read('jois-story-explore', 'read-story-context.mjs'));
   assert.equal(read('jois-story-propose', 'write-review.mjs'), read('jois-story-review', 'write-review.mjs'));
+});
+
+test('the skill ends with a review round that patches only certain findings and stops after two rounds', () => {
+  const section = /## Review the written stories([\s\S]*?)\n## Report/.exec(text)[1];
+  assert.match(section, /`jois-story-review`[\s\S]*findings mode/);
+  assert.match(section, /\*\*`ready` finding\*\*[\s\S]*without asking again/);
+  assert.match(section, /\*\*`confirm` finding[\s\S]*clarifications\.add/);
+  assert.match(section, /Stop after 2 rounds/);
 });

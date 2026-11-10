@@ -17,7 +17,7 @@ Use the skills in this order, and skip the ones you do not need. Explore the ide
 | 1. Explore | `jois-story-explore` | nothing | decide what to save |
 | 2. Propose | `jois-story-propose`, `/jois-story:propose` | proposals, review suggestions, terms, term suggestions | accept, apply or dismiss in the portal |
 | 3. Review | `jois-story-review` | review suggestions | apply or dismiss in the portal |
-| 4. Plan | `jois-story-plan` | a slice and the context map | open the slice document |
+| 4. Plan | `jois-story-plan` | a slice and the context map, then checks the slice with verify | open the slice document |
 | 5. Verify | `jois-story-verify`, `/jois-story:verify` | a corrected slice, review suggestions, only after you approve | build from the slice, apply or dismiss suggestions in the portal |
 
 Run `/jois-story:re-read` whenever you changed files in the portal or in a spreadsheet during a session, and `/jois-story:review` to check that a session's work is in sync.
@@ -45,6 +45,8 @@ New stories get the next free placeholder ID `NEW-<n>`, or patch a proposed stor
 
 The skill first runs each writer with `--check`, then shows every draft in full and asks one yes or no question, and it writes only after a separate yes. It writes in this order: lexicon, term suggestions, proposals, edits. It never removes a proposed story and never writes `user-stories.csv`.
 
+After the last write the skill calls `jois-story-review` on the stories it just wrote, so a mistake is caught while you are still in the session. Review runs in findings mode, which means it reads, writes nothing and hands its findings back. A finding that review marks `ready` (the fix is certain) is applied to the proposed story as a patch, without a second question, and the report lists each one with the old and the new value. A finding marked `confirm`, or one that needs your decision, is never applied: the skill adds a question to the story's Clarifications instead. It stops after 2 rounds and lists what is left. Findings about a backlog story or a frozen story are only reported. The one exception to "write only after your yes" is this round of patches, and the portal's Proposed tab lets you edit any of them.
+
 The skill has `Read`, `Grep` and `Glob` too, used for wiki pages and for what the reader's caps cut off, never to write. It runs the contradiction rule on every draft before it shows one as ready. The `Changes existing spec` and `Supersedes` lines go in the `notes` of the new story, are shown in the complete draft, are covered by the one yes or no, and are written only through the proposals writer. An edit to a contradicted story that is not frozen becomes a review suggestion, and one to a proposed story becomes a patch. The skill never writes to `wiki/`.
 
 The command `/jois-story:propose` runs the same skill and skips the yes or no question, because running it is your go-ahead. It drafts from the conversation so far and stops if nothing was agreed. It still prints each draft right before its writer runs, checks first and reads each file back. Add extra instructions after the command and they are passed along.
@@ -54,6 +56,8 @@ The command `/jois-story:propose` runs the same skill and skips the yes or no qu
 Use it to review a whole backlog. It reads the backlog in sections (`read-backlog.mjs`: checks, lexicon, proposals, sizing, guidelines, then each epic) against `planner/guidelines/product-backlog.md`. It looks at the hierarchy, the INVEST principles, the acceptance criteria with an edge-case checklist, and consistency across stories, the lexicon and the proposals. Every finding about a story comes with a field edit the portal can apply, written to `<backlog>/user-stories/review.csv` through `write-review.mjs` in batches of about eight to ten rows. Findings about the lexicon or proposals cannot be edited by this skill, so they go in the report as questions. Open questions about a story are suggested as `Clarifications` rows. A review run without `--append` replaces the whole review, these rows included, so apply the suggestions you want before you run it again.
 
 Frozen stories are reference only: they are not reviewed, and the skill writes no row for them. A strong objection to a frozen story goes in the report, with the note that a change to it needs a superseding story (a story that replaces it, see [The contradiction rule](#the-contradiction-rule)). The skill ends with a report grouped by area, and tells you the suggestions are applied or dismissed in the portal. It does not apply them itself. There is no slash command to start it, so ask for it by name.
+
+Another skill can also start review. Called with a list of stories, it runs in findings mode: it reviews only those stories, writes no `review.csv` and returns the findings to the caller.
 
 ## jois-story-plan
 
@@ -67,11 +71,11 @@ At the design checkpoint, before it shows the outline, the skill reads the archi
 
 A slice that is built and validated is folded into the wiki by `/jois-code:archive`, which applies those rows. It marks the slice folder with `ARCHIVED.md` (the date, the commit and the pages touched) and deletes nothing. The marker file is not a slice file the plan skill reads or checks, and a redraw with `jois-story-plan` leaves it as it is.
 
-The skill reports slices as stale when their stories changed, and redraws only when you ask. It writes the slice, the map and one more thing: the `Frozen` flag, described below. For a change to a story or a term it offers `jois-story-propose`, and it needs its own packages, installed by `npm ci` in the skill folder.
+After the slice is written and read back, the skill runs `jois-story-verify` on it, corrects the problems that belong to the slice through the plan writer (up to 2 rounds, without a second question, because your yes covers this slice), and lists everything else, such as a story finding, a `TBC` decision or an open question, for you to decide. The skill reports slices as stale when their stories changed, and redraws only when you ask. It writes the slice, the map and one more thing: the `Frozen` flag, described below. For a change to a story or a term it offers `jois-story-propose`, and it needs its own packages, installed by `npm ci` in the skill folder.
 
 ### Freezing the stories of a slice
 
-The plan skill's one write into the backlog is the `Frozen` column. After the slice is written and read back with a match, the skill runs `write-freeze.mjs`, which marks the stories the slice covers as frozen and changes no other cell. A frozen story is read-only in the portal, keeps its ID for good, and cannot be deleted. If the slice write fails or the read-back does not match, no story is frozen.
+The plan skill's one write into the backlog is the `Frozen` column. After the slice is written, read back with a match and verified with no critical finding open, the skill runs `write-freeze.mjs`, which marks the stories the slice covers as frozen and changes no other cell. A frozen story is read-only in the portal, keeps its ID for good, and cannot be deleted. If the slice write fails, the read-back does not match or a critical finding of verify is still open, no story is frozen, and the skill says which one blocks it. A `TBC` decision or an open question is a warning and does not block the freeze.
 
 The writer refuses a story that has no ID, and a story whose ID does not begin with the backlog's initials (for example `IAM-0003` in a backlog with initials `B1`). For the second case, open the backlog in the portal once so it rewrites the IDs, then freeze again. Freezing a story twice leaves the same result as freezing it once.
 
@@ -100,7 +104,7 @@ The three project checks read the wiki and the code of the current folder only. 
 
 It reads first and writes only after you approve the exact change. A fix to the slice is written through the plan skill's `write-diagram.mjs`, after it shows the complete corrected document and `tasks.md` and you answer yes. A problem in a story is never edited. It is offered as a suggestion for `review.csv` through `write-review.mjs`, which you apply or dismiss in the portal. A `TBC` decision is asked of you and never filled with a default.
 
-The skill holds no script of its own, so it needs `jois-story-plan` installed and stops without it. The command `/jois-story:verify` loads the skill and passes it the backlog and slice you name.
+When `jois-story-plan` calls it after writing a slice, it runs every check and returns the findings without writing anything; the plan skill makes the slice corrections. The skill holds no script of its own, so it needs `jois-story-plan` installed and stops without it. The command `/jois-story:verify` loads the skill and passes it the backlog and slice you name.
 
 ## The four commands
 
