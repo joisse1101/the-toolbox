@@ -1,8 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { planSkillCopy } from './helpers/plan-skill.mjs';
 
-const { parseMermaid } = await planSkillCopy().load('parse-mermaid.mjs');
+const plan = planSkillCopy();
+const { parseMermaid } = await plan.load('parse-mermaid.mjs');
 
 const CLASS = `classDiagram
   namespace Identity {
@@ -48,4 +52,46 @@ test('a participant named after a Mermaid keyword is refused', async () => {
   const r = await parseMermaid('sequenceDiagram\n  participant end as «value object»<br/>ResetLink\n  participant A\n  A->>end: 1.1 x');
   assert.equal(r.ok, false);
   assert.equal(r.line, 4);
+});
+
+// The command line, which /jois-code:archive uses to check a diagram before it shows a diff.
+const cli = (args, input) =>
+  spawnSync(process.execPath, [path.join(plan.dir, 'parse-mermaid.mjs'), ...args], { input, encoding: 'utf8' });
+
+test('the command line parses every mermaid fence on standard input and exits 0', () => {
+  const r = cli(['-'], '# Page\r\n\r\n```mermaid\r\n' + CLASS.replace(/\n/g, '\r\n') + '\r\n```\r\n\r\n```mermaid\r\n' + SEQUENCE + '\r\n```\r\n');
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /diagram 1 \(from line 4\): ok/);
+  assert.match(r.stdout, /2 diagrams, 0 failed/);
+});
+
+test('the command line exits 1 and names the broken diagram and its line', () => {
+  const r = cli(['-'], '```mermaid\n' + CLASS + '\n```\n\n```mermaid\nsequenceDiagram\n  actor U\n  U->>>U: x\n```\n');
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /diagram 2 \(from line 16\): FAILED on its line 3/);
+  assert.match(r.stdout, /2 diagrams, 1 failed/);
+});
+
+test('input with no fence is one diagram, and a file path is read', () => {
+  const file = path.join(plan.dir, 'bare.mmd');
+  fs.writeFileSync(file, CLASS);
+  const r = cli([file]);
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /1 diagram, 0 failed/);
+});
+
+test('the command line exits 2 with no argument or an unreadable file, and never passes silently', () => {
+  const none = cli([]);
+  assert.equal(none.status, 2);
+  assert.match(none.stderr, /Usage/);
+  const missing = cli([path.join(plan.dir, 'nope.md')]);
+  assert.equal(missing.status, 2);
+  assert.match(missing.stderr, /Cannot read/);
+});
+
+test('without its packages the command line exits 2 and names the folder and the command', () => {
+  const bare = planSkillCopy({ withPackages: false });
+  const r = spawnSync(process.execPath, [path.join(bare.dir, 'parse-mermaid.mjs'), '-'], { input: CLASS, encoding: 'utf8' });
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /npm ci/);
 });
