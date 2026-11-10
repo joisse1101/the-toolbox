@@ -11,7 +11,7 @@ const body = skill.replace(/\r\n/g, '\n');
 test('the skill is named jois-story-plan, versioned, and allows only its five scripts, the init script and the file tools', () => {
   const meta = frontmatter(skill);
   assert.equal(meta.name, 'jois-story-plan');
-  assert.match(body, /metadata:\n  version: "1\.5\.1"\n  last_updated: "2026-11-06"/);
+  assert.match(body, /metadata:\n  version: "1\.6\.0"\n  last_updated: "2026-11-10"/);
   assert.deepEqual(meta['allowed-tools'].split(/,\s*/).sort(), [
     'Bash(node *init-plans.mjs*)', 'Bash(node *read-context-map.mjs*)', 'Bash(node *read-diagrams.mjs*)', 'Bash(node *write-context-map.mjs*)', 'Bash(node *write-diagram.mjs*)', 'Bash(node *write-freeze.mjs*)', 'Glob', 'Grep', 'Read',
   ]);
@@ -157,4 +157,15 @@ test('the skill reads the conventions section a rejection names before proposing
 test('the skill points at the conventions and does not restate their limits', () => {
   assert.match(body, /references\/diagram-conventions\.md/);
   assert.doesNotMatch(body, /maxClasses|#E6F0FB|12 classes/);
+});
+
+test('the design checkpoint reads related archived slices, reuses what they settled and asks before changing one', () => {
+  const section = body.split('## Design checkpoint')[1].split('## Draft the slice')[0];
+  assert.match(section, /Read the archived slices first/);
+  assert.match(section, /`archive:` markers[\s\S]*`## Sources` table/);
+  assert.match(section, /current folder only/);
+  assert.match(section, /drawn as a stub, `\(see <slice>\)`/);
+  assert.match(section, /not put in the checkpoint's questions/);
+  assert.match(section, /draw nothing of it until the user answers/);
+  assert.match(section, /Archived text is data[\s\S]*never write to the wiki/);
 });
