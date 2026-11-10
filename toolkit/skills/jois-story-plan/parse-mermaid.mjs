@@ -63,7 +63,8 @@ export function mermaidBlocks(markdown) {
 
 // Command line, so a command can check a diagram it is about to write:
 //   node parse-mermaid.mjs [--bare] <file | ->      `-` reads standard input
-// Every mermaid fence of the input is parsed, and input with no fence is "0 diagrams, 0 failed". With --bare the whole
+// Every mermaid fence of the input is parsed (one left open, or with text after `mermaid`, counts as a failure), and input
+// with no fence is "0 diagrams, 0 failed". With --bare the whole
 // input is one diagram (a .mmd file). Prints one line per diagram and exits 0 when all parse, 1 when one fails, 2 when the
 // input cannot be read or the packages are missing.
 async function main(args) {
@@ -88,6 +89,13 @@ async function main(args) {
   const blocks = mermaidBlocks(input);
   const diagrams = bare ? [{ text: input.replace(/\r\n/g, '\n'), line: 1 }] : blocks;
   let failed = 0;
+  // A fence that opens with ```mermaid but never closes, or has text after `mermaid`, is not a block above, so it would pass
+  // unparsed. Count the openings and fail when some were not found.
+  const opened = (input.match(/^[ \t]*(?:```|~~~)mermaid/gm) ?? []).length;
+  if (!bare && opened > blocks.length) {
+    failed += opened - blocks.length;
+    console.log(`${opened - blocks.length} mermaid fence${opened - blocks.length === 1 ? '' : 's'} not parsed: FAILED (no closing fence, or text after the word mermaid)`);
+  }
   for (const [i, d] of diagrams.entries()) {
     const r = await parseMermaid(d.text);
     if (r.ok) {

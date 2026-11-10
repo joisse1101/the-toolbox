@@ -87,6 +87,14 @@ test('input with no fence is 0 diagrams and not a failure', () => {
   assert.match(r.stdout, /0 diagrams, 0 failed/);
 });
 
+test('a fence left open or with text after mermaid is a failure, never 0 diagrams', () => {
+  for (const text of ['```mermaid\n' + CLASS + '\n', '```mermaid title\n' + CLASS + '\n```\n']) {
+    const r = cli(['-'], text);
+    assert.equal(r.status, 1, r.stdout + r.stderr);
+    assert.match(r.stdout, /1 mermaid fence not parsed: FAILED/);
+  }
+});
+
 test('indented, tilde and empty fences are found, and an indent is taken off', () => {
   const text = '- item\n\n  ```mermaid\n  ' + SEQUENCE.split('\n').join('\n  ') + '\n  ```\n\n~~~mermaid\n' + SEQUENCE + '\n~~~\n\n```mermaid\n```\n';
   const blocks = mermaidBlocks(text);
@@ -99,7 +107,7 @@ test('indented, tilde and empty fences are found, and an indent is taken off', (
 });
 
 test('a script path in another case still runs on Windows, never a silent exit 0', { skip: process.platform !== 'win32' }, () => {
-  const upper = path.join(plan.dir, 'parse-mermaid.mjs').replace(/^./, (c) => c.toUpperCase()).replace(/\parse-mermaid/, '\PARSE-MERMAID');
+  const upper = path.join(plan.dir.toUpperCase(), 'PARSE-MERMAID.mjs');
   const r = spawnSync(process.execPath, [upper, '-'], { input: '```mermaid\n' + CLASS + '\n```\n', encoding: 'utf8' });
   assert.match(r.stdout, /1 diagram, 0 failed/, r.stdout + r.stderr);
 });
