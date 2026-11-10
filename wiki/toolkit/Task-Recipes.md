@@ -22,7 +22,7 @@ The change moves through four steps, and the commit rule applies at the end of e
 3. `/opsx:archive` archives the change after review. It follows the commit rule, so it stages by explicit path and waits for the confirmation word.
 4. `/jois-git:write-pr` opens the pull request (see the next recipe).
 
-`/jois-code:apply` needs the agent `opsx-task-applier` installed and stops without it. It commits each finished group without testing, and runs the tests once, as the task in the last group. That task needs `opsx-test-runner`: without it the command names the missing agent and stops before the last group. If the session ends, run `/jois-code:apply <change>` again: it resumes from the tasks not yet ticked. It never pushes.
+`/jois-code:apply` needs the agent `opsx-task-applier` installed and stops without it. It commits each finished group without testing, reviews the change with `/jois-code:review` and fixes its findings, and then runs the tests once, as the task in the last group. That task needs `opsx-test-runner`: without it the command names the missing agent and stops before the last group. If the session ends, run `/jois-code:apply <change>` again: it resumes from the tasks not yet ticked. It never pushes.
 
 To build a slice written by `jois-story-plan` instead, run `/jois-code:apply slice <backlog>/<slice>`. It checks that the slice is current and stops if it is stale, then works the same group loop and commits the code by itself under the same conditions. It ticks the slice's `tasks.md` in place, never stages the slice folder and never suggests `/opsx:archive`. Redraw a stale slice with `jois-story-plan` and run the command again.
 

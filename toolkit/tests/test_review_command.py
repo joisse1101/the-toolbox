@@ -32,9 +32,12 @@ def test_command_only_orchestrates_and_cannot_write():
     assert not any(tool in ("Edit", "Write", "Bash(*)") for tool in allowed)
 
 
-def test_command_is_user_only():
+def test_command_can_be_started_by_apply():
+    # `/jois-code:apply` starts review through the Skill tool, which refuses a flagged command.
     frontmatter = _text().split("---", 2)[1]
-    assert "disable-model-invocation: true" in frontmatter
+    assert "disable-model-invocation" not in frontmatter
+    assert "/jois-code:apply" in _text()
+    assert "run the static check only" in _text()
 
 
 def test_command_resolves_a_pr_a_branch_and_main():
