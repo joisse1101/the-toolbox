@@ -30,13 +30,17 @@ Other things the script does:
 .\Install-Toolkit.ps1 -Scope project -Path C:\code\my-app     # into a project instead of globally
 .\Install-Toolkit.ps1 -Force                                  # overwrite a copy that differs
 .\Install-Toolkit.ps1 -NoPackages                            # skip `npm ci` for skills with a package.json
+.\Install-Toolkit.ps1 -NoSettings                            # leave settings.json alone
+.\Install-Toolkit.ps1 -SubagentModel Overwrite               # replace a different CLAUDE_CODE_SUBAGENT_MODEL (or Skip)
 .\Install-Toolkit.ps1 -Uninstall                              # remove toolkit items (only those)
 ```
 
 Passing `-Skill`, `-Command`, `-Rule` and/or `-Agent` limits the run to those items. An item already
 installed that differs from the toolkit's copy is never overwritten unless you pass `-Force`; `-List`
-shows it as `differs`. The script writes only inside the skills, commands, rules and agents folders — it
-never touches `settings.json` or hooks. Uninstall removes only items the toolkit holds, so the other
+shows it as `differs`. The script writes only inside the skills, commands, rules and agents folders,
+plus one key in `settings.json`: on a full install it sets `CLAUDE_CODE_SUBAGENT_MODEL` to `sonnet` in
+the `env` object, after saving a backup, and asks before replacing a different value (see
+[Install](../wiki/toolkit/Install.md)). It never touches hooks. Uninstall removes only items the toolkit holds, so the other
 agents in `~/.claude/agents/` stay.
 
 ## Installing by hand
@@ -55,6 +59,8 @@ Examples:
 
 Where each tool reads these from is data in `install/targets.json`, so supporting another tool is a
 new entry there.
+
+By hand, the subagent default is one line in `settings.json`: `"env": { "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet" }`.
 
 ## Where the rest is
 

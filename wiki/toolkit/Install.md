@@ -25,12 +25,31 @@ Each option limits or changes what the script does:
 .\Install-Toolkit.ps1 -Scope project -Path C:\code\my-app     # into a project instead of globally
 .\Install-Toolkit.ps1 -Force                                  # overwrite a copy that differs
 .\Install-Toolkit.ps1 -NoPackages                             # skip `npm ci` for skills with a package.json
+.\Install-Toolkit.ps1 -NoSettings                             # leave settings.json alone
+.\Install-Toolkit.ps1 -SubagentModel Overwrite                # replace a different CLAUDE_CODE_SUBAGENT_MODEL (or Skip)
 .\Install-Toolkit.ps1 -Uninstall                              # remove toolkit items, and only those
 ```
 
-Passing `-Skill`, `-Command`, `-Rule` or `-Agent` limits the run to those items. An installed item that differs from the toolkit's copy is never overwritten unless you pass `-Force`, and `-List` shows it as `differs`. The script writes only inside the skills, commands, rules and agents folders, so it never touches `settings.json` or hooks. Uninstall removes only items the toolkit holds, so other agents in `~/.claude/agents/` stay.
+Passing `-Skill`, `-Command`, `-Rule` or `-Agent` limits the run to those items. An installed item that differs from the toolkit's copy is never overwritten unless you pass `-Force`, and `-List` shows it as `differs`. The script writes only inside the skills, commands, rules and agents folders, except for the one `settings.json` key described below. It never touches hooks or any other setting. Uninstall removes only items the toolkit holds, so other agents in `~/.claude/agents/` stay.
+
+`-Target <name>` picks another tool's entry in `toolkit/install/targets.json` (the default is `claude-code`), and `-Help` (or `-h`) prints the script's help.
 
 Use `-Scope project` to keep the rules out of unrelated projects. A project's own `CLAUDE.md` takes precedence over an installed rule.
+
+### The default subagent model
+
+A subagent is a helper session that Claude starts to do delegated work. On a full install (no `-Skill`, `-Command`, `-Rule` or `-Agent`), the installer ends by setting `CLAUDE_CODE_SUBAGENT_MODEL` to `sonnet` in the `env` object of Claude Code's `settings.json`: `~/.claude/settings.json` for a global install and `<project>/.claude/settings.json` for a project install. Claude Code uses that value for a subagent that has no model passed on its call and none pinned in its agent file. Naming an item never reaches the settings file.
+
+The installer creates the file or the `env` object when they are missing and keeps every other key. It parses the file as JSON and writes it back, so the file's whitespace changes, and in Windows PowerShell 5.1 characters such as `'` and `&` come back as `\uXXXX` escapes. Claude Code reads both forms the same way. Before it changes an existing file, the installer saves a copy beside it as `settings.json.bak-<time>`. A file that is not valid JSON is left unchanged, the installer names it, and the exit code is 1. When the value is already `sonnet`, nothing is written.
+
+When the key already holds another value, the installer shows that value and asks. Overwriting replaces it, so a subagent with no model passed or pinned runs on Sonnet. Skipping keeps it, so such a subagent keeps its current default. Two parameters answer without a prompt:
+
+- `-SubagentModel Overwrite` or `-SubagentModel Skip` gives the answer in advance.
+- `-NoSettings` skips the whole step, for `-List` and `-Uninstall` too.
+
+With nobody to ask, such as a run with no console input, the installer skips, prints a warning that names the current value and exits 0. `-List` prints the key's state (`missing`, `up to date` or `differs`). `-Uninstall` leaves `settings.json` unchanged and names the key, because the installer cannot tell its own `sonnet` from one you chose, so you remove the line by hand.
+
+Only the default variable is set. `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` would make the variable win over the model pinned in an agent file, which would move `opsx-test-runner` off Haiku, so the installer never sets it. A call that passes `opus` explicitly still gets Opus, and only the `jois-env-subagents` rule discourages it.
 
 ### Skills that carry scripts
 

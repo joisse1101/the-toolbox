@@ -15,6 +15,10 @@
     "agents": {
       "global": "~/.claude/agents",
       "project": ".claude/agents"
+    },
+    "settings": {
+      "global": "~/.claude/settings.json",
+      "project": ".claude/settings.json"
     }
   }
 }
