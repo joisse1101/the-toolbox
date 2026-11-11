@@ -1,6 +1,7 @@
 ---
 name: code-validator
 description: Dispatched by /jois-code:validate for one group of claims (user interface, backend or end to end) of a slice or a PR. Tests each claim against the code in the throwaway checkout it is given, using only the project's own test commands and playwright-cli for a page, and reports one verdict per claim with its evidence. Never edits files, commits, pushes or calls GitHub.
+model: sonnet
 tools: Read, Grep, Glob, Bash
 maxTurns: 40
 hooks:
@@ -11,8 +12,8 @@ hooks:
           command: >-
             powershell -NoProfile -Command "Set-Variable In ([Console]::In.ReadToEnd()); if ((Get-Variable In -ValueOnly) -match '\bgit\s+(commit|push)\b|[\s\x22;&|(]gh\s') { [Console]::Error.WriteLine('code-validator never commits, pushes or calls GitHub: report back and the main session handles it'); exit 2 }; if ((Get-Variable In -ValueOnly) -match '\brm\b(?=(?:[^;&|\x22\x5c]|\x5c[^n])*\s(?:-[a-z]*r[a-z]*|--recursive)\b)(?=(?:[^;&|\x22\x5c]|\x5c[^n])*\s(?:-[a-z]*f[a-z]*|--force)\b)') { [Console]::Error.WriteLine('code-validator never runs rm -rf: leave the cleanup for the main session and say so in your report'); exit 2 }"
 metadata:
-  version: "1.0.0"
-  last_updated: "2026-11-06"
+  version: "1.1.0"
+  last_updated: "2026-11-11"
 ---
 
 # Code validator

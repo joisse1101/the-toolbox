@@ -1,6 +1,7 @@
 ---
 name: opsx-task-applier
 description: Dispatched by /jois-code:apply for one group of tasks of an OpenSpec change or of a slice; the main session does not implement those tasks itself. Applies the group's tasks in order, stops at the first blocked or failed task, then reports per task what it changed and what it saw. Never commits, pushes, calls GitHub or edits tasks.md.
+model: sonnet
 tools: Read, Grep, Glob, Edit, Write, Bash
 maxTurns: 50
 hooks:
@@ -16,8 +17,8 @@ hooks:
           command: >-
             powershell -NoProfile -Command "if ([Console]::In.ReadToEnd() -match '\x22file_path\x22\s*:\s*\x22[^\x22]*(openspec[\x5c/]+changes|slices[\x5c/]+[^\x22\x5c/]+)[\x5c/]+[^\x22]*tasks\.md\x22') { [Console]::Error.WriteLine('opsx-task-applier never edits tasks.md: put the result: clause in your report and the main session records it'); exit 2 }"
 metadata:
-  version: "1.6.0"
-  last_updated: "2026-11-10"
+  version: "1.7.0"
+  last_updated: "2026-11-11"
 ---
 
 # OpenSpec task applier

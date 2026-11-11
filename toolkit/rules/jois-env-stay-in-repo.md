@@ -1,7 +1,7 @@
 ---
 metadata:
-  version: "1.0.1"
-  last_updated: "2026-11-03"
+  version: "1.1.0"
+  last_updated: "2026-11-11"
 ---
 # Stay in the repo
 
@@ -34,4 +34,5 @@ all of it inside the project folder.
 - When you dispatch a subagent that can write files, tell it to append one short line to `.scratch/agents/<agent>.log` after each step.
 - Example line: `task 3 of 7 done, running tests`.
 - Follow the agent through that file or its final report only.
+- Pass the model and pick the agent as `jois-env-subagents` says.
 - A subagent that cannot write files is waited for. Read its final report.
