@@ -15,11 +15,11 @@ def _sources_section(name):
 
 
 @pytest.mark.parametrize("name", PR_COMMANDS)
-def test_pr_command_never_reads_openspec(name):
-    text = _text(name).lower()
+def test_an_openspec_change_still_gives_its_tasks_md_results(name):
+    sources = _sources_section(name)
 
-    assert "openspec" not in text
-    assert "tasks.md n.n" not in text
+    assert "A group whose commits touch an OpenSpec change also reads that change's `tasks.md`." in sources
+    assert "Source `tasks.md N.N, result recorded`." in sources
 
 
 @pytest.mark.parametrize("name", PR_COMMANDS)

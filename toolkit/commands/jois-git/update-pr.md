@@ -80,7 +80,7 @@ Bring the open PR of this branch up to date.
    - Decide whether the PR needs no tests, as Needs no tests below says.
    - If it does, skip this step: no run offer and no question.
    - Otherwise gather verification as Author Verification says.
-     - The order is the slice's `validation.md` and `review.md`, runs seen in this conversation, then the offer to run missing tests.
+     - The order is the slice's `validation.md` and `review.md`, an OpenSpec change's `tasks.md`, runs seen in this conversation, then the offer to run missing tests.
    - If a question is needed, ask it once, in plain text, and end the turn.
    - Continue from the reply.
 6. **Compose** the new body from the PR body template, as the sections below say, from the commits in step 4.
@@ -204,7 +204,7 @@ Fill every section below, then delete the `<!-- -->` comments before opening the
   - List those files and the test names under the box.
   - The user has said to assume the tests were run.
 - **Author Verification:**
-  - Bullets come from the slice's `validation.md` and `review.md`, runs seen in this conversation and, where neither has any, the user's answer.
+  - Bullets come from the slice's `validation.md` and `review.md`, the matching OpenSpec `tasks.md`, runs seen in this conversation and, where none has any, the user's answer.
   - The Author Verification section says how.
   - A bullet reports no result its source lacks.
   - Quote a count only when a source records it.
@@ -279,6 +279,17 @@ Sort each current file by its header:
 
 A validation bullet is manual, because validate tests the running code with agents and a browser, not only the repository's test command. Quote only the counts and reasons the file records, and never call a slice validated that the file does not.
 
+A group whose commits touch an OpenSpec change also reads that change's `tasks.md`.
+
+- The change is in `openspec/changes/<name>/` or `openspec/changes/archive/*-<name>/`.
+- Sort each task by its text:
+
+| Task | Bullet |
+|---|---|
+| Checked, asks to verify, dry-run or run something, and records the outcome (a `(result: ...)` clause or the outcome in the text) | The check and the recorded result. Source `tasks.md N.N, result recorded`. |
+| Checked, asks to verify, but records no outcome | The check only, no outcome. Source `tasks.md N.N, no result recorded`. |
+| Unchecked, or plain work with nothing to verify | None. |
+
 Then read this conversation for **runs**.
 
 - A run is a test, build, type-check or lint command with its output visible, run by Claude or by the user (`!`).
@@ -292,7 +303,7 @@ Then read this conversation for **runs**.
   - If an Edit or Write in the conversation touched a file in the group's diff after the run, tell the user the run is out of date and write no bullet for it.
   - A summarized history, or a session with no runs, contributes nothing.
   - Never reconstruct a run you cannot see.
-  - A `chat` bullet and a slice bullet can both appear, because they record different runs.
+  - A `chat` bullet and a slice or `tasks.md` bullet can both appear, because they record different runs.
 
 Rules for every bullet:
 
@@ -305,7 +316,7 @@ Rules for every bullet:
 
 A group has none when no source above gives a bullet with a result.
 
-- That means no current `validation.md` or `review.md` of a slice on this branch, and no usable run.
+- That means no current `validation.md` or `review.md` of a slice on this branch, no OpenSpec task with a recorded result, and no usable run.
 - A group that needs no tests is never one of them.
 
 For these groups:
@@ -339,6 +350,7 @@ Suggest steps from these sources:
 - The group's diff.
 - Its commit bodies.
 - The evidence column of its slice's `validation.md`, which names the command or page each claim was tested with.
+- The `tasks.md` of its OpenSpec change.
 - The commands run in this conversation.
 - The repository's own documents.
 
@@ -378,6 +390,8 @@ When presenting a PR, tag every bullet and step with one of these:
 - `validation.md`
 - `validation.partial.md`
 - `review.md`
+- `tasks.md N.N, result recorded`
+- `tasks.md N.N, no result recorded`
 - `chat`
 - `repo docs`
 - `inferred from diff` (a read step, or a run step chosen among documented commands)
