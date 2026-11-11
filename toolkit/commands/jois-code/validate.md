@@ -38,8 +38,8 @@ The argument alone picks the form. Never guess between them.
    - Find the slice with Glob: `**/<backlog>/slices/<slice>/tasks.md`. Read `tasks.md` and `UC-<slice>.md` from that folder.
    - If the folder or `tasks.md` is missing, say what is missing, point to `jois-story-plan` and stop.
    - If Glob finds more than one match (for example a copy under `.trees/`), list them and ask which one. Test nothing until the user answers.
-   - Look for `read-diagrams.mjs` in `~/.claude/skills/jois-story-plan/` and in this project's `.claude/skills/jois-story-plan/`. If it is in neither, say the plan skill is not installed, name `Install-Toolkit.ps1` and stop.
-   - Run `node <that folder>/read-diagrams.mjs <backlog> --slice <slice>` and read the whole output. Never re-implement the comparison.
+   - Look for `read-diagrams.mjs` in this project's `.claude/skills/jois-story-plan/` first, then in `~/.claude/skills/jois-story-plan/`. If it is in neither, say the plan skill is not installed, name `Install-Toolkit.ps1` and stop.
+   - Run `node <that folder>/read-diagrams.mjs <backlog> --slice <slice>` from the project root and read the whole output. Never re-implement the comparison. When the home copy is refused (a session can block reads outside the project) and a project copy exists, run the project copy. Stop only when no copy runs.
    - Stop and test nothing in each of these cases: the output says `STALE`, it has a `changed:`, `missing:`, `new:` or `ambiguous:` line, or the command fails.
      - A stale slice: name each story by its Title and say the slice must be redrawn with `jois-story-plan`.
      - A missing slice: name what is missing and point to `jois-story-plan`.
@@ -70,7 +70,7 @@ The argument alone picks the form. Never guess between them.
    - Ask with AskUserQuestion, with "Yes, run it" and "No, stop", and run nothing until the user says yes. On no, stop.
 
 5. **Make the throwaway checkout.**
-   - Check the agents first. Look for `code-validator.md` and `opsx-test-runner.md` in `~/.claude/agents/` and in this project's `.claude/agents/`. If one is in neither, say so, name `Install-Toolkit.ps1` (`-Agent <file>`) and stop. Do not copy an agent yourself.
+   - Check the agents first. An agent named in the Agent tool's list of agent types is installed, so check that list first. Only for an agent not in it, look for `code-validator.md` and `opsx-test-runner.md` in `~/.claude/agents/` and in this project's `.claude/agents/`, because a file search or a listing of the home folder can fail and give a false "missing". If one is in none of these, say so, name `Install-Toolkit.ps1` (`-Agent <file>`) and stop. Do not copy an agent yourself.
    - Check that `.scratch/` is git-ignored before anything is fetched. Check the path `.scratch/validate-<name>` with `git check-ignore`, because the folder `.scratch/` may not exist yet and a check on the bare folder then gives a false "not ignored". If the path is not ignored, say so and stop.
    - Create the checkout as a detached git worktree under `.scratch/validate-<name>/`, with `git worktree add --detach`. `<name>` is the slice name in the slice form and `pr-<number>` in the PR form. The slice form uses the current branch's head. The PR form fetches the PR head with `git fetch origin pull/<number>/head` and checks that commit out.
    - Note the tested commit with `git rev-parse HEAD` run in the checkout.
