@@ -37,7 +37,7 @@ def test_command_can_be_started_by_apply():
     frontmatter = _text().split("---", 2)[1]
     assert "disable-model-invocation" not in frontmatter
     assert "/jois-code:apply" in _text()
-    assert "run the static check only" in _text()
+    assert "always with `slice <backlog>/<slice>`" in _text()
 
 
 def test_command_resolves_a_pr_a_branch_and_main():

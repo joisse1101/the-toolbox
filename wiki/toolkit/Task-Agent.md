@@ -1,6 +1,6 @@
 # Task Agent
 
-This page explains how `/jois-code:apply` carries out an OpenSpec change or a slice through two agents, how it decides to commit, how it handles failures and what is enforced. It also covers `/jois-init:opsx`, which sets a project up for OpenSpec. The item lists are in the [Toolkit Guide](Toolkit-Guide.md), and the order of the commands is in [Task Recipes](Task-Recipes.md).
+This page explains how `/jois-code:apply` carries out a slice through two agents, how it decides to commit, how it handles failures and what is enforced. It also covers `/jois-init:opsx`, which sets a project up for OpenSpec. The item lists are in the [Toolkit Guide](Toolkit-Guide.md), and the order of the commands is in [Task Recipes](Task-Recipes.md).
 
 ## OpenSpec setup
 
@@ -20,11 +20,11 @@ The guidance only points at the `jois-git-commit-hygiene` rule, which holds the 
 
 An agent is a file under `toolkit/agents/` with `name`, `description` and `tools` frontmatter, then the instructions. An agent without `tools` inherits every tool, so `python toolkit/check_toolkit.py` fails on one. The installer treats each file as a unit, so `-Agent opsx-task-applier.md` installs one. The toolkit ships three agents (`code-validator` is described under Validating), and other agents in `~/.claude/agents/` are not the toolkit's and are never touched.
 
-`opsx-task-applier` does one group of an OpenSpec change's tasks. It is pinned to the Sonnet model, as are `code-validator` and `jois-worker`, so it does not run on the main session's more expensive model. `opsx-test-runner` runs the project's own test commands for the files a change touched, only for the test task in the last group, and reports each command, exit code and counts. It uses the Haiku model and has no edit tools, installs nothing and never commits, pushes or calls GitHub. It runs a suite in another folder with the command's own folder flag (`npm --prefix`, `git -C`), never `cd`. A passing command whose result shows no exit code and no error is reported as `exit code 0 (the tool showed no error)`, and a failing command is reported with its exit code and error line. Install it with `.\Install-Toolkit.ps1 -Agent opsx-test-runner.md`.
+`opsx-task-applier` does one group of a slice's tasks. It is pinned to the Sonnet model, as are `code-validator` and `jois-worker`, so it does not run on the main session's more expensive model. `opsx-test-runner` runs the project's own test commands for the files a change touched, only for the test task in the last group, and reports each command, exit code and counts. It uses the Haiku model and has no edit tools, installs nothing and never commits, pushes or calls GitHub. It runs a suite in another folder with the command's own folder flag (`npm --prefix`, `git -C`), never `cd`. A passing command whose result shows no exit code and no error is reported as `exit code 0 (the tool showed no error)`, and a failing command is reported with its exit code and error line. Install it with `.\Install-Toolkit.ps1 -Agent opsx-test-runner.md`.
 
 ## How a group runs
 
-`/jois-code:apply <change>` hands the tasks of an OpenSpec change to the `opsx-task-applier` agent, one group at a time. A group is one `##` section of the change's `tasks.md`. The group's working detail stays in the agent's own context, so the main conversation keeps one announcement before each group and one line after it. Before each dispatch the session says:
+`/jois-code:apply slice <backlog>/<slice>` hands the tasks of a slice to the `opsx-task-applier` agent, one group at a time. A group is one `##` section of the slice's `tasks.md`. An OpenSpec change is applied with `/opsx:apply`, not with this command. The group's working detail stays in the agent's own context, so the main conversation keeps one announcement before each group and one line after it. Before each dispatch the session says:
 
 - the group and its tasks
 - the files it expects to touch
@@ -33,7 +33,7 @@ An agent is a file under `toolkit/agents/` with `name`, `description` and `tools
 - how to open the agent's transcript, which is its row in the agent panel and then Enter, or `/tasks`
 - the agent's turn limit
 
-`/jois-code:apply slice <backlog>/<slice>` runs the same loop on a slice. A slice task carries a `Satisfies:` line naming acceptance-criteria rows and a `Verify:` line, so the agent reads `UC-<slice>.md` first, names those rows in the Satisfies part of its report and follows the `Verify:` line. It still stops with a `blocked:` line when a task could only be done by dropping part of a named criterion. The command copies each `result:` clause after the task's `Verify:` line in the slice's `tasks.md` and never stages the slice folder.
+A slice task carries a `Satisfies:` line naming acceptance-criteria rows and a `Verify:` line, so the agent reads `UC-<slice>.md` first, names those rows in the Satisfies part of its report and follows the `Verify:` line. It still stops with a `blocked:` line when a task could only be done by dropping part of a named criterion. The command copies each `result:` clause after the task's `Verify:` line in the slice's `tasks.md` and never stages the slice folder.
 
 After each report it says whether the group is done, failed or blocked, and a failure starts a fix round (see Fixing failures below). While the agent works, the command watches the agent's transcript file, `subagents/agent-<id>.jsonl`, with the `Monitor` tool. If the file does not change for 3 minutes, the command says the agent looks stalled and is probably waiting for a permission approval. It shows the agent's last tool call and where to open the transcript, so you can approve the prompt there. A long test run or build looks the same, so the last tool call tells which it is. The watch never edits a permission rule, and if the command cannot find the transcript, it says the watch did not start.
 
@@ -61,7 +61,7 @@ Re-install the rule and the test runner for the commit exception to take effect.
 The purpose is to commit a finished group without a stop, and to stop with nothing committed when something is doubtful. The command commits by itself only when all of these hold:
 
 - The branch is a named branch other than `main` or `master`.
-- Nothing foreign is staged or edited. The change folder `openspec/changes/<name>/` is ignored in this check and never staged, because neither apply nor `/jois-code:archive` commits it. In the slice form the folder `<backlog>/slices/` is ignored and never staged too, because git does not track it here.
+- Nothing foreign is staged or edited. The folder `<backlog>/slices/` is ignored in this check and never staged, because git does not track it here.
 - The group's tasks are all done. No test runs between groups.
 - No single file holds two concerns.
 
@@ -116,9 +116,9 @@ Tests run once, after every group has landed, as the last task of the last group
 
 Once every task except the test task is done and committed, the command starts `/jois-code:review` through the Skill tool, so code that does not hold up is fixed before a test run is spent on it. A review needs commits to look at, which is why the last group is split in two: its other tasks are committed first, and the test task follows.
 
-For a slice, the review runs its static check and `validate`, which tests the slice's claims in a throwaway copy. For an OpenSpec change there is no slice and no PR to test against, so only the static check runs and the report says the behavioural check was not run. The command never passes `--fix` or `--comment`.
+The review runs its static check and `validate`, which tests the slice's claims in a throwaway copy. The command never passes `--fix` or `--comment`.
 
-Each static finding and each `not met` verdict is a failure and starts the fix loop above: a fresh `opsx-task-applier` dispatch with the finding in the review's own words, its fix committed as its own commit, then a new review. An optional cleanup or an uncertain finding is only listed. The loop asks you in the cases the fix loop already names, and also when a finding comes back unchanged after a round meant to fix it. It stops after two fix rounds, because a static review finds new edge cases on every pass and the loop does not converge by itself: it lists what is still open and asks once whether to fix the ones you name or to take the tests now, and each finding you leave is listed as known and not fixed. In the slice form it then writes `review.md` into the slice folder: whether the review ran, the reviewed commit, the number of fix rounds and the known, not fixed list. `/jois-code:archive` reads that file, so it does not ask whether a review was run and nobody runs the review a second time. When the review is not installed, the command says so, names `Install-Toolkit.ps1`, counts nothing as passed and goes on to the tests. `/jois-code:review` no longer carries `disable-model-invocation`, so that apply can start it.
+Each static finding and each `not met` verdict is a failure and starts the fix loop above: a fresh `opsx-task-applier` dispatch with the finding in the review's own words, its fix committed as its own commit, then a new review. An optional cleanup or an uncertain finding is only listed. The loop asks you in the cases the fix loop already names, and also when a finding comes back unchanged after a round meant to fix it. It stops after two fix rounds, because a static review finds new edge cases on every pass and the loop does not converge by itself: it lists what is still open and asks once whether to fix the ones you name or to take the tests now, and each finding you leave is listed as known and not fixed. It then writes `review.md` into the slice folder: whether the review ran, the reviewed commit, the number of fix rounds and the known, not fixed list. `/jois-code:archive` reads that file, so it does not ask whether a review was run and nobody runs the review a second time. When the review is not installed, the command says so, names `Install-Toolkit.ps1`, counts nothing as passed and goes on to the tests. `/jois-code:review` no longer carries `disable-model-invocation`, so that apply can start it.
 
 ## What is enforced
 

@@ -1,37 +1,28 @@
 ---
 name: "JOIS: Apply"
-description: "Apply an OpenSpec change or a slice one group of tasks at a time: hand each group to opsx-task-applier, record its results in tasks.md, then commit it by itself on an unprotected branch (never main or master, never a push), or stop with nothing committed in a doubtful case. The last group's code is reviewed with /jois-code:review and its findings fixed before the tests, which run once, as the task in the last group"
-allowed-tools: Bash(openspec:*), Bash(git status:*), Bash(git diff:*), Bash(git add:*), Bash(git commit:*), Bash(git branch --show-current:*), Bash(git rev-parse:*), Bash(node *jois-story-plan*read-diagrams.mjs*), Skill, Read, Edit, Write(**/slices/*/review.md), Glob, Agent, Monitor
+description: "Apply a slice one group of tasks at a time: hand each group to opsx-task-applier, record its results in tasks.md, then commit it by itself on an unprotected branch (never main or master, never a push), or stop with nothing committed in a doubtful case. The last group's code is reviewed with /jois-code:review and its findings fixed before the tests, which run once, as the task in the last group"
+allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git add:*), Bash(git commit:*), Bash(git branch --show-current:*), Bash(git rev-parse:*), Bash(node *jois-story-plan*read-diagrams.mjs*), Skill, Read, Edit, Write(**/slices/*/review.md), Glob, Agent, Monitor
 disable-model-invocation: true
 metadata:
-  version: "1.11.0"
+  version: "2.0.0"
   last_updated: "2026-11-11"
 ---
 
-Apply an OpenSpec change, or a slice written by `jois-story-plan`, by handing its tasks to the `opsx-task-applier` agent, one group at a time.
+Apply a slice written by `jois-story-plan` by handing its tasks to the `opsx-task-applier` agent, one group at a time.
 
-## Forms
+## Argument
 
-The argument alone picks the form. Never guess between them.
-
-- `/jois-code:apply <change>` is the OpenSpec form. A bare name is always an OpenSpec change, even when a slice has the same name.
-- `/jois-code:apply slice <backlog>/<slice>` is the slice form. It does not call `openspec`.
-- `slice` alone, `slice <backlog>` with no slice name, or `slice <backlog> <slice>` with a space instead of `/`: ask for `<backlog>/<slice>` and do nothing else.
-
-Steps 1 to 3 differ by form. Steps 4 to 11 are shared.
+The argument is `slice <backlog>/<slice>`. For any other argument, such as a bare name, `slice` alone, `slice <backlog>` with no slice name, or `slice <backlog> <slice>` with a space instead of `/`, ask for `slice <backlog>/<slice>` and do nothing else.
 
 ## Rules
 
 - You orchestrate. You never implement a task.
 - Do not make a task's code changes yourself.
-- Do not call `/opsx:apply`.
-- Do not edit, copy or regenerate the `/opsx:*` commands.
 - You are the only writer of `tasks.md`.
-- This is advisory. Nothing blocks a session from running plain `/opsx:apply`.
 
-## Slice form: steps 1 to 3
+## Steps
 
-A slice is the folder `<backlog>/slices/<slice>/` of the data folder the plan skill reads. It holds `tasks.md` and `UC-<slice>.md`. Use these steps instead of steps 1 to 3 below.
+A slice is the folder `<backlog>/slices/<slice>/` of the data folder the plan skill reads. It holds `tasks.md` and `UC-<slice>.md`. "The change" in the steps below means the slice.
 
 1. **Pick the slice.**
    - Take `<backlog>` and `<slice>` from the argument `slice <backlog>/<slice>`.
@@ -56,32 +47,6 @@ A slice is the folder `<backlog>/slices/<slice>/` of the data folder the plan sk
    - A `healed:` line alone does not make the slice stale. Mention it and go on.
    - Keep the text of `UC-<slice>.md` in mind for the briefs.
 
-## OpenSpec form: steps 1 to 3
-
-1. **Pick the change.**
-   - Use the name in the argument.
-   - If it is missing, use the change the conversation is clearly about.
-   - Otherwise run `openspec list --json` and ask the user to choose one.
-   - Do nothing else until they choose.
-   - Announce the change.
-   - Work on that change only.
-2. **Read its state.**
-   - Run `openspec status --change "<name>"`.
-   - Run `openspec instructions apply --change "<name>" --json`.
-   - Read the whole output.
-   - Never cut the output off with `head` or similar.
-   - If `state` is `blocked`, show the message and stop.
-   - If `state` is `all_done`, show the message, suggest `/opsx:archive`, and stop.
-3. **Read the context.**
-   - Read every file under `contextFiles` before the first dispatch.
-   - Keep the `context` and `operationGuidance` from the output in mind for the briefs.
-   - A commit-stop line in `operationGuidance` (an older project's line that tells the agent to stop before each commit) does not govern this command's group commits.
-   - Step 10 owns those commits and decides when to commit or stop with nothing committed.
-
-## Shared steps 4 to 11
-
-Both forms run these. "The change" below means the slice in the slice form.
-
 4. **Check the agent.**
    - Look for `opsx-task-applier.md` in `~/.claude/agents/` and in this project's `.claude/agents/`.
    - If it is in neither, say so, name `Install-Toolkit.ps1` (`-Agent opsx-task-applier.md`) and stop.
@@ -95,7 +60,7 @@ Both forms run these. "The change" below means the slice in the slice form.
    - Skip a section with no pending task.
    - In a partly ticked section, send the agent only the pending tasks.
    - A re-run then resumes where the last one stopped.
-   - **Left-over edits from an interrupted run.** Before the first dispatch of this run, run `git status` and `git diff --stat`, ignoring the change's or slice's own folder as step 10 does.
+   - **Left-over edits from an interrupted run.** Before the first dispatch of this run, run `git status` and `git diff --stat`, ignoring the slice's own folder as step 10 does.
      - A clean tree needs nothing.
      - Otherwise an earlier run was most likely stopped inside a group, after its agent edited files and before the commit. Name the changed files, the first pending group, and the pending tasks the edits most likely belong to.
      - Ask once, with `AskUserQuestion`: keep the edits as the starting point (recommended), or stop so the user can set them aside. Dispatch nothing before the answer.
@@ -116,12 +81,8 @@ Both forms run these. "The change" below means the slice in the slice form.
    - Note the agent id the call returns.
    - Start the watch (step 8) before you wait for the report.
    - Do nothing else until the report arrives.
-   - The prompt carries the change name and the verbatim text of each pending task of the group.
+   - The prompt carries `<backlog>/<slice>` as the name, the verbatim text of each pending task of the group with its `Satisfies:` and `Verify:` lines, and the path of `UC-<slice>.md`, to read first.
    - Never paraphrase a task.
-   - In the slice form the prompt carries `<backlog>/<slice>` as the name and each task with its `Satisfies:` and `Verify:` lines, and the path of `UC-<slice>.md`, to read first.
-   - The prompt carries the paths of the `contextFiles`, to read before changing anything.
-   - The prompt carries the `operationGuidance` entries that apply to this group.
-   - In the slice form there are no `contextFiles` and no `operationGuidance`.
    - The prompt says the agent must not edit `tasks.md`.
    - The prompt says the agent must report as its own instructions say.
    - **The test task.** The last group ends with a task that runs the project's tests. Do not send it to `opsx-task-applier`, which cannot start another agent. Send the group's other tasks first, run the review (step 10a) when they are committed, then run the test task yourself, only when the review has no failure left:
@@ -131,7 +92,7 @@ Both forms run these. "The change" below means the slice in the slice form.
      - Wording such as "passed" or a counts line never counts. A missing exit code or a non-zero exit code is not passed.
      - If no test command was found, or a suite could not run (such as missing dependencies), stop and show the reason. The fix loop cannot repair that.
      - If a command failed, or an exit code is missing, run the fix loop of step 9 with the failing command and its exact output.
-     - On a pass, tick the task and copy under it a `result:` line built from the commands and exit codes the runner reported. In the slice form, put it on its own indented line after the task's `Verify:` line.
+     - On a pass, tick the task and copy a `result:` line built from the commands and exit codes the runner reported, on its own indented line after the task's `Verify:` line.
 8. **Watch the agent.**
    - This covers every `opsx-task-applier` dispatch (step 7 and the fix rounds of step 9) and every `opsx-test-runner` dispatch (the test task of step 7).
    - Right after each dispatch, start a watch with the `Monitor` tool on that agent's transcript file, `subagents/agent-<id>.jsonl`.
@@ -154,10 +115,9 @@ Both forms run these. "The change" below means the slice in the slice form.
    - When the report arrives, stop the watch.
 9. **Record the outcome.**
    - Say in one line whether the group is done, failed or blocked.
-   - For each task whose report carries a `result:` clause, copy that clause verbatim after the task in `tasks.md`.
+   - For each task whose report carries a `result:` clause, copy that clause verbatim on its own indented line directly after the task's `Verify:` line, so the slice's task format stays valid.
    - Tick the box of that task.
    - Tick nothing else. A task the report calls failed gets no tick, even when it carries a clause. Copy its clause under it anyway, unticked.
-   - In the slice form, copy the clause on its own indented line directly after the task's `Verify:` line, so the slice's task format stays valid. Tick only a task whose report carries a `result:` clause.
    - If the report ends in `blocked: <question>`:
      - Record the tasks that have a clause.
      - Ask the user the question.
@@ -196,9 +156,7 @@ Both forms run these. "The change" below means the slice in the slice form.
      - An empty result (detached HEAD), `main`, `master` or a failed command counts as protected: stop and say the branch is protected.
    - Run no test here. Tests run only through the test task in the last group of `tasks.md` (step 7). The behavioural check of step 10a runs the project's own checks in a throwaway copy; it is not the test task.
    - Run `git status` and `git diff --stat`.
-     - Ignore `openspec/changes/<name>/`, including `tasks.md`, in this check.
-     - Never stage that folder in this step. `/jois-code:archive` does not stage it either, so it is never committed by these commands. If anything under it is already staged, stop and name it. Read the index before any `git add`, and leave what was staged as it is.
-     - In the slice form, ignore `<backlog>/slices/` in this check too, and never stage or commit anything under it. If a file under it is already staged, stop and name it. It is not tracked by git here, so the ticks stay local, and `/jois-code:archive` does not stage it either.
+     - Ignore `<backlog>/slices/` in this check, and never stage or commit anything under it. Read the index before any `git add`, and leave what was staged as it is. If a file under it is already staged, stop and name it. It is not tracked by git here, so the ticks stay local, and `/jois-code:archive` does not stage it either.
      - A tracked file outside the group's reported files and outside that folder changed: stop and name the file.
      - Something unrelated outside that folder already staged or edited: stop and name it.
    - **Split the group** when it is more than one concern (over about 200 lines or 5 files, or more than one layer).
@@ -226,14 +184,14 @@ Both forms run these. "The change" below means the slice in the slice form.
 10a. **Review before the tests.**
    - Do this once, when every task of the change except the test task is done and committed, and before the test task. A stop in step 10 ends the command first, so the review never runs on uncommitted work.
    - Check that `jois-code/review.md` is installed in `~/.claude/commands/` or this project's `.claude/commands/`. If not, say the review was not run and why, name `Install-Toolkit.ps1` (`-Command jois-code`), never count the review as passed, and go on to the test task.
-   - Start the review with the Skill tool on `jois-code:review`. In the slice form the argument is `slice <backlog>/<slice>`. In the OpenSpec form there is no argument: the review runs the static check on the current branch against `main` and says the behavioural check was not run. Pass no effort level, no `--comment` and never `--fix`. Answer none of the questions the review or validate puts to the user.
-   - If the Skill tool refuses to start it, print the line `/jois-code:review slice <backlog>/<slice>` (or `/jois-code:review`) for the user, say the review was not run, and go on to the test task.
+   - Start the review with the Skill tool on `jois-code:review`. The argument is `slice <backlog>/<slice>`. Pass no effort level, no `--comment` and never `--fix`. Answer none of the questions the review or validate puts to the user.
+   - If the Skill tool refuses to start it, print the line `/jois-code:review slice <backlog>/<slice>` for the user, say the review was not run, and go on to the test task.
    - Read the report as two parts and merge nothing into one status.
      - Every finding of part 1 (static) is a **failure**, except one the report marks as an optional cleanup (reuse, simplification, efficiency) or as uncertain. List those in the final summary and do not fix them.
      - Every `not met` verdict of part 2 (behavioural) is a failure. A `could not test` verdict is listed and not fixed.
    - With no failure, say so in one line and take the test task.
    - With a failure, run the **fix loop** of step 9, with these changes:
-     - The brief carries the change or slice name, the finding or verdict in the review's own words, the file and line it names, and the files the change touched.
+     - The brief carries the slice name, the finding or verdict in the review's own words, the file and line it names, and the files the change touched.
      - Fix every failure of the round in one dispatch when they touch the same files, else one dispatch per concern.
      - After each round, commit the fix with step 10's rules, as its own commit, usually `fix(<scope>): <subject>`. A fix that changes no file is not committed.
      - Then run the review again. Stop the loop and ask the user in the cases step 9 names, and also when a finding comes back unchanged after a round meant to fix it.
@@ -241,20 +199,19 @@ Both forms run these. "The change" below means the slice in the slice form.
      - Each failure the user chose not to fix is **explained**: list it under "Known, not fixed" in the final summary, with the user's choice as the reason.
    - Never start the test task while a failure of the review is unfixed or unexplained.
    - Do not edit the code yourself, and do not edit `tasks.md` for the review.
-   - **Record the review (slice form only).** When the review step ends, before the test task, write `review.md` into the slice folder with the `Write` tool, replacing an earlier one. `/jois-code:archive` reads it, so it does not ask whether a review was run and nobody runs the review a second time.
+   - **Record the review.** When the review step ends, before the test task, write `review.md` into the slice folder with the `Write` tool, replacing an earlier one. `/jois-code:archive` reads it, so it does not ask whether a review was run and nobody runs the review a second time.
      - A header of four lines: `Review:` (`run` or `not run`, with the reason when not run), `Date:`, `Reviewed commit:` (`git rev-parse HEAD` after the last fix commit) and `Fix rounds:` (a number).
      - Then the parts: `Static check:` and `Behavioural check:`, each `run` or `not run`, with the reason when not run.
      - Then a `## Known, not fixed` list, one line per failure the user chose not to fix, with the user's choice as the reason, and a `## Not fixed by design` list of the optional cleanups and `could not test` verdicts. Write `none` under a list with nothing in it.
-     - The slice folder is not tracked by git here. Never stage it. The OpenSpec form writes no file.
+     - The slice folder is not tracked by git here. Never stage it.
 
 11. **Take the next group.**
     - Repeat from step 6 until no group has a pending task.
     - The review of step 10a runs once before the test task, and the test task in the last group runs as step 7 says. Its failures run the fix loop of step 9, and the loop asks the user if a failure stays unexplained.
-    - Then run step 2 again and follow what it says.
-    - In the slice form, read the slice's `tasks.md` again instead. If no group has an unticked task, say the slice is built and name the next stage, and stop. The next stage is `/jois-code:archive slice <backlog>/<slice>` when the slice's `validation.md` says `Validated: yes` at the current commit, and `/jois-code:validate slice <backlog>/<slice>` first otherwise (a fix commit after the review makes the earlier validation out of date). Name `jois-story-plan` only for the next slice, after archive. Never suggest `/opsx:archive`.
+    - Then read the slice's `tasks.md` again. If no group has an unticked task, say the slice is built and name the next stage, and stop. The next stage is `/jois-code:archive slice <backlog>/<slice>` when the slice's `validation.md` says `Validated: yes` at the current commit, and `/jois-code:validate slice <backlog>/<slice>` first otherwise (a fix commit after the review makes the earlier validation out of date). Name `jois-story-plan` only for the next slice, after archive. Never suggest `/opsx:archive`.
 
 ## Resuming
 
-- State lives in `tasks.md` and the CLI. In the slice form it lives in the slice's `tasks.md` alone.
-- If the session is compacted or ends, run `/jois-code:apply <change>` or `/jois-code:apply slice <backlog>/<slice>` again.
+- State lives in the slice's `tasks.md` alone.
+- If the session is compacted or ends, run `/jois-code:apply slice <backlog>/<slice>` again.
 - It resumes from the pending tasks.
