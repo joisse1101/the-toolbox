@@ -246,7 +246,7 @@ Both forms run these. "The change" below means the slice in the slice form.
     - Repeat from step 6 until no group has a pending task.
     - The review of step 10a runs once before the test task, and the test task in the last group runs as step 7 says. Its failures run the fix loop of step 9, and the loop asks the user if a failure stays unexplained.
     - Then run step 2 again and follow what it says.
-    - In the slice form, read the slice's `tasks.md` again instead. If no group has an unticked task, say the slice is built and name `jois-story-plan` for the next slice, and stop. Never suggest `/opsx:archive`.
+    - In the slice form, read the slice's `tasks.md` again instead. If no group has an unticked task, say the slice is built and name the next stage, and stop. The next stage is `/jois-code:archive slice <backlog>/<slice>` when the slice's `validation.md` says `Validated: yes` at the current commit, and `/jois-code:validate slice <backlog>/<slice>` first otherwise (a fix commit after the review makes the earlier validation out of date). Name `jois-story-plan` only for the next slice, after archive. Never suggest `/opsx:archive`.
 
 ## Resuming
 
