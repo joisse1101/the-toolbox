@@ -43,7 +43,7 @@ Use these when work is done and sits in the working tree or in local commits.
 2. `/jois-git:write-pr` opens pull requests for the commits since the default branch, grouped by concern. It waits for a confirmation word before it pushes or creates anything. It lists the merge commands in order and never merges.
 3. `/jois-git:update-pr` is for later. When the branch gains commits, or the pull request it was stacked on has merged, it pushes, restacks and refreshes the body.
 
-Run your tests in the same chat before `/jois-git:write-pr`, because the command reads test runs it can see in the chat for the Author Verification list.
+For the Author Verification list, `/jois-git:write-pr` reads the `validation.md` and `review.md` of each slice the branch built, and the test runs it can see in the chat. So for work that is not a slice, run your tests in the same chat before the command.
 
 ## Write an issue
 

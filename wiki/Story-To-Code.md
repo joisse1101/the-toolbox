@@ -17,7 +17,7 @@ Start Claude in the code base folder, because the skills look for the data folde
 7. **Build** it with `/jois-code:apply slice <backlog>/<slice>`. Agents carry out the tasks one group at a time, and each finished group is committed on your branch. Before the tests the command reviews the code, fixes what the review finds for at most two rounds, and writes `review.md` into the slice folder. See [Task Agent](toolkit/Task-Agent.md).
 8. **Validate** it with `/jois-code:validate slice <backlog>/<slice>`. Agents test each acceptance criterion against the running code and write `validation.md` into the slice folder. The slice is validated only when every claim is met.
 9. **Archive** it with `/jois-code:archive slice <backlog>/<slice>`. It writes the slice into the wiki, one folder per topic with an overview, a reference and a design page, and marks the slice with `ARCHIVED.md`. It shows every page before it writes and stops at the commit rule's confirmation word. See [Command Details](toolkit/Command-Details.md).
-10. **Open the PR** with `/jois-git:write-pr`. The wiki commit of the archive travels in the same PR as the code.
+10. **Open the PR** with `/jois-git:write-pr`. The wiki commit of the archive travels in the same PR as the code. The PR's Author Verification list comes from the slice's `validation.md` and `review.md`, so it holds the results even in a new chat.
 
 Archive refuses a slice that is stale, has an unticked task, a `TBC` decision or an open question, or whose validation is not current. So when archive stops, it names the stage to go back to, and you never have to guess whether the wiki matches the code.
 
