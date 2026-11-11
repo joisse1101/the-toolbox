@@ -1,6 +1,6 @@
 # Task Recipes
 
-This page gives the items to run, in order, for six jobs: starting a repo, doing an OpenSpec change, committing and opening a pull request, writing an issue, taking minutes and setting up the docs. Each recipe names the commands exactly as you type them. What each item does is in the [Toolkit Guide](Toolkit-Guide.md), and how to install them is in [Install](Install.md).
+This page gives the items to run, in order, for seven jobs: starting a repo, doing an OpenSpec change, building a feature from user stories, committing and opening a pull request, writing an issue, taking minutes and setting up the docs. Each recipe names the commands exactly as you type them. What each item does is in the [Toolkit Guide](Toolkit-Guide.md), and how to install them is in [Install](Install.md).
 
 An OpenSpec change is a folder `openspec/changes/<name>/` that holds a proposal, specs, a design and a `tasks.md` task list. It is how this repo plans work before it writes code.
 
@@ -24,11 +24,16 @@ The change moves through four steps, and the commit rule applies at the end of e
 
 `/jois-code:apply` needs the agent `opsx-task-applier` installed and stops without it. It commits each finished group without testing, reviews the change with `/jois-code:review` and fixes its findings, and then runs the tests once, as the task in the last group. That task needs `opsx-test-runner`: without it the command names the missing agent and stops before the last group. If the session ends, run `/jois-code:apply <change>` again: it resumes from the tasks not yet ticked. It never pushes.
 
-To build a slice written by `jois-story-plan` instead, run `/jois-code:apply slice <backlog>/<slice>`. It checks that the slice is current and stops if it is stale, then works the same group loop and commits the code by itself under the same conditions. It ticks the slice's `tasks.md` in place, never stages the slice folder and never suggests `/opsx:archive`. Redraw a stale slice with `jois-story-plan` and run the command again.
-
-A finished slice goes into the wiki before its PR. After `/jois-code:apply slice <backlog>/<slice>` and `/jois-code:validate slice <backlog>/<slice>` both succeed at the current commit, run `/jois-code:archive slice <backlog>/<slice>`. It folds the slice into the topic pages of `wiki/`, shows every diff before it writes and stops at the confirmation word, so the wiki edits are committed with the code. Then run `/jois-git:write-pr`. A redrawn slice is archived again by running the command again, which replaces the slice's sections in place.
-
 When the change shapes user stories rather than code, the story skills have their own order, described in [Story Skills](../planner/Story-Skills.md).
+
+## Build a feature from user stories
+
+Plan the stories into a slice with the story skills first. Then build, test and document the slice with these commands, in this order. The whole flow, from an idea to the PR, with what each stage writes and how to find the next command after a break, is on [Story to Code](../Story-To-Code.md).
+
+1. `/jois-code:apply slice <backlog>/<slice>` builds the slice. It checks that the slice is current and stops if it is stale, then works the same group loop as for a change and commits the code by itself under the same conditions. It ticks the slice's `tasks.md` in place, never stages the slice folder and never suggests `/opsx:archive`. Redraw a stale slice with `jois-story-plan` and run the command again.
+2. `/jois-code:validate slice <backlog>/<slice>` tests each acceptance criterion against the running code and writes `validation.md` into the slice folder.
+3. `/jois-code:archive slice <backlog>/<slice>` writes the slice into `wiki/`, one folder per topic, once apply and validate both succeeded at the current commit. It shows every page before it writes and stops at the confirmation word, so the wiki edits are committed with the code. A redrawn slice is archived again by running the command again, which replaces the slice's block in place.
+4. `/jois-git:write-pr` opens the pull request.
 
 ## Commit and open a pull request
 

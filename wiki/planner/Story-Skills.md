@@ -20,6 +20,8 @@ Use the skills in this order, and skip the ones you do not need. Explore the ide
 | 4. Plan | `jois-story-plan` | a slice and the context map, then checks the slice with verify | open the slice document |
 | 5. Verify | `jois-story-verify`, `/jois-story:verify` | a corrected slice, review suggestions, only after you approve | build from the slice, apply or dismiss suggestions in the portal |
 
+After verify, the slice is built, validated and archived into the wiki by the `jois-code` commands. [Story to Code](../Story-To-Code.md) gives the whole flow in order, from an idea to the PR.
+
 Run `/jois-story:re-read` whenever you changed files in the portal or in a spreadsheet during a session, and `/jois-story:review` to check that a session's work is in sync.
 
 ## jois-story-explore
