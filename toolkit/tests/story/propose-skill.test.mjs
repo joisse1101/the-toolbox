@@ -27,7 +27,7 @@ const FULL = (code, title) => `${code},Identity & Access Management,Auth,${title
 
 test('the skill is named jois-story-propose, versioned, and may run only its five scripts and the init script', () => {
   assert.match(front, /^name: jois-story-propose$/m);
-  assert.match(front, /version: "1\.4\.0"/);
+  assert.match(front, /version: "1\.4\.1"/);
   assert.match(front, /last_updated: "2026-11-10"/);
   assert.match(front, /^allowed-tools: Bash\(node \*read-story-context\.mjs\*\), Bash\(node \*write-proposal\.mjs\*\), Bash\(node \*write-lexicon\.mjs\*\), Bash\(node \*suggest-lexicon\.mjs\*\), Bash\(node \*write-review\.mjs\*\), Bash\(node \*init-plans\.mjs\*\), Skill, Read, Grep, Glob$/m);
   assert.doesNotMatch(front, /mcp__/);

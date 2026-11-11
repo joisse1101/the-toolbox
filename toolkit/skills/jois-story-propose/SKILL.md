@@ -3,7 +3,7 @@ name: jois-story-propose
 description: Turn agreed user stories into proposed stories in `<backlog>/user-stories/proposals.csv`, where the portal's Proposed tab shows them for review and acceptance, agreed changes to stories already in the backlog into suggestions in `<backlog>/user-stories/review.csv`, which the story editor shows next to the field, agreed new terms into the backlog's lexicon in `<backlog>/lexicon.csv`, shown in the Lexicon tab, and agreed changes to terms already there (edit, rename, delete) into suggestions in `<backlog>/lexicon/lexicon-suggestions.csv`, which the user applies in the Lexicon tab. Shows the full drafts, edits and terms, asks one yes/no question, and writes only after the user confirms. Validates everything against the guidelines' format, the backlog and the lexicon rules, and never touches the backlog CSV. Use when the user wants to write, save or propose new stories, edits to existing stories or terms for the lexicon, or to continue from jois-story-explore.
 allowed-tools: Bash(node *read-story-context.mjs*), Bash(node *write-proposal.mjs*), Bash(node *write-lexicon.mjs*), Bash(node *suggest-lexicon.mjs*), Bash(node *write-review.mjs*), Bash(node *init-plans.mjs*), Skill, Read, Grep, Glob
 metadata:
-  version: "1.4.0"
+  version: "1.4.1"
   last_updated: "2026-11-10"
 ---
 
@@ -280,6 +280,8 @@ A writer's reply says what it did; it does not prove the file still holds it. Af
 
 After the last read-back of a turn in which you added or patched proposed stories, check them with `jois-story-review`. Skip this when you wrote only lexicon terms or review rows. Load it with the Skill tool, give it the backlog and the scope (each story you added or patched, by Title and `NEW-<n>` ID, with the `NEW-<n>` IDs the writer reported), and tell it that it runs in findings mode: it reads, writes nothing and returns findings. When `jois-story-review` is not installed or cannot run, say the review round was not run and why, and never count it as passed.
 
+The review's findings are input for the steps below, not your reply. When they come back, carry on in the same turn: sort them, patch, add the questions, run the second round if needed, and end with "Report". A turn that ends on the findings leaves the `confirm` findings unsaved, so a new session loses them.
+
 Sort what comes back, for the proposed stories you just wrote only:
 
 - **`ready` finding**: send a patch for it through `write-proposal.mjs` (see "Patch a proposed story") with the stories' `storyTitle`, without asking again, then read the story back as "Verify every write" says. A `ready` finding whose edit would add a capability, a user group, a permission or a rule the story does not imply is treated as `confirm`.
@@ -290,6 +292,6 @@ After the patches, run the review again on the patched stories. Stop after 2 rou
 
 ## Report
 
-After the last read-back, name the stories the writer reported, added and patched, each by Title with its ID in parentheses and against its numbered draft, and the file (`<backlog>/user-stories/proposals.csv`), and say the stories are on the portal's **Proposed** tab, where they can be edited and accepted into the backlog. Then report the review round: the automatic fixes (each story by Title, the field, the old value and the new value), the questions you added and the findings left open, or that the round was not run and why. Tell the user to check that tab, and not to edit it in the portal while a command is being written. Do not offer to put them in the backlog yourself.
+After the last read-back, name the stories the writer reported, added and patched, each by Title with its ID in parentheses and against its numbered draft, and the file (`<backlog>/user-stories/proposals.csv`), and say the stories are on the portal's **Proposed** tab, where they can be edited and accepted into the backlog. Then report the review round: the automatic fixes (each story by Title, the field, the old value and the new value), the questions you added and the findings left open, or that the round was not run and why. Tell the user to check that tab, and not to edit it in the portal while a command is being written. Do not offer to put them in the backlog yourself. End with the next step in one line: accept the stories on the **Proposed** tab, answer the questions added to them, then plan them with `jois-story-plan`.
 
 For edits, name each story (by Title) and field written and the file (`<backlog>/user-stories/review.csv`), and say the suggestions are on those stories in the editor, where the user applies or dismisses each one (a frozen story has no suggestion: it is read-only). For lexicon changes, name each term added and the file (`<backlog>/lexicon.csv`), and say they are on the portal's **Lexicon** tab, where the user can edit or delete them. For suggested edits, renames and deletes, name each one and the file (`<backlog>/lexicon/lexicon-suggestions.csv`) and say they are listed at the top of the **Lexicon** tab, where the user applies or dismisses each one. A later full `jois-story-review` run replaces suggestions that are still open, so the user should apply the ones they want first.
