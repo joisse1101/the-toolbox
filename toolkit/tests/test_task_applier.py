@@ -129,10 +129,11 @@ def test_agent_reads_a_slice_task():
     assert "`UC-<slice>.md`" in text
 
 
-def test_apply_command_has_the_slice_form():
+def test_apply_command_takes_only_a_slice():
     text = APPLY_COMMAND.read_text(encoding="utf-8")
     assert "/jois-code:apply slice <backlog>/<slice>" in text
-    assert "A bare name is always an OpenSpec change" in text
+    assert "ask for `slice <backlog>/<slice>` and do nothing else" in text
+    assert "openspec" not in text.lower()
     assert "Never suggest `/opsx:archive`" in text
     allowed = next(line for line in _frontmatter(APPLY_COMMAND).splitlines() if line.startswith("allowed-tools:"))
     assert "Bash(node *jois-story-plan*read-diagrams.mjs*)" in allowed
@@ -165,6 +166,17 @@ def test_apply_command_names_the_fix_loop_limits():
     assert "The report ends in `blocked: <question>`" in text
     assert "the same command and the same output line" in text
     assert "Never take the next group while a failure of the current group is unexplained" in text
+
+
+def test_apply_command_records_the_review_for_archive_in_the_slice_form():
+    text = APPLY_COMMAND.read_text(encoding="utf-8")
+    assert "**Record the review.**" in text
+    for field in ("`Review:`", "`Date:`", "`Reviewed commit:`", "`Fix rounds:`", "`## Known, not fixed`"):
+        assert field in text
+    allowed = next(line for line in _frontmatter(APPLY_COMMAND).splitlines() if line.startswith("allowed-tools:"))
+    tools = [tool.strip() for tool in allowed.split(":", 1)[1].split(", ")]
+    assert "Write(**/slices/*/review.md)" in tools
+    assert "Write" not in tools
 
 
 def test_apply_command_has_no_deferral_or_held_back_rule():

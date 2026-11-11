@@ -3,7 +3,7 @@ name: jois-story-review
 description: Review a user-story backlog CSV (`<backlog>/user-stories.csv`) against references/product-backlog.md (Epic > Feature > Story hierarchy, INVEST, acceptance-criteria quality and edge cases) and across stories, the backlog's lexicon and its proposals (duplicates, overlaps, contradictions, role and term drift), and report findings with suggested fixes, also written as a review CSV the portal can apply. Never edits the backlog CSV. Use when the user asks to review, audit, sanity-check, consistency-check or "INVEST-check" a backlog or its stories.
 allowed-tools: Bash(node *read-backlog.mjs*), Bash(node *write-review.mjs*), Bash(node *init-plans.mjs*)
 metadata:
-  version: "1.2.0"
+  version: "1.2.1"
   last_updated: "2026-11-10"
 ---
 
@@ -22,6 +22,7 @@ When another skill (today `jois-story-propose`) starts this skill with the Skill
 - Return the findings to the caller as a list in the shape of the review rows below (`storyId`, `field`, `action`, `suggested`, `reason`, `area`, `confidence`, `pair` on a `resolve`), each with the story's Title. Mark every finding `ready` or `confirm` as the confidence table says, and never mark a value only the user can decide as `ready`.
 - Name a proposed story by its `NEW-<n>` ID so the caller can patch it. Findings about a frozen story or a story outside the scope go in a separate "Not written" list for the caller to report.
 - End with one line: the number of stories reviewed and the number of findings per confidence. The summary and the offer to explain findings are left out.
+- **The findings are not the end of the turn.** They are input for the caller, which still has steps to run. After the last line, go straight back to the caller's instructions in the same turn, and never end the turn on the findings.
 
 When the user runs this skill directly, none of this applies: review everything submitted and write the review file as below.
 

@@ -2,6 +2,10 @@
 
 Welcome. This wiki holds the docs for this project, one page per topic. The project has two parts: the backlog planner in `planner/` and the toolkit in `toolkit/`.
 
+## From story to code
+
+- [Story to Code](Story-To-Code.md)
+
 ## Planner
 
 - [Planner Guide](planner/Planner-Guide.md)

@@ -41,7 +41,7 @@ def test_command_has_one_form_and_refuses_any_other_argument():
 def test_command_is_manual_only_and_versioned():
     frontmatter = _frontmatter()
     assert "disable-model-invocation: true" in frontmatter
-    assert 'version: "1.0.0"' in frontmatter
+    assert 'version: "1.2.0"' in frontmatter
     assert "last_updated:" in frontmatter
 
 
@@ -113,10 +113,19 @@ def test_command_does_not_ask_whether_the_slice_was_built_or_planned():
 
 # Task 1.3: the review answer
 
+def test_command_reads_the_review_record_apply_wrote_before_asking():
+    step = _step(4, 5)
+    assert "Read `review.md` in the slice folder first" in step
+    assert "same rule as `validation.md` in step 3" in step
+    assert "When it says `Review: run` and is current, record `review: run` in the source row and ask nothing" in step
+    assert "`## Known, not fixed`" in step
+    assert "never one that `review.md` does not state" in step
+
+
 def test_command_asks_for_the_review_answer_and_records_it():
     step = _step(4, 5)
-    assert "Review leaves no record, so ask once" in step
-    assert "AskUserQuestion" in step
+    assert "Otherwise ask once with AskUserQuestion" in step
+    assert "there is no `review.md`" in step
     assert "`review: not run`" in step
     assert "`review: run`" in step
     assert "Never claim a review the user did not state" in step
@@ -141,9 +150,9 @@ def test_command_waits_for_approval_of_the_map_before_any_diff():
 
 def test_command_names_a_new_page_for_its_topic_not_the_slice():
     step = _step(5, 6)
-    assert "Create a new page only when no page covers the topic" in step
+    assert "Create a new folder only when no folder or page covers the topic" in step
     assert "Name it for the topic and never for the slice" in step
-    assert "extends the authentication page" in step
+    assert "extends the authentication folder" in step
     assert "A target outside `wiki/` is refused" in step
 
 
@@ -288,6 +297,7 @@ def test_rules_say_show_wait_then_write_and_keep_files_inside_the_wiki():
     assert "wait for the answer, before you write it. Never show and write in the same step" in text
     assert "Build page text in the conversation and never in a scratch file" in text
     assert "Keep the line endings a page already has" in text
+    assert "Only your reply counts as shown" in text
 
 
 def test_command_says_where_each_script_lives_and_takes_a_bare_backlog_name():
@@ -314,7 +324,7 @@ def test_command_handles_a_review_question_the_user_cannot_answer():
 
 def test_new_page_is_linked_from_home_and_overlap_is_asked():
     step = _step(5, 6)
-    assert "Map a link to it from `wiki/Home.md`" in step
+    assert "Map a link to its `overview.md` from `wiki/Home.md`" in step
     assert "`wiki/Home.md` gets no `## Sources` row" in step
     assert "ask whether to extend that section or add the part beside it" in step
 
@@ -323,9 +333,8 @@ def test_write_step_names_contradictions_headings_and_the_stories_cell():
     step = _step(7, 8)
     assert "contradicts what the slice adds" in step
     assert "Never leave it unmentioned" in step
-    assert "one level below the heading of the page section they sit in" in step
     assert "Put the marked block just before `## Sources`" in step
-    assert "On a new page the slice's sections go under the page's `#` heading" in step
+    assert "A new `design.md` starts with the heading `# <Topic>: design`" in step
     assert "`Title (hash); Title (hash)`" in step
     assert "ask with AskUserQuestion (\"Write it\", \"Change it\") and write only after the answer" in step
 
@@ -393,3 +402,55 @@ def test_the_turn_ends_at_the_word_even_for_a_skipped_row_and_without_one_when_n
 
 def test_diagram_check_takes_the_section_that_holds_the_diagrams():
     assert "the section or page text after it" in _step(7, 8)
+
+
+# Readable wiki layout: one folder per topic
+
+def test_command_names_the_three_pages_of_a_topic_folder_and_what_each_answers():
+    layout = _text().split("## Wiki layout", 1)[1].split("\n## ", 1)[0]
+    assert "`wiki/<topic>/`" in layout
+    for page in ("`overview.md`", "`reference.md`", "`design.md`"):
+        assert page in layout
+    assert "It is the only page of the folder with markers and sources" in layout
+    assert "so they carry no markers" in layout
+
+
+def test_map_sends_each_part_to_the_page_that_answers_its_question():
+    step = _step(5, 6)
+    assert "failure responses, rules and design decisions go to `design.md`" in step
+    assert "Interface contracts, limits, settings and data files go to `reference.md`" in step
+    assert "also goes on `overview.md` as one row or one line" in step
+
+
+def test_a_flat_topic_page_is_written_in_place_and_never_split_on_its_own():
+    step = _step(5, 6)
+    assert "A topic that is still one flat page" in step
+    assert "Never move, split or rename a page on your own" in step
+
+
+def test_block_puts_each_criterion_next_to_the_behaviour_it_proves():
+    step = _step(7, 8)
+    assert "`| Situation | Result | AC id |`" in step
+    assert "Put each failure response and each rule on the row of the criterion that proves it" in step
+    assert "with `none` as its AC id" in step
+    assert "Keep each Result cell to one outcome" in step
+    assert "the block has no separate table of acceptance criteria" in step
+    assert "every AC id of the slice appears in it exactly once" in step
+    for heading in ("`### Behaviour`", "`### How it fits together`", "`### Decisions`"):
+        assert heading in step
+    assert step.index("`### Behaviour`") < step.index("`### How it fits together`") < step.index("`### Decisions`")
+
+
+def test_overview_and_reference_are_edited_as_one_topic_text_without_markers():
+    step = _step(7, 8)
+    assert "never add a section per slice" in step
+    assert "`overview.md` and `reference.md` get no source table" in step
+    assert "never inside another slice's block" in step
+
+
+def test_archived_record_is_two_short_tables():
+    step = _last_step(8)
+    assert "# Archived: <backlog>/<slice>" in step
+    assert "| Page | What changed |" in step
+    for row in ("| Date |", "| Commit |", "| Review |", "| Stories |"):
+        assert row in step

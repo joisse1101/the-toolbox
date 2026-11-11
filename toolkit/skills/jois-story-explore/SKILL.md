@@ -3,8 +3,8 @@ name: jois-story-explore
 description: Think through new user stories for a backlog (a folder of the data folder that holds `user-stories.csv`) with the user, against references/product-backlog.md and the stories already in the backlog and the proposals. Discusses scope, splitting, Epic and Feature placement, dependencies and acceptance criteria, and may sketch draft stories in the conversation. Never writes any file. Use when the user wants to explore, shape, brainstorm or discuss new stories or a new feature before writing them down; hand over to jois-story-propose to save them.
 allowed-tools: Bash(node *read-story-context.mjs*), Read, Grep, Glob
 metadata:
-  version: "1.4.0"
-  last_updated: "2026-11-10"
+  version: "1.4.2"
+  last_updated: "2026-11-11"
 ---
 
 # Explore new stories
@@ -15,7 +15,18 @@ Help the user work out new stories for one backlog by talking them through. **Ne
 
 ## Data folder
 
-The script finds the backlog data folder itself, in the current folder only and never in a parent folder: the config file named by the `PLANNER_CONFIG` variable, else a `.plans` folder in the current folder, else a `planner.config.yaml` in the current folder (its `codeBase` or `dataDir` line). If the script says no data folder was found, report that to the user, name the folder it looked in, and say they can start the session in the code base folder or set `PLANNER_CONFIG`. This skill only reports it: it does not create `.plans` and has no script for it. If the script says the config or `.plans` cannot be used, show its message. Do not prefix the command with the variable: every command you run starts with `node`. Never guess a folder.
+The script finds the backlog data folder itself, in the current folder only and never in a parent folder: the config file named by the `PLANNER_CONFIG` variable, else a `.plans` folder in the current folder, else a `planner.config.yaml` in the current folder (its `codeBase` or `dataDir` line). If the script says the config or `.plans` cannot be used, show its message.
+
+### No data folder or no backlog yet
+
+A new project has neither, and exploring needs neither, because it writes nothing. When the script says no data folder was found, or lists no backlog, do not stop. Say it once, in a short paragraph:
+
+- name the folder the script looked in;
+- say that the session may have started in the wrong folder (then start it in the code base folder, or set `PLANNER_CONFIG`);
+- for a new project, say how to get a backlog before saving: in the planner, **Add Project...** links this folder and offers to create `.plans` and a first backlog, and `jois-story-propose` can create `.plans` on a yes;
+- say that you explore now without one, so the drafts are checked against the guidelines and the wiki only, not against stories or a lexicon.
+
+Then carry on with "Input" and the rest of this skill, skipping only the reads that need a backlog. This skill still never creates `.plans` or a backlog itself. Do not prefix the command with the variable: every command you run starts with `node`. Never guess a folder.
 
 ## Input
 
@@ -77,7 +88,7 @@ These Notes lines and edits are shown in the reply only. Say that `jois-story-pr
 
 Before you show a draft, check whether the idea repeats something the project has already built. Archive writes each finished slice into the wiki, so the wiki holds that record. Use the wiki found by "Find the wiki page" above, with the same no-wiki rule: when there is no `wiki/`, you have said so once, so do not say it again for this check, and carry on against the backlog and the proposals.
 
-1. **Find the archived slices.** `Grep` `wiki/` for `archive:` markers (`<!-- archive:<backlog>/<slice>:start -->`), and follow the "Where the docs are" table of `CLAUDE.md` and `wiki/Home.md` to the pages for the idea's topic. On each page you find, read the `## Sources` table: its Scope and Stories columns (each story's Title) show which slices the page holds. When `wiki/` holds no marker, say once that no slice is archived yet and go on.
+1. **Find the archived slices.** `Grep` `wiki/` for `archive:` markers (`<!-- archive:<backlog>/<slice>:start -->`), and follow the "Where the docs are" table of `CLAUDE.md` and `wiki/Home.md` to the pages for the idea's topic. On each page you find, read the `## Sources` table (a topic folder, `wiki/<topic>/`, keeps it on its `design.md` next to the markers, and its `overview.md` says what the feature does): its Scope and Stories columns (each story's Title) show which slices the page holds. When `wiki/` holds no marker, say once that no slice is archived yet and go on.
 2. **Report each overlap.** An overlap is an archived slice whose scope or story Titles cover the idea, or a term or entity the idea defines again. Name it by slice id (`<backlog>/<slice>`), the page path under `wiki/` and the story Titles from its `## Sources` row. Do not give a built-or-planned status: only built slices are archived. Say nothing about a slice that does not overlap.
 3. **Leave the decision to the user.** Ask whether the idea extends the archived design, replaces it or was already covered. Do not drop the idea and do not follow the archived page on your own. When the overlap is also a contradiction, handle it with "Contradictions" above.
 4. **Look facts up.** A fact an archived page holds (for example which roles exist) is read from the page, not asked of the user. Ask only for what the pages lack, and say that they lack it.

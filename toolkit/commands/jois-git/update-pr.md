@@ -11,8 +11,8 @@ hooks:
           command: >-
             powershell -NoProfile -Command "if ([Console]::In.ReadToEnd() -match 'gh\s+(pr\s+(merge|.*--auto)|api\b.*merge)') { [Console]::Error.WriteLine('update-pr never merges: the user runs gh pr merge'); exit 2 }"
 metadata:
-  version: "1.2.1"
-  last_updated: "2026-10-30"
+  version: "1.3.0"
+  last_updated: "2026-11-11"
 ---
 
 # Update PR
@@ -80,7 +80,7 @@ Bring the open PR of this branch up to date.
    - Decide whether the PR needs no tests, as Needs no tests below says.
    - If it does, skip this step: no run offer and no question.
    - Otherwise gather verification as Author Verification says.
-     - The order is `tasks.md`, runs seen in this conversation, then the offer to run missing tests.
+     - The order is the slice's `validation.md` and `review.md`, an OpenSpec change's `tasks.md`, runs seen in this conversation, then the offer to run missing tests.
    - If a question is needed, ask it once, in plain text, and end the turn.
    - Continue from the reply.
 6. **Compose** the new body from the PR body template, as the sections below say, from the commits in step 4.
@@ -204,7 +204,7 @@ Fill every section below, then delete the `<!-- -->` comments before opening the
   - List those files and the test names under the box.
   - The user has said to assume the tests were run.
 - **Author Verification:**
-  - Bullets come from the matching OpenSpec `tasks.md`, runs seen in this conversation and, where neither has any, the user's answer.
+  - Bullets come from the slice's `validation.md` and `review.md`, the matching OpenSpec `tasks.md`, runs seen in this conversation and, where none has any, the user's answer.
   - The Author Verification section says how.
   - A bullet reports no result its source lacks.
   - Quote a count only when a source records it.
@@ -255,10 +255,33 @@ The presentation says which groups need no tests and why.
 
 ### Sources of a bullet
 
-Find the OpenSpec change whose files the group's commits touch.
+Read the result files of the slices this branch built first. A slice is the folder `<backlog>/slices/<slice>/` that `jois-story-plan` writes into the planner's data folder. `/jois-code:apply` writes `review.md` into it, and `/jois-code:validate` writes `validation.md` (or `validation.partial.md` for one story). The data folder is not tracked by git, so these files are read from the working tree and never staged.
 
-- It is in `openspec/changes/<name>/` or `openspec/changes/archive/*-<name>/`.
-- Read its `tasks.md`.
+Find the slices of the branch:
+
+- Glob `**/slices/*/validation.md`, `**/slices/*/validation.partial.md` and `**/slices/*/review.md` from the project root.
+- Read the header of each file: `Tested commit:` in a validation file, `Reviewed commit:` in `review.md`.
+- Keep a file when its commit is on this branch: `git merge-base --is-ancestor <commit> HEAD` succeeds and `git merge-base --is-ancestor <commit> origin/<base>` fails.
+- If two folders name the same slice (for example a copy under `.trees/`), keep only the one whose commit is on this branch. If both are, list them and ask which one in the step 5 question.
+- The slice's bullets go to the group that holds that commit.
+
+A file is current when its commit equals `git rev-parse HEAD`, or when `git diff --name-only <commit> HEAD` lists only paths under `wiki/`, because the archive commit changes only the wiki. Otherwise tell the user the file is out of date, name the first path outside `wiki/` that changed since, and write no bullet from it.
+
+Sort each current file by its header:
+
+| File | Bullet |
+|---|---|
+| `validation.md` with `Validated: yes` | `/jois-code:validate slice <backlog>/<slice>`: every claim met, with the claim count and the tested commit. Source `validation.md`. |
+| `validation.md` with `Validated: no` | The counts of `met`, `not met` and `could not test` claims, then one sub-bullet per claim that is not `met`, with its claim ID, source and reason. Tell the user the slice is not validated. Source `validation.md`. |
+| `validation.partial.md` | Only when no current `validation.md` exists: the story it tested and its counts, marked as a partial run of one story. Source `validation.partial.md`. |
+| `review.md` with `Review: run` | `/jois-code:review` at the reviewed commit, with the fix rounds and whether the static and behavioural checks ran, then one sub-bullet per line under `## Known, not fixed`. Source `review.md`. |
+| `review.md` with `Review: not run` | The review was not run, with the reason the file gives. Source `review.md`. |
+
+A validation bullet is manual, because validate tests the running code with agents and a browser, not only the repository's test command. Quote only the counts and reasons the file records, and never call a slice validated that the file does not.
+
+A group whose commits touch an OpenSpec change also reads that change's `tasks.md`.
+
+- The change is in `openspec/changes/<name>/` or `openspec/changes/archive/*-<name>/`.
 - Sort each task by its text:
 
 | Task | Bullet |
@@ -280,7 +303,7 @@ Then read this conversation for **runs**.
   - If an Edit or Write in the conversation touched a file in the group's diff after the run, tell the user the run is out of date and write no bullet for it.
   - A summarized history, or a session with no runs, contributes nothing.
   - Never reconstruct a run you cannot see.
-  - A `chat` bullet and a `tasks.md` bullet can both appear, because they record different runs.
+  - A `chat` bullet and a slice or `tasks.md` bullet can both appear, because they record different runs.
 
 Rules for every bullet:
 
@@ -293,7 +316,7 @@ Rules for every bullet:
 
 A group has none when no source above gives a bullet with a result.
 
-- That means no OpenSpec change, no verification task in `tasks.md`, a task with no recorded result, and no usable run.
+- That means no current `validation.md` or `review.md` of a slice on this branch, no OpenSpec task with a recorded result, and no usable run.
 - A group that needs no tests is never one of them.
 
 For these groups:
@@ -326,7 +349,8 @@ Suggest steps from these sources:
 
 - The group's diff.
 - Its commit bodies.
-- Its `tasks.md`.
+- The evidence column of its slice's `validation.md`, which names the command or page each claim was tested with.
+- The `tasks.md` of its OpenSpec change.
 - The commands run in this conversation.
 - The repository's own documents.
 
@@ -363,6 +387,9 @@ Further rules:
 
 When presenting a PR, tag every bullet and step with one of these:
 
+- `validation.md`
+- `validation.partial.md`
+- `review.md`
 - `tasks.md N.N, result recorded`
 - `tasks.md N.N, no result recorded`
 - `chat`

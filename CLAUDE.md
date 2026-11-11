@@ -53,6 +53,7 @@ Changes are managed with OpenSpec (`openspec/`) and use conventional-commit pref
 | If you work on | Read first |
 | --- | --- |
 | Anything (start here) | [Home](wiki/Home.md) |
+| Building a feature from user stories (explore to archive, and which command is next) | [Story to Code](wiki/Story-To-Code.md) |
 | The planner, its portal, data folder or story skills (`wiki/planner/`) | [Planner Guide](wiki/planner/Planner-Guide.md), then [Logic Layer](wiki/planner/architecture/Logic-Layer.md) |
 | The toolkit's skills, commands, rules or installer (`wiki/toolkit/`) | [Toolkit Guide](wiki/toolkit/Toolkit-Guide.md) |
 | Making a change, committing, or adding a tool | [Workflow](wiki/Workflow.md) |
