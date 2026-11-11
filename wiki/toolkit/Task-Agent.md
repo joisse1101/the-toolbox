@@ -39,6 +39,8 @@ After each report it says whether the group is done, failed or blocked, and a fa
 
 The ticks in `tasks.md` are the progress across groups, and the transcript is the view inside one group. After each completed group the command commits or stops (see Committing a group below). If the session ends, run the command again, and it resumes from the pending tasks.
 
+A session that ends inside a group leaves the agent's edits uncommitted. So before its first dispatch the command checks the tree. When tracked files changed, it names them and the pending tasks they most likely belong to, and asks once whether to keep them as the starting point (the agent then reads them first, verifies and finishes them) or to stop so you can set them aside. It dispatches nothing before your answer. When the last group is done, the command names the next stage: `/jois-code:archive` when the slice's validation is current, else `/jois-code:validate` first.
+
 ## Install
 
 Install both parts, then start the command in a Claude Code session:

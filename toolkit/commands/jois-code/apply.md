@@ -4,7 +4,7 @@ description: "Apply an OpenSpec change or a slice one group of tasks at a time: 
 allowed-tools: Bash(openspec:*), Bash(git status:*), Bash(git diff:*), Bash(git add:*), Bash(git commit:*), Bash(git branch --show-current:*), Bash(node *jois-story-plan*read-diagrams.mjs*), Skill, Read, Edit, Glob, Agent, Monitor
 disable-model-invocation: true
 metadata:
-  version: "1.9.0"
+  version: "1.10.0"
   last_updated: "2026-11-10"
 ---
 
@@ -95,6 +95,12 @@ Both forms run these. "The change" below means the slice in the slice form.
    - Skip a section with no pending task.
    - In a partly ticked section, send the agent only the pending tasks.
    - A re-run then resumes where the last one stopped.
+   - **Left-over edits from an interrupted run.** Before the first dispatch of this run, run `git status` and `git diff --stat`, ignoring the change's or slice's own folder as step 10 does.
+     - A clean tree needs nothing.
+     - Otherwise an earlier run was most likely stopped inside a group, after its agent edited files and before the commit. Name the changed files, the first pending group, and the pending tasks the edits most likely belong to.
+     - Ask once, with `AskUserQuestion`: keep the edits as the starting point (recommended), or stop so the user can set them aside. Dispatch nothing before the answer.
+     - On keep, tell the agent in the group's brief which files already hold a draft of its pending tasks, to read them first, then verify and finish them. Step 10 then counts those files as the group's.
+     - On stop, end the command with nothing dispatched.
    - Take the last group in two parts. Part one is every task except its test task. It goes through steps 6 to 10, commit included, as a group of its own. Then step 10a (the review) runs. Part two is the test task, run as step 7 says. A fix the tests need is committed by step 10 as its own commit.
    - A group that has no test task, or a change whose last group is only the test task, skips part one. Step 10a still runs once before the test task, on whatever the branch holds.
 6. **Announce the group.**
