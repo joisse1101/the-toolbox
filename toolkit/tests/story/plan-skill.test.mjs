@@ -11,7 +11,7 @@ const body = skill.replace(/\r\n/g, '\n');
 test('the skill is named jois-story-plan, versioned, and allows only its five scripts, the init script and the file tools', () => {
   const meta = frontmatter(skill);
   assert.equal(meta.name, 'jois-story-plan');
-  assert.match(body, /metadata:\n  version: "1\.7\.0"\n  last_updated: "2026-11-10"/);
+  assert.match(body, /metadata:\n  version: "1\.7\.1"\n  last_updated: "2026-11-11"/);
   assert.deepEqual(meta['allowed-tools'].split(/,\s*/).sort(), [
     'Bash(node *init-plans.mjs*)', 'Bash(node *read-context-map.mjs*)', 'Bash(node *read-diagrams.mjs*)', 'Bash(node *write-context-map.mjs*)', 'Bash(node *write-diagram.mjs*)', 'Bash(node *write-freeze.mjs*)', 'Glob', 'Grep', 'Read', 'Skill',
   ]);
