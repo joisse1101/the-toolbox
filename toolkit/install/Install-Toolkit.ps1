@@ -17,8 +17,19 @@ silently: it is reported as "differs" and skipped unless -Force is given. "Diffe
 hash over every file's relative path and content (computed by
 install\Get-ItemHash.ps1). -List shows that state per item without changing
 anything. -Uninstall removes only items that exist in the toolkit; anything else in the destination is
-left alone. Nothing outside the skills, commands, rules and agents folders is touched (settings.json
-and hooks included).
+left alone. Nothing outside the skills, commands, rules and agents folders is touched, except the one
+key CLAUDE_CODE_SUBAGENT_MODEL in the env object of Claude Code's settings.json (see below). Hooks and
+every other setting are never touched.
+
+On a full install (no -Skill, -Command, -Rule or -Agent), the installer then ensures
+CLAUDE_CODE_SUBAGENT_MODEL is 'sonnet' in settings.json (~/.claude/settings.json globally,
+<project>\.claude\settings.json for a project). That is the model a subagent with no model passed and
+none pinned runs on. It creates the file or the env object when missing, keeps every other key, and
+saves a backup (settings.json.bak-<time>) before it changes an existing file. It rewrites the file as
+JSON, so whitespace changes. A file that is not valid JSON is left unchanged and the exit code is 1.
+When the key holds another value, the installer shows both effects and asks; with nobody to ask it
+skips and warns. It never sets CLAUDE_CODE_SUBAGENT_MODEL_FORCE. -Uninstall leaves the key alone and
+names it, because the installer cannot tell its own value from one you chose.
 
 A skill that carries a package.json (and its package-lock.json) gets `npm ci` run in its installed
 folder when the installer installs or replaces it, never when it is up to date. A `node_modules`
@@ -65,6 +76,13 @@ Overwrite a destination item that differs from the toolkit's copy.
 Skip `npm ci` for a skill that carries a package.json. The installer prints the skill folder and the
 command to run by hand instead.
 
+.PARAMETER NoSettings
+Skip the settings.json step on a full install, list or uninstall run.
+
+.PARAMETER SubagentModel
+'Overwrite' or 'Skip': the answer when CLAUDE_CODE_SUBAGENT_MODEL already holds another value than
+'sonnet'. Without it the installer asks, or skips with a warning when nobody can answer.
+
 .PARAMETER Help
 Show this help and exit (-h works too).
 
@@ -95,6 +113,9 @@ param(
     [switch]$Uninstall,
     [switch]$Force,
     [switch]$NoPackages,
+    [switch]$NoSettings,
+    [ValidateSet('Overwrite', 'Skip')]
+    [string]$SubagentModel,
     [switch]$Help
 )
 
@@ -169,6 +190,96 @@ function Install-SkillPackages($Item) {
     }
 }
 
+# The one key the installer sets in the tool's settings file. It is the default model for a subagent
+# that has no model passed and none pinned. The force variable is never set: it would override the
+# model pinned in an agent file, such as opsx-test-runner's haiku.
+$settingKey = 'CLAUDE_CODE_SUBAGENT_MODEL'
+$settingValue = 'sonnet'
+$script:settingsFailed = $false
+
+function Read-SettingsFile([string]$File) {
+    # Returns the parsed settings object (an empty one for a missing or blank file). Throws a message
+    # that names the file when the file is not a JSON object.
+    if (-not (Test-Path -LiteralPath $File)) { return [pscustomobject]@{} }
+    $raw = Get-Content -LiteralPath $File -Raw
+    if ([string]::IsNullOrWhiteSpace($raw)) { return [pscustomobject]@{} }
+    try { $parsed = $raw | ConvertFrom-Json }
+    catch { throw "$File is not valid JSON: $($_.Exception.Message)" }
+    if ($parsed -isnot [pscustomobject]) { throw "$File is not a JSON object." }
+    return $parsed
+}
+
+function Get-SettingState($Settings) {
+    # Returns @{ State = 'missing' | 'up to date' | 'differs'; Current = <value or $null> }.
+    $envProp = $Settings.PSObject.Properties['env']
+    if (-not $envProp -or $envProp.Value -isnot [pscustomobject]) { return @{ State = 'missing'; Current = $null } }
+    $prop = $envProp.Value.PSObject.Properties[$settingKey]
+    if (-not $prop) { return @{ State = 'missing'; Current = $null } }
+    if ([string]$prop.Value -eq $settingValue) { return @{ State = 'up to date'; Current = $prop.Value } }
+    return @{ State = 'differs'; Current = $prop.Value }
+}
+
+function Read-SubagentChoice($Current, [string]$File) {
+    # Returns 'Overwrite', 'Skip', or $null when nobody can answer (no console, or input at its end).
+    Write-Host ''
+    Write-Host "  WARNING     $File already sets $settingKey to '$Current'."
+    Write-Host "              Overwrite: replaces '$Current' with '$settingValue', so a subagent with no model passed or pinned runs on Sonnet."
+    Write-Host "              Skip: keeps '$Current', so such a subagent keeps its current default."
+    try { $answer = Read-Host "  Overwrite $settingKey with '$settingValue'? [o]verwrite / [s]kip (default skip)" }
+    catch { return $null }
+    if ($null -eq $answer) { return $null }
+    if ($answer.Trim().ToLower().StartsWith('o')) { return 'Overwrite' }
+    return 'Skip'
+}
+
+function Set-SubagentModelSetting {
+    $file = Resolve-DestRoot 'settings'
+    try { $settings = Read-SettingsFile $file }
+    catch {
+        Write-Host "  FAILED      settings: $($_.Exception.Message) Left unchanged; fix the file, then re-run."
+        $script:settingsFailed = $true
+        return
+    }
+    $info = Get-SettingState $settings
+    if ($info.State -eq 'up to date') {
+        Write-Host "  up to date  settings $settingKey in $file"
+        return
+    }
+    if ($info.State -eq 'differs') {
+        $choice = $SubagentModel
+        if (-not $choice) { $choice = Read-SubagentChoice $info.Current $file }
+        if (-not $choice) {
+            Write-Host "  WARNING     settings: $file sets $settingKey to '$($info.Current)'; left unchanged because nobody could be asked. Re-run with -SubagentModel Overwrite to replace it."
+            return
+        }
+        if ($choice -eq 'Skip') {
+            Write-Host "  skipped     settings $settingKey stays '$($info.Current)' in $file"
+            return
+        }
+    }
+    $envProp = $settings.PSObject.Properties['env']
+    if (-not $envProp) {
+        $settings | Add-Member -NotePropertyName env -NotePropertyValue ([pscustomobject]@{})
+    }
+    elseif ($envProp.Value -isnot [pscustomobject]) {
+        Write-Host "  FAILED      settings: the env value in $file is not an object. Left unchanged; fix the file, then re-run."
+        $script:settingsFailed = $true
+        return
+    }
+    $settings.env | Add-Member -NotePropertyName $settingKey -NotePropertyValue $settingValue -Force
+    if (Test-Path -LiteralPath $file) {
+        $backup = "$file.bak-$(Get-Date -Format 'yyyyMMddHHmmss')"
+        Copy-Item -LiteralPath $file -Destination $backup
+        Write-Host "  backup      $backup"
+    }
+    else {
+        New-Item -ItemType Directory -Force -Path (Split-Path $file -Parent) | Out-Null
+    }
+    $json = $settings | ConvertTo-Json -Depth 100
+    [System.IO.File]::WriteAllText($file, $json + [Environment]::NewLine, (New-Object System.Text.UTF8Encoding($false)))
+    Write-Host "  set         settings $settingKey=$settingValue in $file"
+}
+
 # Available items per kind. A skill is a folder holding a SKILL.md; a command item is any folder or
 # .md file directly under toolkit\commands.
 $skillsRoot = Join-Path $toolkitRoot 'skills'
@@ -209,7 +320,11 @@ if ($Agent -and $availableAgents -notcontains $Agent) {
     throw "Unknown agent '$Agent'. Available agents: $($availableAgents -join ', ')"
 }
 
-if ($Skill -or $Command -or $Rule -or $Agent) {
+# The settings step belongs to a full run only: naming an item never reaches the settings file.
+$fullRun = -not ($Skill -or $Command -or $Rule -or $Agent)
+$settingsStep = $fullRun -and -not $NoSettings
+
+if (-not $fullRun) {
     $skillNames = @(if ($Skill) { $Skill })
     $commandNames = @(if ($Command) { $Command })
     $ruleNames = @(if ($Rule) { $Rule })
@@ -284,6 +399,15 @@ if ($List) {
         else { '' }
         Write-Host ("  {0,-8} {1,-30} {2,-11} {3}" -f $item.Kind, $item.Name, $state, $versions)
     }
+    if ($settingsStep) {
+        $file = Resolve-DestRoot 'settings'
+        try {
+            $info = Get-SettingState (Read-SettingsFile $file)
+            $detail = if ($info.State -eq 'differs') { "current value '$($info.Current)'" } else { '' }
+            Write-Host ("  {0,-8} {1,-30} {2,-11} {3}" -f 'setting', $settingKey, $info.State, $detail)
+        }
+        catch { Write-Host ("  {0,-8} {1,-30} {2}" -f 'setting', $settingKey, "unreadable: $($_.Exception.Message)") }
+    }
     return
 }
 
@@ -296,6 +420,9 @@ if ($Uninstall) {
         else {
             Write-Host ("  not present {0} {1}" -f $item.Kind, $item.Name)
         }
+    }
+    if ($fullRun) {
+        Write-Host "  settings    left unchanged: remove $settingKey from the env block of $(Resolve-DestRoot 'settings') by hand if you want it gone"
     }
     return
 }
@@ -324,7 +451,9 @@ foreach ($item in $items) {
     }
 }
 
+if ($settingsStep) { Set-SubagentModelSetting }
+
 if ($script:packageFailures -gt 0) {
     Write-Host "$($script:packageFailures) skill(s) need their packages installed (see FAILED above)."
-    exit 1
 }
+if ($script:packageFailures -gt 0 -or $script:settingsFailed) { exit 1 }
