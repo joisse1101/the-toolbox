@@ -237,6 +237,8 @@ Both forms run these. "The change" below means the slice in the slice form.
      - Fix every failure of the round in one dispatch when they touch the same files, else one dispatch per concern.
      - After each round, commit the fix with step 10's rules, as its own commit, usually `fix(<scope>): <subject>`. A fix that changes no file is not committed.
      - Then run the review again. Stop the loop and ask the user in the cases step 9 names, and also when a finding comes back unchanged after a round meant to fix it.
+     - **Stop after two fix rounds.** A static review finds new edge cases on every pass, some in the last fix, so the loop does not converge by itself. After the second round's review, list every failure still open and ask once, with `AskUserQuestion`: fix the ones you name in one last round and then take the test task, or take the test task now and record the rest. Recommend fixing a `not met` verdict, a crash, and a regression from an earlier fix round, and recording the rest.
+     - Each failure the user chose not to fix is **explained**: list it under "Known, not fixed" in the final summary, with the user's choice as the reason.
    - Never start the test task while a failure of the review is unfixed or unexplained.
    - Do not edit the code yourself, and do not edit `tasks.md` for the review.
 
