@@ -12,17 +12,18 @@ Every coding rule is scoped, so sessions that never touch code, such as tickets 
 
 ## Unscoped rules
 
-Five rules have no `paths:` list. Each one covers work that touches no code file, so a scoped rule would be missing exactly when it matters. The commit rule and the replies rule are the two that apply to nearly every session, and they are described first.
+Six rules have no `paths:` list. Each one covers work that touches no code file, so a scoped rule would be missing exactly when it matters. The commit rule and the replies rule are the two that apply to nearly every session, and they are described first.
 
 `jois-git-commit-hygiene` keeps commits to one concern and requires the user's confirmation word before Claude commits. A commit of images, deletions, renames or docs touches no code file, so a scoped rule would be missing exactly when those commits grow. It asks nothing unless Claude is about to commit. Apply flows, the commands and skills that apply the tasks of a plan, are the one case that commits without the word: each commits a finished concern on a branch other than `main` or `master` when its checks pass, and stops with nothing committed when a case is doubtful. A push needs the confirmation word in every flow, and an apply flow never pushes. Re-install the rule for this to take effect, because an older copy still says "never commit".
 
 `jois-comms-replies` covers how Claude writes replies: plain words, the answer first, when to decide and when to ask, and how to ask. Replies happen in every session, whatever files are touched, so the rule loads in every session. It loads on every turn, so it is kept short (33 lines when this page was written) to keep its cost in each session small.
 
-The other three are:
+The other four are:
 
 - `jois-test-mock-data` makes Claude test and verify with mock data and mock systems by default, and never use real systems or data unless the user asks in the current request. Verification such as a push or a deploy touches no code file.
 - `jois-env-local-installs` lets Claude install packages only inside the project, such as through a project `.venv`, and asks the user when no project-local way exists. Installing a package touches no code file.
 - `jois-env-stay-in-repo` keeps every file Claude creates for its own work under `.scratch/` in the project, and keeps every read and write inside the project. Those places apply before any code file is touched, so a scoped rule would load too late.
+- `jois-env-subagents` tells Claude which model to pass when it starts a subagent (a helper session that does delegated work) or a headless session (`claude -p`): `sonnet` by default, `haiku` only for pure search, and `opus` only when the user asks. It also points ordinary delegated work to the `jois-worker` agent. Delegation happens before any code file is touched, so a scoped rule would load too late.
 
 ## The documents rule
 

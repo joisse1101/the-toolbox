@@ -70,7 +70,7 @@ The toolkit holds fifteen commands, in `toolkit/commands/`, in five namespaces.
 
 ## Rules
 
-The toolkit holds fourteen rules, in `toolkit/rules/`. The [Rules](Rules.md) page says when each one loads and why. Nine are scoped to file types and five are not.
+The toolkit holds fifteen rules, in `toolkit/rules/`. The [Rules](Rules.md) page says when each one loads and why. Nine are scoped to file types and six are not.
 
 | Rule | What it asks | Loads |
 | --- | --- | --- |
@@ -86,23 +86,25 @@ The toolkit holds fourteen rules, in `toolkit/rules/`. The [Rules](Rules.md) pag
 | `jois-comms-replies` | How to write replies: plain words, the answer first, when to decide and when to ask. | Every session |
 | `jois-env-local-installs` | Installs only inside the project folder. | Every session |
 | `jois-env-stay-in-repo` | Every file Claude creates for its own work goes under `.scratch/` in the project, and nothing is read or written outside it. | Every session |
+| `jois-env-subagents` | Subagents and headless sessions run on Sonnet, or Haiku for pure search, and ordinary delegated work goes to `jois-worker`. | Every session |
 | `jois-git-commit-hygiene` | One concern per commit. A commit needs the user's confirmation word, except in an apply flow, which commits a checked concern by itself on a branch other than `main` or `master`. A push always needs the word. | Every session |
 | `jois-test-mock-data` | Test and verify with mock data and mock systems by default. | Every session |
 
 ## Agents
 
-The toolkit holds two agents, in `toolkit/agents/`. A command dispatches them, so you do not run them yourself.
+The toolkit holds four agents, in `toolkit/agents/`. A command dispatches them, so you do not run them yourself.
 
 | Agent | What it does | Dispatched by |
 | --- | --- | --- |
 | `opsx-task-applier` | Applies one group of an OpenSpec change's or a slice's tasks in order, stops at the first blocked or failed task and reports per task what it changed and what it saw. It has a 50-turn limit. Hooks block `git commit`, `git push`, `gh`, a recursive and forced `rm`, and an edit of a change's or a slice's `tasks.md`. | `/jois-code:apply` |
 | `opsx-test-runner` | Runs only the test commands the project's own instructions name, for the files a change touched, and reports each command with its exit code and counts. It uses the Haiku model, has no edit tools and installs nothing. | `/jois-code:apply`, for the last group's test task |
+| `jois-worker` | Does one ordinary delegated task that needs no skill and reports back. It uses the Sonnet model, has no `Skill` tool so its context carries no skills list, and has a 40-turn limit. A hook blocks `git commit`, `git push` and `gh`. | Claude, following the `jois-env-subagents` rule |
 | `code-validator` | Tests one group of claims in a throwaway checkout and reports one verdict per claim with its evidence. It has a 40-turn limit and no edit tools. Hooks block `git commit`, `git push`, `gh` and a recursive and forced `rm`. | `/jois-code:validate` |
 
-A hook is a check that runs before a tool call and can refuse it. The task agent and the test runner each carry one so they cannot commit, push or call GitHub.
+A hook is a check that runs before a tool call and can refuse it. The task agent, the worker, the validator and the test runner each carry one so they cannot commit, push or call GitHub.
 
 `/jois-code:apply` needs `opsx-task-applier` installed and stops without it. It also looks for `opsx-test-runner`, and when that is missing it names the missing agent and stops before the last group, which holds the test task. The slice form `/jois-code:apply slice <backlog>/<slice>` also needs the `jois-story-plan` skill installed, and stops with a note naming `Install-Toolkit.ps1` without it.
 
 ## Where the numbers come from
 
-The counts on this page were read from a listing of each folder, not from the READMEs. The seven skills, fifteen commands, fourteen rules and two agents are every entry in `toolkit/skills/`, `toolkit/commands/`, `toolkit/rules/` and `toolkit/agents/`.
+The counts on this page were read from a listing of each folder, not from the READMEs. The seven skills, fifteen commands, fifteen rules and four agents are every entry in `toolkit/skills/`, `toolkit/commands/`, `toolkit/rules/` and `toolkit/agents/`.

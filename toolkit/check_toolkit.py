@@ -46,6 +46,7 @@ UNSCOPED_RULES = (
     "jois-comms-replies.md",
     "jois-env-local-installs.md",
     "jois-env-stay-in-repo.md",
+    "jois-env-subagents.md",
 )
 # The source-code file types the three code-scoped rules load for. Each of them declares exactly
 # this set, one `**/*.<ext>` glob per type, so they load together. Config and data extensions
