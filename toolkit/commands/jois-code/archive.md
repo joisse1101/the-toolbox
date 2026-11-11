@@ -4,8 +4,8 @@ description: "Fold a built and validated slice into the existing topic pages of 
 allowed-tools: Bash(node *jois-story-plan*read-diagrams.mjs*), Bash(node *jois-story-plan*parse-mermaid.mjs*), Bash(node *read-story-context.mjs*), Bash(node *read-backlog.mjs*), Bash(python scripts/check_docs.py*), Bash(git status:*), Bash(git branch --show-current:*), Bash(git rev-parse:*), Bash(git diff --name-only:*), Bash(git merge-base --is-ancestor:*), Bash(git add wiki/*), Read, Write(wiki/**), Edit(wiki/**), Write(**/slices/*/ARCHIVED.md), Edit(**/slices/*/ARCHIVED.md), Glob, Grep, AskUserQuestion
 disable-model-invocation: true
 metadata:
-  version: "1.0.1"
-  last_updated: "2026-11-10"
+  version: "1.1.0"
+  last_updated: "2026-11-11"
 ---
 
 Fold a finished slice into the project's wiki, so the wiki reads by topic and not as a list of changes.
@@ -58,9 +58,12 @@ The argument alone picks the form. Never guess.
    - Run every check even when one has failed, then stop: print `Nothing archived: <each reason>. Pages added 0, replaced 0, unchanged 0, skipped 0.`, write nothing and run no later step.
    - Archive accepts only a built slice. It does not ask whether the slice was built or only planned, because a plan merged into a page about the system makes the wiki wrong.
 
-4. **Ask whether `jois-code review` was run.**
-   - Review leaves no record, so ask once with AskUserQuestion: "Yes, I ran it", "No, I did not run it".
-   - Record the answer in the source row as `review: run` or `review: not run`, as the user said. Never claim a review the user did not state.
+4. **Find out whether `jois-code review` was run.**
+   - Read `review.md` in the slice folder first. `/jois-code:apply` writes it when its review step ends.
+   - It is current by the same rule as `validation.md` in step 3: its `Reviewed commit:` equals `git rev-parse HEAD`, or only paths under `wiki/` changed since.
+   - When it says `Review: run` and is current, record `review: run` in the source row and ask nothing. Name each line of its `## Known, not fixed` list to the user, so the wiki goes in knowing what the review left open.
+   - Otherwise ask once with AskUserQuestion: "Yes, I ran it", "No, I did not run it". Say first why the file did not settle it: there is no `review.md`, it says `Review: not run` (give its reason), or its reviewed commit is out of date (name the first path outside `wiki/` that changed since).
+   - Record the answer in the source row as `review: run` or `review: not run`, as the user said. Never claim a review the user did not state, and never one that `review.md` does not state.
    - When the user cannot say, record `review: not stated` and treat it as "No".
    - On "No", warn once that the wiki is about to change without a review, and go on only if the user says to.
 

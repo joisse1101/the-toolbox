@@ -1,11 +1,11 @@
 ---
 name: "JOIS: Apply"
 description: "Apply an OpenSpec change or a slice one group of tasks at a time: hand each group to opsx-task-applier, record its results in tasks.md, then commit it by itself on an unprotected branch (never main or master, never a push), or stop with nothing committed in a doubtful case. The last group's code is reviewed with /jois-code:review and its findings fixed before the tests, which run once, as the task in the last group"
-allowed-tools: Bash(openspec:*), Bash(git status:*), Bash(git diff:*), Bash(git add:*), Bash(git commit:*), Bash(git branch --show-current:*), Bash(node *jois-story-plan*read-diagrams.mjs*), Skill, Read, Edit, Glob, Agent, Monitor
+allowed-tools: Bash(openspec:*), Bash(git status:*), Bash(git diff:*), Bash(git add:*), Bash(git commit:*), Bash(git branch --show-current:*), Bash(git rev-parse:*), Bash(node *jois-story-plan*read-diagrams.mjs*), Skill, Read, Edit, Write(**/slices/*/review.md), Glob, Agent, Monitor
 disable-model-invocation: true
 metadata:
-  version: "1.10.0"
-  last_updated: "2026-11-10"
+  version: "1.11.0"
+  last_updated: "2026-11-11"
 ---
 
 Apply an OpenSpec change, or a slice written by `jois-story-plan`, by handing its tasks to the `opsx-task-applier` agent, one group at a time.
@@ -241,6 +241,11 @@ Both forms run these. "The change" below means the slice in the slice form.
      - Each failure the user chose not to fix is **explained**: list it under "Known, not fixed" in the final summary, with the user's choice as the reason.
    - Never start the test task while a failure of the review is unfixed or unexplained.
    - Do not edit the code yourself, and do not edit `tasks.md` for the review.
+   - **Record the review (slice form only).** When the review step ends, before the test task, write `review.md` into the slice folder with the `Write` tool, replacing an earlier one. `/jois-code:archive` reads it, so it does not ask whether a review was run and nobody runs the review a second time.
+     - A header of four lines: `Review:` (`run` or `not run`, with the reason when not run), `Date:`, `Reviewed commit:` (`git rev-parse HEAD` after the last fix commit) and `Fix rounds:` (a number).
+     - Then the parts: `Static check:` and `Behavioural check:`, each `run` or `not run`, with the reason when not run.
+     - Then a `## Known, not fixed` list, one line per failure the user chose not to fix, with the user's choice as the reason, and a `## Not fixed by design` list of the optional cleanups and `could not test` verdicts. Write `none` under a list with nothing in it.
+     - The slice folder is not tracked by git here. Never stage it. The OpenSpec form writes no file.
 
 11. **Take the next group.**
     - Repeat from step 6 until no group has a pending task.

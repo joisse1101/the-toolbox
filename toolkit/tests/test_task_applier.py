@@ -167,6 +167,18 @@ def test_apply_command_names_the_fix_loop_limits():
     assert "Never take the next group while a failure of the current group is unexplained" in text
 
 
+def test_apply_command_records_the_review_for_archive_in_the_slice_form():
+    text = APPLY_COMMAND.read_text(encoding="utf-8")
+    assert "**Record the review (slice form only).**" in text
+    for field in ("`Review:`", "`Date:`", "`Reviewed commit:`", "`Fix rounds:`", "`## Known, not fixed`"):
+        assert field in text
+    assert "The OpenSpec form writes no file" in text
+    allowed = next(line for line in _frontmatter(APPLY_COMMAND).splitlines() if line.startswith("allowed-tools:"))
+    tools = [tool.strip() for tool in allowed.split(":", 1)[1].split(", ")]
+    assert "Write(**/slices/*/review.md)" in tools
+    assert "Write" not in tools
+
+
 def test_apply_command_has_no_deferral_or_held_back_rule():
     text = APPLY_COMMAND.read_text(encoding="utf-8")
     for gone in ("deferrable", "held-back", "held back", "One rerun", "nothing is deferred"):

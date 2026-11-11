@@ -41,7 +41,7 @@ def test_command_has_one_form_and_refuses_any_other_argument():
 def test_command_is_manual_only_and_versioned():
     frontmatter = _frontmatter()
     assert "disable-model-invocation: true" in frontmatter
-    assert 'version: "1.0.1"' in frontmatter
+    assert 'version: "1.1.0"' in frontmatter
     assert "last_updated:" in frontmatter
 
 
@@ -113,10 +113,19 @@ def test_command_does_not_ask_whether_the_slice_was_built_or_planned():
 
 # Task 1.3: the review answer
 
+def test_command_reads_the_review_record_apply_wrote_before_asking():
+    step = _step(4, 5)
+    assert "Read `review.md` in the slice folder first" in step
+    assert "same rule as `validation.md` in step 3" in step
+    assert "When it says `Review: run` and is current, record `review: run` in the source row and ask nothing" in step
+    assert "`## Known, not fixed`" in step
+    assert "never one that `review.md` does not state" in step
+
+
 def test_command_asks_for_the_review_answer_and_records_it():
     step = _step(4, 5)
-    assert "Review leaves no record, so ask once" in step
-    assert "AskUserQuestion" in step
+    assert "Otherwise ask once with AskUserQuestion" in step
+    assert "there is no `review.md`" in step
     assert "`review: not run`" in step
     assert "`review: run`" in step
     assert "Never claim a review the user did not state" in step
