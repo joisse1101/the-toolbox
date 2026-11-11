@@ -41,7 +41,7 @@ def test_command_has_one_form_and_refuses_any_other_argument():
 def test_command_is_manual_only_and_versioned():
     frontmatter = _frontmatter()
     assert "disable-model-invocation: true" in frontmatter
-    assert 'version: "1.0.0"' in frontmatter
+    assert 'version: "1.0.1"' in frontmatter
     assert "last_updated:" in frontmatter
 
 
