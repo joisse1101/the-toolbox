@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import TabHeader from './TabHeader.jsx';
 import { Row } from './Layout.jsx';
 
@@ -19,14 +18,6 @@ function copySummary(copy) {
 // folder is exactly when it is needed. `settingsState` is the useSettings hook's result.
 export default function SettingsTab({ hidden, settingsState }) {
   const { settings, error, working, offer, initResult, copyResult, migrateResult, switched, actions } = settingsState;
-  const [name, setName] = useState('');
-
-  useEffect(() => {
-    if (!settings) return;
-    setName(settings.projectName);
-  }, [settings]);
-
-  const nameChanged = !!settings && name !== settings.projectName;
 
   return (
     <section id="settingsView" className="card" role="tabpanel" aria-labelledby="tabSettings" hidden={hidden}>
@@ -37,13 +28,6 @@ export default function SettingsTab({ hidden, settingsState }) {
         <>
           <section className="settings-group" aria-labelledby="settingsProjectHeading">
             <h3 id="settingsProjectHeading">Project</h3>
-            <Row>
-              <div className="grow">
-                <label htmlFor="projectName">Project name</label>
-                <input type="text" id="projectName" autoComplete="off" value={name} onChange={(e) => setName(e.target.value)} />
-              </div>
-              <button type="button" id="saveNameBtn" disabled={!nameChanged || working} onClick={() => actions.saveName(name)}>Save name</button>
-            </Row>
             <Row align="start">
               <div className="grow">
                 <label htmlFor="codeBase">Code base</label>
