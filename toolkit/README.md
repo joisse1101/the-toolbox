@@ -26,7 +26,7 @@ Other things the script does:
 .\Install-Toolkit.ps1 -List                                   # what's installed, has it drifted, which versions?
 .\Install-Toolkit.ps1 -Command jois-git                       # just one command item
 .\Install-Toolkit.ps1 -Rule jois-code-java.md                           # just one rule
-.\Install-Toolkit.ps1 -Agent opsx-task-applier.md             # just one agent
+.\Install-Toolkit.ps1 -Agent task-applier.md             # just one agent
 .\Install-Toolkit.ps1 -Scope project -Path C:\code\my-app     # into a project instead of globally
 .\Install-Toolkit.ps1 -Force                                  # overwrite a copy that differs
 .\Install-Toolkit.ps1 -NoPackages                            # skip `npm ci` for skills with a package.json

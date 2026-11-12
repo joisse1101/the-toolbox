@@ -3,8 +3,8 @@ name: "JOIS: Review"
 description: "Review a PR, or the current branch against main, in one step: run the built-in code-review skill (the static check against CLAUDE.md, the rules and the wiki), then /jois-code:validate (the behavioural check against what the PR or slice claims), and print one report with two parts. Passes the effort level and --comment through, never --fix. Never edits the code, commits or pushes"
 allowed-tools: Skill, Bash(git branch --show-current:*), Bash(git rev-parse:*), Bash(git status:*), Bash(git diff:*), Bash(git log:*), Bash(gh pr view:*), Read, Glob, AskUserQuestion
 metadata:
-  version: "1.1.1"
-  last_updated: "2026-11-11"
+  version: "1.1.2"
+  last_updated: "2026-11-12"
 ---
 
 Check a PR, or the current branch, against the repo's rules and against what it claims to do, and print one report with two parts: the static findings and the behavioural verdicts.
@@ -52,7 +52,7 @@ Check a PR, or the current branch, against the repo's rules and against what it 
    - Keep its findings and its wording for the report. Do not parse or re-rank them.
 
 4. **Run the behavioural check.**
-   - First check that validate is installed. Look for `jois-code/validate.md` in `~/.claude/commands/` and in this project's `.claude/commands/`, and for `code-validator.md` and `opsx-test-runner.md` in `~/.claude/agents/` and in this project's `.claude/agents/`. If one is missing, treat validate as not installed (step 5).
+   - First check that validate is installed. Look for `jois-code/validate.md` in `~/.claude/commands/` and in this project's `.claude/commands/`, and for `code-validator.md` and `test-runner.md` in `~/.claude/agents/` and in this project's `.claude/agents/`. If one is missing, treat validate as not installed (step 5).
    - PR target: start validate in its PR form for that number, for example `123`. The PR and its linked issue are the intent.
    - Branch target with `slice <backlog>/<slice>`: start validate in its slice form for that slice, for example `slice iam/login`.
    - Branch target with neither: use the slice or PR number the user gave in step 1. If the user skipped or gave nothing, run no behavioural check and never guess a slice.
