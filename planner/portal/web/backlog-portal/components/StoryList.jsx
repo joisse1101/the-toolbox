@@ -187,7 +187,7 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
                   {s.code && <span className="code">{s.code}</span>}
                   <span className="title">{storyLabel(s)}</span>
                 </button>
-                {!s.benched && <StateMark kind={issueClass(errors, warnings)} />}
+                {!s.benched && <StateMark kind={issueClass(errors, warnings)} iconOnly />}
                 {suggestionCounts.get(s.code) > 0 && (
                   <span className="suggestion-badge" title={`${suggestionCounts.get(s.code)} review suggestion(s)`} aria-label={`${suggestionCounts.get(s.code)} review suggestions`}>{suggestionCounts.get(s.code)}</span>
                 )}

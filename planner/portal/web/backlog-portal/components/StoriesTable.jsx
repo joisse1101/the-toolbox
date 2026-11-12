@@ -66,7 +66,7 @@ export default function StoriesTable({ rows, problems, checked, shownChecked, so
                 <td title={cellTitle(s.code, tip)}>{s.frozen && <span className="frozen-mark" title="Frozen: reference only, read-only" aria-label="Frozen">{'❄'}</span>}{s.code}</td>
                 <td title={cellTitle(s.epic, tip)}>{s.epic}</td>
                 <td title={cellTitle(s.feature, tip)}>{s.feature}</td>
-                <td title={cellTitle(storyLabel(s), tip)}><button type="button" className="link-btn" onClick={() => onOpen(s.id)}><StateMark kind={issueClass(errors, warnings)} />{storyLabel(s)}</button></td>
+                <td title={cellTitle(storyLabel(s), tip)}><button type="button" className="link-btn" onClick={() => onOpen(s.id)}><StateMark kind={issueClass(errors, warnings)} iconOnly />{storyLabel(s)}</button></td>
                 <td className="num">{s.points}</td>
                 <td>{s.priority}</td>
                 <td title={cellTitle(s.dependsOn.join(', '), tip)}>{s.dependsOn.join(', ')}</td>
