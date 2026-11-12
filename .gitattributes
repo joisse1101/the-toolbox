@@ -1,5 +1,6 @@
 # Test fixtures and skill files are read byte for byte by tests, so keep LF on Windows checkouts that convert line endings.
 planner/test/sample-data/** text eol=lf
 
-# The story tests match the story-to-code sample's text with \n, so keep LF here too.
+# The story tests match fixture text with \n, and the story-to-code sample is read the same way, so keep LF in both.
+toolkit/tests/story/fixtures/** text eol=lf
 toolkit/sample/story-to-code/** text eol=lf

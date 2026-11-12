@@ -32,5 +32,5 @@ export const backlogPath = (dataDir, name) => bp.backlogDir(dataDir, name);
 export const SAMPLE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'sample-data');
 const SAMPLE_BACKLOG = path.join(SAMPLE, 'sample');
 export const SAMPLE_BACKLOG_CSV = path.join(SAMPLE_BACKLOG, bp.BACKLOG_FILE);
-// The mock slice and context map live in the story-to-code sample (its `planned` stage); the older-layout migration test reads them from here.
-export const PLAN_FIXTURES = path.resolve(SAMPLE, '..', '..', '..', 'toolkit', 'sample', 'story-to-code', 'stages', 'planned', '.plans', 'habits');
+// The mock slice and context map live with the plan skill's tests (toolkit/tests/story/fixtures/habits/); the older-layout migration test reads them from here.
+export const PLAN_FIXTURES = path.resolve(SAMPLE, '..', '..', '..', 'toolkit', 'tests', 'story', 'fixtures', 'habits');

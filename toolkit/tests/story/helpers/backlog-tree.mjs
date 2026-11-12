@@ -25,13 +25,13 @@ export function putFile(dataDir, name, kind, text) {
 export const pathOf = (dataDir, name, kind) => bp.backlogFile(dataDir, name, kind);
 export const decidedPath = (dataDir, name) => bp.reviewDecidedFile(dataDir, name);
 
-// ---- the plan skill's mock backlog, slice and context map: the story-to-code sample's `accepted` backlog and `planned` slice ----
-const SAMPLE_STAGES = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'sample', 'story-to-code', 'stages');
-const SAMPLE_PLANS = path.join(SAMPLE_STAGES, 'planned', '.plans', 'habits');
-const SAMPLE_BACKLOG_SETTINGS = path.join(SAMPLE_STAGES, 'proposed', '.plans', 'habits', 'backlog.json');
-export const FIXTURE_BACKLOG_CSV = path.join(SAMPLE_STAGES, 'accepted', '.plans', 'habits', 'user-stories.csv');
+// ---- the plan skill's mock backlog, slice and context map: hand-written, kept in fixtures/habits/ (the story-to-code sample's
+// recorded stages are not read here, so recording the sample again never changes these tests) ----
+const FIXTURES = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'fixtures', 'habits');
+const SAMPLE_BACKLOG_SETTINGS = path.join(FIXTURES, 'backlog.json');
+export const FIXTURE_BACKLOG_CSV = path.join(FIXTURES, 'user-stories.csv');
 export const SAMPLE_SLICE_NAME = 'streaks';
-export const SAMPLE_SLICE = path.join(SAMPLE_PLANS, 'slices', SAMPLE_SLICE_NAME);
+export const SAMPLE_SLICE = path.join(FIXTURES, 'slices', SAMPLE_SLICE_NAME);
 
 // Gives a backlog the initials of the sample (H1), for a test that writes its own backlog text with `putFile`.
 export function putSampleInitials(dataDir, name) {
@@ -48,7 +48,7 @@ export function sampleTree({ withSlice = false, withMap = false } = {}) {
   putSampleInitials(root, 'sample');
   if (withSlice) fs.cpSync(SAMPLE_SLICE, path.join(bp.slicesDir(root, 'sample'), SAMPLE_SLICE_NAME), { recursive: true });
   if (withMap) {
-    for (const f of ['context-map.json', 'context-map.md']) fs.copyFileSync(path.join(SAMPLE_PLANS, f), path.join(dir, f));
+    for (const f of ['context-map.json', 'context-map.md']) fs.copyFileSync(path.join(FIXTURES, f), path.join(dir, f));
   }
   return root;
 }
