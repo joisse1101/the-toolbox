@@ -1,0 +1,165 @@
+From 100690f3bf329a4d2dad86cce54e892f41b29b08 Mon Sep 17 00:00:00 2001
+From: Sample Builder <sample@example.invalid>
+Date: Thu, 12 Nov 2026 13:55:03 +0800
+Subject: [PATCH 1/2] feat(app): show the current streak of a habit
+
+---
+ app/src/main.ts        |  3 ++-
+ app/src/streak.test.ts | 16 ++++++++++++++++
+ app/src/streak.ts      | 18 ++++++++++++++++++
+ 3 files changed, 36 insertions(+), 1 deletion(-)
+ create mode 100644 app/src/streak.test.ts
+ create mode 100644 app/src/streak.ts
+
+diff --git a/app/src/main.ts b/app/src/main.ts
+index d5ca896..c13a63b 100644
+--- a/app/src/main.ts
++++ b/app/src/main.ts
+@@ -1,5 +1,6 @@
+ import './style.css';
+ import { CATEGORIES, addHabit, loadState, saveState, setCategory, toggleCheck, today, type Category, type State } from './storage';
++import { currentStreak } from './streak';
+ import { Timer, format } from './timer';
+ 
+ let state: State = loadState(localStorage);
+@@ -25,7 +26,7 @@ function render() {
+       <h2 class="mb-2 font-semibold">Habits</h2>
+       <ul id="habits" class="mb-3 space-y-1">
+         ${state.habits
+-          .map((h) => `<li><label class="flex items-center gap-2"><input type="checkbox" data-habit="${h.id}" ${h.checks.includes(day) ? 'checked' : ''} /> ${h.name}</label></li>`)
++          .map((h) => `<li><label class="flex items-center gap-2"><input type="checkbox" data-habit="${h.id}" ${h.checks.includes(day) ? 'checked' : ''} /> ${h.name}</label> <span data-streak="${h.id}" class="text-sm text-slate-500">streak ${currentStreak(h.checks, day)}</span></li>`)
+           .join('')}
+       </ul>
+       <form id="add" class="flex gap-2">
+diff --git a/app/src/streak.test.ts b/app/src/streak.test.ts
+new file mode 100644
+index 0000000..82e00d9
+--- /dev/null
++++ b/app/src/streak.test.ts
+@@ -0,0 +1,16 @@
++import { describe, expect, it } from 'vitest';
++import { currentStreak } from './streak';
++
++describe('currentStreak', () => {
++  it('counts 3 for a habit checked off on each of the last 3 days', () => {
++    expect(currentStreak(['2026-01-03', '2026-01-04', '2026-01-05'], '2026-01-05')).toBe(3);
++  });
++
++  it('keeps the run alive until the end of today when only yesterday is checked', () => {
++    expect(currentStreak(['2026-01-03', '2026-01-04'], '2026-01-05')).toBe(2);
++  });
++
++  it('is 0 when the last check-off is before yesterday', () => {
++    expect(currentStreak(['2026-01-01'], '2026-01-05')).toBe(0);
++  });
++});
+diff --git a/app/src/streak.ts b/app/src/streak.ts
+new file mode 100644
+index 0000000..bf4cfcb
+--- /dev/null
++++ b/app/src/streak.ts
+@@ -0,0 +1,18 @@
++// Streaks: runs of consecutive days a habit was checked off. Days are YYYY-MM-DD strings.
++
++const DAY_MS = 24 * 60 * 60 * 1000;
++
++const dayNumber = (day: string): number => Math.floor(Date.parse(`${day}T00:00:00Z`) / DAY_MS);
++
++// The run of consecutive days that ends today, or yesterday when today is not checked yet.
++export function currentStreak(checks: string[], today: string): number {
++  const days = new Set(checks.map(dayNumber));
++  let day = dayNumber(today);
++  if (!days.has(day)) day -= 1;
++  let run = 0;
++  while (days.has(day)) {
++    run += 1;
++    day -= 1;
++  }
++  return run;
++}
+-- 
+2.50.1.windows.1
+
+
+From 678705ac2d4fd7e8e0db126d525d84dfc8c1b781 Mon Sep 17 00:00:00 2001
+From: Sample Builder <sample@example.invalid>
+Date: Thu, 12 Nov 2026 13:55:15 +0800
+Subject: [PATCH 2/2] feat(app): show the best streak of a habit
+
+---
+ app/src/main.ts        |  4 ++--
+ app/src/streak.test.ts | 14 +++++++++++++-
+ app/src/streak.ts      | 12 ++++++++++++
+ 3 files changed, 27 insertions(+), 3 deletions(-)
+
+diff --git a/app/src/main.ts b/app/src/main.ts
+index c13a63b..d8fbc49 100644
+--- a/app/src/main.ts
++++ b/app/src/main.ts
+@@ -1,6 +1,6 @@
+ import './style.css';
+ import { CATEGORIES, addHabit, loadState, saveState, setCategory, toggleCheck, today, type Category, type State } from './storage';
+-import { currentStreak } from './streak';
++import { bestStreak, currentStreak } from './streak';
+ import { Timer, format } from './timer';
+ 
+ let state: State = loadState(localStorage);
+@@ -26,7 +26,7 @@ function render() {
+       <h2 class="mb-2 font-semibold">Habits</h2>
+       <ul id="habits" class="mb-3 space-y-1">
+         ${state.habits
+-          .map((h) => `<li><label class="flex items-center gap-2"><input type="checkbox" data-habit="${h.id}" ${h.checks.includes(day) ? 'checked' : ''} /> ${h.name}</label> <span data-streak="${h.id}" class="text-sm text-slate-500">streak ${currentStreak(h.checks, day)}</span></li>`)
++          .map((h) => `<li><label class="flex items-center gap-2"><input type="checkbox" data-habit="${h.id}" ${h.checks.includes(day) ? 'checked' : ''} /> ${h.name}</label> <span data-streak="${h.id}" class="text-sm text-slate-500">streak ${currentStreak(h.checks, day)}, best ${bestStreak(h.checks)}</span></li>`)
+           .join('')}
+       </ul>
+       <form id="add" class="flex gap-2">
+diff --git a/app/src/streak.test.ts b/app/src/streak.test.ts
+index 82e00d9..9f85b43 100644
+--- a/app/src/streak.test.ts
++++ b/app/src/streak.test.ts
+@@ -1,5 +1,5 @@
+ import { describe, expect, it } from 'vitest';
+-import { currentStreak } from './streak';
++import { bestStreak, currentStreak } from './streak';
+ 
+ describe('currentStreak', () => {
+   it('counts 3 for a habit checked off on each of the last 3 days', () => {
+@@ -14,3 +14,15 @@ describe('currentStreak', () => {
+     expect(currentStreak(['2026-01-01'], '2026-01-05')).toBe(0);
+   });
+ });
++
++describe('bestStreak', () => {
++  it('finds the longest run even when the current streak is shorter', () => {
++    const days = ['2026-01-01', '2026-01-02', '2026-01-03', '2026-01-04', '2026-01-05', '2026-01-09', '2026-01-10'];
++    expect(bestStreak(days)).toBe(5);
++    expect(currentStreak(days, '2026-01-10')).toBe(2);
++  });
++
++  it('is 0 for a habit with no check-offs', () => {
++    expect(bestStreak([])).toBe(0);
++  });
++});
+diff --git a/app/src/streak.ts b/app/src/streak.ts
+index bf4cfcb..b4ae716 100644
+--- a/app/src/streak.ts
++++ b/app/src/streak.ts
+@@ -16,3 +16,15 @@ export function currentStreak(checks: string[], today: string): number {
+   }
+   return run;
+ }
++
++// The longest run of consecutive days among the check-offs.
++export function bestStreak(checks: string[]): number {
++  const days = [...new Set(checks.map(dayNumber))].sort((a, b) => a - b);
++  let best = 0;
++  let run = 0;
++  days.forEach((day, i) => {
++    run = i > 0 && day === days[i - 1] + 1 ? run + 1 : 1;
++    best = Math.max(best, run);
++  });
++  return best;
++}
+-- 
+2.50.1.windows.1
+

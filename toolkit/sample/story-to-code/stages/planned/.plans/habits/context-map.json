@@ -1,0 +1,28 @@
+{
+  "contexts": [
+    {
+      "name": "Habits",
+      "purpose": "What a person tracks every day and how long they keep it up",
+      "owner": "App team",
+      "epics": [
+        "Habit tracking"
+      ]
+    },
+    {
+      "name": "Focus",
+      "purpose": "How a person runs and counts focus sessions",
+      "owner": "TBC",
+      "epics": [
+        "Focus timer"
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "from": "Habits",
+      "to": "Focus",
+      "type": "customer-supplier",
+      "crosses": "Task category"
+    }
+  ]
+}
