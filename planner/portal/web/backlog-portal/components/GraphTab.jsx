@@ -1,74 +1,20 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import TabHeader from './TabHeader.jsx';
-import EmptyState from './EmptyState.jsx';
-import { storyIssues, storyLabel } from '../../../../logic/backlog/model.js';
+import GraphToolbar from './GraphToolbar.jsx';
+import GraphDetail from './GraphDetail.jsx';
+import GraphCanvas from './GraphCanvas.jsx';
+import GraphUnlinked from './GraphUnlinked.jsx';
+import { storyLabel as title } from '../../../../logic/backlog/model.js';
 import { wouldCycle } from '../../../../logic/backlog/ids.js';
 import { layoutGraph, groupStories, relatedIds, fitView, zoomAt, panBy, toGraphPoint } from '../graph.js';
-import { issueClass, rowTooltip } from './issues.js';
-import StateMark, { stateWord } from './StateMark.jsx';
+import { edgeKey, bandGeometry } from './graphGeometry.js';
 
-const NODE_W = 192;
-const NODE_H = 46;
-const GAP_X = 96;
-const GAP_Y = 22;
-const BAND_PAD = 14;
-const LABEL_H = 26;
-const BAND_GAP = 28;
-const MAX_TITLE = 20;
 const KEY_PAN = 48;
 const ZOOM_STEP = 1.25;
-const MIN_LABEL_ZOOM = 0.5; // below this the weight labels on arrows are left out
 const SMALLEST_NODE_TEXT = 12; // px: the smallest text inside a node (--text-xs), at zoom 1
 const MIN_NODE_TEXT = 11; // px: fitting never shrinks node text below this; a larger graph is panned instead
 const FIT_MIN_ZOOM = MIN_NODE_TEXT / SMALLEST_NODE_TEXT;
-const LEVELS = [['stories', 'Stories'], ['features', 'Features'], ['epics', 'Epics']];
 
-const slot = (layer, row, top) => ({ x: BAND_PAD + layer * (NODE_W + GAP_X), y: top + LABEL_H + BAND_PAD + row * (NODE_H + GAP_Y) });
-const edgeKey = (e) => `${e.from}>${e.to}`;
-const title = storyLabel;
-const clip = (text) => (text.length > MAX_TITLE ? `${text.slice(0, MAX_TITLE - 1)}…` : text);
-
-// Each cluster is a band: a label strip, then its rows. Returns the band tops, widths and heights, and the bounds of all.
-function bandGeometry(layout) {
-  const bands = [];
-  let top = 0;
-  for (const cluster of layout.clusters) {
-    const maxLayer = Math.max(0, ...layout.nodes.filter((n) => n.cluster === cluster.index).map((n) => n.layer));
-    const width = 2 * BAND_PAD + maxLayer * (NODE_W + GAP_X) + NODE_W;
-    const height = LABEL_H + 2 * BAND_PAD + cluster.rows * (NODE_H + GAP_Y) - GAP_Y;
-    bands.push({ top, width, height });
-    top += height + BAND_GAP;
-  }
-  return { bands, bounds: { width: Math.max(0, ...bands.map((b) => b.width)), height: Math.max(0, top - BAND_GAP) } };
-}
-
-// From the dependent's left edge to the dependency's right edge, so arrows run right to left. A long arrow runs
-// straight through its lane in each column it skips and curves only in the gaps between columns, so it never meets a node.
-function edgePath(from, to, via, top, back) {
-  const sx = slot(from.layer, 0, top).x;
-  const sy = slot(0, from.row, top).y + NODE_H / 2;
-  const ex = slot(to.layer, 0, top).x + NODE_W;
-  const ey = slot(0, to.row, top).y + NODE_H / 2;
-  if (back || !via.length) {
-    const c = Math.max(40, Math.abs(sx - ex) / 2);
-    return `M ${sx} ${sy} C ${sx - c} ${sy}, ${ex + c} ${ey}, ${ex} ${ey}`;
-  }
-  const curve = (x1, y1, x2, y2) => `C ${x1 - GAP_X / 2} ${y1}, ${x2 + GAP_X / 2} ${y2}, ${x2} ${y2}`;
-  let d = `M ${sx} ${sy}`;
-  let x = sx;
-  let y = sy;
-  for (const lane of via) {
-    const left = slot(lane.layer, 0, top).x;
-    const ly = slot(0, lane.row, top).y + NODE_H / 2;
-    d += ` ${curve(x, y, left + NODE_W, ly)} L ${left} ${ly}`;
-    x = left;
-    y = ly;
-  }
-  return `${d} ${curve(x, y, ex, ey)}`;
-}
-
-// The dependencies as a layered graph that can be zoomed, panned and edited: drag from a node's handle onto the
-// story it depends on, or use Link; select an arrow to remove it.
 export default function GraphTab({ stories, problems, current, hidden, onOpen, onAddDependency, onRemoveDependency }) {
   const [level, setLevel] = useState('stories');
   const coarse = level !== 'stories'; // Features and Epics: groups of stories, read-only
@@ -98,7 +44,6 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
 
   const hasNodes = layout.nodes.length > 0;
   const { bands, bounds } = useMemo(() => bandGeometry(layout), [layout]);
-  const pos = (node) => slot(node.layer, node.row, bands[node.cluster].top);
 
   const panelSize = () => {
     const r = panel.current?.getBoundingClientRect();
@@ -304,204 +249,63 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
   const openStory = selected && !coarse ? byId.get(selected.id) : null;
   const dragNode = drag ? nodeById.get(drag.from) : null;
 
+  const hint = coarse
+    ? edge
+      ? `${groupLabel(edge.from)} depends on ${groupLabel(edge.to)}: ${detailPairs.length} story ${detailPairs.length === 1 ? 'link' : 'links'}.`
+      : selectedGroup
+        ? `${groupLabel(selectedGroup.id)}: the ${level} it depends on and that depend on it are highlighted.`
+        : hasNodes
+          ? `Read-only overview. Select a node or an arrow to see the story links behind it; dependencies are edited at the Stories level.`
+          : ''
+    : linkSource
+      ? `${linkSource.code || title(linkSource)} depends on… choose a story (Escape cancels).`
+      : edge
+        ? `${byId.get(edge.from)?.code} depends on ${byId.get(edge.to)?.code}.`
+        : selected
+          ? `${openStory?.code}: its dependencies and dependents are highlighted.`
+          : focus
+            ? 'The stories of the chosen group or link are highlighted. Select the background to clear.'
+            : hasNodes
+              ? 'Drag from a story’s dot onto the story it depends on to link them. Ctrl+wheel zooms, drag the background to pan.'
+              : '';
+
+  // Handlers the parts call: selecting an arrow, starting or cancelling a link, ending a gesture.
+  const pickEdge = (key, clearNote) => {
+    setSelectedId(null);
+    setSelectedEdge(selectedEdge === key ? null : key);
+    if (clearNote) setNote('');
+  };
+  const toggleLinkFromSelected = () => setLinkFrom(linkFrom === null ? selected.id : null);
+  const toggleLinkFrom = (id) => {
+    clearSelection();
+    setLinkFrom(linkFrom === id ? null : id);
+  };
+  const cancelGesture = () => {
+    gesture.current = null;
+    setDrag(null);
+  };
+
   return (
     <section id="graphView" className="card graph-view" role="tabpanel" aria-labelledby="tabGraph" hidden={hidden}>
       <TabHeader title="Dependency graph" />
-      <div className="graph-bar">
-        <div className="graph-levels" role="group" aria-label="Detail level">
-          {LEVELS.map(([key, label]) => (
-            <button
-              key={key} type="button" id={`graphLevel-${key}`} aria-pressed={level === key}
-              title={key === 'stories' ? 'Every story and dependency' : `Dependencies between ${key}`} onClick={() => chooseLevel(key)}
-            >{label}</button>
-          ))}
-        </div>
-        <button type="button" id="graphZoomOut" aria-label="Zoom out" title="Zoom out (-)" disabled={!hasNodes} onClick={() => zoomBy(1 / ZOOM_STEP)}>−</button>
-        <span className="graph-zoom" aria-live="polite">{Math.round(view.k * 100)}%</span>
-        <button type="button" id="graphZoomIn" aria-label="Zoom in" title="Zoom in (+)" disabled={!hasNodes} onClick={() => zoomBy(ZOOM_STEP)}>+</button>
-        <button type="button" id="graphFit" title="Fit the whole graph (0)" disabled={!hasNodes} onClick={fit}>Fit</button>
-        <span className="graph-sep" />
-        <button
-          type="button" id="graphLink" aria-pressed={linkFrom !== null} disabled={!selected || !openStory?.code}
-          title="Choose the story the selected one depends on" onClick={() => setLinkFrom(linkFrom === null ? selected.id : null)}
-        >Link</button>
-        <button type="button" id="graphRemove" disabled={!edge || coarse} title="Remove the selected dependency (Delete)" onClick={() => edge && removeEdge(edge)}>Remove dependency</button>
-        <button type="button" id="graphOpen" disabled={!selected} onClick={() => openStory && onOpen(openStory.id)}>Open in Editor</button>
-      </div>
-      <p className="graph-hint muted" role="status" aria-live="polite">
-        {coarse
-          ? edge
-            ? `${groupLabel(edge.from)} depends on ${groupLabel(edge.to)}: ${detailPairs.length} story ${detailPairs.length === 1 ? 'link' : 'links'}.`
-            : selectedGroup
-              ? `${groupLabel(selectedGroup.id)}: the ${level} it depends on and that depend on it are highlighted.`
-              : hasNodes
-                ? `Read-only overview. Select a node or an arrow to see the story links behind it; dependencies are edited at the Stories level.`
-                : ''
-          : linkSource
-            ? `${linkSource.code || title(linkSource)} depends on… choose a story (Escape cancels).`
-            : edge
-              ? `${byId.get(edge.from)?.code} depends on ${byId.get(edge.to)?.code}.`
-              : selected
-                ? `${openStory?.code}: its dependencies and dependents are highlighted.`
-                : focus
-                  ? 'The stories of the chosen group or link are highlighted. Select the background to clear.'
-                  : hasNodes
-                    ? 'Drag from a story’s dot onto the story it depends on to link them. Ctrl+wheel zooms, drag the background to pan.'
-                    : ''}
-      </p>
-      {hasNodes && (
-        <ul className="graph-legend muted" aria-label="Legend">
-          {!coarse && <li><span className="legend-swatch node" />Complete story</li>}
-          {!coarse && <li><span className="legend-swatch node incomplete" />Incomplete: a required field is missing</li>}
-          {!coarse && <li><span className="legend-swatch node warn" />Warning: see the tooltip</li>}
-          <li><span className="legend-swatch stripe" />Stripe colour: the epic</li>
-          <li><span className="legend-swatch node selected" />Selected: thick accent border; its dependencies and dependents stay bright and the rest fade</li>
-          <li><span className="legend-swatch line" />Arrow: points at what the story depends on</li>
-          <li><span className="legend-swatch line back" />Dashed red arrow: a dependency cycle</li>
-        </ul>
-      )}
-      {detailPairs && (
-        <div className="graph-detail">
-          <ul>
-            {detailPairs.map((p) => (
-              <li key={`${p.from}>${p.to}`}>
-                <button type="button" className="link-btn" onClick={() => onOpen(p.from)}>{byId.get(p.from).code} {title(byId.get(p.from))}</button>
-                {' depends on '}
-                <button type="button" className="link-btn" onClick={() => onOpen(p.to)}>{byId.get(p.to).code} {title(byId.get(p.to))}</button>
-              </li>
-            ))}
-          </ul>
-          <button type="button" id="graphShowStories" onClick={showStories}>Show stories</button>
-        </div>
-      )}
+      <GraphToolbar
+        level={level} onChooseLevel={chooseLevel} hasNodes={hasNodes} coarse={coarse} zoomPercent={Math.round(view.k * 100)}
+        onZoomOut={() => zoomBy(1 / ZOOM_STEP)} onZoomIn={() => zoomBy(ZOOM_STEP)} onFit={fit}
+        linking={linkFrom !== null} canLink={Boolean(selected && openStory?.code)} onToggleLink={toggleLinkFromSelected}
+        canRemove={Boolean(edge) && !coarse} onRemove={() => edge && removeEdge(edge)}
+        canOpen={Boolean(selected)} onOpenInEditor={() => openStory && onOpen(openStory.id)} hint={hint}
+      />
+      <GraphDetail detailPairs={detailPairs} byId={byId} onOpen={onOpen} onShowStories={showStories} />
       {note && <p className="warning graph-note" role="alert">{note}</p>}
 
-      {hasNodes ? (
-        <div
-          ref={panel} className="graph-panel" tabIndex={0} onKeyDown={onKeyDown}
-          aria-label="Dependency graph. Plus and minus zoom, arrow keys pan, 0 fits the whole graph."
-        >
-          <svg
-            className={`graph-svg${drag ? ' linking' : ''}${linkFrom !== null ? ' choosing' : ''}`}
-            onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={() => { gesture.current = null; setDrag(null); }}
-          >
-            <defs>
-              {[['arrow', 'graph-arrow'], ['arrow-hi', 'graph-arrow hi'], ['arrow-back', 'graph-arrow back']].map(([id, cls]) => (
-                <marker key={id} id={`graph-${id}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
-                  <path d="M 0 0 L 10 5 L 0 10 z" className={cls} />
-                </marker>
-              ))}
-            </defs>
-            <g transform={`translate(${view.x} ${view.y}) scale(${view.k})`}>
-              {layout.clusters.map((c) => (
-                <g key={c.index} className="graph-band" data-cluster={c.index}>
-                  <rect className="graph-band-box" x="0" y={bands[c.index].top} width={bands[c.index].width} height={bands[c.index].height} rx="10" />
-                  <text className="graph-band-label" x={BAND_PAD} y={bands[c.index].top + 18}>{`Cluster ${c.index + 1} · ${c.size} ${coarse ? level : 'stories'}`}</text>
-                </g>
-              ))}
-              {layout.edges.map((e) => {
-                const from = nodeById.get(e.from);
-                const to = nodeById.get(e.to);
-                const d = edgePath(from, to, e.via, bands[from.cluster].top, e.back);
-                const on = selectedEdge === edgeKey(e);
-                const marker = e.back ? 'back' : on ? 'hi' : '';
-                const cls = ['graph-edge', e.back ? 'back' : '', on ? 'selected' : '', litEdge(e) ? '' : 'dim'].filter(Boolean).join(' ');
-                const weight = coarse ? grouping.pairs.get(edgeKey(e)).length : 0;
-                const mid = {
-                  x: (slot(from.layer, 0, 0).x + slot(to.layer, 0, 0).x + NODE_W) / 2,
-                  y: (slot(0, from.row, bands[from.cluster].top).y + slot(0, to.row, bands[from.cluster].top).y + NODE_H) / 2 - 5,
-                };
-                return (
-                  <g
-                    key={edgeKey(e)} className={cls} data-edge={edgeKey(e)} aria-hidden="true"
-                    onClick={() => { setSelectedId(null); setSelectedEdge(on ? null : edgeKey(e)); setNote(''); }}
-                  >
-                    <path d={d} className="graph-edge-hit" />
-                    <path d={d} className="graph-edge-line" markerEnd={`url(#graph-arrow${marker ? `-${marker}` : ''})`} />
-                    {coarse && view.k >= MIN_LABEL_ZOOM && <text className="graph-edge-weight" x={mid.x} y={mid.y}>{weight}</text>}
-                  </g>
-                );
-              })}
-              {coarse && layout.nodes.map((n) => {
-                const g = grouping.groups.get(n.id);
-                const { x, y } = pos(n);
-                const hue = epicHue.get(g.epic);
-                const counts = `${g.storyIds.length} ${g.storyIds.length === 1 ? 'story' : 'stories'}${g.internal ? ` · ${g.internal} internal` : ''}`;
-                const cls = ['graph-node', 'group', selected?.id === n.id ? 'selected' : '', lit(n.id) ? '' : 'dim'].filter(Boolean).join(' ');
-                return (
-                  <g
-                    key={n.id} className={cls} data-node={n.id} transform={`translate(${x} ${y})`} tabIndex={0} role="button"
-                    aria-label={`${groupLabel(n.id)}, ${counts}`} aria-pressed={selected?.id === n.id}
-                    onClick={() => clickNode(n.id)} onKeyDown={activate(() => clickNode(n.id))}
-                  >
-                    <title>{`${groupLabel(n.id)}\n${counts}`}</title>
-                    {level === 'features' && <text className="graph-node-epiclabel" x="0" y="-5">{clip(g.epic)}</text>}
-                    <rect className="graph-node-box" width={NODE_W} height={NODE_H} rx="6" />
-                    <rect className="graph-node-epic" width="6" height={NODE_H} rx="3" style={hue === undefined ? undefined : { fill: `hsl(${hue} 62% 52%)` }} />
-                    <text className="graph-node-code" x="16" y="18">{counts}</text>
-                    <text className="graph-node-title" x="16" y="35">{clip(g.name)}</text>
-                  </g>
-                );
-              })}
-              {!coarse && layout.nodes.map((n) => {
-                const s = byId.get(n.id);
-                const { x, y } = pos(n);
-                const { errors, warnings } = storyIssues(s, problems.get(s.id));
-                const hue = epicHue.get(s.epic.trim());
-                const cls = [
-                  'graph-node', issueClass(errors, warnings), selected?.id === n.id ? 'selected' : '', linkFrom === n.id ? 'source' : '', lit(n.id) ? '' : 'dim',
-                ].filter(Boolean).join(' ');
-                return (
-                  <g
-                    key={n.id} className={cls} data-node={n.id} transform={`translate(${x} ${y})`} tabIndex={0} role="button"
-                    aria-label={`${s.code} ${title(s)}`} aria-pressed={selected?.id === n.id}
-                    onClick={() => clickNode(n.id)} onDoubleClick={() => onOpen(n.id)} onKeyDown={activate(() => clickNode(n.id))}
-                  >
-                    <title>{`${rowTooltip(s, errors, warnings)}${s.epic.trim() ? `\n\nEpic: ${s.epic.trim()}` : ''}`}</title>
-                    <rect className="graph-node-box" width={NODE_W} height={NODE_H} rx="6" />
-                    <rect className="graph-node-epic" width="6" height={NODE_H} rx="3" style={hue === undefined ? undefined : { fill: `hsl(${hue} 62% 52%)` }} />
-                    <text className="graph-node-code" x="16" y="18">{s.code}</text>
-                    <text className="graph-node-state" x={NODE_W - 8} y="18" textAnchor="end">{[selected?.id === n.id ? 'Selected' : '', stateWord(issueClass(errors, warnings))].filter(Boolean).join(' · ')}</text>
-                    <text className="graph-node-title" x="16" y="35">{clip(title(s))}</text>
-                    <circle className="graph-handle" data-handle={n.id} cx="0" cy={NODE_H / 2} r="7"><title>Drag onto the story this one depends on</title></circle>
-                  </g>
-                );
-              })}
-              {/* Keyboard stops for the edges come after every node in the DOM, so Tab visits nodes first; the drawn lines above stay under the nodes. */}
-              {layout.edges.map((e) => {
-                const from = nodeById.get(e.from);
-                const to = nodeById.get(e.to);
-                const key = edgeKey(e);
-                const on = selectedEdge === key;
-                const label = coarse
-                  ? `${groupLabel(e.from)} depends on ${groupLabel(e.to)}`
-                  : `${byId.get(e.from).code} depends on ${byId.get(e.to).code}`;
-                return (
-                  <g
-                    key={key} className="graph-edge-key" data-edge-key={key} tabIndex={0} role="button" aria-label={label} aria-pressed={on}
-                    onKeyDown={activate(() => { setSelectedId(null); setSelectedEdge(on ? null : key); })}
-                  >
-                    <title>{label}</title>
-                    <path d={edgePath(from, to, e.via, bands[from.cluster].top, e.back)} className="graph-edge-focus-line" />
-                  </g>
-                );
-              })}
-              {drag && dragNode && (
-                <path
-                  className="graph-rubber" d={`M ${pos(dragNode).x} ${pos(dragNode).y + NODE_H / 2} L ${drag.point.x} ${drag.point.y}`}
-                />
-              )}
-            </g>
-          </svg>
-        </div>
-      ) : (
-        <div id="graphEmpty">
-          <EmptyState
-            title={coarse ? `No dependencies between ${level} yet` : stories.length ? 'No dependencies yet' : 'No stories yet'}
-            help={stories.length ? 'Select a story, choose Link, then pick the story it depends on.' : 'Add a story in the Editor tab first.'}
-          />
-        </div>
-      )}
+      <GraphCanvas
+        panelRef={panel} hasNodes={hasNodes} stories={stories} level={level} coarse={coarse} grouping={grouping} layout={layout}
+        bands={bands} view={view} byId={byId} nodeById={nodeById} epicHue={epicHue} problems={problems}
+        selected={selected} selectedEdge={selectedEdge} linkFrom={linkFrom} drag={drag} dragNode={dragNode}
+        lit={lit} litEdge={litEdge} groupLabel={groupLabel} activate={activate}
+        clickNode={clickNode} onPickEdge={pickEdge} onOpen={onOpen} onKeyDown={onKeyDown}
+        onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={cancelGesture}
+      />
 
       {coarse && layout.cyclic && (
         <ul className="muted graph-notes">
@@ -515,45 +319,10 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
           {layout.unresolved.map((u) => <li key={`${u.from}-${u.code}`}>{byId.get(u.from)?.code} lists {u.code}, which no story has.</li>)}
         </ul>
       )}
-
-      {coarse && layout.unlinked.length > 0 && (
-        <div className="graph-unlinked">
-          <h3 className="dep-heading">No dependencies</h3>
-          <ul>
-            {layout.unlinked.map((item) => {
-              const g = grouping.groups.get(item.id);
-              return <li key={item.id}>{groupLabel(item.id)} <span className="code">{g.storyIds.length} {g.storyIds.length === 1 ? 'story' : 'stories'}</span></li>;
-            })}
-          </ul>
-        </div>
-      )}
-
-      {!coarse && layout.unlinked.length > 0 && (
-        <div className="graph-unlinked">
-          <h3 className="dep-heading">No dependencies</h3>
-          <ul>
-            {layout.unlinked.map((s) => {
-              const { errors, warnings } = storyIssues(s, problems.get(s.id));
-              return (
-                <li key={s.id} className={issueClass(errors, warnings)}>
-                  <button
-                    type="button" className="link-btn" title={linkFrom !== null ? 'Make this the story it depends on' : rowTooltip(s, errors, warnings)}
-                    onClick={() => (linkFrom !== null ? link(linkFrom, s.id) : onOpen(s.id))}
-                  >
-                    {s.code ? <span className="code">{s.code}</span> : null} {title(s)}
-                    <StateMark kind={issueClass(errors, warnings)} />
-                  </button>
-                  <button
-                    type="button" className="graph-link-btn" disabled={!s.code} aria-label={`Link ${s.code || title(s)}`}
-                    title={s.code ? 'Choose the story this one depends on' : 'A story needs an epic, and so an ID, before it can be linked.'}
-                    onClick={() => { clearSelection(); setLinkFrom(linkFrom === s.id ? null : s.id); }}
-                  >Link</button>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
+      <GraphUnlinked
+        coarse={coarse} layout={layout} grouping={grouping} groupLabel={groupLabel} problems={problems}
+        linkFrom={linkFrom} link={link} onToggleLink={toggleLinkFrom} onOpen={onOpen}
+      />
     </section>
   );
 }
