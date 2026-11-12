@@ -19,13 +19,13 @@ function setup({ withSlice = false } = {}) {
   return sampleTree({ withSlice });
 }
 const dirOf = (root) => backlogPath(root, 'sample');
-const sliceOf = (root, slice = 'sign-in') => path.join(slicesPath(root, 'sample'), slice);
+const sliceOf = (root, slice = 'streaks') => path.join(slicesPath(root, 'sample'), slice);
 const MAP = {
   contexts: [
-    { name: 'Accounts', purpose: 'Who a member is and how they sign in', owner: 'Platform team', epics: ['Identity and access'] },
-    { name: 'Insight', purpose: 'What the analysts see', owner: 'TBC', epics: ['Reporting'] },
+    { name: 'Habits', purpose: 'What a person tracks every day', owner: 'Platform team', epics: ['Habit tracking'] },
+    { name: 'Focus', purpose: 'How a person runs and counts focus sessions', owner: 'TBC', epics: ['Focus timer'] },
   ],
-  relationships: [{ from: 'Accounts', to: 'Insight', type: 'published-events', crosses: 'Member signed in' }],
+  relationships: [{ from: 'Habits', to: 'Focus', type: 'published-events', crosses: 'Task category' }],
 };
 const input = (root, over = {}) => ({ dataDir: root, name: 'sample', ...MAP, ...over });
 
@@ -52,11 +52,11 @@ test('read: a stale map names the Epic it lacks and the Epic it no longer finds,
   const root = setup();
   await writeContextMap(input(root));
   const csv = pathOf(root, 'sample', 'backlog');
-  fs.writeFileSync(csv, fs.readFileSync(csv, 'utf8').replace(/Reporting/g, 'Insights'));
+  fs.writeFileSync(csv, fs.readFileSync(csv, 'utf8').replace(/Focus timer/g, 'Weekly stats'));
   const before = fs.readdirSync(dirOf(root)).map((f) => fs.readFileSync(path.join(dirOf(root), f), 'utf8'));
   const r = readContextMap({ dataDir: root, name: 'sample' });
-  assert.deepEqual([r.missing, r.unknown], [['Insights'], ['Reporting']]);
-  assert.match(formatContextMap(r), /STALE[\s\S]*missing: the Epic "Insights"[\s\S]*unknown: the map lists the Epic "Reporting"/);
+  assert.deepEqual([r.missing, r.unknown], [['Weekly stats'], ['Focus timer']]);
+  assert.match(formatContextMap(r), /STALE[\s\S]*missing: the Epic "Weekly stats"[\s\S]*unknown: the map lists the Epic "Focus timer"/);
   assert.deepEqual(fs.readdirSync(dirOf(root)).map((f) => fs.readFileSync(path.join(dirOf(root), f), 'utf8')), before);
 });
 
@@ -84,8 +84,8 @@ test('write: a refused map writes neither file and lists each problem', async ()
   const r = await writeContextMap(input(root, { contexts: [MAP.contexts[0]] }));
   assert.equal(r.ok, false);
   assert.match(r.text, /Nothing was written\. 2 problems/);
-  assert.match(r.text, /The Epic "Reporting" is in no context/);
-  assert.match(r.text, /names the context "Insight"/);
+  assert.match(r.text, /The Epic "Focus timer" is in no context/);
+  assert.match(r.text, /names the context "Focus"/);
   assert.equal(fs.existsSync(path.join(dirOf(root), 'context-map.json')), false);
 });
 
@@ -117,7 +117,7 @@ test('read_diagrams does not list the map as a slice', async () => {
   const root = setup({ withSlice: true });
   await writeContextMap(input(root));
   const list = readDiagrams({ dataDir: root, name: 'sample' });
-  assert.deepEqual(list.slices.map((s) => s.slice), ['sign-in']);
+  assert.deepEqual(list.slices.map((s) => s.slice), ['streaks']);
 });
 
 test('the committed sample map passes the checks and the parser, matches its composed document, and is up to date', async () => {

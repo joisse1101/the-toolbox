@@ -24,7 +24,7 @@ The toolkit has its own tests, separate from `npm test`: `cd toolkit; python che
 
 ## Line endings
 
-Git stores every tracked file with LF, and each user's `core.autocrlf` setting decides whether their working files are LF or CRLF, so the repo does not force one. `.gitattributes` pins only `planner/test/sample-data/**` and `toolkit/tests/story/fixtures/**` to LF, because tests match fixture text with `\n`. Each generated skill copy has the line ending of its source file, because `planner/scripts/sync-skill-logic.mjs` reads sources as LF and then writes each copy with its source's ending (CRLF in a CRLF checkout, LF otherwise, never a mix), so git reports no change after a run. The data CSVs keep CRLF, because the CSV writer emits it. No test guards line endings.
+Git stores every tracked file with LF, and each user's `core.autocrlf` setting decides whether their working files are LF or CRLF, so the repo does not force one. `.gitattributes` pins only `planner/test/sample-data/**` and `toolkit/tests/story/fixtures/**` and `toolkit/sample/story-to-code/**` to LF, because tests match their text with `\n`. Each generated skill copy has the line ending of its source file, because `planner/scripts/sync-skill-logic.mjs` reads sources as LF and then writes each copy with its source's ending (CRLF in a CRLF checkout, LF otherwise, never a mix), so git reports no change after a run. The data CSVs keep CRLF, because the CSV writer emits it. No test guards line endings.
 
 ## Zones
 
@@ -41,6 +41,16 @@ The repo is ESM (`"type": "module"` in `planner/package.json`); `planner/portal/
 ## Workflow
 
 Changes are managed with OpenSpec (`openspec/`) and use conventional-commit prefixes. Use the `opsx:*` skills (propose / apply / archive). The details, and the steps to add a new tool, are in [Workflow](wiki/Workflow.md).
+
+## Testing an edit to a story-to-code skill
+
+When you edit a skill or command of the story-to-code flow (`toolkit/skills/jois-story-*` or `toolkit/commands/jois-code/`), test it live in the sample's mock repo, and never in this repo or the user's own projects. The sample is `toolkit/sample/story-to-code/`; its README is the full guide.
+
+1. Build the mock repo at the stage just before the edited stage, for example `toolkit\sample\story-to-code\build-mock-repo.ps1 -Stage planned -Reset` to test apply. It builds `.scratch/mock-app/` and calls no model.
+2. Reinstall the edited item at project scope with `toolkit\install\Install-Toolkit.ps1 -Scope project -Path .scratch/mock-app -Skill <name> -Force` (`-Command jois-code` for a command).
+3. A global copy of a skill loads ahead of the project copy, so check which copy a session loads before you trust a result. Never remove, rename or reinstall a global copy: that writes to `~/.claude`, so ask the user first.
+4. Run the skill with Claude started in `.scratch/mock-app/`. A headless session cannot answer questions, so give it the answers in the prompt.
+5. Run `node --test toolkit/tests/story/sample-stages.test.mjs` to see whether the saved stages still pass the checkers. If a format change makes it fail, the sample needs recording again, which costs real model tokens, so ask the user first.
 
 <!-- jois-init:docs begin -->
 ## Where the docs are

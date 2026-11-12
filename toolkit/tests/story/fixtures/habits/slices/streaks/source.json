@@ -1,0 +1,8 @@
+{
+  "scope": { "type": "feature", "epic": "Habit tracking", "feature": "Streaks" },
+  "stories": [
+    { "id": "H1-HT-0001", "title": "See the current streak", "hash": "afb3d4cdba1b", "epic": "Habit tracking", "feature": "Streaks" },
+    { "id": "H1-HT-0002", "title": "See the best streak", "hash": "3cbcd75e0d93", "epic": "Habit tracking", "feature": "Streaks" }
+  ],
+  "drawnAt": "2026-11-12T00:00:00.000Z"
+}

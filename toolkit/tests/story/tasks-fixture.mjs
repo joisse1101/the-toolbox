@@ -1,27 +1,25 @@
-// Shared fixtures of the tasks-*.test.mjs files: the mock sign-in slice and a valid tasks.md for it.
+// Shared fixtures of the tasks-*.test.mjs files: the mock streaks slice and a valid tasks.md for it.
 import fs from 'node:fs';
+import { SAMPLE_SLICE } from './helpers/backlog-tree.mjs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 // A Windows checkout may hold CRLF; the tests build text with "\n".
-export const document = fs.readFileSync(path.join(HERE, 'fixtures', 'sample', 'slices', 'sign-in', 'UC-sign-in.md'), 'utf8').replace(/\r\n/g, '\n');
+export const document = fs.readFileSync(path.join(SAMPLE_SLICE, 'UC-streaks.md'), 'utf8').replace(/\r\n/g, '\n');
 
-export const LOGIN_TASK = 'T-sign-in-login-dashboard';
-export const RESET_TASK = 'T-sign-in-reset-link';
+export const CURRENT_TASK = 'T-streaks-current-count';
+export const BEST_TASK = 'T-streaks-best-count';
 
-export const tasksText = ({ login = ' ', reset = ' ' } = {}) => `# Tasks
+export const tasksText = ({ current = ' ', best = ' ' } = {}) => `# Tasks
 
-## login
+## current
 
-- [${login}] ${LOGIN_TASK} Show the dashboard after sign-in
-  Satisfies: AC-sign-in-dashboard (steps 1.1, 2.5)
-  Verify: sign in with the right password and see the dashboard
+- [${current}] ${CURRENT_TASK} Show the current streak of a habit
+  Satisfies: AC-streaks-current (steps 1.1, 2.5)
+  Verify: check a habit off on 3 days in a row and see a streak of 3
 
-## reset
+## best
 
-- [${reset}] ${RESET_TASK} Send the reset link
-  Satisfies: AC-sign-in-reset-link (steps 2.10, 2.11)
-  Verify: ask for a reset and read the mailer's outbox
+- [${best}] ${BEST_TASK} Show the best streak of a habit
+  Satisfies: AC-streaks-best (steps 2.10, 2.11)
+  Verify: build a 5 day run, break it, check off 2 more days and see a best streak of 5
 `;

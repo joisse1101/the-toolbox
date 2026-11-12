@@ -81,7 +81,7 @@ The `jois-code-standards` skill is now the `jois-code-quality` rule, which loads
 
 ### The renamed task agents
 
-The agents `opsx-task-applier` and `opsx-test-runner` are now `task-applier` and `test-runner`, so that `/jois-code:apply` and `/opsx:apply` can share them. The installer deletes nothing, so after you install the new files (`.\Install-Toolkit.ps1 -Agent task-applier.md` and `-Agent test-runner.md`), delete `opsx-task-applier.md` and `opsx-test-runner.md` by hand from `~/.claude/agents/` and from any project's `.claude/agents/`. Until then `/jois-code:apply` treats a machine with only the old files as not having the agents. Then run `/jois-init:opsx` in each project to replace the apply guidance.
+The agents `opsx-task-applier` and `opsx-test-runner` are now `task-applier` and `test-runner`, so that `/jois-code:apply` and `/opsx:apply` can share them. The installer deletes nothing, so after you install the new files (`.\Install-Toolkit.ps1 -Agent task-applier.md` and `-Agent test-runner.md`), delete `opsx-task-applier.md` and `opsx-test-runner.md` by hand from `~/.claude/agents/` and from any project's `.claude/agents/`. Until then `/jois-code:apply` treats a machine with only the old files as not having the agents. Then run `/jois-init:opsx` in each project to replace the apply guidance. <!-- docs-check: ignore -->
 
 ## Installing by hand
 

@@ -50,3 +50,17 @@ Every command can be run again, and it picks up where it stopped. When you come 
 A `validation.partial.md` alone never counts as validated, because it tested one story only. An `ARCHIVED.md` from an earlier commit records an earlier archive, so after new code the slice is archived again, and the rerun replaces its block in the wiki in place.
 
 When a story changes after the slice was planned, apply, validate and archive report the slice as stale and stop. Redraw it with `jois-story-plan` and run the stage again.
+
+## Try the flow on a sample project
+
+`toolkit/sample/story-to-code/` holds a small habit and focus tracker, its wiki, and the saved result of every stage of this flow, so you can see what each stage writes without building a project by hand. Its `README.md` explains it in full. The unbuilt features are on the sample wiki's Future Releases page, so a rerun always has a feature to add.
+
+Build a mock repo from the sample, at the stage you want to start from, in Windows PowerShell:
+
+```
+toolkit\sample\story-to-code\build-mock-repo.ps1 -Stage planned
+```
+
+The script builds `.scratch/mock-app/` as its own git repository on the branch `sample`, installs the toolkit there at project scope and runs `npm ci` inside it. It writes nothing outside that folder and calls no model. The stage is one of `baseline`, `proposed`, `accepted`, `planned`, `built`, `validated` or `archived`. To restore a different stage, run it again with `-Reset -Stage <name>`. Then start Claude inside `.scratch/mock-app/`.
+
+A saved stage shows what the skills wrote on the day it was recorded, so only a live run proves an edited skill works. `node --test toolkit/tests/story/sample-stages.test.mjs` runs every saved stage through the toolkit's own checkers with no model, and fails when a skill's output format changes so that a stage no longer passes. The story-skill tests also read the sample's backlog and slice.
