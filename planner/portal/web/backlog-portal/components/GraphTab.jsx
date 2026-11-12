@@ -3,6 +3,7 @@ import { storyIssues, storyLabel } from '../../../../logic/backlog/model.js';
 import { wouldCycle } from '../../../../logic/backlog/ids.js';
 import { layoutGraph, groupStories, relatedIds, fitView, zoomAt, panBy, toGraphPoint } from '../graph.js';
 import { issueClass, rowTooltip } from './issues.js';
+import StateMark, { stateWord } from './StateMark.jsx';
 
 const NODE_W = 192;
 const NODE_H = 46;
@@ -457,6 +458,7 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
                     <rect className="graph-node-box" width={NODE_W} height={NODE_H} rx="6" />
                     <rect className="graph-node-epic" width="6" height={NODE_H} rx="3" style={hue === undefined ? undefined : { fill: `hsl(${hue} 62% 52%)` }} />
                     <text className="graph-node-code" x="16" y="18">{s.code}</text>
+                    <text className="graph-node-state" x={NODE_W - 8} y="18" textAnchor="end">{[selected?.id === n.id ? 'Selected' : '', stateWord(issueClass(errors, warnings))].filter(Boolean).join(' · ')}</text>
                     <text className="graph-node-title" x="16" y="35">{clip(title(s))}</text>
                     <circle className="graph-handle" data-handle={n.id} cx="0" cy={NODE_H / 2} r="7"><title>Drag onto the story this one depends on</title></circle>
                   </g>
@@ -533,6 +535,7 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
                     onClick={() => (linkFrom !== null ? link(linkFrom, s.id) : onOpen(s.id))}
                   >
                     {s.code ? <span className="code">{s.code}</span> : null} {title(s)}
+                    <StateMark kind={issueClass(errors, warnings)} />
                   </button>
                   <button
                     type="button" className="graph-link-btn" disabled={!s.code} aria-label={`Link ${s.code || title(s)}`}
