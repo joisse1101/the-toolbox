@@ -4,8 +4,8 @@ description: "Set OpenSpec up in this project: init when missing, check the glob
 allowed-tools: Bash(openspec:*), Bash(git status:*), Bash(git diff:*), Read, Edit, Write
 disable-model-invocation: true
 metadata:
-  version: "1.5.0"
-  last_updated: "2026-11-05"
+  version: "1.6.0"
+  last_updated: "2026-11-12"
 ---
 
 Set OpenSpec up in the project this runs in.
@@ -80,7 +80,11 @@ Set OpenSpec up in the project this runs in.
 
 ```yaml
       # jois-init:opsx begin (managed by /jois-init:opsx; edits here are overwritten)
-      - "At the end of each concern, commit it as the apply clause of the jois-git-commit-hygiene rule says. Push only when the user types the confirmation word."
+      - "Hand each group of tasks, in file order, to the task-applier agent instead of implementing the tasks in this session. Brief it with the verbatim task texts, the files to read, what each task satisfies (the specs' requirement names) and how to verify it."
+      - "Hand the final test task to the test-runner agent with the files the change touched. Count the tests as passed only when every command it reports shows exit code 0."
+      - "Before the first dispatch, check that task-applier.md and test-runner.md are in ~/.claude/agents/ or this project's .claude/agents/. If one is missing, say so, name Install-Toolkit.ps1 and do not copy the agent yourself."
+      - "The agents commit nothing and never edit tasks.md. Record each task's result from its report and tick its box yourself."
+      - "Commit a finished concern without asking for a confirmation word only on a branch other than main or master, when the concern's tasks are done and nothing outside its own files is staged or edited. Stage by explicit path. Run no test between groups: the final test task is the only check that gates a commit. Never push; on main, master or a detached HEAD follow the confirmation-word path of the jois-git-commit-hygiene rule."
       # jois-init:opsx end
 ```
 
