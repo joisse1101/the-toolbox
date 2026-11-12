@@ -1,0 +1,4 @@
+node_modules/
+dist/
+# A person's own sound files; the app generates its sound in code when this folder is empty.
+audio/
