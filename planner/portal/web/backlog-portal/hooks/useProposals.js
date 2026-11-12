@@ -3,6 +3,7 @@ import { createFileStore } from '../../shared/files.js';
 import { COLUMNS, loadBacklog, newStory, proposalHeaders } from '../../../../logic/backlog/model.js';
 import { nextPlaceholder, removeProposed, moveProposed } from '../../../../logic/backlog/proposals.js';
 import { useAutosave } from './useAutosave.js';
+import { useConfirm } from './useConfirm.js';
 
 const proposalsStore = createFileStore('proposals');
 
@@ -118,6 +119,7 @@ export function useProposals(current, headers, initials) {
   initialsRef.current = initials;
   const loadToken = useRef(0);
 
+  const ask = useConfirm();
   const autosave = useAutosave({ store, stateRef, onStatus: setStatus, onMessage: setMessage });
 
   useEffect(() => {
@@ -191,14 +193,17 @@ export function useProposals(current, headers, initials) {
       moveStory: (id, epic, beforeId) => dispatch({ type: 'move', id, epic, beforeId }),
       replaceStories: (stories) => dispatch({ type: 'replaceStories', stories }),
 
-      // Asks first. `ids` is the set of ticked stories. Returns true when they were deleted.
-      deleteMany(ids) {
-        if (!ids.size || !confirm(`Delete ${ids.size} proposed ${ids.size === 1 ? 'story' : 'stories'}?`)) return false;
+      // Asks first. `ids` is the set of ticked stories. Resolves true when they were deleted.
+      async deleteMany(ids) {
+        if (!ids.size) return false;
+        const noun = ids.size === 1 ? 'story' : 'stories';
+        const confirmed = await ask({ title: `Delete ${ids.size} proposed ${noun}?`, message: `${ids.size} proposed ${noun} will be removed from the proposals file.\n\nThis cannot be undone.`, confirmLabel: 'Delete', danger: true });
+        if (!confirmed) return false;
         dispatch({ type: 'deleteMany', ids });
         return true;
       },
     };
-  }, [autosave]);
+  }, [autosave, ask]);
 
   // Follow the open backlog.
   useEffect(() => {

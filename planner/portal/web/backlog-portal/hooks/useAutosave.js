@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { serializeBacklog } from '../../../../logic/backlog/model.js';
+import { useConfirm } from './useConfirm.js';
 
 const SAVE_DEBOUNCE_MS = 600;
 
@@ -8,6 +9,7 @@ const SAVE_DEBOUNCE_MS = 600;
 // One write in flight at a time; edits made during a write trigger one follow-up with the latest state.
 // `serialize(backlog)` turns the state's `backlog` into the file text (default: a backlog CSV); pass a stable function.
 export function useAutosave({ store, stateRef, onStatus, onMessage, serialize = serializeBacklog }) {
+  const ask = useConfirm();
   const callbacks = useRef({ onStatus, onMessage });
   callbacks.current = { onStatus, onMessage };
 
@@ -71,7 +73,8 @@ export function useAutosave({ store, stateRef, onStatus, onMessage, serialize = 
     // For actions that leave the current file: save first, or ask before discarding failed edits.
     async function leaveCurrentFile() {
       if (!stateRef.current.current || (await settle())) return true;
-      if (!confirm('Your latest changes could not be saved. Continue and discard them?')) return false;
+      const discard = await ask({ title: 'Discard unsaved changes?', message: 'Your latest changes could not be saved. Continue and discard them?', confirmLabel: 'Discard changes', danger: true });
+      if (!discard) return false;
       clearTimeout(m.retryTimer);
       m.dirty = false;
       return true;
@@ -94,7 +97,7 @@ export function useAutosave({ store, stateRef, onStatus, onMessage, serialize = 
       isFailed: () => m.status === 'failed',
       lastText: () => m.lastText,
     };
-  }, [store, stateRef, serialize]);
+  }, [store, stateRef, serialize, ask]);
 
   useEffect(() => {
     const warn = (e) => {
