@@ -7,6 +7,7 @@ import TabHeader from './TabHeader.jsx';
 import EmptyState from './EmptyState.jsx';
 import useListWidth from '../hooks/useListWidth.js';
 import { useConfirm } from '../hooks/useConfirm.js';
+import { Row, Grid } from './Layout.jsx';
 
 const blankDraft = { name: '', partOf: '', definition: '', avoid: '', notes: '' };
 const toDraft = (t) => ({ name: t.name, partOf: t.partOf, definition: t.definition, avoid: t.avoid.join('; '), notes: t.notes });
@@ -62,13 +63,13 @@ export default function LexiconTab({ hidden, lexicon, selected, error, message, 
           </TabHeader>
           <div className="editor" style={list.style}>
           <div className="card story-list-panel">
-            <div className="row">
+            <Row>
               <div className="grow">
                 <label htmlFor="lexiconSearch">Search</label>
                 <input id="lexiconSearch" type="text" value={query} placeholder="term, definition or avoided word" onChange={(e) => setQuery(e.target.value)} />
               </div>
-            </div>
-            <ul className="story-list lexicon-list" style={{ marginTop: 10 }}>
+            </Row>
+            <ul className="story-list lexicon-list">
               {shown.map(({ term, depth }) => (
                 <li key={term.name} className={!adding && selected?.name === term.name ? 'selected' : ''} style={{ marginLeft: depth * 16 }} onClick={() => pick(term.name)}>
                   <button type="button" className="row-btn" aria-current={!adding && selected?.name === term.name ? 'true' : undefined}>
@@ -140,7 +141,7 @@ function TermForm({ term, lexicon, error, onSave, onRemove, onCancel }) {
           {term && dirty && <button type="button" className="link-btn" onClick={() => setDraft(saved)}>Discard my changes</button>}
         </div>
       )}
-      <div className="grid3">
+      <Grid>
         <div>
           <label htmlFor="termName">Name</label>
           <input id="termName" type="text" value={draft.name} className={error && !draft.name.trim() ? 'missing' : ''} onChange={set('name')} onBlur={() => commit()} autoFocus={!term} />
@@ -156,7 +157,7 @@ function TermForm({ term, lexicon, error, onSave, onRemove, onCancel }) {
             {parents.map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
         </div>
-      </div>
+      </Grid>
       <div>
         <label htmlFor="termDefinition">Definition</label>
         <textarea id="termDefinition" rows={3} value={draft.definition} onChange={set('definition')} onBlur={() => commit()} />
@@ -170,7 +171,7 @@ function TermForm({ term, lexicon, error, onSave, onRemove, onCancel }) {
         <textarea id="termNotes" rows={2} value={draft.notes} onChange={set('notes')} onBlur={() => commit()} />
       </div>
       {kids.length > 0 && <p className="muted">Part of this term: {kids.map((k) => k.name).join(', ')}.</p>}
-      <div className="row">
+      <Row>
         {term ? (
           <button type="button" id="deleteTermBtn" onClick={onRemove}>Delete term</button>
         ) : (
@@ -179,7 +180,7 @@ function TermForm({ term, lexicon, error, onSave, onRemove, onCancel }) {
             <button type="button" onClick={onCancel}>Cancel</button>
           </>
         )}
-      </div>
+      </Row>
     </form>
   );
 }
@@ -261,7 +262,7 @@ function LexiconSuggestion({ lexicon, row, onApply, onDismiss }) {
         <fieldset>
           <legend className="muted">Add to Avoid</legend>
           {row.avoid.map((word) => (
-            <label key={word} style={{ display: 'inline-block', marginRight: 12 }}>
+            <label key={word} className="avoid-choice">
               <input type="checkbox" checked={checked.has(word)} onChange={() => toggle(word)} /> {word}
             </label>
           ))}

@@ -5,6 +5,7 @@ import { storyLabel } from '../../../../logic/backlog/model.js';
 import TabHeader from './TabHeader.jsx';
 import EmptyState from './EmptyState.jsx';
 import { useConfirm } from '../hooks/useConfirm.js';
+import { Row } from './Layout.jsx';
 
 // Every suggestion of the review in one place: open ones grouped by Area, out-of-date ones (Dismiss only) last.
 export default function ReviewTab({ rows, stories, hidden, onOpen, onApply, onDismiss, onAcceptAll, onClear }) {
@@ -46,9 +47,9 @@ export default function ReviewTab({ rows, stories, hidden, onOpen, onApply, onDi
       {!openCount && !outOfDate.length && <EmptyState title="Nothing to review" help="Run /jois-story:review to get suggestions for your stories." />}
       {sections.filter((s) => s.units.length).map((s) => (
         <div key={s.area} className="review-section">
-          <div className="row">
+          <Row>
             <h3>{`${s.area} (${s.units.length})`}</h3>
-          </div>
+          </Row>
           <div className="suggestion-list">{s.units.map(entry)}</div>
           <button type="button" onClick={() => onAcceptAll(s.units)}>{`Accept all ${s.area}`}</button>
         </div>
