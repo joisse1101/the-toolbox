@@ -65,7 +65,7 @@ export function Suggestion({ unit, stories, onApply, onDismiss, heading = null }
       {state === 'stale' && <p className="suggestion-why">Out of date: {why}. It can no longer be applied.</p>}
       {state === 'frozen' && <p className="suggestion-why">This story is frozen, so this cannot be applied. A change needs a superseding story.</p>}
       <div className="suggestion-actions">
-        <button type="button" className="primary" disabled={state === 'stale' || state === 'frozen'} title={state === 'frozen' ? 'A frozen story cannot be edited' : undefined} onClick={() => onApply(unit)}>
+        <button type="button" disabled={state === 'stale' || state === 'frozen'} title={state === 'frozen' ? 'A frozen story cannot be edited' : undefined} onClick={() => onApply(unit)}>
           {isGroup ? 'Apply split' : 'Apply'}
         </button>
         <button type="button" onClick={() => onDismiss(unit)}>Dismiss</button>
