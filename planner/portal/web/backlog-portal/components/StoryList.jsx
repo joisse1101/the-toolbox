@@ -4,6 +4,7 @@ import { openCount } from '../../../../logic/backlog/story-text.js';
 import { anyOpen, epicKey, featureKey } from '../../lib/collapse.js';
 import { issueClass, rowTooltip } from './issues.js';
 import StateMark from './StateMark.jsx';
+import { Row } from './Layout.jsx';
 
 // Drag a story to reorder it inside its epic, or onto another epic's group to move it there. Dropping on the
 // "(No epic)" group does nothing. `drag` is the story being dragged, `drop` = { epic, beforeId } where it would land
@@ -214,7 +215,7 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
           ];
         })}
       </ul>
-      {onAdd && <div className="row">
+      {onAdd && <Row>
         <button type="button" id="addStoryBtn" className="primary" onClick={onAdd}>Add story</button>
         {onRenumber && (
           <button
@@ -222,7 +223,7 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
             title={renumberDisabled ? 'The IDs already follow the order shown' : "Put each feature's stories together, in the order shown, and renumber them. Frozen stories keep their IDs."}
           >Renumber</button>
         )}
-      </div>}
+      </Row>}
     </aside>
   );
 }
