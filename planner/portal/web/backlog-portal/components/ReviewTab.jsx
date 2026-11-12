@@ -2,11 +2,20 @@ import { useMemo } from 'react';
 import { reviewOverview, unitStoryCode } from '../../../../logic/review/review.js';
 import { Suggestion } from './Suggestions.jsx';
 import { storyLabel } from '../../../../logic/backlog/model.js';
+import { useConfirm } from '../hooks/useConfirm.js';
 
 // Every suggestion of the review in one place: open ones grouped by Area, out-of-date ones (Dismiss only) last.
 export default function ReviewTab({ rows, stories, hidden, onOpen, onApply, onDismiss, onAcceptAll, onClear }) {
+  const ask = useConfirm();
   const { sections, outOfDate, openCount } = useMemo(() => reviewOverview(rows, stories), [rows, stories]);
   const byCode = useMemo(() => new Map(stories.filter((s) => s.code).map((s) => [s.code, s])), [stories]);
+
+  // Clear all removes every row, open, applied and dismissed alike, so the dialog says how many go.
+  const clearAll = async () => {
+    const noun = rows.length === 1 ? 'suggestion' : 'suggestions';
+    const message = `${rows.length} review ${noun} will be removed from the review file, ${openCount} of them still open.\n\nThis cannot be undone.`;
+    if (await ask({ title: `Clear all ${rows.length} ${noun}?`, message, confirmLabel: 'Clear all', danger: true })) onClear();
+  };
 
   const heading = (unit) => {
     const story = byCode.get(unitStoryCode(unit));
@@ -38,7 +47,7 @@ export default function ReviewTab({ rows, stories, hidden, onOpen, onApply, onDi
         </div>
       ))}
       <button type="button" id="acceptAllReviewBtn" disabled={!openCount} onClick={() => onAcceptAll(sections.flatMap((s) => s.units))}>Accept all</button>
-      <button type="button" id="clearAllReviewBtn" disabled={!rows.length} onClick={onClear}>Clear all</button>
+      <button type="button" id="clearAllReviewBtn" disabled={!rows.length} onClick={clearAll}>Clear all</button>
       {outOfDate.length > 0 && (
         <div className="review-section">
           <h3>{`Out of date (${outOfDate.length})`}</h3>

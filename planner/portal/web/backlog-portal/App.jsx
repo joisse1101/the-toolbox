@@ -3,6 +3,7 @@ import { backlogProblems, gatherFeatures } from '../../../logic/backlog/ids.js';
 import { groupByEpic } from '../../../logic/backlog/model.js';
 import { unitsOf, unitStoryCode, openCounts, orphanUnits, reviewOverview, openUnitsFor, acceptAll as acceptReviewUnits, acceptSummaryText } from '../../../logic/review/review.js';
 import { useBacklog } from './hooks/useBacklog.js';
+import { useConfirm } from './hooks/useConfirm.js';
 import { useReview } from './hooks/useReview.js';
 import { useProposals } from './hooks/useProposals.js';
 import { useLexicon } from './hooks/useLexicon.js';
@@ -48,6 +49,7 @@ const KEYBOARD_ICON = (
 );
 
 export default function App() {
+  const ask = useConfirm();
   const { state, selected, status, message, actions } = useBacklog();
   const { files, current, backlog, selectedId, view, checked, lastChecked } = state;
   const stories = backlog?.stories ?? [];
@@ -86,9 +88,10 @@ export default function App() {
   // Accept all (whole review or one Area): confirm with the number a dry run applies, then apply the run as one edit.
   const [acceptSummary, setAcceptSummary] = useState(null);
   useEffect(() => setAcceptSummary(null), [current]);
-  const acceptUnits = (units) => {
+  const acceptUnits = async (units) => {
     const expected = acceptReviewUnits(stories, units, backlog.headers, state.initials).applied.length;
-    if (expected && !window.confirm(`Apply ${expected} review suggestion${expected > 1 ? 's' : ''}?`)) return;
+    const noun = `review suggestion${expected > 1 ? 's' : ''}`;
+    if (expected && !(await ask({ title: `Apply ${expected} ${noun}?`, message: `${expected} ${noun} will be applied to the backlog.`, confirmLabel: 'Apply' }))) return;
     const { applied, skipped } = actions.acceptAll(units);
     if (applied.length) review.decide(applied.flatMap((u) => u.indexes), 'applied');
     review.notify(null);
@@ -132,11 +135,12 @@ export default function App() {
 
   // Editor -> Proposed for the open story. Its open review suggestions are marked dismissed (after a confirm, only
   // when there are any). Order: backlog, proposals, review, like accept, so a crash leaves a duplicate, not a lost story.
-  const moveToProposed = (story) => {
+  const moveToProposed = async (story) => {
     const result = moveStoryToProposed(stories, proposals.stories, story.id, backlog.headers, state.initials);
     if (result.error) return review.notify(result.error);
     const units = openUnitsFor(review.rows, story.code);
-    if (units.length && !window.confirm(`${story.code} has ${units.length} open review suggestion${units.length > 1 ? 's' : ''}. Moving it to Proposed marks ${units.length > 1 ? 'them' : 'it'} as dismissed. Continue?`)) return;
+    const message = `${story.code} has ${units.length} open review suggestion${units.length > 1 ? 's' : ''}. Moving it to Proposed marks ${units.length > 1 ? 'them' : 'it'} as dismissed.`;
+    if (units.length && !(await ask({ title: `Move ${story.code} to Proposed?`, message, confirmLabel: 'Move to Proposed' }))) return;
     actions.replaceStories(result.backlog);
     proposals.actions.replaceStories(result.proposals);
     if (units.length) review.decide(units.flatMap((u) => u.indexes), 'dismissed');
@@ -192,8 +196,8 @@ export default function App() {
   // Dragging a story or a group, and Renumber, renumber stories: their open review suggestions follow them.
   const moveStory = (id, epic, beforeId) => review.retarget(actions.moveStory(id, epic, beforeId));
   const moveGroup = (group, beforeKey) => review.retarget(actions.moveGroup(group, beforeKey));
-  const renumberDisplayed = () => {
-    const recoded = actions.renumberDisplayed();
+  const renumberDisplayed = async () => {
+    const recoded = await actions.renumberDisplayed();
     if (recoded) review.retarget(recoded);
   };
 

@@ -208,7 +208,7 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
           )}
           {onDelete && (
             <button
-              type="button" id="deleteStoryBtn" className="danger" disabled={frozen}
+              type="button" id="deleteStoryBtn" disabled={frozen}
               title={frozen ? 'A frozen story cannot be deleted' : 'Delete this story'}
               onClick={() => onDelete()}
             >

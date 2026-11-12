@@ -55,7 +55,7 @@ export default function ProposedTab({
           <div className="card row proposed-actions">
             <button type="button" id="acceptStoryBtn" className="primary" disabled={!ticked.size || benchedTicked > 0} title={benchedTicked ? `Cannot accept: ${benchedReason(benchedTicked)}` : undefined} onClick={() => onAccept(ticked)}>{`Accept selected (${ticked.size})`}</button>
             <button type="button" id="acceptAllBtn" disabled={!proposed.length || benchedAny > 0} title={benchedAny ? `Cannot accept all: ${benchedReason(benchedAny)}` : undefined} onClick={onAcceptAll}>Accept all</button>
-            <button type="button" id="deleteStoryBtn" className="danger" disabled={!ticked.size} onClick={() => onDelete(ticked)}>{`Delete selected (${ticked.size})`}</button>
+            <button type="button" id="deleteStoryBtn" disabled={!ticked.size} onClick={() => onDelete(ticked)}>{`Delete selected (${ticked.size})`}</button>
             <span className="muted">Tick stories to accept or delete some of them. Accepted stories go to the end of their Epic in the backlog.</span>
             {(benchedTicked > 0 || benchedAny > 0) && <span id="benchedReason" className="muted">{benchedTicked ? `Accept selected is off: ${benchedReason(benchedTicked)}` : `Accept all is off: ${benchedReason(benchedAny)}`}</span>}
           </div>
