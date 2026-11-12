@@ -340,6 +340,15 @@ legend { font-weight: 600; padding: 0 var(--space-2); }
 .confirm-dialog button.confirm-danger { font-weight: 700; color: var(--accent-text); background: var(--bad); border-color: var(--bad); }
 .confirm-dialog button.confirm-danger:hover:not(:disabled) { background: var(--bad); border-color: var(--text); }
 
+/* Settings: a group with a heading, a path box that is read-only but selectable, and the red overwrite step. */
+.settings-group { margin-top: var(--space-3); }
+.settings-group > h3 { margin: 0 0 var(--space-2); font-size: var(--text-base, 1rem); }
+.settings-path { text-overflow: ellipsis; }
+.settings-action { display: flex; flex-direction: column; gap: var(--space-1, 4px); max-width: 280px; }
+.settings-action .muted { margin: 0; font-size: var(--text-xs); }
+button.offer-danger { font-weight: 700; color: var(--accent-text); background: var(--bad); border-color: var(--bad); }
+button.offer-danger:hover:not(:disabled) { background: var(--bad); border-color: var(--text); }
+
 /* Shared by every tab: a title with its actions on the right, and the one empty state. */
 .tab-header { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; justify-content: space-between; margin-bottom: var(--space-3); }
 .tab-header h2 { margin: 0; }

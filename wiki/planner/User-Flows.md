@@ -22,7 +22,7 @@ Use the Editor, Graph and Stories tabs. The portal saves by itself, so the resul
 2. Fill in Epic, Feature and Title, the "As", "I want" and "So that" parts, the sprint points and the acceptance criteria, including a failure case. Use Clarifications for what is not decided yet.
 3. Set Depends On in the form, or switch to the **Graph** tab and drag from one story's dot to the story it depends on.
 4. Watch the save chip in the header until it reads "Saved". If it reads "Save failed", close the file in Excel and the portal retries.
-5. Use the **Stories** tab to check the whole backlog, to sort and filter it, and to set Priority, Epic or Feature on several stories at once. Stories that the plan skill has frozen are marked and stay as they are.
+5. Use the **Stories** tab to check the whole backlog, to sort and filter it, and to set Priority, Epic or Feature on several stories at once. Stories that the plan skill has frozen are marked and stay as they are. The bulk bar stays quiet until you tick a row, and its actions apply only to ticked rows that the search and filters still show. If a search hides ticked rows, the bar says how many are hidden.
 6. To change the initials that start every ID of the backlog, edit the **Initials** box next to the backlog name and leave it. The IDs of stories that are not frozen change and their links follow. A value another backlog uses is refused with that backlog's name.
 
 To work out stories in conversation first, use the skills as in the next flow. They do not write to `user-stories.csv`.
@@ -45,6 +45,7 @@ Use the review skill, then the Review tab or the story form. The skill writes `<
 1. Ask Claude to use `jois-story-review` on the backlog. It reads the backlog Epic by Epic against `planner/guidelines/product-backlog.md`, then writes its findings to `<backlog>/user-stories/review.csv` and reports them in the chat. It never edits `user-stories.csv`, and it treats frozen stories as reference only.
 2. Open the **Review** tab, which appears once the review file exists. Each suggestion shows its story, the proposed value, the reason, and Apply and Dismiss. The same suggestion also shows next to its field in the Editor's story form, and the story list shows a count.
 3. Press **Apply** to make the edit, or **Dismiss** to drop it. A suggestion marked out of date can only be dismissed, and one on a frozen story cannot be applied. **Accept all** applies a whole area after you confirm the count.
+   Clear all on the Review tab and every other delete or clear in the portal opens one confirmation dialog first, which names what will go and how many. Cancel is focused, and nothing is removed until you press the red button.
 4. Re-run the review after large changes. A later full review replaces the suggestions that are still open, so apply the ones you want first.
 
 `/jois-story:propose` can add review rows too, for changes you agreed to in a session for stories already in the backlog. They appear in the same places. The command `/jois-story:review` is not this flow. It audits the session's own work, reads files only, and writes nothing.
@@ -85,6 +86,8 @@ The skill needs `jois-story-plan` installed, because it uses that skill's script
 ## Change the data folder or code base
 
 Use the Settings tab. It reads and writes the config file, `planner/planner.config.yaml` (or the file `PLANNER_CONFIG` names), and copies backlog files between folders.
+
+Every tab has its title on the left and its actions on the right, and a tab with nothing to show gives one empty message with the next action. The Settings tab groups its fields under **Project** and **Storage**, shows each path in a box you can select and copy, and puts each button's explanation beside it.
 
 1. Open the **Settings** tab and press **Change folder** to pick another data folder, or **Change code base** to use a project folder's `.plans` as the data folder. **Move data into a code base** does the same and copies the current data into it first.
 2. The portal copies the current project's backlogs to the chosen folder and replaces the project's saved path, not adding a second entry. An empty or missing folder is copied to without a prompt. If the folder already holds backlogs, the portal lists the files an overwrite would replace and asks **Overwrite**, **Just switch** or **Cancel**. The path is saved only after every file has been read back, so a failed copy changes nothing. Choosing a code base saves `codeBase` and removes `dataDir`, because the config accepts only one of them.
