@@ -9,6 +9,10 @@ const lexiconStore = createFileStore('lexicon');
 // Saving a lexicon file that is not there yet creates it (the file API's write never does).
 const store = {
   ...lexiconStore,
+  // The server answers an empty file for a backlog without a lexicon; an empty text is the same as no file here.
+  async read(name) {
+    return (await lexiconStore.read(name)) || null;
+  },
   async write(name, text) {
     try {
       await lexiconStore.write(name, text);

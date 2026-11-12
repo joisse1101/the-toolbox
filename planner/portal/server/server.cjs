@@ -611,6 +611,17 @@ async function handleApi(req, res, segments) {
   }
 }
 
+// A missing optional file (proposals, lexicon, lexicon-suggestions, review) of a backlog that exists reads as an empty file,
+// because the browser logs every failed request. A missing backlog folder, or a missing user-stories.csv, is still not found.
+async function readOrEmpty(dataDir, name, kind, full) {
+  try {
+    return await fs.promises.readFile(full, 'utf8');
+  } catch (err) {
+    if (err.code !== 'ENOENT' || kind === 'backlog' || !fs.existsSync(backlogFile(dataDir, name, 'backlog'))) throw err;
+    return '';
+  }
+}
+
 async function handleStoreApi(req, res, segments) {
   const [, kind, resource, fileRaw, ...rest] = segments;
   if (!STORES.has(kind)) throw new HttpError(404, `Unknown kind "${kind}"`, 'unknown-store');
@@ -654,7 +665,7 @@ async function handleStoreApi(req, res, segments) {
 
   try {
     if (req.method === 'GET') {
-      const content = await fs.promises.readFile(full, 'utf8');
+      const content = await readOrEmpty(dataDir, name, kind, full);
       // A backlog comes with its initials; one without backlog.json is given the default, saved on this first open.
       if (kind === 'backlog') return send(res, 200, { name, content, initials: await openInitials(dataDir, name) });
       return send(res, 200, { name, content });

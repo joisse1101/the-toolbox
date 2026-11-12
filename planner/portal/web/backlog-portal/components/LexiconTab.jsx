@@ -64,7 +64,9 @@ export default function LexiconTab({ hidden, lexicon, selected, error, message, 
             <ul className="story-list lexicon-list" style={{ marginTop: 10 }}>
               {shown.map(({ term, depth }) => (
                 <li key={term.name} className={!adding && selected?.name === term.name ? 'selected' : ''} style={{ marginLeft: depth * 16 }} onClick={() => pick(term.name)}>
-                  <span className="title">{term.name}</span>
+                  <button type="button" className="row-btn" aria-current={!adding && selected?.name === term.name ? 'true' : undefined}>
+                    <span className="title">{term.name}</span>
+                  </button>
                   {term.avoid.length > 0 && <span className="badge" title={`Avoid: ${term.avoid.join(', ')}`}>{`avoid ${term.avoid.length}`}</span>}
                 </li>
               ))}

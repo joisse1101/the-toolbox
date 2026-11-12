@@ -74,6 +74,13 @@
 .story-list li.incomplete { background: var(--bad-bg); border-color: var(--bad-border); }
 .story-list li.warn { background: var(--warn-bg); border-color: var(--warn-border); }
 .story-list li.selected { background: var(--accent-tint); border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+/* The real button inside a row: it resets its own look so the row looks the same, and the row's click still opens it. */
+.story-list .row-btn {
+  flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: var(--space-2); padding: 0; border: 0; border-radius: 0;
+  background: none; color: inherit; font: inherit; text-align: left; cursor: inherit;
+}
+.story-list .row-btn:hover:not(:disabled) { background: none; }
+.story-list .row-btn:focus-visible { outline-offset: calc(var(--space-1) * -1); }
 .story-list .title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .story-list .badge {
   flex: none; min-width: 20px; text-align: center; font-size: var(--text-xs); padding: 0 var(--space-1);
@@ -160,12 +167,21 @@ legend { font-weight: 600; padding: 0 var(--space-2); }
 .shortcut-list dd { margin: 0; }
 .info:hover .popover, .info:focus-within .popover, .info.pinned .popover { display: block; }
 
-.criterion { display: grid; grid-template-columns: auto 1fr auto; gap: var(--space-2); align-items: end; margin-bottom: var(--space-3); padding: var(--space-2); border: 1px solid var(--border); border-radius: var(--radius); }
+.criterion { display: grid; grid-template-columns: auto 1fr auto auto auto; gap: var(--space-2); align-items: end; margin-bottom: var(--space-3); padding: var(--space-2); border: 1px solid var(--border); border-radius: var(--radius); }
 .criterion-handle { align-self: center; cursor: grab; color: var(--muted); user-select: none; padding: var(--space-1) 2px; }
 .criterion.dragging { opacity: 0.45; }
 .criterion.drop-before { box-shadow: 0 -2px 0 var(--accent); }
 .criterion.drop-after { box-shadow: 0 2px 0 var(--accent); }
-.criterion-remove { padding: 9px var(--space-2); line-height: 1; }
+.criterion-remove, .criterion-move { padding: 9px var(--space-2); line-height: 1; }
+.move-btns { flex: none; display: inline-flex; gap: var(--space-1); }
+.move-btn { padding: 0 var(--space-1); line-height: 1.4; font-size: var(--text-xs); }
+/* The word beside a coloured state, so colour is never the only cue. */
+.state-mark { flex: none; font-size: var(--text-xs); font-weight: 600; white-space: nowrap; margin-right: var(--space-1); }
+.state-mark.incomplete { color: var(--bad); }
+.state-mark.warn { color: var(--warn-text); }
+.field-note { margin-left: var(--space-2); font-size: var(--text-xs); font-weight: 600; color: var(--warn-text); }
+.field-note.required { color: var(--bad); }
+.graph-node-state { font-size: var(--text-xs); font-weight: 600; fill: var(--text); }
 .criterion-suggestions { grid-column: 1 / -1; }
 .criterion-suggestions .suggestion-list { margin-top: 0; }
 .criterion .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--space-2); }
@@ -210,6 +226,10 @@ legend { font-weight: 600; padding: 0 var(--space-2); }
 .graph-edge.selected .graph-edge-line { stroke: var(--accent); stroke-width: 3; }
 .graph-edge.back .graph-edge-line { stroke: var(--bad); stroke-dasharray: 5 4; }
 .graph-edge.dim { opacity: 0.15; }
+/* Keyboard stop for an edge: invisible until focused, then drawn over everything in the accent colour. */
+.graph-edge-key { outline: none; pointer-events: none; }
+.graph-edge-focus-line { fill: none; stroke: transparent; pointer-events: none; }
+.graph-edge-key:focus-visible .graph-edge-focus-line { stroke: var(--accent); stroke-width: 3; }
 .graph-arrow { fill: var(--muted); }
 .graph-arrow.hi { fill: var(--accent); }
 .graph-arrow.back { fill: var(--bad); }
@@ -220,6 +240,8 @@ legend { font-weight: 600; padding: 0 var(--space-2); }
 .graph-node.incomplete .graph-node-box { fill: var(--bad-bg); stroke: var(--bad-border); }
 .graph-node.warn .graph-node-box { fill: var(--warn-bg); stroke: var(--warn-border); }
 .graph-node:hover .graph-node-box, .graph-node:focus-visible .graph-node-box { stroke: var(--accent); }
+.graph-node:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+.graph-node:focus-visible .graph-node-box { stroke-width: 3; }
 .graph-node.selected .graph-node-box, .graph-node.source .graph-node-box { stroke: var(--accent); stroke-width: 3; }
 .graph-node.dim { opacity: 0.25; }
 .graph-node-code { font: var(--text-xs) ui-monospace, Consolas, monospace; fill: var(--muted); }
@@ -228,6 +250,16 @@ legend { font-weight: 600; padding: 0 var(--space-2); }
 .graph-node:hover .graph-handle, .graph-node:focus-visible .graph-handle, .graph-node.selected .graph-handle { opacity: 1; }
 .graph-rubber { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 6 4; pointer-events: none; }
 
+.graph-legend { list-style: none; display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); margin: 0 0 var(--space-2); padding: 0; font-size: var(--text-xs); }
+.graph-legend li { display: inline-flex; align-items: center; gap: var(--space-2); }
+.legend-swatch { flex: none; display: inline-block; }
+.legend-swatch.node { width: 16px; height: 12px; border: 1.5px solid var(--border); border-radius: 3px; background: var(--surface); }
+.legend-swatch.node.incomplete { background: var(--bad-bg); border-color: var(--bad-border); }
+.legend-swatch.node.warn { background: var(--warn-bg); border-color: var(--warn-border); }
+.legend-swatch.node.selected { border: 3px solid var(--accent); }
+.legend-swatch.stripe { width: 6px; height: 12px; border-radius: 3px; background: var(--muted); }
+.legend-swatch.line { width: 20px; border-top: 2px solid var(--muted); }
+.legend-swatch.line.back { border-top: 2px dashed var(--bad); }
 .graph-levels { display: inline-flex; gap: var(--space-1); margin-right: var(--space-2); }
 .graph-edge-weight { font-size: var(--text-xs); font-weight: 600; fill: var(--text); text-anchor: middle; pointer-events: none; paint-order: stroke; stroke: var(--bg); stroke-width: 4px; }
 .graph-node-epiclabel { font-size: var(--text-xs); fill: var(--muted); pointer-events: none; }

@@ -4,6 +4,7 @@ import { PRIORITIES, displayOrder, storyIssues, storyLabel } from '../../../../l
 import { matchesQuery } from '../../../../logic/backlog/story-search.js';
 import { filterOptions, filterStories, sortStories } from '../../lib/story-table.js';
 import { issueClass, rowTooltip } from './issues.js';
+import StateMark from './StateMark.jsx';
 import ResizeHandle from './ResizeHandle.jsx';
 import usePanelSizes from '../hooks/usePanelSizes.js';
 
@@ -249,7 +250,7 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
                   <td title={cellTitle(s.code, tip)}>{s.frozen && <span className="frozen-mark" title="Frozen: reference only, read-only" aria-label="Frozen">{'\u2744'}</span>}{s.code}</td>
                   <td title={cellTitle(s.epic, tip)}>{s.epic}</td>
                   <td title={cellTitle(s.feature, tip)}>{s.feature}</td>
-                  <td title={cellTitle(storyLabel(s), tip)}><button type="button" className="link-btn" onClick={() => onOpen(s.id)}>{storyLabel(s)}</button></td>
+                  <td title={cellTitle(storyLabel(s), tip)}><button type="button" className="link-btn" onClick={() => onOpen(s.id)}><StateMark kind={issueClass(errors, warnings)} />{storyLabel(s)}</button></td>
                   <td className="num">{s.points}</td>
                   <td>{s.priority}</td>
                   <td title={cellTitle(s.dependsOn.join(', '), tip)}>{s.dependsOn.join(', ')}</td>

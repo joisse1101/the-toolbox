@@ -3,6 +3,7 @@ import { storyIssues, storyLabel } from '../../../../logic/backlog/model.js';
 import { wouldCycle } from '../../../../logic/backlog/ids.js';
 import { layoutGraph, groupStories, relatedIds, fitView, zoomAt, panBy, toGraphPoint } from '../graph.js';
 import { issueClass, rowTooltip } from './issues.js';
+import StateMark, { stateWord } from './StateMark.jsx';
 
 const NODE_W = 192;
 const NODE_H = 46;
@@ -345,6 +346,17 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
                     ? 'Drag from a story’s dot onto the story it depends on to link them. Ctrl+wheel zooms, drag the background to pan.'
                     : ''}
       </p>
+      {hasNodes && (
+        <ul className="graph-legend muted" aria-label="Legend">
+          {!coarse && <li><span className="legend-swatch node" />Complete story</li>}
+          {!coarse && <li><span className="legend-swatch node incomplete" />Incomplete: a required field is missing</li>}
+          {!coarse && <li><span className="legend-swatch node warn" />Warning: see the tooltip</li>}
+          <li><span className="legend-swatch stripe" />Stripe colour: the epic</li>
+          <li><span className="legend-swatch node selected" />Selected: thick accent border; its dependencies and dependents stay bright and the rest fade</li>
+          <li><span className="legend-swatch line" />Arrow: points at what the story depends on</li>
+          <li><span className="legend-swatch line back" />Dashed red arrow: a dependency cycle</li>
+        </ul>
+      )}
       {detailPairs && (
         <div className="graph-detail">
           <ul>
@@ -391,9 +403,6 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
                 const on = selectedEdge === edgeKey(e);
                 const marker = e.back ? 'back' : on ? 'hi' : '';
                 const cls = ['graph-edge', e.back ? 'back' : '', on ? 'selected' : '', litEdge(e) ? '' : 'dim'].filter(Boolean).join(' ');
-                const label = coarse
-                  ? `${groupLabel(e.from)} depends on ${groupLabel(e.to)}`
-                  : `${byId.get(e.from).code} depends on ${byId.get(e.to).code}`;
                 const weight = coarse ? grouping.pairs.get(edgeKey(e)).length : 0;
                 const mid = {
                   x: (slot(from.layer, 0, 0).x + slot(to.layer, 0, 0).x + NODE_W) / 2,
@@ -401,11 +410,9 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
                 };
                 return (
                   <g
-                    key={edgeKey(e)} className={cls} data-edge={edgeKey(e)} tabIndex={0} role="button" aria-label={label} aria-pressed={on}
+                    key={edgeKey(e)} className={cls} data-edge={edgeKey(e)} aria-hidden="true"
                     onClick={() => { setSelectedId(null); setSelectedEdge(on ? null : edgeKey(e)); setNote(''); }}
-                    onKeyDown={activate(() => { setSelectedId(null); setSelectedEdge(on ? null : edgeKey(e)); })}
                   >
-                    <title>{label}</title>
                     <path d={d} className="graph-edge-hit" />
                     <path d={d} className="graph-edge-line" markerEnd={`url(#graph-arrow${marker ? `-${marker}` : ''})`} />
                     {coarse && view.k >= MIN_LABEL_ZOOM && <text className="graph-edge-weight" x={mid.x} y={mid.y}>{weight}</text>}
@@ -451,8 +458,28 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
                     <rect className="graph-node-box" width={NODE_W} height={NODE_H} rx="6" />
                     <rect className="graph-node-epic" width="6" height={NODE_H} rx="3" style={hue === undefined ? undefined : { fill: `hsl(${hue} 62% 52%)` }} />
                     <text className="graph-node-code" x="16" y="18">{s.code}</text>
+                    <text className="graph-node-state" x={NODE_W - 8} y="18" textAnchor="end">{[selected?.id === n.id ? 'Selected' : '', stateWord(issueClass(errors, warnings))].filter(Boolean).join(' · ')}</text>
                     <text className="graph-node-title" x="16" y="35">{clip(title(s))}</text>
                     <circle className="graph-handle" data-handle={n.id} cx="0" cy={NODE_H / 2} r="7"><title>Drag onto the story this one depends on</title></circle>
+                  </g>
+                );
+              })}
+              {/* Keyboard stops for the edges come after every node in the DOM, so Tab visits nodes first; the drawn lines above stay under the nodes. */}
+              {layout.edges.map((e) => {
+                const from = nodeById.get(e.from);
+                const to = nodeById.get(e.to);
+                const key = edgeKey(e);
+                const on = selectedEdge === key;
+                const label = coarse
+                  ? `${groupLabel(e.from)} depends on ${groupLabel(e.to)}`
+                  : `${byId.get(e.from).code} depends on ${byId.get(e.to).code}`;
+                return (
+                  <g
+                    key={key} className="graph-edge-key" data-edge-key={key} tabIndex={0} role="button" aria-label={label} aria-pressed={on}
+                    onKeyDown={activate(() => { setSelectedId(null); setSelectedEdge(on ? null : key); })}
+                  >
+                    <title>{label}</title>
+                    <path d={edgePath(from, to, e.via, bands[from.cluster].top, e.back)} className="graph-edge-focus-line" />
                   </g>
                 );
               })}
@@ -508,6 +535,7 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
                     onClick={() => (linkFrom !== null ? link(linkFrom, s.id) : onOpen(s.id))}
                   >
                     {s.code ? <span className="code">{s.code}</span> : null} {title(s)}
+                    <StateMark kind={issueClass(errors, warnings)} />
                   </button>
                   <button
                     type="button" className="graph-link-btn" disabled={!s.code} aria-label={`Link ${s.code || title(s)}`}

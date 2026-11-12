@@ -25,7 +25,7 @@ import ResizeHandle from './components/ResizeHandle.jsx';
 import useListWidth from './hooks/useListWidth.js';
 import useCollapsed from './hooks/useCollapsed.js';
 
-const STATUS_TEXT = { saved: 'Saved', saving: 'Saving…', failed: 'Save failed', idle: 'No file' };
+const STATUS_TEXT = { saved: 'Saved', saving: 'Saving…', failed: '✕ Save failed', idle: 'No file' };
 
 // One table drives both the key handler and the helper popover. Matched on e.code so keyboard layouts and
 // the Mac Option key (which changes e.key) do not matter. Ctrl+N, Ctrl+Shift+N and Ctrl+D are reserved by browsers.
@@ -237,6 +237,35 @@ export default function App() {
     return () => document.removeEventListener('keydown', onKey);
   }, []);
 
+  // The tab bar is built from this one array, so a tab, its panel and its keyboard position cannot drift apart.
+  const tabs = [
+    ...(current ? [
+      { view: 'editor', tabId: 'tabEditor', panelId: 'editor', label: 'Editor' },
+      { view: 'stories', tabId: 'tabStories', panelId: 'storiesView', label: 'Stories' },
+      { view: 'graph', tabId: 'tabGraph', panelId: 'graphView', label: 'Graph' },
+      { view: 'proposed', tabId: 'tabProposed', panelId: 'proposedView', label: `Proposed (${proposals.stories.length})` },
+      { view: 'lexicon', tabId: 'tabLexicon', panelId: 'lexiconView', label: `Lexicon (${lexicon.lexicon.terms.length}${openSuggestions ? `, ${openSuggestions} suggested` : ''})` },
+      ...(review.exists ? [{ view: 'review', tabId: 'tabReview', panelId: 'reviewView', label: openReviewCount ? `Review (${openReviewCount})` : 'Review' }] : []),
+    ] : []),
+    { view: 'settings', tabId: 'tabSettings', panelId: 'settingsView', label: 'Settings' },
+  ];
+  const activeView = showSettings ? 'settings' : view;
+  const focusableView = tabs.some((t) => t.view === activeView) ? activeView : tabs[0].view; // the one Tab stop
+  // Left and Right move between tabs (wrapping), Home and End jump to the ends; selection follows focus.
+  const onTabKey = (e) => {
+    const from = tabs.findIndex((t) => t.tabId === e.target.id);
+    const step = { ArrowLeft: -1, ArrowRight: 1 }[e.key];
+    let to;
+    if (from < 0) return;
+    if (step) to = (from + step + tabs.length) % tabs.length;
+    else if (e.key === 'Home') to = 0;
+    else if (e.key === 'End') to = tabs.length - 1;
+    else return;
+    e.preventDefault();
+    actions.setView(tabs[to].view);
+    document.getElementById(tabs[to].tabId).focus();
+  };
+
   const openInEditor = (id) => {
     actions.selectStory(id);
     actions.setView('editor');
@@ -282,24 +311,13 @@ export default function App() {
           There are no backlog folders in the data folder yet. Click <strong>New</strong> to create one.
         </p>
 
-        <div id="tabs" className="tabs" role="tablist" aria-label="Views">
-          {current && <>
-          <button type="button" role="tab" id="tabEditor" className="tab" aria-controls="editor" aria-selected={view === 'editor'} onClick={() => actions.setView('editor')}>Editor</button>
-          <button type="button" role="tab" id="tabStories" className="tab" aria-controls="storiesView" aria-selected={view === 'stories'} onClick={() => actions.setView('stories')}>Stories</button>
-          <button type="button" role="tab" id="tabGraph" className="tab" aria-controls="graphView" aria-selected={view === 'graph'} onClick={() => actions.setView('graph')}>Graph</button>
-          <button type="button" role="tab" id="tabProposed" className="tab" aria-controls="proposedView" aria-selected={view === 'proposed'} onClick={() => actions.setView('proposed')}>
-            {`Proposed (${proposals.stories.length})`}
-          </button>
-          <button type="button" role="tab" id="tabLexicon" className="tab" aria-controls="lexiconView" aria-selected={view === 'lexicon'} onClick={() => actions.setView('lexicon')}>
-            {`Lexicon (${lexicon.lexicon.terms.length}${openSuggestions ? `, ${openSuggestions} suggested` : ''})`}
-          </button>
-          {review.exists && (
-            <button type="button" role="tab" id="tabReview" className="tab" aria-controls="reviewView" aria-selected={view === 'review'} onClick={() => actions.setView('review')}>
-              {openReviewCount ? `Review (${openReviewCount})` : 'Review'}
-            </button>
-          )}
-          </>}
-          <button type="button" role="tab" id="tabSettings" className="tab" aria-controls="settingsView" aria-selected={showSettings} onClick={() => actions.setView('settings')}>Settings</button>
+        <div id="tabs" className="tabs" role="tablist" aria-label="Views" onKeyDown={onTabKey}>
+          {tabs.map((t) => (
+            <button
+              key={t.view} type="button" role="tab" id={t.tabId} className="tab" aria-controls={t.panelId}
+              aria-selected={t.view === activeView} tabIndex={t.view === focusableView ? 0 : -1} onClick={() => actions.setView(t.view)}
+            >{t.label}</button>
+          ))}
         </div>
 
         <div id="editor" className="editor" style={editorList.style} role="tabpanel" aria-labelledby="tabEditor" hidden={!current || view !== 'editor'}>
