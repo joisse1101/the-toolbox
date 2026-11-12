@@ -34,7 +34,7 @@ Run the script with `-Reset -Stage <name>`. It builds the baseline, then applies
 
 ## Test an edited skill
 
-A saved stage shows what a skill wrote on the day it was recorded, so it cannot prove an edit works. Build the stage just before the skill under test, start Claude in `.scratch/mock-app/` and run the skill live. Because the toolkit is installed at project scope, the skill under test is the project copy; reinstall it with `Install-Toolkit.ps1 -Scope project -Path .scratch/mock-app -Skill <name> -Force` after each edit.
+A saved stage shows what a skill wrote on the day it was recorded, so it cannot prove an edit works. Build the stage just before the skill under test, start Claude in `.scratch/mock-app/` and run the skill live. The toolkit is installed at project scope, so reinstall an edited skill with `Install-Toolkit.ps1 -Scope project -Path .scratch/mock-app -Skill <name> -Force` after each edit (see the next paragraph for which copy a session then uses).
 
 A global copy of a skill loads ahead of a project copy of the same name, so editing the project copy does not change what a session uses when the toolkit is also installed globally. Checked on 2026-11-12 (Claude Code 2.1.322): a marker word was put into the description of the project copy of `jois-story-explore` in a built mock repo, and a headless `claude -p --model sonnet` session started in that folder quoted the description without the marker. This agrees with Claude Code's documented order, where personal skills win over project skills. To test an edit, remove or rename the global copy first, which writes outside the project and needs your own approval, or give the skill under test a new name.
 
