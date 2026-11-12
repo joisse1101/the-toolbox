@@ -27,8 +27,8 @@ def test_rule_apply_clause_is_general_and_never_pushes():
 def test_apply_guidance_commits_and_does_not_stop():
     text = OPSX.read_text(encoding="utf-8")
     apply_block = text.split("### `operations.apply.guidance`", 1)[1].split("### ", 1)[0]
-    assert "commit it" in apply_block
-    assert "Push only when the user types the confirmation word" in apply_block
+    assert "Commit a finished concern without asking for a confirmation word" in apply_block
+    assert "Never push" in apply_block
     assert "end the turn" not in apply_block
     assert "name a confirmation word" not in apply_block
 
