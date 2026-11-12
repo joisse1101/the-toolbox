@@ -21,7 +21,7 @@ Each option limits or changes what the script does:
 .\Install-Toolkit.ps1 -List                                   # what is installed, has it drifted, which versions
 .\Install-Toolkit.ps1 -Command jois-git                       # just one command folder
 .\Install-Toolkit.ps1 -Rule jois-code-java.md                 # just one rule
-.\Install-Toolkit.ps1 -Agent opsx-task-applier.md             # just one agent
+.\Install-Toolkit.ps1 -Agent task-applier.md             # just one agent
 .\Install-Toolkit.ps1 -Scope project -Path C:\code\my-app     # into a project instead of globally
 .\Install-Toolkit.ps1 -Force                                  # overwrite a copy that differs
 .\Install-Toolkit.ps1 -NoPackages                             # skip `npm ci` for skills with a package.json
@@ -49,7 +49,7 @@ When the key already holds another value, the installer shows that value and ask
 
 With nobody to ask, such as a run with no console input, the installer skips, prints a warning that names the current value and exits 0. `-List` prints the key's state (`missing`, `up to date` or `differs`). `-Uninstall` leaves `settings.json` unchanged and names the key, because the installer cannot tell its own `sonnet` from one you chose, so you remove the line by hand.
 
-Only the default variable is set. `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` would make the variable win over the model pinned in an agent file, which would move `opsx-test-runner` off Haiku, so the installer never sets it. A call that passes `opus` explicitly still gets Opus, and only the `jois-env-subagents` rule discourages it.
+Only the default variable is set. `CLAUDE_CODE_SUBAGENT_MODEL_FORCE` would make the variable win over the model pinned in an agent file, which would move `test-runner` off Haiku, so the installer never sets it. A call that passes `opus` explicitly still gets Opus, and only the `jois-env-subagents` rule discourages it.
 
 ### Skills that carry scripts
 
@@ -78,6 +78,10 @@ Before the `jois-<domain>-<thing>` naming the items were `coding-standards`, `/j
 Then run `.\Install-Toolkit.ps1` again (or with `-Scope project -Path <project>`) and check that `-List` shows every item `up to date`. In a project, remove the same names from `<project>\.claude`. Project `CLAUDE.md` files and notes that mention `/jois:stage` and the like need updating by hand.
 
 The `jois-code-standards` skill is now the `jois-code-quality` rule, which loads while code is written instead of on request. Delete `~/.claude/skills/jois-code-standards` (in a project, `<project>\.claude\skills\jois-code-standards`), then run `.\Install-Toolkit.ps1` to add the rule. For a review, use the built-in `code-review` or `simplify` skills.
+
+### The renamed task agents
+
+The agents `opsx-task-applier` and `opsx-test-runner` are now `task-applier` and `test-runner`, so that `/jois-code:apply` and `/opsx:apply` can share them. The installer deletes nothing, so after you install the new files (`.\Install-Toolkit.ps1 -Agent task-applier.md` and `-Agent test-runner.md`), delete `opsx-task-applier.md` and `opsx-test-runner.md` by hand from `~/.claude/agents/` and from any project's `.claude/agents/`. Until then `/jois-code:apply` treats a machine with only the old files as not having the agents. Then run `/jois-init:opsx` in each project to replace the apply guidance.
 
 ## Installing by hand
 
