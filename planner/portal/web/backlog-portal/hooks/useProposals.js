@@ -9,6 +9,10 @@ const proposalsStore = createFileStore('proposals');
 // Saving a proposals file that is not there yet creates it (the file API's write never does).
 const store = {
   ...proposalsStore,
+  // The server answers an empty file for a backlog without proposals; an empty text is the same as no file here.
+  async read(name) {
+    return (await proposalsStore.read(name)) || null;
+  },
   async write(name, text) {
     try {
       await proposalsStore.write(name, text);

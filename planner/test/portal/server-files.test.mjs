@@ -50,13 +50,24 @@ test('read and write go to the fixed file of the kind; a write never creates', a
   assert.deepEqual(read, { name: 'a', content: 'ID\r\nA-1\r\n', initials: 'B1' }, 'a backlog comes with its initials (the default, on first open)');
   assert.equal((await (await fetch(`${origin}/api/backlog/files/a.csv`)).json()).name, 'a', 'a trailing .csv is dropped');
   assert.equal((await (await fetch(`${origin}/api/review/files/a`)).json()).content, 'R\r\n');
-  assert.equal((await fetch(`${origin}/api/lexicon/files/b`)).status, 404, 'a missing file is not found');
+  assert.equal((await fetch(`${origin}/api/lexicon/files/no-such-backlog`)).status, 404, 'a file of a missing backlog is not found');
 
   const saved = await fetch(`${origin}/api/lexicon/files/a`, { method: 'PUT', headers: HEADERS, body: 'Term\r\nx\r\n' });
   assert.equal(saved.status, 200);
   assert.equal(fs.readFileSync(path.join(root, 'a', 'lexicon.csv'), 'utf8'), 'Term\r\nx\r\n');
   assert.equal((await fetch(`${origin}/api/proposals/files/a`, { method: 'PUT', headers: HEADERS, body: 'x' })).status, 404);
   assert.equal(fs.existsSync(path.join(root, 'a', 'user-stories', 'proposals.csv')), false, 'PUT did not create it');
+});
+
+test('a missing optional file of an existing backlog reads as empty; a missing backlog is still not found', async () => {
+  put('stories-only', 'user-stories.csv', 'ID\r\n');
+  for (const kind of ['proposals', 'lexicon', 'lexicon-suggestions', 'review']) {
+    const res = await fetch(`${origin}/api/${kind}/files/stories-only`);
+    assert.equal(res.status, 200, kind);
+    assert.deepEqual(await res.json(), { name: 'stories-only', content: '' }, kind);
+    assert.equal((await fetch(`${origin}/api/${kind}/files/no-such-backlog`)).status, 404, `${kind} of a missing backlog`);
+  }
+  assert.equal(fs.existsSync(path.join(root, 'stories-only', 'lexicon.csv')), false, 'reading did not create the file');
 });
 
 test('unsafe names are rejected and touch nothing', async () => {
