@@ -725,26 +725,15 @@ under it SHALL be a single `.md` file with `name`, `description` and `tools` fro
 unit the installer acts on.
 
 #### Scenario: Agent file is one unit
-- **WHEN** `toolkit/agents/opsx-task-applier.md` exists
-- **THEN** the installer SHALL treat `opsx-task-applier.md` as one agent item and copy that file
+- **WHEN** `toolkit/agents/task-applier.md` exists
+- **THEN** the installer SHALL treat `task-applier.md` as one agent item and copy that file
 
 #### Scenario: Agent without a tool list
 - **WHEN** an agent file under `toolkit/agents/` has no `tools` frontmatter
 - **THEN** the docs check SHALL fail and name the file, because an omitted list inherits every tool
 
-### Requirement: Task agent applies one group of OpenSpec tasks
-The toolkit SHALL include an agent `opsx-task-applier` that applies one group of tasks of an OpenSpec
-change, handed to it by the orchestrating session with the verbatim task texts and the change's
-artifacts to read. It SHALL work through the tasks in order and SHALL stop at the first task that is
-blocked or failed, so that no later task is built on it. For each task it SHALL name in its report the
-requirement or scenario of the change's specs that the task satisfies, and when a task conflicts with
-the specs it SHALL stop and report `blocked: <question>` and SHALL NOT narrow, defer or drop specified
-behavior to make the task fit. Its tool list SHALL be limited to `Read`, `Grep`, `Glob`, `Edit`,
-`Write` and `Bash`, it SHALL declare a turn limit of 50, and it SHALL carry a frontmatter `PreToolUse`
-hook on `Bash` that blocks a command that runs `git commit`, `git push` or `gh`. It SHALL NOT edit
-`tasks.md`, SHALL NOT edit or regenerate the `/opsx:*` commands, and SHALL NOT commit, push or call
-GitHub. When a task needs a decision it cannot make from the task text and the artifacts, it SHALL
-stop and report `blocked: <question>` and SHALL NOT guess.
+### Requirement: Task agent applies one group of tasks
+The toolkit SHALL include an agent `task-applier` that applies one group of tasks of a plan, which is an OpenSpec change or a slice, handed to it by the orchestrating session with the verbatim task texts and the files to read. The agent's own text SHALL NOT name a slice file, an acceptance-criteria id or a specific orchestrating command: the orchestrating session's brief SHALL say what each task satisfies and how to verify it, and the agent SHALL follow that brief. It SHALL work through the tasks in order and SHALL stop at the first task that is blocked or failed, so that no later task is built on it. For each task it SHALL name in its report what the brief says the task satisfies, and when a task conflicts with that it SHALL stop and report `blocked: <question>` and SHALL NOT narrow, defer or drop specified behavior to make the task fit. Its tool list SHALL be limited to `Read`, `Grep`, `Glob`, `Edit`, `Write` and `Bash`, it SHALL declare a turn limit of 50, and it SHALL carry a frontmatter `PreToolUse` hook on `Bash` that blocks a command that runs `git commit`, `git push` or `gh`. It SHALL NOT edit `tasks.md`, SHALL NOT edit or regenerate the `/opsx:*` commands, and SHALL NOT commit, push or call GitHub. When a task needs a decision it cannot make from the task text and the files it was given, it SHALL stop and report `blocked: <question>` and SHALL NOT guess.
 
 #### Scenario: Commit attempted
 - **WHEN** the agent runs a Bash command containing `git commit`
@@ -759,7 +748,7 @@ stop and report `blocked: <question>` and SHALL NOT guess.
 - **THEN** its report SHALL say which tasks are done and which are not, so the orchestrator can dispatch the rest or ask the user
 
 #### Scenario: Decision needed
-- **WHEN** a task needs a choice that the task text and the change artifacts do not settle
+- **WHEN** a task needs a choice that the task text and the files it was given do not settle
 - **THEN** the agent SHALL end its report with `blocked: <question>` and make no change that depends on the answer
 
 #### Scenario: Tasks in order
@@ -767,8 +756,12 @@ stop and report `blocked: <question>` and SHALL NOT guess.
 - **THEN** the agent SHALL NOT start task 2.3, and its report SHALL say tasks 2.1 done, 2.2 failed and 2.3 not started
 
 #### Scenario: Task conflicts with the spec
-- **WHEN** a task would require dropping or narrowing a requirement or scenario of the change's specs
+- **WHEN** a task would require dropping or narrowing a requirement, scenario or criterion that the brief names
 - **THEN** the agent SHALL make no change that depends on it and SHALL end its report with `blocked:` naming the requirement and the conflict
+
+#### Scenario: Same agent for either plan
+- **WHEN** `/jois-code:apply` hands it a slice's group, or a session following the apply guidance hands it a change's group
+- **THEN** the agent SHALL work the same way and SHALL take what each task satisfies and how to verify it from the brief
 
 ### Requirement: Task agent reports only what it saw
 The agent's report SHALL, for each task of the group, list the files it changed; the commands it ran,
@@ -795,34 +788,16 @@ give.
 - **WHEN** the orchestrator copies a `result:` clause into the task's line in `tasks.md`
 - **THEN** `write-pr` SHALL read it as a task that records its outcome, with no change to `write-pr`
 
-### Requirement: Apply orchestrator command
-The toolkit SHALL include a command `jois-code:apply`, the single file `toolkit/commands/jois-code/apply.md`, that applies an OpenSpec change by handing its tasks to `opsx-task-applier` one group at a time. It SHALL take the change name as its argument and ask the user to choose when it is omitted and not clear from the conversation.
-
-#### Scenario: Change named
-- **WHEN** the user types `/jois-code:apply fix-opsx-apply-delegation`
-- **THEN** the command SHALL announce the change and work on that change only
-
-#### Scenario: Change omitted
-- **WHEN** the user types `/jois-code:apply` and several changes are active
-- **THEN** the command SHALL ask the user to choose one before doing anything else
-
-### Requirement: Apply orchestrator reads the change through the CLI
-The `jois-code:apply` command SHALL read the change with `openspec status` and `openspec instructions apply --json`, SHALL stop on a blocked or all-done state, and SHALL read every file under `contextFiles` and the `context` and `operationGuidance` the output carries before it dispatches anything.
-
-#### Scenario: Context read first
-- **WHEN** the apply instructions are ready
-- **THEN** the command SHALL read every `contextFiles` file before the first dispatch
-
-#### Scenario: Blocked or all done
-- **WHEN** `openspec instructions apply --json` reports `blocked` or `all_done`
-- **THEN** the command SHALL show the message, SHALL NOT dispatch, and for `all_done` SHALL suggest `/opsx:archive`
-
 ### Requirement: Apply orchestrator checks the agent is installed
-The `jois-code:apply` command SHALL check that `opsx-task-applier` is installed in `~/.claude/agents/` or in the project's `.claude/agents/`. If it is not, the command SHALL say so, name `Install-Toolkit.ps1`, stop, and SHALL NOT copy the agent itself.
+The `jois-code:apply` command SHALL check that `task-applier` is installed in `~/.claude/agents/` or in the project's `.claude/agents/`. If it is not, the command SHALL say so, name `Install-Toolkit.ps1`, stop, and SHALL NOT copy the agent itself.
 
 #### Scenario: Agent not installed
-- **WHEN** `opsx-task-applier` is installed in neither folder
+- **WHEN** `task-applier` is installed in neither folder
 - **THEN** the command SHALL say so, name `Install-Toolkit.ps1`, stop, and SHALL NOT copy the agent itself
+
+#### Scenario: Old agent name only
+- **WHEN** only `opsx-task-applier.md` is installed
+- **THEN** the command SHALL treat `task-applier` as not installed and say so
 
 ### Requirement: Apply orchestrator dispatches one group at a time
 A group is one `##` section of `tasks.md`. The `jois-code:apply` command SHALL take groups in file order, skip a group with no pending task, hand a partly ticked group only its pending tasks, dispatch one group at a time, and wait for the report before the next dispatch.
@@ -836,7 +811,7 @@ A group is one `##` section of `tasks.md`. The `jois-code:apply` command SHALL t
 - **THEN** the command SHALL hand the agent only task 3.2
 
 ### Requirement: Apply orchestrator announces and briefs each dispatch
-Before each dispatch the `jois-code:apply` command SHALL say the group, its tasks, the files it expects the agent to touch, a rough time estimate labeled as an estimate, that there is no live timer, how to open the agent's transcript, and the agent's turn limit. It SHALL hand the agent the verbatim task texts, the paths of the `contextFiles` and the guidance entries that apply.
+Before each dispatch the `jois-code:apply` command SHALL say the group, its tasks, the files it expects the agent to touch, a rough time estimate labeled as an estimate, that there is no live timer, how to open the agent's transcript, and the agent's turn limit. It SHALL hand the agent the verbatim text of each pending task with its `Satisfies:` and `Verify:` lines, the path of `UC-<slice>.md` to read first, and the instruction not to edit `tasks.md`.
 
 #### Scenario: Announcement before a dispatch
 - **WHEN** the command is about to hand a group to the agent
@@ -844,7 +819,7 @@ Before each dispatch the `jois-code:apply` command SHALL say the group, its task
 
 #### Scenario: Agent briefed
 - **WHEN** the command dispatches a group
-- **THEN** the prompt SHALL carry the verbatim task texts and the `contextFiles` paths, and SHALL tell the agent not to edit `tasks.md`
+- **THEN** the prompt SHALL carry the verbatim task texts with their `Satisfies:` and `Verify:` lines and the path of `UC-<slice>.md`, and SHALL tell the agent not to edit `tasks.md`
 
 ### Requirement: Apply orchestrator records outcomes in tasks.md
 After each report the `jois-code:apply` command SHALL say in one line whether the group is done, failed or blocked. For each task whose report carries a `result:` clause it SHALL copy that clause verbatim into the task's line in `tasks.md` and tick the box, and it SHALL be the only writer of `tasks.md`.
@@ -881,7 +856,7 @@ On a named branch other than `main` or `master`, the `jois-code:apply` command S
 
 #### Scenario: Passing group on a feature branch
 - **WHEN** a group's tasks are all done on branch `feat/x` and only the group's files changed
-- **THEN** the command SHALL stage those files by explicit path, commit them once, print the short hash and message, and take the next group without dispatching `opsx-test-runner`
+- **THEN** the command SHALL stage those files by explicit path, commit them once, print the short hash and message, and take the next group without dispatching `test-runner`
 
 #### Scenario: Failing test run
 - **WHEN** a test command in the final test task exits non-zero
@@ -926,7 +901,7 @@ The `allowed-tools` of `jois-code:apply` SHALL include `Bash(git commit:*)` and 
 - **THEN** `allowed-tools` SHALL list both git entries, `git push` SHALL be absent, and the description SHALL mention the automatic commit
 
 ### Requirement: Test runner agent reports test results
-The toolkit SHALL include an agent `opsx-test-runner`, the single file `toolkit/agents/opsx-test-runner.md`, on the `haiku` model with the tools `Read, Grep, Glob, Bash` and no `Edit` or `Write`. It SHALL run only test commands that the project's own instructions name, choosing the suites that cover the files it is given, and SHALL install nothing. It SHALL report, per command, the exact command line, the exit code and the counts line as printed, and SHALL list the suites it did not run.
+The toolkit SHALL include an agent `test-runner`, the single file `toolkit/agents/test-runner.md`, on the `haiku` model with the tools `Read, Grep, Glob, Bash` and no `Edit` or `Write`. Its own text SHALL NOT name a specific orchestrating command. It SHALL run only test commands that the project's own instructions name, choosing the suites that cover the files it is given, and SHALL install nothing. It SHALL report, per command, the exact command line, the exit code and the counts line as printed, and SHALL list the suites it did not run.
 
 #### Scenario: Reported results
 - **WHEN** the agent finishes a run
@@ -945,22 +920,22 @@ The toolkit SHALL include an agent `opsx-test-runner`, the single file `toolkit/
 - **THEN** its hook SHALL refuse the call
 
 ### Requirement: Apply orchestrator judges tests by exit code
-The `jois-code:apply` command SHALL test only through the task in the last group of `tasks.md` that runs the tests. The command SHALL carry out that task itself by dispatching `opsx-test-runner`, not by sending it to `opsx-task-applier`. It SHALL count the tests as passed only when every reported command shows exit code 0, and a failure SHALL run the fix loop, with `opsx-test-runner` dispatched again after each fix round. It SHALL NOT dispatch `opsx-test-runner` after any other group or task. When `opsx-test-runner` is not installed, the command SHALL say so and name `Install-Toolkit.ps1` before it dispatches the last group.
+The `jois-code:apply` command SHALL test only through the task in the last group of `tasks.md` that runs the tests. The command SHALL carry out that task itself by dispatching `test-runner`, not by sending it to `task-applier`. It SHALL count the tests as passed only when every reported command shows exit code 0, and a failure SHALL run the fix loop, with `test-runner` dispatched again after each fix round. It SHALL NOT dispatch `test-runner` after any other group or task. When `test-runner` is not installed, the command SHALL say so and name `Install-Toolkit.ps1` before it dispatches the last group.
 
 #### Scenario: Summary says passed but no exit code
 - **WHEN** the report of the test task says the tests passed but shows no exit code
 - **THEN** the command SHALL treat the tests as not passed and run the fix loop
 
 #### Scenario: Test runner not installed
-- **WHEN** `opsx-test-runner.md` is in neither `~/.claude/agents/` nor the project's `.claude/agents/`
+- **WHEN** `test-runner.md` is in neither `~/.claude/agents/` nor the project's `.claude/agents/`
 - **THEN** the command SHALL say so and name `Install-Toolkit.ps1`, and SHALL NOT stop the earlier groups
 
 #### Scenario: Earlier groups never test
 - **WHEN** a group other than the last is done
-- **THEN** the command SHALL NOT dispatch `opsx-test-runner`
+- **THEN** the command SHALL NOT dispatch `test-runner`
 
 #### Scenario: Stall watch applies
-- **WHEN** the transcript of the `opsx-test-runner` that runs the test task does not change for 3 minutes
+- **WHEN** the transcript of the `test-runner` that runs the test task does not change for 3 minutes
 - **THEN** the command SHALL raise the same stalled-agent alert as for a task applier
 
 ### Requirement: The last group of every task list ends with a test task
@@ -983,17 +958,14 @@ The `jois-code:apply` command SHALL NOT implement a task itself, edit code, call
 
 #### Scenario: Orchestrator does not implement
 - **WHEN** the command has a group to apply
-- **THEN** it SHALL hand the group to `opsx-task-applier` and SHALL NOT make the tasks' code changes itself
+- **THEN** it SHALL hand the group to `task-applier` and SHALL NOT make the tasks' code changes itself
 
 ### Requirement: Task agent description names its use
-The `description` of `opsx-task-applier` SHALL state that the agent is dispatched by `/jois-code:apply`
-for one group of tasks of an OpenSpec change and that the main session SHALL NOT implement those tasks
-itself, so that the agent list alone tells a session when to use it. The description SHALL keep
-stating that the agent never commits, pushes, calls GitHub or edits `tasks.md`.
+The `description` of `task-applier` SHALL state that the agent is dispatched for one group of tasks of an OpenSpec change or of a slice, by `/jois-code:apply` or by a session following the apply guidance of `/opsx:apply`, and that the main session SHALL NOT implement those tasks itself, so that the agent list alone tells a session when to use it. The description SHALL keep stating that the agent never commits, pushes, calls GitHub or edits `tasks.md`.
 
 #### Scenario: Agent listed in a session
-- **WHEN** a session lists `opsx-task-applier` among its available agents
-- **THEN** the description SHALL say it is dispatched by `/jois-code:apply` for one group of tasks instead of the main session implementing them
+- **WHEN** a session lists `task-applier` among its available agents
+- **THEN** the description SHALL say it is dispatched for one group of tasks, by either apply workflow, instead of the main session implementing them
 
 #### Scenario: Limits still stated
 - **WHEN** the description is read
@@ -1005,11 +977,11 @@ Each agent file under `toolkit/agents/` SHALL declare `metadata.version` (semver
 where either is missing or malformed, or where `tools` is missing.
 
 #### Scenario: Missing version
-- **WHEN** `toolkit/agents/opsx-task-applier.md` has no `metadata.version`
+- **WHEN** `toolkit/agents/task-applier.md` has no `metadata.version`
 - **THEN** the docs check SHALL fail and name the file
 
 ### Requirement: Task agent runs plain Bash commands
-The `opsx-task-applier` agent SHALL run one plain command per Bash call, SHALL NOT chain `cd` with other commands and SHALL use the absolute paths it was given, and SHALL NOT run `rm -rf`, reporting any cleanup as left for the main session.
+The `task-applier` agent SHALL run one plain command per Bash call, SHALL NOT chain `cd` with other commands and SHALL use the absolute paths it was given, and SHALL NOT run `rm -rf`, reporting any cleanup as left for the main session.
 
 #### Scenario: One command per call
 - **WHEN** the agent needs to list a folder and then check `git status`
@@ -1020,7 +992,7 @@ The `opsx-task-applier` agent SHALL run one plain command per Bash call, SHALL N
 - **THEN** the agent SHALL NOT run `rm -rf` and its report SHALL say the cleanup is left for the main session
 
 ### Requirement: Task agent hook refuses rm -rf
-The frontmatter `PreToolUse` hook on `Bash` of `opsx-task-applier` SHALL also block a command that runs `rm` with both a recursive and a force flag, in short or long form, with an error saying the cleanup is left for the main session. The toolkit SHALL NOT add an allow rule for `rm`.
+The frontmatter `PreToolUse` hook on `Bash` of `task-applier` SHALL also block a command that runs `rm` with both a recursive and a force flag, in short or long form, with an error saying the cleanup is left for the main session. The toolkit SHALL NOT add an allow rule for `rm`.
 
 #### Scenario: rm -rf attempted
 - **WHEN** the agent runs a Bash command containing `rm -rf`
@@ -1042,7 +1014,7 @@ The frontmatter `PreToolUse` hook on `Bash` of `opsx-task-applier` SHALL also bl
 When the `jois-code:apply` command dispatches a group it SHALL start a `Monitor` on the subagent's transcript file, `subagents/agent-<id>.jsonl`, and SHALL stop the watch when the report arrives. The command's `allowed-tools` SHALL include `Monitor`.
 
 #### Scenario: Watch started
-- **WHEN** the command dispatches a group to `opsx-task-applier`
+- **WHEN** the command dispatches a group to `task-applier`
 - **THEN** it SHALL start a `Monitor` on that subagent's transcript file before it waits for the report
 
 #### Scenario: Watch stopped
@@ -1102,20 +1074,54 @@ When the installer installs or replaces a skill that has a `package.json`, it SH
 - **WHEN** `npm` is not found or `npm ci` fails
 - **THEN** the skill's files stay installed, the folder and command are printed, the other items are still installed and the exit code is non-zero
 
-### Requirement: Apply reviews before the test task
-The `jois-code:apply` command SHALL run `jois-code:review` once, after every task of the last group except the test task is done and committed, and before the test task runs. It SHALL pass `slice <backlog>/<slice>` in the slice form and nothing in the OpenSpec form. Its `allowed-tools` SHALL include `Skill`. The static findings of the review and each `not met` verdict of validate SHALL count as failures and SHALL run the existing fix loop, with a fresh `opsx-task-applier` dispatch per round, the fix committed as its own `fix` commit, and the review run again after each round. A finding the review reports as a suggestion SHALL be listed in the report and SHALL NOT run the fix loop. The loop SHALL stop and ask the user in the cases the existing fix loop already names. The test task SHALL NOT start while a failure of the review is unexplained or unfixed. The command SHALL NOT pass `--fix` or `--comment` to the review.
+### Requirement: Apply orchestrator command takes a slice
+The toolkit SHALL include a command `jois-code:apply`, the single file `toolkit/commands/jois-code/apply.md`, that applies a slice written by `jois-story-plan` by handing its tasks to `task-applier` one group at a time. It SHALL take the argument `slice <backlog>/<slice>`. For any other argument it SHALL ask for that form and do nothing else. An OpenSpec change is applied with `/opsx:apply`, not with this command.
+
+#### Scenario: Slice named
+- **WHEN** the user types `/jois-code:apply slice accounts/sign-in`
+- **THEN** the command SHALL announce the slice `sign-in` of the backlog `accounts` and work on that slice only
+
+#### Scenario: Any other argument
+- **WHEN** the user types `/jois-code:apply sign-in`, `slice` alone, or `slice accounts sign-in`
+- **THEN** the command SHALL ask for `slice <backlog>/<slice>` and SHALL NOT dispatch anything
+
+#### Scenario: Slice has no tasks
+- **WHEN** the slice's `tasks.md` has no task line
+- **THEN** the command SHALL say the slice has no tasks, point to `jois-story-plan` and stop, and SHALL NOT say the slice is built
+
+### Requirement: Apply orchestrator reads the slice and checks it is current
+The `jois-code:apply` command SHALL read the slice's `tasks.md` and `UC-<slice>.md`, and SHALL run `read-diagrams.mjs` of the installed `jois-story-plan` skill with `--slice <slice>` before it dispatches anything. It SHALL stop and dispatch nothing when the output says `STALE`, has a `changed:`, `missing:`, `new:` or `ambiguous:` line, or fails, and SHALL say the slice must be redrawn with `jois-story-plan`. When no group has an unticked task it SHALL say the slice is built and name the next stage, and SHALL NOT suggest `/opsx:archive`.
+
+#### Scenario: Slice read first
+- **WHEN** the slice's files exist and the plan skill is installed
+- **THEN** the command SHALL read `tasks.md` and `UC-<slice>.md` and run the currency check before the first dispatch
+
+#### Scenario: Slice is stale
+- **WHEN** the currency check prints `STALE` or a `changed:` line
+- **THEN** the command SHALL dispatch nothing, name each story by its title and say the slice must be redrawn
+
+#### Scenario: Plan skill not installed
+- **WHEN** `read-diagrams.mjs` is in neither `~/.claude/skills/jois-story-plan/` nor the project's `.claude/skills/jois-story-plan/`
+- **THEN** the command SHALL say so, name `Install-Toolkit.ps1` and stop
+
+#### Scenario: Slice already built
+- **WHEN** no group has an unticked task
+- **THEN** the command SHALL say the slice is built, name the next stage and stop
+
+### Requirement: Apply reviews the slice before the test task
+The `jois-code:apply` command SHALL run `jois-code:review` once, after every task of the last group except the test task is done and committed, and before the test task runs. It SHALL pass `slice <backlog>/<slice>`. Its `allowed-tools` SHALL include `Skill`. The static findings of the review and each `not met` verdict of validate SHALL count as failures and SHALL run the existing fix loop, with a fresh `task-applier` dispatch per round, the fix committed as its own `fix` commit, and the review run again after each round. A finding the review reports as a suggestion SHALL be listed in the report and SHALL NOT run the fix loop. The loop SHALL stop and ask the user in the cases the existing fix loop already names. The test task SHALL NOT start while a failure of the review is unexplained or unfixed. The command SHALL NOT pass `--fix` or `--comment` to the review.
 
 #### Scenario: Review comes before the tests
 - **WHEN** every non-test task of the last group is done
-- **THEN** apply commits that work, runs the review, and dispatches `opsx-test-runner` only after the review has no failure left
+- **THEN** apply commits that work, runs the review, and dispatches `test-runner` only after the review has no failure left
 
 #### Scenario: A finding is fixed before testing
 - **WHEN** the static check finds a correctness bug in the diff
-- **THEN** apply dispatches `opsx-task-applier` with the finding, commits the fix, runs the review again, and starts the test task only when it is clean
+- **THEN** apply dispatches `task-applier` with the finding, commits the fix, runs the review again, and starts the test task only when it is clean
 
-#### Scenario: OpenSpec form has no validate
-- **WHEN** apply runs for an OpenSpec change
-- **THEN** the review runs the static check only and apply reports that no behavioural check was run
+#### Scenario: Both parts of the review count
+- **WHEN** the review reports a static finding and a `not met` behavioural verdict
+- **THEN** apply SHALL treat both as failures and SHALL NOT merge them into one status
 
 #### Scenario: A failure stays unexplained
 - **WHEN** a second fix round ends with a review failure still unexplained
@@ -1124,3 +1130,44 @@ The `jois-code:apply` command SHALL run `jois-code:review` once, after every tas
 #### Scenario: Review command not installed
 - **WHEN** `jois-code/review.md` or its agents are not installed
 - **THEN** apply says the review was not run and why, names `Install-Toolkit.ps1`, and does not count the review as passed
+
+### Requirement: Apply guidance hands groups to the task agents
+The guidance that `jois-init:opsx` writes under `operations.apply.guidance` of `openspec/config.yaml` SHALL tell the session applying an OpenSpec change to hand each group of tasks, in file order, to `task-applier` instead of implementing the tasks itself, and to hand the final test task to `test-runner` and judge it by exit codes. It SHALL say that the agents commit nothing and that the session records each task's result and ticks the box. Each entry SHALL stay one line, inside the managed markers.
+
+#### Scenario: Change applied with the guidance
+- **WHEN** a session runs `/opsx:apply` in a project whose `config.yaml` holds the block
+- **THEN** the guidance SHALL tell it to dispatch each group to `task-applier` and the test task to `test-runner`
+
+#### Scenario: Agents missing
+- **WHEN** `task-applier` or `test-runner` is not installed
+- **THEN** the guidance SHALL tell the session to say so, name `Install-Toolkit.ps1` and not copy the agent itself
+
+#### Scenario: Re-run replaces the block
+- **WHEN** `/jois-init:opsx` runs again
+- **THEN** it SHALL replace the block in place and SHALL NOT add a second copy
+
+### Requirement: Apply guidance states when a concern is committed without asking
+The apply guidance SHALL state in full when the session commits a finished concern without asking for a confirmation word: on a branch other than `main` or `master`, with the concern's tasks done and nothing foreign staged or edited, with the test task as the only check that gates a commit and no test required between groups, and never pushing. It SHALL NOT restate the steps of the `jois-git-commit-hygiene` rule beyond those conditions.
+
+#### Scenario: Commit without a word
+- **WHEN** a group of a change is done on branch `feat/x` and only its own files changed
+- **THEN** the guidance SHALL permit the session to stage by explicit path and commit it without asking for a word, and SHALL say no test has to run first
+
+#### Scenario: Protected branch
+- **WHEN** the branch is `main`, `master` or a detached HEAD
+- **THEN** the guidance SHALL send the session back to the confirmation-word path of the commit rule
+
+#### Scenario: No push
+- **WHEN** the last group is committed
+- **THEN** the guidance SHALL tell the session not to push
+
+### Requirement: Old agent files are removed by hand
+The installer SHALL NOT delete `opsx-task-applier.md` or `opsx-test-runner.md` from `~/.claude/agents/` or a project's `.claude/agents/`. The wiki page on installing the toolkit SHALL tell a user who has them to remove them by hand after installing `task-applier.md` and `test-runner.md`.
+
+#### Scenario: Old files present at install
+- **WHEN** the installer runs on a machine that has `opsx-task-applier.md`
+- **THEN** it SHALL install `task-applier.md` and SHALL leave `opsx-task-applier.md` untouched
+
+#### Scenario: Docs name the cleanup
+- **WHEN** the install page is read
+- **THEN** it SHALL name both old file names and say to delete them by hand
