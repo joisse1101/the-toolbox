@@ -2,9 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { fitWidths, makeRoom } from '../../lib/panel-size.js';
 import { PRIORITIES, displayOrder, storyIssues, storyLabel } from '../../../../logic/backlog/model.js';
 import { matchesQuery } from '../../../../logic/backlog/story-search.js';
-import { filterOptions, filterStories, sortStories } from '../../lib/story-table.js';
+import { filterOptions, filterStories, sortStories, visibleChecked } from '../../lib/story-table.js';
 import { issueClass, rowTooltip } from './issues.js';
 import StateMark from './StateMark.jsx';
+import TabHeader from './TabHeader.jsx';
+import EmptyState from './EmptyState.jsx';
 import ResizeHandle from './ResizeHandle.jsx';
 import { useConfirm } from '../hooks/useConfirm.js';
 import usePanelSizes from '../hooks/usePanelSizes.js';
@@ -93,9 +95,11 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
   const options = useMemo(() => ({
     priority: filterOptions(stories, 'priority'), epic: filterOptions(stories, 'epic'), feature: filterOptions(stories, 'feature'),
   }), [stories]);
-  const n = checked.size;
-  const shownChecked = rows.filter((r) => checked.has(r.id)).length;
-  const hiddenChecked = n - shownChecked; // ticked stories the search or filters hide; select-all and shift-range leave them alone
+  // Bulk actions work on the ticked rows on screen only. Ticked stories the search or filters hide keep their tick, are counted
+  // as hidden and are never edited or deleted.
+  const { ids: visibleIds, hiddenCount: hiddenChecked } = useMemo(() => visibleChecked(rows, checked), [rows, checked]);
+  const n = visibleIds.size;
+  const shownChecked = n;
 
   useEffect(() => {
     selectAll.current.indeterminate = shownChecked > 0 && shownChecked < rows.length;
@@ -123,6 +127,10 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
 
   // Click a header: ascending, then descending, then back to backlog order.
   const toggleSort = (key) => setSort((cur) => (cur?.key !== key ? { key, dir: 'asc' } : cur.dir === 'asc' ? { key, dir: 'desc' } : null));
+  const clearSearch = () => {
+    setQuery('');
+    setFilter(NO_FILTER);
+  };
   const setFilterKey = (key, value) => setFilter((cur) => ({ ...cur, [key]: value }));
 
   const tick = (id, on, shift) => {
@@ -140,13 +148,14 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
     const parts = [];
     if (patch.priority !== undefined) parts.push(patch.priority ? `Priority to "${patch.priority}"` : 'Priority to none');
     if (patch.epic) parts.push(`Epic to "${patch.epic}"`);
-    const frozenSkipped = stories.filter((s) => checked.has(s.id) && s.frozen).length; // read-only, so a bulk edit leaves them
-    const renumbered = patch.epic ? stories.filter((s) => checked.has(s.id) && !s.frozen && s.epic.trim() !== patch.epic).length : 0;
+    const frozenSkipped = stories.filter((s) => visibleIds.has(s.id) && s.frozen).length; // read-only, so a bulk edit leaves them
+    const renumbered = patch.epic ? stories.filter((s) => visibleIds.has(s.id) && !s.frozen && s.epic.trim() !== patch.epic).length : 0;
     if (patch.feature) parts.push(`Feature to "${patch.feature}"`);
     const noun = n === 1 ? 'story' : 'stories';
-    const message = `Set ${parts.join(', ')} on ${n} ${noun}.${renumbered ? `\n\n${renumbered} ${renumbered === 1 ? 'story gets' : 'stories get'} new IDs, and links to them are updated.` : ''}${frozenSkipped ? `\n\n${frozenSkipped} frozen ${frozenSkipped === 1 ? 'story is' : 'stories are'} skipped.` : ''}\n\nThis cannot be undone.`;
+    const hiddenNote = hiddenChecked ? `\n\n${hiddenChecked} ticked ${hiddenChecked === 1 ? 'story is' : 'stories are'} hidden by the search or filters and stay unchanged.` : '';
+    const message = `Set ${parts.join(', ')} on ${n} visible ${noun}.${hiddenNote}${renumbered ? `\n\n${renumbered} ${renumbered === 1 ? 'story gets' : 'stories get'} new IDs, and links to them are updated.` : ''}${frozenSkipped ? `\n\n${frozenSkipped} frozen ${frozenSkipped === 1 ? 'story is' : 'stories are'} skipped.` : ''}\n\nThis cannot be undone.`;
     if (!(await ask({ title: `Change ${n} ${noun}?`, message, confirmLabel: 'Apply to selected' }))) return;
-    const { skipped } = onApplyBulk(patch);
+    const { skipped } = onApplyBulk(patch, visibleIds);
     setNote(skipped ? `${skipped} frozen ${skipped === 1 ? 'story was' : 'stories were'} skipped.` : '');
     setPriority(KEEP);
     setEpic('');
@@ -154,33 +163,40 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
   };
 
   const remove = async () => {
-    const { deleted, skipped } = await onDeleteChecked();
+    const { deleted, skipped } = await onDeleteChecked(visibleIds, hiddenChecked);
     if (deleted) setNote(skipped ? `${skipped} frozen ${skipped === 1 ? 'story was' : 'stories were'} skipped.` : '');
     else if (skipped) setNote(`Nothing deleted: ${skipped === 1 ? 'the selected story is' : 'all selected stories are'} frozen.`);
   };
 
   return (
     <section id="storiesView" className="card stories-view" role="tabpanel" aria-labelledby="tabStories" hidden={hidden}>
-      <div id="bulkBar" className="bulk-bar">
-        <div>
-          <label htmlFor="bulkPriority">Priority</label>
-          <select id="bulkPriority" disabled={n === 0} value={priority} onChange={(e) => setPriority(e.target.value)}>
-            <option value={KEEP}>No change</option>
-            <option value="">None</option>
-            {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
-          </select>
-        </div>
-        <div>
-          <label htmlFor="bulkEpic">Epic</label>
-          <input type="text" id="bulkEpic" disabled={n === 0} list="bulkEpicList" autoComplete="off" placeholder="No change" value={epic} onChange={(e) => setEpic(e.target.value)} />
-        </div>
-        <div>
-          <label htmlFor="bulkFeature">Feature</label>
-          <input type="text" id="bulkFeature" disabled={n === 0} list="bulkFeatureList" autoComplete="off" placeholder="No change" value={feature} onChange={(e) => setFeature(e.target.value)} />
-        </div>
-        <button type="button" id="bulkApplyBtn" className="primary" disabled={n === 0 || isEmpty} onClick={apply}>Apply to selected</button>
-        <button type="button" id="deleteSelectedBtn" disabled={n === 0} onClick={remove} title="Delete the selected stories; frozen ones are skipped">{`Delete selected (${n})`}</button>
-        <button type="button" id="deselectAllBtn" disabled={n === 0} onClick={() => onCheckAll(false, [...checked])}>Deselect all</button>
+      <TabHeader title="Stories" />
+      <div id="bulkBar" className={checked.size ? 'bulk-bar' : 'bulk-bar quiet'}>
+        {checked.size > 0 && (
+          <>
+            <strong id="bulkCount">{`${n} selected${hiddenChecked ? `, ${hiddenChecked} hidden by the search or filters` : ''}`}</strong>
+            <div>
+              <label htmlFor="bulkPriority">Set priority</label>
+              <select id="bulkPriority" disabled={n === 0} value={priority} onChange={(e) => setPriority(e.target.value)}>
+                <option value={KEEP}>No change</option>
+                <option value="">None</option>
+                {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="bulkEpic">Set epic</label>
+              <input type="text" id="bulkEpic" disabled={n === 0} list="bulkEpicList" autoComplete="off" placeholder="No change" value={epic} onChange={(e) => setEpic(e.target.value)} />
+            </div>
+            <div>
+              <label htmlFor="bulkFeature">Set feature</label>
+              <input type="text" id="bulkFeature" disabled={n === 0} list="bulkFeatureList" autoComplete="off" placeholder="No change" value={feature} onChange={(e) => setFeature(e.target.value)} />
+            </div>
+            <button type="button" id="bulkApplyBtn" className="primary" disabled={n === 0 || isEmpty} onClick={apply}>Apply to selected</button>
+            <button type="button" id="deleteSelectedBtn" disabled={n === 0} onClick={remove} title="Delete the selected stories; frozen ones are skipped">{`Delete selected (${n})`}</button>
+            <button type="button" id="deselectAllBtn" onClick={() => onCheckAll(false, [...checked])}>Deselect all</button>
+          </>
+        )}
+        {checked.size === 0 && <span className="muted">Tick rows to change or delete several stories at once.</span>}
         <span id="bulkNote" className="muted" role="status" aria-live="polite">{note}</span>
       </div>
       <div className="row stories-search">
@@ -198,7 +214,7 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
         ))}
         <button type="button" id="clearFiltersBtn" aria-label="Clear filters" title="Clear filters" disabled={!filtering} onClick={() => setFilter(NO_FILTER)}>X</button>
       </div>
-      <p id="storiesCount" className="muted" role="status" aria-live="polite">{`${rows.length} of ${allRows.length} stories, ${n} selected${hiddenChecked ? ` (${hiddenChecked} hidden by the search or filters)` : ''}`}</p>
+      <p id="storiesCount" className="muted" role="status" aria-live="polite">{`${rows.length} of ${allRows.length} stories`}</p>
       <div className="table-wrap" ref={wrap}>
         <table className="stories-table" ref={table}>
           <colgroup>
@@ -264,7 +280,9 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
           </tbody>
         </table>
       </div>
-      <p id="storiesEmpty" className="muted" hidden={rows.length > 0}>{narrowed && allRows.length ? 'No story matches the search and filters.' : 'No stories yet.'}</p>
+      {rows.length === 0 && (narrowed && allRows.length
+        ? <EmptyState title="No story matches" help="Change the search or the filters to see more stories." action={{ id: 'clearSearchBtn', label: 'Clear filters', onClick: clearSearch }} />
+        : <EmptyState title="No stories yet" help="Add a story in the Editor tab, or propose some with the story skills." />)}
       <datalist id="bulkEpicList">{distinct(stories, 'epic').map((v) => <option key={v} value={v} />)}</datalist>
       <datalist id="bulkFeatureList">{distinct(stories, 'feature').map((v) => <option key={v} value={v} />)}</datalist>
     </section>

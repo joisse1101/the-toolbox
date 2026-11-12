@@ -213,7 +213,6 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
           })),
           ];
         })}
-        {!stories.length && <li className="muted" style={{ cursor: 'default' }}>No stories yet.</li>}
       </ul>
       {onAdd && <div className="row">
         <button type="button" id="addStoryBtn" className="primary" onClick={onAdd}>Add story</button>

@@ -100,6 +100,7 @@
   display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: end; margin-bottom: var(--space-3); padding: var(--space-2) var(--space-3);
   border: 1px solid var(--accent); border-radius: var(--radius);
 }
+.bulk-bar.quiet { border-color: var(--border); padding-block: var(--space-1); font-size: var(--text-sm); }
 .bulk-bar > strong { align-self: center; }
 .bulk-bar > div { flex: 1 1 140px; min-width: 0; }
 .stories-search { align-items: end; margin-bottom: var(--space-3); }
@@ -338,3 +339,11 @@ legend { font-weight: 600; padding: 0 var(--space-2); }
 .confirm-dialog .dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-3); }
 .confirm-dialog button.confirm-danger { font-weight: 700; color: var(--accent-text); background: var(--bad); border-color: var(--bad); }
 .confirm-dialog button.confirm-danger:hover:not(:disabled) { background: var(--bad); border-color: var(--text); }
+
+/* Shared by every tab: a title with its actions on the right, and the one empty state. */
+.tab-header { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; justify-content: space-between; margin-bottom: var(--space-3); }
+.tab-header h2 { margin: 0; }
+.tab-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.empty-state { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); padding: var(--space-4) 0; }
+.empty-state p { margin: 0; }
+.empty-title { font-weight: 600; }

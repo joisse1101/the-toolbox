@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadBacklog } from '../../logic/backlog/model.js';
-import { NONE, filterOptions, filterStories, sortStories } from '../../portal/web/lib/story-table.js';
+import { NONE, filterOptions, filterStories, sortStories, visibleChecked } from '../../portal/web/lib/story-table.js';
 
 const CSV = [
   'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On',
@@ -47,4 +47,28 @@ test('filter options are sorted, priority keeps its own order, NONE last', () =>
   assert.deepEqual(filterOptions(stories, 'epic'), ['Admin', 'Billing']);
   assert.deepEqual(filterOptions(stories, 'feature'), ['Invoices', 'Payments', 'Users', NONE]);
   assert.deepEqual(filterOptions(stories, 'priority'), ['High', 'Low', NONE]);
+});
+
+test('visibleChecked keeps only ticked stories among the rows on screen and counts the hidden ones', () => {
+  const [beta, alpha, gamma, delta] = stories;
+  const checked = new Set([beta.id, gamma.id, delta.id]);
+  const rows = filterStories(stories, { epic: 'Billing' }); // beta and alpha
+  const { ids, hiddenCount } = visibleChecked(rows, checked);
+  assert.deepEqual([...ids], [beta.id]);
+  assert.equal(hiddenCount, 2);
+  assert.ok(!ids.has(alpha.id));
+});
+
+test('visibleChecked returns no ids when a search hides every ticked story', () => {
+  const checked = new Set([stories[0].id, stories[1].id]);
+  const { ids, hiddenCount } = visibleChecked(filterStories(stories, { epic: 'Admin' }), checked);
+  assert.equal(ids.size, 0);
+  assert.equal(hiddenCount, 2);
+});
+
+test('visibleChecked hides nothing when every row is shown', () => {
+  const checked = new Set([stories[2].id]);
+  const { ids, hiddenCount } = visibleChecked(stories, checked);
+  assert.deepEqual([...ids], [stories[2].id]);
+  assert.equal(hiddenCount, 0);
 });

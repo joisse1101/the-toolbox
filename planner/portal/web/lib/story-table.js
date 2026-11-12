@@ -15,6 +15,13 @@ export function filterStories(stories, { priority = '', epic = '', feature = '' 
   return stories.filter((s) => matches(s.priority, priority) && matches(s.epic, epic) && matches(s.feature, feature));
 }
 
+// The ticked stories a bulk action may touch: those among the rows on screen. A ticked story the search or filters hide is
+// left alone and only counted. Returns { ids: Set of ticked visible ids, hiddenCount }.
+export function visibleChecked(rows, checked) {
+  const ids = new Set(rows.filter((s) => checked.has(s.id)).map((s) => s.id));
+  return { ids, hiddenCount: checked.size - ids.size };
+}
+
 // Alphabetical by one column, ignoring case, with digit runs in numeric order (IAM-0002 before IAM-0010, 3 before 13).
 // Empty values go last either way. The sort is stable, so ties keep their incoming order. dir is 'asc' or 'desc'.
 export function sortStories(stories, key, dir = 'asc') {

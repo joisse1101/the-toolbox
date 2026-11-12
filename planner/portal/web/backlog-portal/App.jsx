@@ -12,6 +12,8 @@ import { acceptProposed, moveToProposed as moveStoryToProposed } from '../../../
 import FileBar from './components/FileBar.jsx';
 import Info from './components/Info.jsx';
 import StoryList from './components/StoryList.jsx';
+import TabHeader from './components/TabHeader.jsx';
+import EmptyState from './components/EmptyState.jsx';
 import StoryForm from './components/StoryForm.jsx';
 import StoriesTab from './components/StoriesTab.jsx';
 import GraphTab from './components/GraphTab.jsx';
@@ -311,9 +313,9 @@ export default function App() {
           </div>
         )}
 
-        <p id="emptyPrompt" className="card muted" hidden={!!current}>
-          There are no backlog folders in the data folder yet. Click <strong>New</strong> to create one.
-        </p>
+        <div id="emptyPrompt" className="card" hidden={!!current}>
+          <EmptyState title="No backlog yet" help="There are no backlog folders in the data folder yet. Click New to create one." />
+        </div>
 
         <div id="tabs" className="tabs" role="tablist" aria-label="Views" onKeyDown={onTabKey}>
           {tabs.map((t) => (
@@ -324,9 +326,13 @@ export default function App() {
           ))}
         </div>
 
-        <div id="editor" className="editor" style={editorList.style} role="tabpanel" aria-labelledby="tabEditor" hidden={!current || view !== 'editor'}>
-          {inEditor && (
-            <>
+        <div id="editor" role="tabpanel" aria-labelledby="tabEditor" hidden={!current || view !== 'editor'}>
+          <TabHeader title="Editor" />
+          {inEditor && !stories.length && (
+            <EmptyState title="No stories yet" help="Draft a story here, or use the explore and propose skills." action={{ id: 'addStoryBtn', label: 'Add story', onClick: addStory }} />
+          )}
+          {inEditor && stories.length > 0 && (
+            <div className="editor" style={editorList.style}>
               <StoryList stories={stories} problems={problems} suggestionCounts={suggestionCounts} selectedId={selectedId} onSelect={actions.selectStory} onAdd={addStory} onMove={moveStory} onMoveGroup={moveGroup} onRenumber={renumberDisplayed} renumberDisabled={renumberDisabled} collapse={collapse} />
               {selected && (
                 <StoryForm
@@ -335,9 +341,9 @@ export default function App() {
                   onApplySuggestion={applyUnit} onDismissSuggestion={dismissUnit} onMoveToProposed={moveToProposed} onDelete={actions.deleteSelected}
                 />
               )}
-            </>
+              <ResizeHandle className="list-divider" {...editorList.handleProps} />
+            </div>
           )}
-          <ResizeHandle className="list-divider" {...editorList.handleProps} />
         </div>
 
         <ProposedTab
