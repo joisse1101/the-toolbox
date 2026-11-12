@@ -42,6 +42,16 @@ The repo is ESM (`"type": "module"` in `planner/package.json`); `planner/portal/
 
 Changes are managed with OpenSpec (`openspec/`) and use conventional-commit prefixes. Use the `opsx:*` skills (propose / apply / archive). The details, and the steps to add a new tool, are in [Workflow](wiki/Workflow.md).
 
+## Testing an edit to a story-to-code skill
+
+When you edit a skill or command of the story-to-code flow (`toolkit/skills/jois-story-*` or `toolkit/commands/jois-code/`), test it live in the sample's mock repo, and never in this repo or the user's own projects. The sample is `toolkit/sample/story-to-code/`; its README is the full guide.
+
+1. Build the mock repo at the stage just before the edited stage, for example `toolkit\sample\story-to-code\build-mock-repo.ps1 -Stage planned -Reset` to test apply. It builds `.scratch/mock-app/` and calls no model.
+2. Reinstall the edited item at project scope with `toolkit\install\Install-Toolkit.ps1 -Scope project -Path .scratch/mock-app -Skill <name> -Force` (`-Command jois-code` for a command).
+3. A global copy of a skill loads ahead of the project copy, so check which copy a session loads before you trust a result. Never remove, rename or reinstall a global copy: that writes to `~/.claude`, so ask the user first.
+4. Run the skill with Claude started in `.scratch/mock-app/`. A headless session cannot answer questions, so give it the answers in the prompt.
+5. Run `node --test toolkit/tests/story/sample-stages.test.mjs` to see whether the saved stages still pass the checkers. If a format change makes it fail, the sample needs recording again, which costs real model tokens, so ask the user first.
+
 <!-- jois-init:docs begin -->
 ## Where the docs are
 
