@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { backlogProblems, gatherFeatures } from '../../../logic/backlog/ids.js';
 import { groupByEpic } from '../../../logic/backlog/model.js';
-import { unitsOf, unitStoryCode, openCounts, orphanUnits, reviewOverview, openUnitsFor, acceptAll as acceptReviewUnits, acceptSummaryText } from '../../../logic/review/review.js';
 import { useBacklog } from './hooks/useBacklog.js';
 import { useConfirm } from './hooks/useConfirm.js';
-import { useReview } from './hooks/useReview.js';
-import { useProposals } from './hooks/useProposals.js';
+import { useReviewFlow } from './hooks/useReviewFlow.js';
+import { useProposedFlow } from './hooks/useProposedFlow.js';
+import { useShortcuts } from './hooks/useShortcuts.js';
 import { useLexicon } from './hooks/useLexicon.js';
 import { useLexiconSuggestions } from './hooks/useLexiconSuggestions.js';
-import { acceptProposed, moveToProposed as moveStoryToProposed } from '../../../logic/backlog/proposals.js';
 import FileBar from './components/FileBar.jsx';
 import Info from './components/Info.jsx';
 import StoryList from './components/StoryList.jsx';
@@ -29,20 +28,6 @@ import useListWidth from './hooks/useListWidth.js';
 import useCollapsed from './hooks/useCollapsed.js';
 
 const STATUS_TEXT = { saved: 'Saved', saving: 'Saving…', failed: '✕ Save failed', idle: 'No file' };
-
-// One table drives both the key handler and the helper popover. Matched on e.code so keyboard layouts and
-// the Mac Option key (which changes e.key) do not matter. Ctrl+N, Ctrl+Shift+N and Ctrl+D are reserved by browsers.
-const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform);
-const ALT = IS_MAC ? 'Option' : 'Alt';
-
-// Handled by the field navigation in StoryForm; listed here only so the popover shows them.
-const NAV_HINTS = [
-  { label: 'Left / Right', action: 'Previous / next field (in text, at the start / end)' },
-  { label: 'Ctrl+Alt+Left / Right', action: 'Previous / next text field from anywhere in it' },
-  { label: 'Up / Down', action: 'Previous / next field group' },
-  { label: 'Left / Right (points)', action: 'Previous / next sprint point' },
-  { label: `${ALT}+Right / Left (points)`, action: 'Go to Priority / back to points' },
-];
 
 const KEYBOARD_ICON = (
   <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -74,43 +59,13 @@ export default function App() {
     if (sameStory && (before.epic !== now.epic || before.feature !== now.feature)) reveal(now.epic, now.feature);
   }, [current, selected?.id, selectedEpic, selectedFeature, reveal]);
 
-  // Review suggestions for the open backlog (its review file), shown next to the fields they concern.
-  const review = useReview(current);
+  // Review suggestions and Proposed stories for the open backlog (see the two flow hooks).
+  const { review, suggestionCounts, orphans, selectedUnits, applyUnit, dismissUnit, acceptSummary, acceptUnits, openReviewCount, dismissOrphans } =
+    useReviewFlow({ current, stories, backlog, initials: state.initials, selected, view, actions, ask });
   const reload = review.reload;
-  const reviewUnits = useMemo(() => unitsOf(review.rows), [review.rows]);
-  const suggestionCounts = useMemo(() => openCounts(review.rows, stories), [review.rows, stories]);
-  const orphans = useMemo(() => orphanUnits(review.rows, stories), [review.rows, stories]);
-  const selectedUnits = selected?.code ? reviewUnits.filter((u) => unitStoryCode(u) === selected.code) : [];
-  const applyUnit = (unit) => {
-    const result = actions.applySuggestions(unit.rows);
-    if (result.error) review.notify(result.error);
-    else review.decide(unit.indexes, 'applied');
-  };
-  const dismissUnit = (unit) => review.decide(unit.indexes, 'dismissed');
-  // Accept all (whole review or one Area): confirm with the number a dry run applies, then apply the run as one edit.
-  const [acceptSummary, setAcceptSummary] = useState(null);
-  useEffect(() => setAcceptSummary(null), [current]);
-  const acceptUnits = async (units) => {
-    const expected = acceptReviewUnits(stories, units, backlog.headers, state.initials).applied.length;
-    const noun = `review suggestion${expected > 1 ? 's' : ''}`;
-    if (expected && !(await ask({ title: `Apply ${expected} ${noun}?`, message: `${expected} ${noun} will be applied to the backlog.`, confirmLabel: 'Apply' }))) return;
-    const { applied, skipped } = actions.acceptAll(units);
-    if (applied.length) review.decide(applied.flatMap((u) => u.indexes), 'applied');
-    review.notify(null);
-    setAcceptSummary(acceptSummaryText(applied.length, skipped));
-  };
-  const openReviewCount = useMemo(() => reviewOverview(review.rows, stories).openCount, [review.rows, stories]);
-  const dismissOrphans = () => review.decide(orphans.flatMap((u) => u.indexes), 'dismissed');
-  // The Review tab only exists while the backlog has a review file; leave it when the file goes away.
-  const leaveReview = view === 'review' && !review.exists;
-  useEffect(() => {
-    if (leaveReview) actions.setView('editor');
-  }, [leaveReview, actions]);
-
-  // Proposed stories for the open backlog (its proposals file); the tab is always there, the file may not be.
-  const proposals = useProposals(current, backlog?.headers, state.initials);
+  const { proposals, proposedNotice, acceptSelected, acceptAll, moveToProposed } =
+    useProposedFlow({ current, stories, backlog, initials: state.initials, actions, review, ask, reveal });
   const refreshProposals = proposals.actions.refreshFromDisk;
-  const [proposedNotice, setProposedNotice] = useState(null);
 
   // The lexicon of the open backlog (its lexicon file); the tab is always there, the file may not be.
   const lexicon = useLexicon(current);
@@ -118,38 +73,7 @@ export default function App() {
   const refreshLexicon = lexicon.actions.refreshFromDisk;
   const lexiconSuggestions = useLexiconSuggestions(current);
   const reloadLexiconSuggestions = lexiconSuggestions.reload;
-  useEffect(() => setProposedNotice(null), [current]);
   const openSuggestions = openRows(lexiconSuggestions.file).length;
-
-  // Move proposed stories into the backlog. Nothing changes when acceptProposed refuses. The backlog is replaced
-  // first and the proposals second, so a crash between the two saves leaves a duplicate rather than a lost story.
-  const accept = (ids) => {
-    const result = acceptProposed(stories, proposals.stories, ids, backlog.headers, state.initials);
-    if (result.error) return setProposedNotice({ kind: 'error', text: result.error });
-    actions.replaceStories(result.backlog);
-    proposals.actions.replaceStories(result.proposals);
-    result.accepted.forEach((story) => reveal(story.epic, story.feature));
-    const names = result.accepted.map((s) => s.code).join(', ');
-    setProposedNotice({ kind: 'ok', text: `Accepted ${result.accepted.length === 1 ? '1 story' : `${result.accepted.length} stories`} into the backlog: ${names}.` });
-  };
-  const acceptSelected = (ids) => ids.size && accept(new Set(ids));
-  const acceptAll = () => accept(new Set(proposals.stories.map((s) => s.id)));
-
-  // Editor -> Proposed for the open story. Its open review suggestions are marked dismissed (after a confirm, only
-  // when there are any). Order: backlog, proposals, review, like accept, so a crash leaves a duplicate, not a lost story.
-  const moveToProposed = async (story) => {
-    const result = moveStoryToProposed(stories, proposals.stories, story.id, backlog.headers, state.initials);
-    if (result.error) return review.notify(result.error);
-    const units = openUnitsFor(review.rows, story.code);
-    const message = `${story.code} has ${units.length} open review suggestion${units.length > 1 ? 's' : ''}. Moving it to Proposed marks ${units.length > 1 ? 'them' : 'it'} as dismissed.`;
-    if (units.length && !(await ask({ title: `Move ${story.code} to Proposed?`, message, confirmLabel: 'Move to Proposed' }))) return;
-    actions.replaceStories(result.backlog);
-    proposals.actions.replaceStories(result.proposals);
-    if (units.length) review.decide(units.flatMap((u) => u.indexes), 'dismissed');
-    // The stories below it were renumbered: their open suggestions follow them. Links to the moved story now name its placeholder.
-    review.retarget(new Map([...result.recoded, [story.code, result.moved.code]]));
-    setProposedNotice({ kind: 'ok', text: `Moved ${story.code} to Proposed as ${result.moved.code}.` }); // shown in the Proposed tab
-  };
 
   // Wait until every pending save is on disk; the Settings tab needs it before it switches the data folder.
   const settleAll = async () => {
@@ -219,29 +143,10 @@ export default function App() {
     if (actions.moveSelection(delta)) requestFocus(focusedId);
   };
 
-  // Story shortcuts act on the Editor tab only.
   const inEditor = view === 'editor';
-  const SHORTCUTS = [
-    { code: 'KeyN', alt: true, label: `${ALT}+N`, action: 'Add story', run: addStory, enabled: !!backlog && inEditor },
-    { code: 'KeyN', alt: true, shift: true, label: `${ALT}+Shift+N`, action: 'New backlog', run: newBacklog, enabled: true },
-    { code: 'KeyD', alt: true, label: `${ALT}+D`, action: 'Delete selected story', run: actions.deleteSelected, enabled: !!selected && inEditor },
-    { code: 'ArrowUp', ctrl: true, label: 'Ctrl+Up', action: 'Previous story', run: () => moveSelection(-1), enabled: !!selected && inEditor },
-    { code: 'ArrowDown', ctrl: true, label: 'Ctrl+Down', action: 'Next story', run: () => moveSelection(1), enabled: !!selected && inEditor },
-  ];
-
-  const shortcuts = useRef(SHORTCUTS);
-  shortcuts.current = SHORTCUTS;
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.metaKey || e.isComposing) return;
-      const hit = shortcuts.current.find((k) => k.code === e.code && !!k.alt === e.altKey && !!k.ctrl === e.ctrlKey && !!k.shift === e.shiftKey);
-      if (!hit || !hit.enabled) return;
-      e.preventDefault();
-      hit.run();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, []);
+  const shortcutRows = useShortcuts({
+    hasBacklog: !!backlog, hasSelected: !!selected, inEditor, addStory, newBacklog, deleteSelected: actions.deleteSelected, moveSelection,
+  });
 
   // The tab bar is built from this one array, so a tab, its panel and its keyboard position cannot drift apart.
   const tabs = [
@@ -285,7 +190,7 @@ export default function App() {
           <div className="top-right">
             <Info id="shortcuts" buttonId="shortcutsBtn" buttonClass="shortcuts-btn" label="Keyboard shortcuts" icon={KEYBOARD_ICON} popoverId="shortcutsText" popoverClass="right">
               <dl className="shortcut-list">
-                {[...SHORTCUTS, ...NAV_HINTS].flatMap((k) => [<dt key={`${k.label}-t`}>{k.label}</dt>, <dd key={`${k.label}-d`}>{k.action}</dd>])}
+                {shortcutRows.flatMap((k) => [<dt key={`${k.label}-t`}>{k.label}</dt>, <dd key={`${k.label}-d`}>{k.action}</dd>])}
               </dl>
             </Info>
             <span id="saveStatus" className={`status-chip ${status.kind}`} role="status" aria-live="polite" title={status.detail}>
