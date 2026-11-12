@@ -34,13 +34,13 @@ export default function SettingsTab({ hidden, settingsState }) {
                 <input type="text" id="codeBase" className="settings-path" value={settings.codeBase ?? ''} title={settings.codeBase ?? undefined} placeholder="Not set: the data folder below is used" readOnly />
               </div>
               <div className="settings-action">
-                <button type="button" id="changeCodeBaseBtn" disabled={working || !!offer} onClick={actions.pickCodeBase}>Change code base</button>
-                <p className="muted">Copies the current backlogs into the code base's <code>.plans</code> folder. The old folder keeps its files.</p>
+                <button type="button" id="changeCodeBaseBtn" aria-describedby="tipChangeCodeBase" disabled={working || !!offer} onClick={actions.pickCodeBase}>Change code base</button>
+                <p className="tip" role="tooltip" id="tipChangeCodeBase">Copies the current backlogs into the code base's <code>.plans</code> folder. The old folder keeps its files.</p>
               </div>
               {!settings.codeBase && (
                 <div className="settings-action">
-                  <button type="button" id="moveToCodeBaseBtn" disabled={working || !!offer} onClick={actions.pickCodeBase}>Move data into a code base</button>
-                  <p className="muted">Same as above: the data is copied, and the saved project follows.</p>
+                  <button type="button" id="moveToCodeBaseBtn" aria-describedby="tipMoveToCodeBase" disabled={working || !!offer} onClick={actions.pickCodeBase}>Move data into a code base</button>
+                  <p className="tip" role="tooltip" id="tipMoveToCodeBase">Same as above: the data is copied, and the saved project follows.</p>
                 </div>
               )}
             </Row>
@@ -53,12 +53,12 @@ export default function SettingsTab({ hidden, settingsState }) {
                 <input type="text" id="dataDir" className="settings-path" value={settings.dataDir} title={settings.dataDir} readOnly />
               </div>
               <div className="settings-action">
-                <button type="button" id="changeFolderBtn" disabled={working || !!offer} onClick={actions.pickFolder}>Change folder</button>
-                <p className="muted">Copies the current backlogs to the new folder and the saved project follows. The old folder keeps its files.</p>
+                <button type="button" id="changeFolderBtn" aria-describedby="tipChangeFolder" disabled={working || !!offer} onClick={actions.pickFolder}>Change folder</button>
+                <p className="tip" role="tooltip" id="tipChangeFolder">Copies the current backlogs to the new folder and the saved project follows. The old folder keeps its files.</p>
               </div>
               <div className="settings-action">
-                <button type="button" id="initBtn" disabled={working || !!offer} onClick={actions.runInit}>Create missing folders</button>
-                <p className="muted">Adds any folder the planner expects. Existing files are not touched.</p>
+                <button type="button" id="initBtn" aria-describedby="tipInit" disabled={working || !!offer} onClick={actions.runInit}>Create missing folders</button>
+                <p className="tip" role="tooltip" id="tipInit">Adds any folder the planner expects. Existing files are not touched.</p>
               </div>
             </Row>
             <Row>

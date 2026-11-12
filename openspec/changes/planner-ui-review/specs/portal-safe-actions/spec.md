@@ -46,7 +46,7 @@ Every tab SHALL start with a title on the left and its actions on the right. A t
 - **THEN** one empty state with an Add story action shows, and the accept and delete toolbar is hidden
 
 ### Requirement: Settings grouping and paths
-Settings SHALL group its fields under headings (Project, Storage). A path SHALL be shown read-only, selectable and copyable, with the whole path available when it is cut short. The explanation of a risky action SHALL sit beside that action, and an overwrite SHALL be the red confirm step.
+Settings SHALL group its fields under headings (Project, Storage). A path SHALL be shown read-only, selectable and copyable, with the whole path available when it is cut short. The explanation of a risky action SHALL be a tooltip of that action's button, shown on hover and on keyboard focus and linked to the button with `aria-describedby`, and an overwrite SHALL be the red confirm step.
 
 #### Scenario: Long path
 - **WHEN** the data folder path is longer than its box
