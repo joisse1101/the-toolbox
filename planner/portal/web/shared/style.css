@@ -1,11 +1,63 @@
 :root {
-  --bg: #f6f7f9;
+  /* Design scales: every stylesheet takes sizes from these names, not from one-off numbers. */
+
+  /* Type: px, never em; nothing below 12px or lighter than 400. */
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-md: 16px;
+  --text-lg: 20px;
+  --text-xl: 24px;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  /* Radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-full: 999px;
+  --radius: var(--radius-md); /* older name, kept so existing rules keep working */
+
+  /* Shadow */
+  --shadow-1: 0 1px 2px rgb(16 24 40 / 0.08);
+  --shadow-2: 0 2px 6px rgb(16 24 40 / 0.12);
+  --shadow-3: 0 6px 20px rgb(16 24 40 / 0.2);
+  --shadow-4: 0 12px 32px rgb(16 24 40 / 0.28);
+
+  /* Grey ramp, light to dark, and a five-shade accent ramp. Both are raw values; the named colours below pick from them. */
+  --grey-50: #f6f7f9;
+  --grey-100: #eceff4;
+  --grey-200: #d5dae3;
+  --grey-300: #b8c0cc;
+  --grey-400: #97a0b0;
+  --grey-500: #596377;
+  --grey-600: #4a5365;
+  --grey-700: #343b49;
+  --grey-800: #1d222b;
+  --grey-900: #14171d;
+  --accent-100: #e3ecfe;
+  --accent-300: #6e9bff;
+  --accent-500: #2858c8;
+  --accent-700: #1f55c4;
+  --accent-900: #153b8a;
+
+  /* Named colours (light) */
+  --bg: var(--grey-50);
   --surface: #ffffff;
   --text: #1c2330;
-  --muted: #667085;
-  --border: #d5dae3;
-  --accent: #2f6fed;
+  --muted: var(--grey-500);
+  --border: var(--grey-200);
+  --accent: var(--accent-500);
   --accent-text: #ffffff;
+  --accent-tint: var(--accent-100); /* selected-row background */
+  --hover-bg: var(--grey-100);
+  --disabled-bg: var(--grey-100);
+  --disabled-text: var(--grey-600);
+  --disabled-border: var(--grey-200);
   --warn-bg: #fff4e0;
   --warn-border: #f0a43c;
   --warn-text: #8a4b00;
@@ -13,19 +65,27 @@
   --bad: #c0332b;
   --bad-bg: #fdecea;
   --bad-border: #e57368;
-  --radius: 6px;
+
+  --focus-ring: 2px solid var(--accent);
+  --focus-offset: 2px;
+  --page-max: 1600px;
   color-scheme: light dark;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #14171d;
-    --surface: #1d222b;
+    --bg: var(--grey-900);
+    --surface: var(--grey-800);
     --text: #e6e9ef;
-    --muted: #97a0b0;
-    --border: #343b49;
-    --accent: #6e9bff;
+    --muted: var(--grey-400);
+    --border: var(--grey-700);
+    --accent: var(--accent-300);
     --accent-text: #0b1220;
+    --accent-tint: #223152;
+    --hover-bg: #262c37;
+    --disabled-bg: #262c37;
+    --disabled-text: #a3abb9;
+    --disabled-border: var(--grey-700);
     --warn-bg: #3a2b12;
     --warn-border: #c98424;
     --warn-text: #ffcf8a;
@@ -40,22 +100,22 @@
 
 body {
   margin: 0;
-  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  font: var(--text-sm)/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
   background: var(--bg);
   color: var(--text);
 }
 
-h1 { font-size: 20px; margin: 0; }
-h2 { font-size: 15px; margin: 0 0 8px; }
+h1 { font-size: var(--text-lg); margin: 0; }
+h2 { font-size: var(--text-md); margin: 0 0 var(--space-2); }
 a { color: var(--accent); }
 
-.page { max-width: 1100px; margin: 0 auto; padding: 16px; }
+.page { max-width: 1100px; margin: 0 auto; padding: var(--space-4); }
 
-label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 3px; }
+label { display: block; font-size: var(--text-xs); color: var(--muted); margin-bottom: var(--space-1); }
 
 input[type="text"], select, textarea {
   width: 100%;
-  padding: 6px 8px;
+  padding: 6px var(--space-2);
   font: inherit;
   color: var(--text);
   background: var(--surface);
@@ -63,16 +123,21 @@ input[type="text"], select, textarea {
   border-radius: var(--radius);
 }
 
+input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
+
 textarea { resize: vertical; min-height: 60px; }
 
-input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
+input:hover:not(:disabled), select:hover:not(:disabled), textarea:hover:not(:disabled) { border-color: var(--accent); }
+
+/* One focus ring for everything a keyboard can reach. */
+:is(a, button, input, select, textarea, summary, [tabindex]:not(g)):focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
 }
 
 button {
   font: inherit;
-  padding: 6px 12px;
+  padding: 6px var(--space-3);
   color: var(--text);
   background: var(--surface);
   border: 1px solid var(--border);
@@ -80,19 +145,27 @@ button {
   cursor: pointer;
 }
 
-button:hover { border-color: var(--accent); }
+button:hover:not(:disabled) { border-color: var(--accent); background: var(--hover-bg); }
 button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+button.primary:hover:not(:disabled) { background: var(--accent); border-color: var(--text); }
 button.danger { color: var(--bad); }
-button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Disabled: a flat grey with readable text, no opacity (that would lower the contrast), and no hover change. */
+button:disabled, input:disabled, select:disabled, textarea:disabled {
+  color: var(--disabled-text);
+  background: var(--disabled-bg);
+  border-color: var(--disabled-border);
+  cursor: not-allowed;
+}
 
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 12px;
+  padding: var(--space-3);
 }
 
-.row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+.row { display: flex; gap: var(--space-2); align-items: flex-end; flex-wrap: wrap; }
 .row > .grow { flex: 1 1 160px; }
 
 .muted { color: var(--muted); }
@@ -100,8 +173,8 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .status-chip {
   display: inline-block;
   padding: 2px 10px;
-  border-radius: 999px;
-  font-size: 12px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
   border: 1px solid var(--border);
   color: var(--muted);
 }
@@ -125,7 +198,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   padding: 6px 10px;
 }
 
-.tool-list { list-style: none; padding: 0; margin: 16px 0 0; display: grid; gap: 10px; }
+.tool-list { list-style: none; padding: 0; margin: var(--space-4) 0 0; display: grid; gap: 10px; }
 .tool-list a { display: block; text-decoration: none; color: inherit; }
 .tool-list a:hover .card { border-color: var(--accent); }
 .tool-list strong { display: block; color: var(--accent); }

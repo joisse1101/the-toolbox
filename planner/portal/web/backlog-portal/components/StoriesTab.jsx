@@ -14,17 +14,20 @@ const cellTitle = (text, rowTip) => [text, rowTip].filter(Boolean).join('\n\n') 
 
 const distinct = (stories, key) => [...new Set(stories.map((o) => o[key].trim()).filter(Boolean))];
 
+// A column with `fixed` has that width always and no drag handle: it fits its longest ID or its header label, so it is never clipped.
 const COLUMNS = [
-  { key: 'code', label: 'ID' }, { key: 'epic', label: 'Epic' }, { key: 'feature', label: 'Feature' },
-  { key: 'title', label: 'Title' }, { key: 'points', label: 'Points', className: 'num' },
-  { key: 'priority', label: 'Priority' }, // filtered, not sorted
-  { key: 'dependsOn', label: 'Depends On' },
+  { key: 'code', label: 'ID', fixed: 136 }, { key: 'epic', label: 'Epic' }, { key: 'feature', label: 'Feature' },
+  { key: 'title', label: 'Title' }, { key: 'points', label: 'Points', className: 'num', fixed: 96 },
+  { key: 'priority', label: 'Priority', fixed: 88 }, // filtered, not sorted
+  { key: 'dependsOn', label: 'Depends On', fixed: 144 },
 ];
+const SIZED = COLUMNS.filter((c) => !c.fixed); // the columns a user can drag
+const FIXED_TOTAL = COLUMNS.reduce((sum, c) => sum + (c.fixed ?? 0), 0);
 const CHECK_WIDTH = 28; // the selection column: fixed, no handle
 const COLUMN_LIMITS = { min: 48, max: 800 };
-const COLUMN_DEFAULTS = { code: 90, epic: 160, feature: 160, title: 380, points: 70, priority: 90, dependsOn: 140 };
+const COLUMN_DEFAULTS = { epic: 160, feature: 160, title: 380 };
 // When a column fitted to its text needs room, the others shrink to the minimum in this order.
-const SHRINK_ORDER = ['dependsOn', 'title', 'feature', 'epic', 'priority', 'points', 'code'];
+const SHRINK_ORDER = ['title', 'feature', 'epic'];
 const CELL_PADDING = 16; // the 8px left and right padding of .stories-table cells
 const HANDLE_ROOM = 6;
 
@@ -59,13 +62,16 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
   // Stored widths scaled down when they do not fit the container, so the table does not scroll sideways (unless even the
   // minimum widths do not fit). The stored widths stay as the user set them and apply again in a wider window.
   const shown = useMemo(() => {
-    const keys = COLUMNS.map((c) => c.key);
+    const keys = SIZED.map((c) => c.key);
     const fitted = fitWidths(keys.map((k) => columns.widths[k]), available, COLUMN_LIMITS.min);
     return Object.fromEntries(keys.map((k, i) => [k, fitted[i]]));
   }, [columns.widths, available]);
+  // The Title column takes the width the others leave, so the table fills its container with no empty column.
+  const spare = Number.isFinite(available) ? Math.max(0, available - SIZED.reduce((sum, c) => sum + shown[c.key], 0)) : 0;
+  const widthOf = ({ key, fixed }) => fixed ?? shown[key] + (key === 'title' ? spare : 0);
 
   useEffect(() => {
-    const measure = () => setAvailable(wrap.current.clientWidth ? wrap.current.clientWidth - CHECK_WIDTH : Infinity);
+    const measure = () => setAvailable(wrap.current.clientWidth ? wrap.current.clientWidth - CHECK_WIDTH - FIXED_TOTAL : Infinity);
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(wrap.current);
@@ -102,10 +108,10 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
   // Double-click a column handle: the column gets the width of its widest text (up to the column maximum).
   // A column grows only into the room the others leave; the others keep the widths shown, so nothing else moves.
   const resize = (key, width) => {
-    const others = COLUMNS.reduce((sum, c) => (c.key === key ? sum : sum + shown[c.key]), 0);
+    const others = SIZED.reduce((sum, c) => (c.key === key ? sum : sum + shown[c.key]), 0);
     columns.setWidths({ ...shown, [key]: Math.min(width, available - others) });
   };
-  const commitAll = () => columns.commit(COLUMNS.map((c) => c.key));
+  const commitAll = () => columns.commit(SIZED.map((c) => c.key));
   const fit = (key) => {
     const wanted = Math.min(fittedWidth(table.current, COLUMNS.findIndex((c) => c.key === key) + 1), COLUMN_LIMITS.max);
     columns.setWidths(makeRoom(shown, key, wanted, available, COLUMN_LIMITS.min, SHRINK_ORDER));
@@ -192,8 +198,7 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
         <table className="stories-table" ref={table}>
           <colgroup>
             <col style={{ width: CHECK_WIDTH }} />
-            {COLUMNS.map(({ key }) => <col key={key} style={{ width: shown[key] }} />)}
-            <col />{/* takes the width left over, so the table fills its container */}
+            {COLUMNS.map((column) => <col key={column.key} style={{ width: widthOf(column) }} />)}
           </colgroup>
           <thead>
             <tr>
@@ -204,20 +209,27 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
                   onChange={(e) => onCheckAll(e.target.checked, rows.map((r) => r.id))}
                 />
               </th>
-              {COLUMNS.map(({ key, label, className }) => (
-                <th key={key} className={className} aria-sort={sort?.key === key ? (sort.dir === 'asc' ? 'ascending' : 'descending') : undefined}>
-                  {key === 'priority' ? label : (
-                    <button type="button" className="link-btn" onClick={() => toggleSort(key)} title={`Sort by ${label}`}>
-                      {`${label}${sort?.key === key ? (sort.dir === 'asc' ? ' ▲   ' : '    ▼') : ' ▲▼'}`}
-                    </button>
-                  )}
-                  <ResizeHandle
-                    className="column-handle" label={`Resize the ${label} column`} value={shown[key]} {...COLUMN_LIMITS}
-                    onChange={(w) => resize(key, w)} onCommit={commitAll} onReset={() => fit(key)}
-                  />
-                </th>
-              ))}
-              <th className="filler" />
+              {COLUMNS.map((column) => {
+                const { key, label, className, fixed } = column;
+                const sorted = sort?.key === key;
+                const sortState = sorted ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none';
+                return (
+                  <th key={key} className={className} aria-sort={key === 'priority' ? undefined : sortState}>
+                    {key === 'priority' ? label : (
+                      <button type="button" className="link-btn" onClick={() => toggleSort(key)} title={`Sort by ${label}`}>
+                        {label}
+                        {sorted && <span className="sort-arrow" aria-hidden="true">{sort.dir === 'asc' ? '▲' : '▼'}</span>}
+                      </button>
+                    )}
+                    {!fixed && (
+                      <ResizeHandle
+                        className="column-handle" label={`Resize the ${label} column`} value={widthOf(column)} {...COLUMN_LIMITS}
+                        onChange={(w) => resize(key, w)} onCommit={commitAll} onReset={() => fit(key)}
+                      />
+                    )}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody id="storiesBody">
@@ -241,7 +253,6 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
                   <td className="num">{s.points}</td>
                   <td>{s.priority}</td>
                   <td title={cellTitle(s.dependsOn.join(', '), tip)}>{s.dependsOn.join(', ')}</td>
-                  <td className="filler" />
                 </tr>
               );
             })}

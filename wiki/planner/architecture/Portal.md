@@ -40,6 +40,20 @@ Like every route, these answer only a loopback Host. A bad config ends the serve
 
 `planner/portal/web/shared/files.js` is the API client. `createFileStore(kind)` gives `list`, `read`, `create`, `write`, `rename` and `openFolder`, with the backlog named without `.csv`. `planner/portal/web/shared/style.css` holds the common styles.
 
+### Design scales
+
+`planner/portal/web/shared/style.css` defines the design scales as CSS variables in `:root`, so the landing page and the portal share them. `planner/portal/web/backlog-portal/tool.css` uses the names and holds no one-off font size.
+
+- Type: `--text-xs` 12px, `--text-sm` 14px, `--text-md` 16px, `--text-lg` 20px, `--text-xl` 24px. Sizes are in `px`, never `em`, and no text is below 12px or lighter than weight 400.
+- Spacing: `--space-1` to `--space-6`, which are 4, 8, 12, 16, 24 and 32px.
+- Radius: `--radius-sm`, `--radius-md` and `--radius-full`. The older `--radius` is the medium one.
+- Shadow: `--shadow-1` to `--shadow-4`.
+- Colour: a grey ramp `--grey-50` to `--grey-900` and an accent ramp `--accent-100` to `--accent-900` (five shades). The named colours (`--bg`, `--surface`, `--text`, `--muted`, `--border`, `--accent` and the warning and error ones) keep their names and pick from the ramps; the dark theme overrides them in a `prefers-color-scheme` block.
+- States: `--accent-tint` is the selected-row background, `--hover-bg` the hover fill, `--disabled-bg`, `--disabled-text` and `--disabled-border` the disabled look (flat grey, no opacity, no hover change), and `--focus-ring` the one focus ring every control uses.
+- Layout: `--page-max` (1600px) is the widest the content grows; above it the page is centred.
+
+Text, muted, placeholder and disabled colours keep at least 4.5:1 contrast with their fill in both themes. The Graph tab fits the graph to its canvas on first show and on every canvas resize, never below the zoom that keeps node text at 11px and never above 100%, and a graph too large for that is panned.
+
 ### The backlog portal
 
 `planner/portal/web/backlog-portal/` is the only tool so far. These parts are worth knowing:
@@ -50,7 +64,7 @@ Like every route, these answer only a loopback Host. A bad config ends the serve
 
 ### Panel sizes
 
-`planner/portal/web/backlog-portal/hooks/usePanelSizes.js` keeps the widths of the draggable list divider on the Editor, Proposed and Lexicon tabs (through `planner/portal/web/backlog-portal/hooks/useListWidth.js`) and of the Stories table columns. They are kept in `localStorage` under `planner.listWidth.<tab>` and `planner.colWidth.<column>`. `planner/portal/web/backlog-portal/components/ResizeHandle.jsx` is the drag handle, and a double-click resets it. The limits are in `planner/portal/web/lib/panel-size.js`.
+`planner/portal/web/backlog-portal/hooks/usePanelSizes.js` keeps the widths of the draggable list divider on the Editor, Proposed and Lexicon tabs (through `planner/portal/web/backlog-portal/hooks/useListWidth.js`) and of the Stories table's Epic, Feature and Title columns (the ID, Points, Priority and Depends On columns have a fixed width, and Title takes the spare width). They are kept in `localStorage` under `planner.listWidth.<tab>` and `planner.colWidth.<column>`. `planner/portal/web/backlog-portal/components/ResizeHandle.jsx` is the drag handle, and a double-click resets it. The limits are in `planner/portal/web/lib/panel-size.js`.
 
 ### Folded epics and features
 

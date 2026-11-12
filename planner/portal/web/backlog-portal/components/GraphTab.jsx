@@ -4,17 +4,20 @@ import { wouldCycle } from '../../../../logic/backlog/ids.js';
 import { layoutGraph, groupStories, relatedIds, fitView, zoomAt, panBy, toGraphPoint } from '../graph.js';
 import { issueClass, rowTooltip } from './issues.js';
 
-const NODE_W = 176;
+const NODE_W = 192;
 const NODE_H = 46;
 const GAP_X = 96;
 const GAP_Y = 22;
 const BAND_PAD = 14;
 const LABEL_H = 26;
 const BAND_GAP = 28;
-const MAX_TITLE = 22;
+const MAX_TITLE = 20;
 const KEY_PAN = 48;
 const ZOOM_STEP = 1.25;
 const MIN_LABEL_ZOOM = 0.5; // below this the weight labels on arrows are left out
+const SMALLEST_NODE_TEXT = 12; // px: the smallest text inside a node (--text-xs), at zoom 1
+const MIN_NODE_TEXT = 11; // px: fitting never shrinks node text below this; a larger graph is panned instead
+const FIT_MIN_ZOOM = MIN_NODE_TEXT / SMALLEST_NODE_TEXT;
 const LEVELS = [['stories', 'Stories'], ['features', 'Features'], ['epics', 'Epics']];
 
 const slot = (layer, row, top) => ({ x: BAND_PAD + layer * (NODE_W + GAP_X), y: top + LABEL_H + BAND_PAD + row * (NODE_H + GAP_Y) });
@@ -101,9 +104,11 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
   const fit = () => {
     const size = panelSize();
     if (!size.width) return false;
-    setView(fitView(bounds, size));
+    setView(fitView(bounds, size, undefined, FIT_MIN_ZOOM));
     return true;
   };
+  const latestFit = useRef(fit);
+  latestFit.current = fit;
   const zoomBy = (factor, point) => {
     const size = panelSize();
     setView((v) => zoomAt(v, point ?? { x: size.width / 2, y: size.height / 2 }, factor));
@@ -123,6 +128,15 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
     if (hidden || !hasNodes || fittedFor.current === key) return;
     if (fit()) fittedFor.current = key;
   }, [hidden, hasNodes, current, level]);
+
+  // The graph is fitted again whenever the canvas changes size. A hidden canvas has no width, so it is skipped.
+  useEffect(() => {
+    const el = panel.current;
+    if (!el) return undefined;
+    const observer = new ResizeObserver(() => latestFit.current());
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasNodes]);
 
   // Ctrl+wheel (and a trackpad pinch) zooms about the pointer, the plain wheel pans. Needs a non-passive listener.
   useEffect(() => {

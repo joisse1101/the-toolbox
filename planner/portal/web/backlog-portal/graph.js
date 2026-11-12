@@ -233,11 +233,15 @@ export function relatedIds(edges, id) {
 // View = { x, y, k }: a graph point (gx, gy) is shown at (x + gx * k, y + gy * k) in the panel.
 export const clampZoom = (k) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, k));
 
-// Scale and centre `bounds` ({ width, height }) in `size`. Never magnifies beyond 1:1.
-export function fitView(bounds, size, padding = 24) {
+// Scale and centre `bounds` ({ width, height }) in `size`. Never magnifies beyond 1:1, and never goes below `minZoom`
+// (the zoom that keeps the smallest node text readable): a graph too large for that is shown from its top left corner,
+// with the rest reachable by panning.
+export function fitView(bounds, size, padding = 24, minZoom = MIN_ZOOM) {
   if (!bounds.width || !bounds.height || !size.width || !size.height) return { x: 0, y: 0, k: 1 };
-  const k = clampZoom(Math.min(1, (size.width - 2 * padding) / bounds.width, (size.height - 2 * padding) / bounds.height));
-  return { k, x: (size.width - bounds.width * k) / 2, y: (size.height - bounds.height * k) / 2 };
+  const wanted = Math.min(1, (size.width - 2 * padding) / bounds.width, (size.height - 2 * padding) / bounds.height);
+  const k = Math.min(MAX_ZOOM, Math.max(minZoom, wanted));
+  const place = (room, extent) => (extent * k > room - 2 * padding ? padding : (room - extent * k) / 2);
+  return { k, x: place(size.width, bounds.width), y: place(size.height, bounds.height) };
 }
 
 // Multiply the zoom by `factor`, keeping the graph point under `point` (panel coordinates) where it is.
