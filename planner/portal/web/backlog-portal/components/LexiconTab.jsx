@@ -3,6 +3,8 @@ import { childrenOf } from '../../../../logic/lexicon/lexicon.js';
 import { FIELD_LABELS, impactOf, isOpen, staleReason } from '../../../../logic/lexicon/lexicon-suggestions.js';
 import { wordDiff } from '../../lib/word-diff.js';
 import ResizeHandle from './ResizeHandle.jsx';
+import TabHeader from './TabHeader.jsx';
+import EmptyState from './EmptyState.jsx';
 import useListWidth from '../hooks/useListWidth.js';
 import { useConfirm } from '../hooks/useConfirm.js';
 
@@ -52,16 +54,19 @@ export default function LexiconTab({ hidden, lexicon, selected, error, message, 
   };
 
   return (
-    <div id="lexiconView" className="editor" style={list.style} role="tabpanel" aria-labelledby="tabLexicon" hidden={hidden}>
+    <div id="lexiconView" role="tabpanel" aria-labelledby="tabLexicon" hidden={hidden}>
       {!hidden && (
         <>
+          <TabHeader title="Lexicon">
+            <button type="button" id="addTermBtn" className="primary" onClick={start}>Add term</button>
+          </TabHeader>
+          <div className="editor" style={list.style}>
           <div className="card story-list-panel">
             <div className="row">
               <div className="grow">
                 <label htmlFor="lexiconSearch">Search</label>
                 <input id="lexiconSearch" type="text" value={query} placeholder="term, definition or avoided word" onChange={(e) => setQuery(e.target.value)} />
               </div>
-              <button type="button" id="addTermBtn" className="primary" onClick={start}>Add term</button>
             </div>
             <ul className="story-list lexicon-list" style={{ marginTop: 10 }}>
               {shown.map(({ term, depth }) => (
@@ -73,7 +78,7 @@ export default function LexiconTab({ hidden, lexicon, selected, error, message, 
                 </li>
               ))}
             </ul>
-            {!lexicon.terms.length && <p className="muted">No terms yet. Add one, or use the jois-story-propose skill to draft some.</p>}
+            {!lexicon.terms.length && <EmptyState title="No terms yet" help="Choose Add term, or use the jois-story-propose skill to draft some." />}
             {lexicon.terms.length > 0 && !shown.length && <p className="muted">No term matches “{query}”.</p>}
           </div>
           <div>
@@ -103,9 +108,10 @@ export default function LexiconTab({ hidden, lexicon, selected, error, message, 
             )}
             {!adding && !selected && lexicon.terms.length > 0 && <p className="card muted">Select a term to see it.</p>}
           </div>
+          <ResizeHandle className="list-divider" {...list.handleProps} />
+          </div>
         </>
       )}
-      <ResizeHandle className="list-divider" {...list.handleProps} />
     </div>
   );
 }

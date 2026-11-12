@@ -1,4 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import TabHeader from './TabHeader.jsx';
+import EmptyState from './EmptyState.jsx';
 import { storyIssues, storyLabel } from '../../../../logic/backlog/model.js';
 import { wouldCycle } from '../../../../logic/backlog/ids.js';
 import { layoutGraph, groupStories, relatedIds, fitView, zoomAt, panBy, toGraphPoint } from '../graph.js';
@@ -304,6 +306,7 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
 
   return (
     <section id="graphView" className="card graph-view" role="tabpanel" aria-labelledby="tabGraph" hidden={hidden}>
+      <TabHeader title="Dependency graph" />
       <div className="graph-bar">
         <div className="graph-levels" role="group" aria-label="Detail level">
           {LEVELS.map(([key, label]) => (
@@ -492,9 +495,12 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
           </svg>
         </div>
       ) : (
-        <p className="muted graph-empty" id="graphEmpty">
-          {coarse ? `No dependencies between ${level} yet.` : stories.length ? 'No dependencies yet.' : 'No stories yet.'}
-        </p>
+        <div id="graphEmpty">
+          <EmptyState
+            title={coarse ? `No dependencies between ${level} yet` : stories.length ? 'No dependencies yet' : 'No stories yet'}
+            help={stories.length ? 'Select a story, choose Link, then pick the story it depends on.' : 'Add a story in the Editor tab first.'}
+          />
+        </div>
       )}
 
       {coarse && layout.cyclic && (

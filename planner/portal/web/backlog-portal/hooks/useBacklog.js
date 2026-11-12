@@ -151,8 +151,8 @@ export function reducer(state, action) {
     }
     case 'bulk': {
       const stories = state.backlog.stories.map((s) => ({ ...s }));
-      applyBulk(stories, state.checked, action.patch);
-      return withStories(state, commitEpics(stories, state.checked, state.initials));
+      applyBulk(stories, action.ids, action.patch);
+      return withStories(state, commitEpics(stories, action.ids, state.initials));
     }
     default:
       return state;
@@ -297,17 +297,19 @@ export function useBacklog() {
         return true;
       },
 
-      // Asks first. Deletes the ticked stories that are not frozen. Returns { deleted, skipped } (skipped: frozen ones kept);
+      // Asks first. Deletes the stories in `ids` (the ticked rows on screen) that are not frozen; `hiddenCount` ticked stories
+      // the search or filters hide are kept and named in the question. Returns { deleted, skipped } (skipped: frozen ones kept);
       // nothing is asked or deleted when all of them are frozen, and deleted is 0 when the user cancels.
-      async deleteChecked() {
-        const { backlog, checked } = stateRef.current;
-        const { skipped } = removeStories(backlog.stories, checked, stateRef.current.initials);
-        const deleted = [...checked].filter((id) => backlog.stories.some((s) => s.id === id)).length - skipped;
+      async deleteChecked(ids, hiddenCount = 0) {
+        const { backlog } = stateRef.current;
+        const { skipped } = removeStories(backlog.stories, ids, stateRef.current.initials);
+        const deleted = [...ids].filter((id) => backlog.stories.some((s) => s.id === id)).length - skipped;
         if (deleted <= 0) return { deleted: 0, skipped };
         const noun = deleted === 1 ? 'story' : 'stories';
-        const message = `${deleted} ${noun} will be removed from the backlog.${skipped ? `\n\n${skipped} frozen ${skipped === 1 ? 'story is' : 'stories are'} kept.` : ''}\n\nThis cannot be undone.`;
+        const hiddenNote = hiddenCount ? `\n\n${hiddenCount} ticked ${hiddenCount === 1 ? 'story is' : 'stories are'} hidden by the search or filters and kept.` : '';
+        const message = `${deleted} visible ${noun} will be removed from the backlog.${skipped ? `\n\n${skipped} frozen ${skipped === 1 ? 'story is' : 'stories are'} kept.` : ''}${hiddenNote}\n\nThis cannot be undone.`;
         if (!(await ask({ title: `Delete ${deleted} ${noun}?`, message, confirmLabel: 'Delete', danger: true }))) return { deleted: 0, skipped: 0 };
-        dispatch({ type: 'deleteMany', ids: checked });
+        dispatch({ type: 'deleteMany', ids });
         return { deleted, skipped };
       },
 
@@ -358,11 +360,10 @@ export function useBacklog() {
 
       toggleChecked: (ids, on, anchor) => dispatch({ type: 'check', ids, on, anchor }),
       checkAll: (on, ids) => dispatch({ type: 'checkAll', on, ids }),
-      // Resolves { skipped }: the frozen ticked stories, which a bulk edit leaves as they are.
-      applyBulkPatch(patch) {
-        const { backlog, checked } = stateRef.current;
-        const skipped = backlog.stories.filter((s) => checked.has(s.id) && s.frozen).length;
-        dispatch({ type: 'bulk', patch });
+      // Edits the stories in `ids` (the ticked rows on screen). Resolves { skipped }: the frozen ones, which a bulk edit leaves.
+      applyBulkPatch(patch, ids) {
+        const skipped = stateRef.current.backlog.stories.filter((s) => ids.has(s.id) && s.frozen).length;
+        dispatch({ type: 'bulk', patch, ids });
         return { skipped };
       },
 

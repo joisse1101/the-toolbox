@@ -66,12 +66,12 @@ test('bulk epic change: moved stories go to the bottom of the new epic and links
   const [a, b, c] = state.backlog.stories;
   state = edit(state, c.id, (d) => { d.dependsOn = [a.code]; });
   state = reducer(state, { type: 'check', ids: [a.id, b.id], on: true, anchor: a.id });
-  state = reducer(state, { type: 'bulk', patch: { epic: 'Onboarding' } });
+  state = reducer(state, { type: 'bulk', ids: state.checked, patch: { epic: 'Onboarding' } });
   assert.deepEqual(state.backlog.stories.map((s) => s.title), ['C', 'A', 'B']);
   assert.deepEqual(state.backlog.stories.map((s) => s.code), ['B1-O-0001', 'B1-O-0002', 'B1-O-0003']);
   assert.deepEqual(state.backlog.stories[0].dependsOn, ['B1-O-0002']);
   // priority only: IDs untouched
-  const prio = reducer(state, { type: 'bulk', patch: { priority: 'High' } });
+  const prio = reducer(state, { type: 'bulk', ids: state.checked, patch: { priority: 'High' } });
   assert.deepEqual(prio.backlog.stories.map((s) => s.code), ['B1-O-0001', 'B1-O-0002', 'B1-O-0003']);
   assert.ok(applyBulk);
 });
@@ -299,7 +299,7 @@ test('frozen story: bulk edit skips it entirely and changes the others', () => {
   let state = opened(FROZEN_FILE);
   const [a, b] = state.backlog.stories;
   state = reducer(state, { type: 'checkAll', on: true, ids: [a.id, b.id] });
-  state = reducer(state, { type: 'bulk', patch: { epic: 'Onboarding', priority: 'High' } });
+  state = reducer(state, { type: 'bulk', ids: state.checked, patch: { epic: 'Onboarding', priority: 'High' } });
   const frozenA = state.backlog.stories.find((s) => s.id === a.id);
   assert.deepEqual([frozenA.epic, frozenA.priority, frozenA.code], ['Billing', '', 'B1-B-0001']);
   const changedB = state.backlog.stories.find((s) => s.id === b.id);

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import TabHeader from './TabHeader.jsx';
 
 const SESSION_NOTE = 'Skill scripts and open Claude sessions use the new data folder only after they are started again.';
 
@@ -28,6 +29,7 @@ export default function SettingsTab({ hidden, settingsState }) {
 
   return (
     <section id="settingsView" className="card" role="tabpanel" aria-labelledby="tabSettings" hidden={hidden}>
+      <TabHeader title="Settings" />
       {error && <p className="warning" role="alert">{error}</p>}
       {switched && !error && <p className="muted" role="status">{SESSION_NOTE}</p>}
       {settings && (
