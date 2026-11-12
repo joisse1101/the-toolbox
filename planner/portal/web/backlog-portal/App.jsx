@@ -25,7 +25,7 @@ import ResizeHandle from './components/ResizeHandle.jsx';
 import useListWidth from './hooks/useListWidth.js';
 import useCollapsed from './hooks/useCollapsed.js';
 
-const STATUS_TEXT = { saved: 'Saved', saving: 'Saving…', failed: 'Save failed', idle: 'No file' };
+const STATUS_TEXT = { saved: 'Saved', saving: 'Saving…', failed: '✕ Save failed', idle: 'No file' };
 
 // One table drives both the key handler and the helper popover. Matched on e.code so keyboard layouts and
 // the Mac Option key (which changes e.key) do not matter. Ctrl+N, Ctrl+Shift+N and Ctrl+D are reserved by browsers.

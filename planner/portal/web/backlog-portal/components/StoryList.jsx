@@ -3,6 +3,7 @@ import { groupByEpic, storyIssues, storyLabel } from '../../../../logic/backlog/
 import { openCount } from '../../../../logic/backlog/story-text.js';
 import { anyOpen, epicKey, featureKey } from '../../lib/collapse.js';
 import { issueClass, rowTooltip } from './issues.js';
+import StateMark from './StateMark.jsx';
 
 // Drag a story to reorder it inside its epic, or onto another epic's group to move it there. Dropping on the
 // "(No epic)" group does nothing. `drag` is the story being dragged, `drop` = { epic, beforeId } where it would land
@@ -185,6 +186,7 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
                   {s.code && <span className="code">{s.code}</span>}
                   <span className="title">{storyLabel(s)}</span>
                 </button>
+                {!s.benched && <StateMark kind={issueClass(errors, warnings)} />}
                 {suggestionCounts.get(s.code) > 0 && (
                   <span className="suggestion-badge" title={`${suggestionCounts.get(s.code)} review suggestion(s)`} aria-label={`${suggestionCounts.get(s.code)} review suggestions`}>{suggestionCounts.get(s.code)}</span>
                 )}
@@ -192,6 +194,18 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
                   <span className="open-badge" title={`${openCount(s.clarifications)} open question(s) in Clarifications`}>{`${openCount(s.clarifications)} open`}</span>
                 )}
                 <span className="badge">{s.points || '–'}</span>
+                {onMove && (
+                  <span className="move-btns">
+                    <button
+                      type="button" className="move-btn" aria-label={`Move up ${storyLabel(s)}`} title="Move up" disabled={s.frozen || i === 0}
+                      onClick={(e) => { e.stopPropagation(); onMove(s.id, group.epic, fg.stories[i - 1].id); }}
+                    >{'↑'}</button>
+                    <button
+                      type="button" className="move-btn" aria-label={`Move down ${storyLabel(s)}`} title="Move down" disabled={s.frozen || !next}
+                      onClick={(e) => { e.stopPropagation(); onMove(s.id, group.epic, fg.stories[i + 2]?.id ?? group.features[fi + 1]?.stories[0]?.id ?? null); }}
+                    >{'↓'}</button>
+                  </span>
+                )}
               </li>
             );
             })),

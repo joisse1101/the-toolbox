@@ -6,6 +6,7 @@ import { openCount, emptyClarification } from '../../../../logic/backlog/story-t
 import { dependencyChoices, dependentsOf } from '../../../../logic/backlog/ids.js';
 import { criterionNumberOf } from '../../../../logic/review/review.js';
 import { issueClass } from './issues.js';
+import StateMark from './StateMark.jsx';
 import Info from './Info.jsx';
 import SuggestionList, { Suggestion } from './Suggestions.jsx';
 import guideline from '../../../../guidelines/sprint-points-guideline.md?raw';
@@ -82,6 +83,11 @@ function onNavKeyDown(e, story) {
   focusRow(target, col);
 }
 
+// A label with the word that says why the field is flagged ("Required", "Not set"), beside the coloured border.
+function Label({ htmlFor, note, children }) {
+  return <label htmlFor={htmlFor}>{children}{note && <span className={`field-note ${note === 'Required' ? 'required' : ''}`}>{note}</span>}</label>;
+}
+
 function CellWarning({ id, raw, message }) {
   return (
     <p id={id} className="warning" hidden={raw === null}>
@@ -153,6 +159,9 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
   const missing = (key) => (noValue(s[key]) ? 'missing' : undefined);
   const partMissing = (key) => (s.rawUserStory === null && noValue(s[key]) ? 'missing' : undefined);
   const optional = (key) => (noValue(s[key]) ? 'missing-optional' : undefined);
+  const criterionMissing = (c, key) => (s.rawCriteria === null && noValue(c[key]) ? 'missing' : undefined);
+  const needs = (cls) => (cls === 'missing' ? 'Required' : null);
+  const invalid = (cls) => (cls === 'missing' ? 'true' : undefined);
   const forField = (...fields) => suggestions.filter((u) => !u.group && fields.includes(u.rows[0].field));
   const groups = suggestions.filter((u) => u.group);
   const listOf = (units) => (
@@ -178,6 +187,7 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
       <div className="story-header" id="storyHeader">
         <div className="story-code" id="storyCode">
           {s.code ? <>ID: <strong>{s.code}</strong></> : 'No ID yet: one is assigned once an Epic is set.'}
+          <StateMark kind={cls} />
           {frozen && <span className="frozen-mark" id="frozenMark" title="Frozen: reference only">{'\u2744'} Frozen</span>}
           {onBench && (
             <label className="lock-toggle" title="Bench this story: the jois-story-explore and jois-story-propose skills ignore it. Nothing else changes.">
@@ -217,18 +227,18 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
       <fieldset>
         <legend>Where it fits</legend>
         <div className="grid3">
-          <div><label htmlFor="epic">Epic</label><input type="text" id="epic" className={missing('epic')} list="epicList" autoComplete="off" readOnly={frozen} value={s.epic} onChange={onEpicInput} onBlur={() => onCommitEpic(s.id)} />{list('Epic')}</div>
-          <div><label htmlFor="feature">Feature</label><input type="text" id="feature" className={missing('feature')} list="featureList" autoComplete="off" readOnly={frozen} value={s.feature} onChange={setField('feature')} />{list('Feature')}</div>
-          <div><label htmlFor="title">Title</label><input type="text" id="title" className={missing('title')} autoComplete="off" readOnly={frozen} value={s.title} onChange={setField('title')} />{list('Title')}</div>
+          <div><Label htmlFor="epic" note={needs(missing('epic'))}>Epic</Label><input type="text" id="epic" className={missing('epic')} aria-invalid={invalid(missing('epic'))} list="epicList" autoComplete="off" readOnly={frozen} value={s.epic} onChange={onEpicInput} onBlur={() => onCommitEpic(s.id)} />{list('Epic')}</div>
+          <div><Label htmlFor="feature" note={needs(missing('feature'))}>Feature</Label><input type="text" id="feature" className={missing('feature')} aria-invalid={invalid(missing('feature'))} list="featureList" autoComplete="off" readOnly={frozen} value={s.feature} onChange={setField('feature')} />{list('Feature')}</div>
+          <div><Label htmlFor="title" note={needs(missing('title'))}>Title</Label><input type="text" id="title" className={missing('title')} aria-invalid={invalid(missing('title'))} autoComplete="off" readOnly={frozen} value={s.title} onChange={setField('title')} />{list('Title')}</div>
         </div>
       </fieldset>
 
       <fieldset>
         <legend>User story</legend>
         <div className="grid3">
-          <div><label htmlFor="asA">As</label><input type="text" id="asA" placeholder="a team lead" className={partMissing('asA')} readOnly={frozen} value={s.asA} onChange={setStoryPart('asA')} /></div>
-          <div><label htmlFor="iWant">I want</label><input type="text" id="iWant" className={partMissing('iWant')} readOnly={frozen} value={s.iWant} onChange={setStoryPart('iWant')} /></div>
-          <div><label htmlFor="soThat">So that</label><input type="text" id="soThat" className={partMissing('soThat')} readOnly={frozen} value={s.soThat} onChange={setStoryPart('soThat')} /></div>
+          <div><Label htmlFor="asA" note={needs(partMissing('asA'))}>As</Label><input type="text" id="asA" placeholder="a team lead" className={partMissing('asA')} aria-invalid={invalid(partMissing('asA'))}readOnly={frozen} value={s.asA} onChange={setStoryPart('asA')} /></div>
+          <div><Label htmlFor="iWant" note={needs(partMissing('iWant'))}>I want</Label><input type="text" id="iWant" className={partMissing('iWant')} aria-invalid={invalid(partMissing('iWant'))}readOnly={frozen} value={s.iWant} onChange={setStoryPart('iWant')} /></div>
+          <div><Label htmlFor="soThat" note={needs(partMissing('soThat'))}>So that</Label><input type="text" id="soThat" className={partMissing('soThat')} aria-invalid={invalid(partMissing('soThat'))}readOnly={frozen} value={s.soThat} onChange={setStoryPart('soThat')} /></div>
         </div>
         {list('User Story')}
         <CellWarning id="storyWarning" raw={s.rawUserStory} message={STORY_WARNING} />
@@ -242,6 +252,7 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
           <div>
             <div className="label-row">
               <span id="pointsLabel" className="label-text">Sprint points</span>
+              {noValue(s.points) && <span className="field-note">Not set</span>}
               <Info id="guideline" buttonId="guidelineBtn" label="Sprint points guideline" icon="i" popoverId="guidelineText">{guideline}</Info>
             </div>
             <div id="pointsGroup" className={`points${noValue(s.points) ? ' missing-optional' : ''}`} role="radiogroup" aria-labelledby="pointsLabel">
@@ -260,7 +271,7 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
             {list('Sprint points')}
           </div>
           <div>
-            <label htmlFor="priority">Priority</label>
+            <Label htmlFor="priority" note={optional('priority') ? 'Not set' : null}>Priority</Label>
             <select id="priority" className={optional('priority')} disabled={frozen} value={s.priority} onChange={setField('priority')}>
               {priorityOptions.map((p) => <option key={p} value={p}>{p || 'None'}</option>)}
             </select>
@@ -305,10 +316,10 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
                 <div className="fields">
                   {[['given', 'Given'], ['when', 'When'], ['then', 'Then']].map(([key, label]) => (
                     <div key={key}>
-                      <label htmlFor={`criterion-${i}-${key}`}>{label}</label>
+                      <Label htmlFor={`criterion-${i}-${key}`} note={needs(criterionMissing(c, key))}>{label}</Label>
                       <input
-                        type="text" id={`criterion-${i}-${key}`} readOnly={frozen} value={c[key]}
-                        className={s.rawCriteria === null && noValue(c[key]) ? 'missing' : undefined}
+                        type="text" id={`criterion-${i}-${key}`} readOnly={frozen} value={c[key]} aria-invalid={invalid(criterionMissing(c, key))}
+                        className={criterionMissing(c, key)}
                         onChange={(e) => {
                           const value = e.target.value;
                           edit((d) => { d.criteria[i][key] = value; d.rawCriteria = null; });
@@ -325,6 +336,18 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
                     </div>
                   ))}
                 </div>
+                <button
+                  type="button" className="criterion-move" aria-label={`Move criterion ${i + 1} up`} title="Move up"
+                  disabled={i === 0 || frozen} onClick={() => moveCriterion(i, i - 1)}
+                >
+                  {'↑'}
+                </button>
+                <button
+                  type="button" className="criterion-move" aria-label={`Move criterion ${i + 1} down`} title="Move down"
+                  disabled={i === s.criteria.length - 1 || frozen} onClick={() => moveCriterion(i, i + 1)}
+                >
+                  {'↓'}
+                </button>
                 <button
                   type="button" className="danger criterion-remove" aria-label="Remove criterion"
                   disabled={last || frozen} // every story keeps at least one criterion
