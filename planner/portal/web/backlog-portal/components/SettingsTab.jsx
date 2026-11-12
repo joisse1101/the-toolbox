@@ -34,36 +34,55 @@ export default function SettingsTab({ hidden, settingsState }) {
       {switched && !error && <p className="muted" role="status">{SESSION_NOTE}</p>}
       {settings && (
         <>
-          <div className="row">
-            <div className="grow">
-              <label htmlFor="projectName">Project name</label>
-              <input type="text" id="projectName" autoComplete="off" value={name} onChange={(e) => setName(e.target.value)} />
+          <section className="settings-group" aria-labelledby="settingsProjectHeading">
+            <h3 id="settingsProjectHeading">Project</h3>
+            <div className="row">
+              <div className="grow">
+                <label htmlFor="projectName">Project name</label>
+                <input type="text" id="projectName" autoComplete="off" value={name} onChange={(e) => setName(e.target.value)} />
+              </div>
+              <button type="button" id="saveNameBtn" disabled={!nameChanged || working} onClick={() => actions.saveName(name)}>Save name</button>
             </div>
-            <button type="button" id="saveNameBtn" disabled={!nameChanged || working} onClick={() => actions.saveName(name)}>Save name</button>
-          </div>
-          <div className="row">
-            <div className="grow">
-              <label htmlFor="dataDir">Data folder</label>
-              <input type="text" id="dataDir" disabled value={settings.dataDir} readOnly />
+            <div className="row">
+              <div className="grow">
+                <label htmlFor="codeBase">Code base</label>
+                <input type="text" id="codeBase" className="settings-path" value={settings.codeBase ?? ''} title={settings.codeBase ?? undefined} placeholder="Not set: the data folder below is used" readOnly />
+              </div>
+              <div className="settings-action">
+                <button type="button" id="changeCodeBaseBtn" disabled={working || !!offer} onClick={actions.pickCodeBase}>Change code base</button>
+                <p className="muted">Copies the current backlogs into the code base's <code>.plans</code> folder. The old folder keeps its files.</p>
+              </div>
+              {!settings.codeBase && (
+                <div className="settings-action">
+                  <button type="button" id="moveToCodeBaseBtn" disabled={working || !!offer} onClick={actions.pickCodeBase}>Move data into a code base</button>
+                  <p className="muted">Same as above: the data is copied, and the saved project follows.</p>
+                </div>
+              )}
             </div>
-            <button type="button" id="changeFolderBtn" disabled={working || !!offer} onClick={actions.pickFolder}>Change folder</button>
-            <button type="button" id="initBtn" disabled={working || !!offer} onClick={actions.runInit}>Create missing folders</button>
-          </div>
-          <div className="row">
-            <div className="grow">
-              <label htmlFor="codeBase">Code base</label>
-              <input type="text" id="codeBase" disabled value={settings.codeBase ?? ''} placeholder="Not set: the data folder above is used" readOnly />
+          </section>
+          <section className="settings-group" aria-labelledby="settingsStorageHeading">
+            <h3 id="settingsStorageHeading">Storage</h3>
+            <div className="row">
+              <div className="grow">
+                <label htmlFor="dataDir">Data folder</label>
+                <input type="text" id="dataDir" className="settings-path" value={settings.dataDir} title={settings.dataDir} readOnly />
+              </div>
+              <div className="settings-action">
+                <button type="button" id="changeFolderBtn" disabled={working || !!offer} onClick={actions.pickFolder}>Change folder</button>
+                <p className="muted">Copies the current backlogs to the new folder and the saved project follows. The old folder keeps its files.</p>
+              </div>
+              <div className="settings-action">
+                <button type="button" id="initBtn" disabled={working || !!offer} onClick={actions.runInit}>Create missing folders</button>
+                <p className="muted">Adds any folder the planner expects. Existing files are not touched.</p>
+              </div>
             </div>
-            <button type="button" id="changeCodeBaseBtn" disabled={working || !!offer} onClick={actions.pickCodeBase}>Change code base</button>
-            {!settings.codeBase && (
-              <button type="button" id="moveToCodeBaseBtn" disabled={working || !!offer} onClick={actions.pickCodeBase}>Move data into a code base</button>
-            )}
-          </div>
-          <p className="muted">
-            Changing the folder or the code base moves this project: the current backlogs are copied to the new place and the saved
-            project follows. A code base keeps its backlogs in its <code>.plans</code> folder. The old folder keeps its files.
-          </p>
-          <p className="muted">Config file: <code>{settings.configPath}</code></p>
+            <div className="row">
+              <div className="grow">
+                <label htmlFor="configPath">Config file</label>
+                <input type="text" id="configPath" className="settings-path" value={settings.configPath} title={settings.configPath} readOnly />
+              </div>
+            </div>
+          </section>
 
           {offer && !offer.ready && (
             <div id="folderOffer" className="card">
@@ -73,7 +92,7 @@ export default function SettingsTab({ hidden, settingsState }) {
               </p>
               <ul id="overwriteList">{offer.exists.map((file) => <li key={file}><code>{file}</code></li>)}</ul>
               <div className="row">
-                <button type="button" id="overwriteBtn" disabled={working} onClick={() => actions.chooseRelocation('overwrite')}>Overwrite</button>
+                <button type="button" id="overwriteBtn" className="offer-danger" disabled={working} onClick={() => actions.chooseRelocation('overwrite')}>Overwrite</button>
                 <button type="button" id="justSwitchBtn" disabled={working} onClick={() => actions.chooseRelocation('switch')}>Just switch</button>
                 <button type="button" id="cancelOfferBtn" disabled={working} onClick={() => actions.chooseRelocation('cancel')}>Cancel</button>
               </div>
