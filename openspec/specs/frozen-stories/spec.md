@@ -20,14 +20,18 @@ Each story SHALL be either frozen or not frozen. The state SHALL be stored in th
 - **THEN** the story is read as not frozen
 
 ### Requirement: Only the plan skill freezes stories
-Only `jois-story-plan` SHALL freeze stories, and the portal SHALL NOT offer any control that freezes or unfreezes a story, an Epic, a Feature or a selection. Freezing SHALL happen only after the user has confirmed a slice, with the same yes/no that the skill asks before it writes the slice, and SHALL cover every story that slice covers. The skill SHALL freeze through its own validated writer. The writer SHALL refuse a story that has no ID, and a story whose ID does not begin with the backlog's initials (an ID the portal has not yet rewritten), and SHALL leave a story that is already frozen as it is, so freezing the same story twice leaves the same result as freezing it once. It SHALL change only the `Frozen` flag of the stories it names: no other field, row, column or ID SHALL change. It SHALL write atomically, and the skill SHALL read the backlog back in the same turn and call the stories frozen only when the read-back matches. A frozen story SHALL NOT be unfrozen by any way the system offers. A freeze made by mistake SHALL be undone only by editing the CSV by hand, and the project's wiki SHALL say so.
+Only `jois-story-plan` SHALL freeze stories, and the portal SHALL NOT offer any control that freezes or unfreezes a story, an Epic, a Feature or a selection. Freezing SHALL happen only after the user has confirmed a slice, with the same yes/no that the skill asks before it writes the slice, and after the slice has been verified with no critical finding open, and SHALL cover every story that slice covers. The skill SHALL freeze through its own validated writer. The writer SHALL refuse a story that has no ID, and a story whose ID does not begin with the backlog's initials (an ID the portal has not yet rewritten), and SHALL leave a story that is already frozen as it is, so freezing the same story twice leaves the same result as freezing it once. It SHALL change only the `Frozen` flag of the stories it names: no other field, row, column or ID SHALL change. It SHALL write atomically, and the skill SHALL read the backlog back in the same turn and call the stories frozen only when the read-back matches. A frozen story SHALL NOT be unfrozen by any way the system offers. A freeze made by mistake SHALL be undone only by editing the CSV by hand, and the project's wiki SHALL say so.
 
 #### Scenario: Freeze after the confirm
-- **WHEN** the user confirms a slice that covers three stories with IDs
-- **THEN** after the slice is written the three stories have `Yes` in `Frozen`, and no other cell of the backlog changed
+- **WHEN** the user confirms a slice that covers three stories with IDs and verify leaves no critical finding open
+- **THEN** after the slice is written and verified the three stories have `Yes` in `Frozen`, and no other cell of the backlog changed
 
 #### Scenario: Nothing frozen before the yes
 - **WHEN** the user has not answered the yes/no
+- **THEN** no story is frozen
+
+#### Scenario: Nothing frozen while a critical finding is open
+- **WHEN** the user confirmed the slice and verify still reports a critical finding
 - **THEN** no story is frozen
 
 #### Scenario: Story with no ID
