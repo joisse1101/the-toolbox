@@ -76,8 +76,13 @@ New-Item -ItemType Directory -Path (Join-Path $Mock 'app') | Out-Null
 Get-ChildItem -LiteralPath (Join-Path $SampleDir 'app') -Force |
     Where-Object { $_.Name -notin @('node_modules', 'dist', 'audio') } |
     ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $Mock 'app') -Recurse }
+# The docs checker, which /jois-code:archive runs, comes from the toolkit's docs templates, as /jois-init:docs would copy it.
+New-Item -ItemType Directory -Path (Join-Path $Mock 'scripts') | Out-Null
+foreach ($name in @('check_docs.py', 'build_wiki.py')) {
+    Copy-Item -LiteralPath (Join-Path $RepoRoot "toolkit\skills\jois-init-docs-templates\scripts\$name") -Destination (Join-Path $Mock 'scripts')
+}
 # The data folder and the installed toolkit are local to this machine, so git ignores them.
-Set-Content -LiteralPath (Join-Path $Mock '.gitignore') -Value @('.claude/', '.plans/', 'node_modules/') -Encoding ascii
+Set-Content -LiteralPath (Join-Path $Mock '.gitignore') -Value @('.claude/', '.plans/', '.scratch/', 'node_modules/', '__pycache__/') -Encoding ascii
 
 Push-Location $Mock
 try {

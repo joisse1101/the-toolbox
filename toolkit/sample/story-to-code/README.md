@@ -40,12 +40,43 @@ A global copy of a skill loads ahead of a project copy of the same name, so edit
 
 ## Keep the stages valid
 
-`node --test toolkit/tests/story/sample-stages.test.mjs` runs each saved stage's backlog, slice and diagrams through the toolkit's own checkers, with no model. When a skill's output format changes and this test fails, record the walk again.
+`node --test toolkit/tests/story/sample-stages.test.mjs` runs each saved stage's backlog, slice and diagrams through the toolkit's own checkers and applies `built.patch` to the baseline app, with no model. When a skill's output format changes and this test fails, record the walk again. No other test reads `stages/`: the story-skill tests use their own hand-written fixture in `toolkit/tests/story/fixtures/habits/`, so recording again never breaks them.
 
 ## Record the walk
 
-Recording runs the whole flow once in a mock repo and costs real model tokens, so start it on purpose and never from a script or a test. Build the mock repo at `baseline`, run explore, propose, accept, plan, apply, validate and archive for one feature from `wiki/Future-Releases.md`, copy each stage's new files into `stages/<stage>/`, make `git format-patch` of the code commits into `stages/built/built.patch`, and note the `/cost` figure here.
+Recording runs the whole flow once in a mock repo and costs real model tokens, so start it on purpose and never from a script or a test.
+
+1. Build the mock repo at `baseline`.
+2. Create the backlog the way the portal does: `.plans/habits/backlog.json` (`{"initials":"H1"}`) and an empty `.plans/habits/user-stories.csv`.
+3. Run explore, propose, plan, apply, validate and archive for one feature from `wiki/Future-Releases.md`, and do the portal's accept step.
+4. Copy each stage's new files into `stages/<stage>/` with LF line endings, and make `git format-patch` of the code commits into `stages/built/built.patch`.
+
+## The recorded walk
+
+The walk built streaks (the current and the best streak of a habit) on 2026-11-12 with Claude Code 2.1.322 and Sonnet. It ran headless (`claude -p --model sonnet --output-format json`, one call per stage) because no person was at the keyboard, which changed three things.
+
+- **Answers given up front.** The prompts held the agreed stories and the design answers, and said to take the recommended option wherever a command would ask the user. A headless session cannot answer `AskUserQuestion`, so apply and archive each stopped once on a question and were run again with that instruction.
+- **Accept is scripted.** The portal's Accept all button was replaced by `acceptProposed` and `serializeBacklog` from `planner/logic`, the same functions the portal calls.
+- **The proposals file was rebuilt.** Accept emptied it before it was copied, so `stages/proposed/.plans/habits/user-stories/proposals.csv` is rebuilt from what the propose run printed.
+
+What the walk showed, so a rerun does not hit it again:
+
+- The propose writer refuses a Priority field, so the proposed stories have none.
+- A project needs `scripts/check_docs.py` before archive works. The build script copies it, with `build_wiki.py`, from the docs templates, as `/jois-init:docs` would.
+- Validation and review record the commit they ran at. Archive refuses a validation older than the code, so a commit that changes anything outside `wiki/` after validate means validating again. `review.md` still records `c06e6f6`, and the later docs-checker commit changed no app code.
+- The review left five findings unfixed. They are written in `review.md`.
 
 ## Cost of the recorded walk
 
-Not recorded yet.
+About $6.45 in total, from `total_cost_usd` in each call's JSON (the figure `/cost` shows is not available headless). Of that, about $1.5 went on attempts that stopped early and were run again.
+
+| Stage | Cost | Note |
+| --- | --- | --- |
+| Explore | $0.22 | writes nothing |
+| Propose | $0.20 + $0.26 | the first try found no backlog file |
+| Plan | $0.58 | the slice, the freeze and verify |
+| Apply | $1.04 + $2.10 | four tasks, then review rounds and fixes, test task, validation |
+| Validate | $0.62 + $0.58 | run again after the docs checker commit |
+| Archive | $0.36 + $0.18 + $0.31 | no docs checker, then a stale validation, then archived |
+
+A run with the answers ready and the backlog file in place should cost roughly $4 to $5. That is an estimate from the figures above, not a measured run.

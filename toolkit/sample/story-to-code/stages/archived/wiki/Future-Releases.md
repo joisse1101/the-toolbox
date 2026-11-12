@@ -11,6 +11,4 @@ Ideas for features that are not built yet. Each one is a starting point to explo
 
 ## Released
 
-- **Streaks.** The current and the best streak of each habit. See [Streaks](streaks/Overview.md).
-
-A feature moves here from Ideas when its slice is archived.
+- **Streaks.** A count of consecutive days a habit was checked off, and the best such run. See [Streaks](Streaks.md).

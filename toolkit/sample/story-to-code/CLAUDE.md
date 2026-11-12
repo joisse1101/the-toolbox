@@ -15,4 +15,4 @@ npm test        # unit tests (Vitest)
 
 ## Where the docs are
 
-Docs live in `wiki/`, one page per topic, starting at `wiki/Home.md`. Read the page for your topic before you change the code it describes, and update it in the same change. Planned features are listed in `wiki/Future-Releases.md`.
+Docs live in `wiki/`, one page per topic, starting at `wiki/Home.md`. Read the page for your topic before you change the code it describes, and update it in the same change. Run `python scripts/check_docs.py` after any docs or path change. Planned features are listed in `wiki/Future-Releases.md`.

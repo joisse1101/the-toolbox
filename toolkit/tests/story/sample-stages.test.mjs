@@ -76,7 +76,8 @@ for (const stage of STAGES.slice(STAGES.indexOf('planned'))) {
     const document = files.get(sliceFile(`UC-${SLICE}.md`));
     const source = JSON.parse(files.get(sliceFile('source.json')));
 
-    const checked = checkSlice({ slice: SLICE, files: { [`UC-${SLICE}.md`]: document }, stories: scopeStories(backlog, source.scope), limits });
+    // The recorded slice was planned with the code base read (the writer's --repo), so its repo-level rules apply.
+    const checked = checkSlice({ slice: SLICE, files: { [`UC-${SLICE}.md`]: document }, stories: scopeStories(backlog, source.scope), limits, repo: {} });
     assert.deepEqual(formatProblems(checked.problems), [], `stage ${stage}: UC-${SLICE}.md`);
 
     const tasks = checkTasks({ tasksText: files.get(sliceFile('tasks.md')), document, slice: SLICE });
