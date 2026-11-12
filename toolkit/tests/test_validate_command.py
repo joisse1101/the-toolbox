@@ -61,7 +61,7 @@ def test_command_builds_the_throwaway_checkout_with_each_rule():
 def test_command_judges_suites_by_exit_code_and_marks_untested_claims():
     step = _step(6, 7)
     assert "Judge every suite by exit codes only, never by wording" in step
-    assert "`opsx-test-runner`" in step
+    assert "`test-runner`" in step
     assert "`code-validator`" in step
     assert "in the background" in step
     assert "QUIET 180s" in step

@@ -33,7 +33,7 @@ Plan the stories into a slice with the story skills first. Then build, test and 
 3. `/jois-code:archive slice <backlog>/<slice>` writes the slice into `wiki/`, one folder per topic, once apply and validate both succeeded at the current commit. It shows every page before it writes and stops at the confirmation word, so the wiki edits are committed with the code. A redrawn slice is archived again by running the command again, which replaces the slice's block in place.
 4. `/jois-git:write-pr` opens the pull request.
 
-`/jois-code:apply` needs the agent `opsx-task-applier` installed and stops without it. It commits each finished group without testing, reviews the slice with `/jois-code:review` and fixes its findings, and then runs the tests once, as the task in the last group. That task needs `opsx-test-runner`: without it the command names the missing agent and stops before the last group. If the session ends, run the command again: it resumes from the tasks not yet ticked. It never pushes.
+`/jois-code:apply` needs the agent `task-applier` installed and stops without it. It commits each finished group without testing, reviews the slice with `/jois-code:review` and fixes its findings, and then runs the tests once, as the task in the last group. That task needs `test-runner`: without it the command names the missing agent and stops before the last group. If the session ends, run the command again: it resumes from the tasks not yet ticked. It never pushes.
 
 ## Commit and open a pull request
 

@@ -1,14 +1,14 @@
 ---
 name: "JOIS: Apply"
-description: "Apply a slice one group of tasks at a time: hand each group to opsx-task-applier, record its results in tasks.md, then commit it by itself on an unprotected branch (never main or master, never a push), or stop with nothing committed in a doubtful case. The last group's code is reviewed with /jois-code:review and its findings fixed before the tests, which run once, as the task in the last group"
+description: "Apply a slice one group of tasks at a time: hand each group to task-applier, record its results in tasks.md, then commit it by itself on an unprotected branch (never main or master, never a push), or stop with nothing committed in a doubtful case. The last group's code is reviewed with /jois-code:review and its findings fixed before the tests, which run once, as the task in the last group"
 allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git add:*), Bash(git commit:*), Bash(git branch --show-current:*), Bash(git rev-parse:*), Bash(node *jois-story-plan*read-diagrams.mjs*), Skill, Read, Edit, Write(**/slices/*/review.md), Glob, Agent, Monitor
 disable-model-invocation: true
 metadata:
-  version: "2.0.0"
-  last_updated: "2026-11-11"
+  version: "2.1.0"
+  last_updated: "2026-11-12"
 ---
 
-Apply a slice written by `jois-story-plan` by handing its tasks to the `opsx-task-applier` agent, one group at a time.
+Apply a slice written by `jois-story-plan` by handing its tasks to the `task-applier` agent, one group at a time.
 
 ## Argument
 
@@ -48,11 +48,12 @@ A slice is the folder `<backlog>/slices/<slice>/` of the data folder the plan sk
    - Keep the text of `UC-<slice>.md` in mind for the briefs.
 
 4. **Check the agent.**
-   - Look for `opsx-task-applier.md` in `~/.claude/agents/` and in this project's `.claude/agents/`.
-   - If it is in neither, say so, name `Install-Toolkit.ps1` (`-Agent opsx-task-applier.md`) and stop.
+   - Look for `task-applier.md` in `~/.claude/agents/` and in this project's `.claude/agents/`.
+   - If it is in neither, say so, name `Install-Toolkit.ps1` (`-Agent task-applier.md`) and stop.
+   - An install that has only the old `opsx-task-applier.md` does not count: treat the agent as not installed and say so.
    - Do not copy the agent yourself.
-   - Also look for `opsx-test-runner.md` in the same two folders.
-   - If it is in neither, say so and name `Install-Toolkit.ps1` (`-Agent opsx-test-runner.md`).
+   - Also look for `test-runner.md` in the same two folders.
+   - If it is in neither, say so and name `Install-Toolkit.ps1` (`-Agent test-runner.md`). An install that has only the old `opsx-test-runner.md` does not count.
    - Do not stop for this yet. Remember it. Before the dispatch of the last group, say it again and stop, because that group's test task needs the runner. Earlier groups are not held up.
 5. **Find the groups.**
    - A group is one `##` section of `tasks.md`.
@@ -77,16 +78,16 @@ A slice is the folder `<backlog>/slices/<slice>/` of the data folder the plan sk
    - Say how to open the agent's transcript: its row in the agent panel then Enter, or `/tasks`.
    - Say its turn limit (`maxTurns` in the agent file).
 7. **Dispatch the group.**
-   - Use the Agent tool with `opsx-task-applier`, in the background, so step 8 can start the watch.
+   - Use the Agent tool with `task-applier`, in the background, so step 8 can start the watch.
    - Note the agent id the call returns.
    - Start the watch (step 8) before you wait for the report.
    - Do nothing else until the report arrives.
-   - The prompt carries `<backlog>/<slice>` as the name, the verbatim text of each pending task of the group with its `Satisfies:` and `Verify:` lines, and the path of `UC-<slice>.md`, to read first.
+   - The prompt carries `<backlog>/<slice>` as the name, the verbatim text of each pending task of the group with its `Satisfies:` and `Verify:` lines, and the path of `UC-<slice>.md`, to read first. The agent takes what each task satisfies and how to verify it from this brief, so the brief must carry all three.
    - Never paraphrase a task.
    - The prompt says the agent must not edit `tasks.md`.
    - The prompt says the agent must report as its own instructions say.
-   - **The test task.** The last group ends with a task that runs the project's tests. Do not send it to `opsx-task-applier`, which cannot start another agent. Send the group's other tasks first, run the review (step 10a) when they are committed, then run the test task yourself, only when the review has no failure left:
-     - Dispatch `opsx-test-runner` in the background. The prompt carries the files all groups so far changed, taken from the reports.
+   - **The test task.** The last group ends with a task that runs the project's tests. Do not send it to `task-applier`, which cannot start another agent. Send the group's other tasks first, run the review (step 10a) when they are committed, then run the test task yourself, only when the review has no failure left:
+     - Dispatch `test-runner` in the background. The prompt carries the files all groups so far changed, taken from the reports.
      - Start the watch (step 8) and wait for the report.
      - Judge the report by exit codes only, never by its wording. The tests passed only when every reported command shows exit code 0. The runner's exact line `exit code 0 (the tool showed no error)` counts as exit code 0.
      - Wording such as "passed" or a counts line never counts. A missing exit code or a non-zero exit code is not passed.
@@ -94,7 +95,7 @@ A slice is the folder `<backlog>/slices/<slice>/` of the data folder the plan sk
      - If a command failed, or an exit code is missing, run the fix loop of step 9 with the failing command and its exact output.
      - On a pass, tick the task and copy a `result:` line built from the commands and exit codes the runner reported, on its own indented line after the task's `Verify:` line.
 8. **Watch the agent.**
-   - This covers every `opsx-task-applier` dispatch (step 7 and the fix rounds of step 9) and every `opsx-test-runner` dispatch (the test task of step 7).
+   - This covers every `task-applier` dispatch (step 7 and the fix rounds of step 9) and every `test-runner` dispatch (the test task of step 7).
    - Right after each dispatch, start a watch with the `Monitor` tool on that agent's transcript file, `subagents/agent-<id>.jsonl`.
    - Find the file with Glob: `**/subagents/agent-<id>.jsonl` under `~/.claude/projects/`.
    - The watch is a read-only loop that only reads the file's modified time and prints one line when it has not changed for 180 seconds. Use this, with `<file>` set to the path found:
@@ -126,10 +127,10 @@ A slice is the folder `<backlog>/slices/<slice>/` of the data folder the plan sk
      - Record the tasks that have a clause.
      - A failure is a task the report calls failed, a test command with a non-zero exit code, or a failure the report does not explain.
      - Do not ask the user whether to go on.
-     - Each round is a fresh `opsx-task-applier` dispatch, in the background, with the watch of step 8.
+     - Each round is a fresh `task-applier` dispatch, in the background, with the watch of step 8.
      - The brief carries the change name, the failing command, its exact output, the files the group touched and the instruction to find the cause and fix it within the group's tasks.
      - The brief says the failure is the task, and that the agent must report as its own instructions say, with the `Failures` part.
-     - After each round for a failing test command, dispatch `opsx-test-runner` again and judge it by exit codes as in step 7.
+     - After each round for a failing test command, dispatch `test-runner` again and judge it by exit codes as in step 7.
      - After each round, check the `Failures` part. A failure is **explained** only when it gives the command, the exact output line, the cause and whether it is fixed.
      - A failure called "not caused by this group" counts as explained only when the report gives evidence, such as the same failure on `main`. Without evidence it is unexplained.
      - Ask the user only in these three cases, say which one applies and show the failure:

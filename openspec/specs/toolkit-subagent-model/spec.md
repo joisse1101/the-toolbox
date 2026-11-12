@@ -58,11 +58,11 @@ The toolkit SHALL include an agent `jois-worker`, the single file `toolkit/agent
 - **THEN** the docs check SHALL NOT fail on that account, because the check only requires `tools`
 
 ### Requirement: Toolkit agents pin their model
-`opsx-task-applier` and `code-validator` SHALL declare `model: sonnet` in their frontmatter, and `opsx-test-runner` SHALL keep `model: haiku`. Each changed agent SHALL have its `metadata.version` and `metadata.last_updated` updated.
+`task-applier` and `code-validator` SHALL declare `model: sonnet` in their frontmatter, and `test-runner` SHALL keep `model: haiku`. Each changed agent SHALL have its `metadata.version` and `metadata.last_updated` updated.
 
 #### Scenario: Pinned agents
 - **WHEN** the files under `toolkit/agents/` are read
-- **THEN** `opsx-task-applier.md` and `code-validator.md` SHALL declare `sonnet`, `opsx-test-runner.md` SHALL declare `haiku` and `jois-worker.md` SHALL declare `sonnet`
+- **THEN** `task-applier.md` and `code-validator.md` SHALL declare `sonnet`, `test-runner.md` SHALL declare `haiku` and `jois-worker.md` SHALL declare `sonnet`
 
 ### Requirement: Installer sets the default subagent model
 On a full install (no item name given), the installer SHALL ensure `CLAUDE_CODE_SUBAGENT_MODEL` is `sonnet` in the `env` object of Claude Code's `settings.json` for the chosen scope, creating the file or the `env` object when missing and keeping every other key. It SHALL NOT set `CLAUDE_CODE_SUBAGENT_MODEL_FORCE`.

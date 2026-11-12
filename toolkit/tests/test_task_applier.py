@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 TOOLKIT = Path(__file__).resolve().parents[1]
-AGENT = TOOLKIT / "agents" / "opsx-task-applier.md"
+AGENT = TOOLKIT / "agents" / "task-applier.md"
 APPLY_COMMAND = TOOLKIT / "commands" / "jois-code" / "apply.md"
 
 BLOCKED_COMMANDS = [
@@ -92,7 +92,7 @@ needs_powershell = pytest.mark.skipif(
 
 
 def test_agent_hook_blocks_rm_rf():
-    assert "opsx-task-applier never runs rm -rf" in _frontmatter(AGENT)
+    assert "task-applier never runs rm -rf" in _frontmatter(AGENT)
 
 
 @needs_powershell
@@ -122,11 +122,31 @@ def test_edit_hook_lets_other_files_through(file_path):
     assert _edit_hook_result("Edit", file_path).returncode == 0
 
 
-def test_agent_reads_a_slice_task():
+TEST_RUNNER = TOOLKIT / "agents" / "test-runner.md"
+OLD_AGENT_FILES = ["opsx-task-applier.md", "opsx-test-runner.md"]
+
+
+def test_agent_description_names_both_apply_workflows():
+    description = _frontmatter(AGENT)
+    assert "of an OpenSpec change or of a slice" in description
+    assert "/jois-code:apply" in description and "/opsx:apply" in description
+
+
+def test_agent_follows_the_brief_for_what_a_task_satisfies():
     text = AGENT.read_text(encoding="utf-8")
-    assert "of an OpenSpec change or of a slice" in _frontmatter(AGENT)
-    assert "`Satisfies:`" in text and "`Verify:`" in text
-    assert "`UC-<slice>.md`" in text
+    assert "Follow the brief for both" in text
+
+
+@pytest.mark.parametrize("agent", [AGENT, TEST_RUNNER])
+def test_agents_carry_no_slice_vocabulary_or_old_name(agent):
+    text = agent.read_text(encoding="utf-8")
+    for token in ["opsx-", "UC-", "AC-", "`Satisfies:`", "`Verify:`"]:
+        assert token not in text, f"{agent.name} still says {token}"
+
+
+def test_old_agent_files_are_gone():
+    for name in OLD_AGENT_FILES:
+        assert not (TOOLKIT / "agents" / name).exists()
 
 
 def test_apply_command_takes_only_a_slice():
@@ -193,15 +213,15 @@ def test_apply_command_commits_a_finished_group_without_a_test_run():
     step = step_ten(APPLY_COMMAND.read_text(encoding="utf-8"))
     assert "Do this when all of the group's tasks are done." in step
     assert "Run no test here." in step
-    assert "Dispatch `opsx-test-runner`" not in step
+    assert "Dispatch `test-runner`" not in step
 
 
 def test_apply_command_runs_the_test_task_itself_with_the_runner():
     text = APPLY_COMMAND.read_text(encoding="utf-8")
     assert "**The test task.**" in text
-    assert "Do not send it to `opsx-task-applier`" in text
+    assert "Do not send it to `task-applier`" in text
     assert "The tests passed only when every reported command shows exit code 0" in text
-    assert "dispatch `opsx-test-runner` again" in text
+    assert "dispatch `test-runner` again" in text
 
 
 def test_apply_command_stops_before_the_last_group_without_the_runner():

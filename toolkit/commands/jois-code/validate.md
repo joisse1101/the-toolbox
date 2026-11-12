@@ -3,8 +3,8 @@ name: "JOIS: Validate"
 description: "Test whether code does what its plan or its PR says: turn a slice (or a PR and its linked issue) into a list of claims, test each claim in a throwaway checkout under .scratch/ with the code-validator agent, and report each as met, not met or could not test, with evidence. A slice run writes a result file into the slice folder; a PR run only prints. Never edits the code, commits, pushes or writes to GitHub"
 allowed-tools: Bash(node *jois-story-plan*read-diagrams.mjs*), Bash(git status:*), Bash(git branch --show-current:*), Bash(git config user.name:*), Bash(git rev-parse:*), Bash(git fetch:*), Bash(git check-ignore:*), Bash(git diff:*), Bash(git worktree:*), Bash(npm ci:*), Bash(python -m venv:*), Bash(gh pr view:*), Bash(gh issue view:*), Read, Write, Glob, Agent, Monitor, AskUserQuestion
 metadata:
-  version: "1.2.0"
-  last_updated: "2026-11-11"
+  version: "1.2.1"
+  last_updated: "2026-11-12"
 ---
 
 Test whether code does what its plan or its PR says, and report each requirement as `met`, `not met` or `could not test`, with evidence.
@@ -70,7 +70,7 @@ The argument alone picks the form. Never guess between them.
    - Ask with AskUserQuestion, with "Yes, run it" and "No, stop", and run nothing until the user says yes. On no, stop.
 
 5. **Make the throwaway checkout.**
-   - Check the agents first. An agent named in the Agent tool's list of agent types is installed, so check that list first. Only for an agent not in it, look for `code-validator.md` and `opsx-test-runner.md` in `~/.claude/agents/` and in this project's `.claude/agents/`, because a file search or a listing of the home folder can fail and give a false "missing". If one is in none of these, say so, name `Install-Toolkit.ps1` (`-Agent <file>`) and stop. Do not copy an agent yourself.
+   - Check the agents first. An agent named in the Agent tool's list of agent types is installed, so check that list first. Only for an agent not in it, look for `code-validator.md` and `test-runner.md` in `~/.claude/agents/` and in this project's `.claude/agents/`, because a file search or a listing of the home folder can fail and give a false "missing". If one is in none of these, say so, name `Install-Toolkit.ps1` (`-Agent <file>`) and stop. Do not copy an agent yourself.
    - Check that `.scratch/` is git-ignored before anything is fetched. Check the path `.scratch/validate-<name>` with `git check-ignore`, because the folder `.scratch/` may not exist yet and a check on the bare folder then gives a false "not ignored". If the path is not ignored, say so and stop.
    - Create the checkout as a detached git worktree under `.scratch/validate-<name>/`, with `git worktree add --detach`. `<name>` is the slice name in the slice form and `pr-<number>` in the PR form. The slice form uses the current branch's head. The PR form fetches the PR head with `git fetch origin pull/<number>/head` and checks that commit out.
    - Note the tested commit with `git rev-parse HEAD` run in the checkout.
@@ -94,7 +94,7 @@ The argument alone picks the form. Never guess between them.
      f="<file>"; while [ -f "$f" ]; do now=$(date +%s); m=$(stat -c %Y "$f"); if [ $((now - m)) -ge 180 ]; then echo "QUIET 180s: $f"; break; fi; sleep 15; done
      ```
    - When the loop prints its line, say that the agent looks stalled and is probably waiting for an approval, show its last tool call, and say where to open its transcript (its row in the agent panel then Enter, or `/tasks`). If the watch cannot start, say so and carry on. Stop the watch when the report arrives.
-   - For a backend claim covered by a test suite, also dispatch `opsx-test-runner` on the checkout, in the background, with the same watch.
+   - For a backend claim covered by a test suite, also dispatch `test-runner` on the checkout, in the background, with the same watch.
    - Judge every suite by exit codes only, never by wording. A claim is `met` on a suite only when every reported command shows exit code 0. The runner's exact line `exit code 0 (the tool showed no error)` counts as exit code 0. A counts line or the word "passed" never counts.
    - A claim that no check reached is `could not test`, with the reason. A claim is never `met` without evidence: the command and its exit code, or the page text the agent quoted.
    - An agent that stops at its turn limit leaves its unfinished claims as `could not test`.

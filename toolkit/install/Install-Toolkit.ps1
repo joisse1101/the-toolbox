@@ -56,7 +56,7 @@ Name of one command item to act on: a folder name (jois-git) or a file name (rev
 Name of one rule to act on: a file name (jois-code-java.md).
 
 .PARAMETER Agent
-Name of one agent to act on: a file name (opsx-task-applier.md).
+Name of one agent to act on: a file name (task-applier.md).
 
 .PARAMETER Target
 Which tool's entry in targets.json to use. Default 'claude-code'.
@@ -192,7 +192,7 @@ function Install-SkillPackages($Item) {
 
 # The one key the installer sets in the tool's settings file. It is the default model for a subagent
 # that has no model passed and none pinned. The force variable is never set: it would override the
-# model pinned in an agent file, such as opsx-test-runner's haiku.
+# model pinned in an agent file, such as test-runner's haiku.
 $settingKey = 'CLAUDE_CODE_SUBAGENT_MODEL'
 $settingValue = 'sonnet'
 $script:settingsFailed = $false
