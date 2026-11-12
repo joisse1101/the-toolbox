@@ -83,11 +83,6 @@ export function useSettings(settleAll, onMigrated) {
     }
   }, []);
 
-  const saveName = (projectName) =>
-    run(async () => {
-      setSettings(await saveProject({ projectName }));
-    });
-
   // `isCodeBase` saves `codeBase` (the server derives `.plans` and drops `dataDir`); otherwise it saves `dataDir`.
   const switchTo = async (dir, isCodeBase = false) => {
     if (!(await settleAll())) throw new Error(SETTLE_FAILED);
@@ -182,5 +177,5 @@ export function useSettings(settleAll, onMigrated) {
       onMigrated?.();
     });
 
-  return { settings, error, working, offer, initResult, copyResult, migrateResult, switched, actions: { switchProject, finishSwitch, saveName, pickFolder, pickCodeBase, chooseRelocation, retrySwitch, runInit, runMigration } };
+  return { settings, error, working, offer, initResult, copyResult, migrateResult, switched, actions: { switchProject, finishSwitch, pickFolder, pickCodeBase, chooseRelocation, retrySwitch, runInit, runMigration } };
 }

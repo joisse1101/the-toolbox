@@ -136,11 +136,11 @@ The system SHALL, on request, copy the files of the current data directory into 
 - **THEN** it is not copied and is not listed as skipped
 
 ### Requirement: Settings tab
-The portal SHALL have a Settings tab that shows the project name, the data directory and where the config file is, lets the user change the name and the directory, and runs init.
+The portal SHALL have a Settings tab that shows the data directory and where the config file is, lets the user change the directory, and runs init. The tab SHALL NOT offer a way to edit the project name: the Project dropdown in the page header already names the active project. The config file's `projectName` key is still read, and still shown in the page header and the browser title when it is set.
 
 #### Scenario: View
 - **WHEN** the user opens the Settings tab
-- **THEN** it shows the project name, the data directory and the config file path
+- **THEN** it shows the data directory and the config file path, and no project name box
 
 #### Scenario: Change and save
 - **WHEN** the user chooses a valid new data directory with the folder picker

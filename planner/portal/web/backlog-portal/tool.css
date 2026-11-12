@@ -344,8 +344,12 @@ legend { font-weight: 600; padding: 0 var(--space-2); }
 .settings-group { margin-top: var(--space-3); }
 .settings-group > h3 { margin: 0 0 var(--space-2); font-size: var(--text-base, 1rem); }
 .settings-path { text-overflow: ellipsis; }
-.settings-action { display: flex; flex-direction: column; gap: var(--space-1, 4px); max-width: 280px; }
-.settings-action .muted { margin: 0; font-size: var(--text-xs); }
+.settings-action { position: relative; display: flex; flex-direction: column; gap: var(--space-1, 4px); }
+/* The explanation of a risky action: a tooltip under its button, shown on hover and on keyboard focus. */
+.settings-action .tip { display: none; position: absolute; top: 100%; right: 0; z-index: 10; box-sizing: border-box; width: max-content; max-width: 280px; margin: var(--space-1) 0 0; padding: var(--space-2) var(--space-3); font-size: var(--text-xs); color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-3); }
+.settings-action:hover .tip, .settings-action:focus-within .tip { display: block; }
+.settings-field + .settings-field { margin-top: var(--space-3); }
+.settings-action > button { flex: 1; white-space: nowrap; }
 button.offer-danger { font-weight: 700; color: var(--accent-text); background: var(--bad); border-color: var(--bad); }
 button.offer-danger:hover:not(:disabled) { background: var(--bad); border-color: var(--text); }
 
@@ -367,5 +371,6 @@ button.offer-danger:hover:not(:disabled) { background: var(--bad); border-color:
 .layout-stack.gap-6, .row.gap-6, .grid3.gap-6 { gap: var(--space-6); }
 .row.align-start { align-items: flex-start; }
 .row.align-center { align-items: center; }
+.row.align-stretch { align-items: stretch; }
 .story-list.lexicon-list { margin-top: 10px; } /* was an inline style; 10px kept so the look is unchanged */
 .avoid-choice { display: inline-block; margin-right: var(--space-3); }
