@@ -181,8 +181,10 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
                 )}
                 {s.frozen && <span className="frozen-mark" title="Frozen: reference only, read-only" aria-label="Frozen">{'\u2744'}</span>}
                 {s.benched && <span className="lock-mark" title="Benched: ignored by the explore and propose skills" aria-label="Benched">🪑</span>}
-                {s.code && <span className="code">{s.code}</span>}
-                <span className="title">{storyLabel(s)}</span>
+                <button type="button" className="row-btn" aria-current={s.id === selectedId ? 'true' : undefined}>
+                  {s.code && <span className="code">{s.code}</span>}
+                  <span className="title">{storyLabel(s)}</span>
+                </button>
                 {suggestionCounts.get(s.code) > 0 && (
                   <span className="suggestion-badge" title={`${suggestionCounts.get(s.code)} review suggestion(s)`} aria-label={`${suggestionCounts.get(s.code)} review suggestions`}>{suggestionCounts.get(s.code)}</span>
                 )}
