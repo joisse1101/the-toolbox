@@ -44,7 +44,7 @@ export default function SettingsTab({ hidden, settingsState }) {
               </div>
               <button type="button" id="saveNameBtn" disabled={!nameChanged || working} onClick={() => actions.saveName(name)}>Save name</button>
             </Row>
-            <Row>
+            <Row align="start">
               <div className="grow">
                 <label htmlFor="codeBase">Code base</label>
                 <input type="text" id="codeBase" className="settings-path" value={settings.codeBase ?? ''} title={settings.codeBase ?? undefined} placeholder="Not set: the data folder below is used" readOnly />
@@ -63,7 +63,7 @@ export default function SettingsTab({ hidden, settingsState }) {
           </section>
           <section className="settings-group" aria-labelledby="settingsStorageHeading">
             <h3 id="settingsStorageHeading">Storage</h3>
-            <Row>
+            <Row align="start">
               <div className="grow">
                 <label htmlFor="dataDir">Data folder</label>
                 <input type="text" id="dataDir" className="settings-path" value={settings.dataDir} title={settings.dataDir} readOnly />
