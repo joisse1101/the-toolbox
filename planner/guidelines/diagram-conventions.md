@@ -4,7 +4,7 @@ The single statement of the rules for a **slice**: the use-case specification, c
 sequence diagrams drawn from the shaped stories of one Epic, one Feature or one story. The
 `jois-story-plan` skill and the slice writer's `--check` cite this file and do not restate it. Every slice is
 drawn to the design level of section 8. A mock slice built from the sample backlog is in
-`toolkit/tests/story/fixtures/sample/slices/sign-in/`.
+`toolkit/sample/story-to-code/stages/planned/.plans/habits/slices/streaks/`.
 
 ## 1. Limits and stereotypes
 

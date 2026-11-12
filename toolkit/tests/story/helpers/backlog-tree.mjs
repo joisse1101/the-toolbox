@@ -25,19 +25,30 @@ export function putFile(dataDir, name, kind, text) {
 export const pathOf = (dataDir, name, kind) => bp.backlogFile(dataDir, name, kind);
 export const decidedPath = (dataDir, name) => bp.reviewDecidedFile(dataDir, name);
 
-// ---- the plan skill's mock backlog, slice and context map (fixtures/sample/, built from the sample backlog) ----
-export const FIXTURES = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'fixtures', 'sample');
-export const FIXTURE_BACKLOG_CSV = path.join(FIXTURES, 'user-stories.csv');
-export const SAMPLE_SLICE = path.join(FIXTURES, 'slices', 'sign-in');
+// ---- the plan skill's mock backlog, slice and context map: the story-to-code sample's `accepted` backlog and `planned` slice ----
+const SAMPLE_STAGES = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'sample', 'story-to-code', 'stages');
+const SAMPLE_PLANS = path.join(SAMPLE_STAGES, 'planned', '.plans', 'habits');
+const SAMPLE_BACKLOG_SETTINGS = path.join(SAMPLE_STAGES, 'proposed', '.plans', 'habits', 'backlog.json');
+export const FIXTURE_BACKLOG_CSV = path.join(SAMPLE_STAGES, 'accepted', '.plans', 'habits', 'user-stories.csv');
+export const SAMPLE_SLICE_NAME = 'streaks';
+export const SAMPLE_SLICE = path.join(SAMPLE_PLANS, 'slices', SAMPLE_SLICE_NAME);
+
+// Gives a backlog the initials of the sample (H1), for a test that writes its own backlog text with `putFile`.
+export function putSampleInitials(dataDir, name) {
+  const dir = bp.backlogDir(dataDir, name);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.copyFileSync(SAMPLE_BACKLOG_SETTINGS, path.join(dir, 'backlog.json'));
+}
 
 // A temp data folder holding the sample backlog `sample` and, on request, the mock slice and the mock context map.
 export function sampleTree({ withSlice = false, withMap = false } = {}) {
   const root = tempData('sample-tree-');
   putFile(root, 'sample', 'backlog', fs.readFileSync(FIXTURE_BACKLOG_CSV, 'utf8'));
   const dir = bp.backlogDir(root, 'sample');
-  if (withSlice) fs.cpSync(SAMPLE_SLICE, path.join(bp.slicesDir(root, 'sample'), 'sign-in'), { recursive: true });
+  putSampleInitials(root, 'sample');
+  if (withSlice) fs.cpSync(SAMPLE_SLICE, path.join(bp.slicesDir(root, 'sample'), SAMPLE_SLICE_NAME), { recursive: true });
   if (withMap) {
-    for (const f of ['context-map.json', 'context-map.md']) fs.copyFileSync(path.join(FIXTURES, f), path.join(dir, f));
+    for (const f of ['context-map.json', 'context-map.md']) fs.copyFileSync(path.join(SAMPLE_PLANS, f), path.join(dir, f));
   }
   return root;
 }

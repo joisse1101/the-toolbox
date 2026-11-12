@@ -17,7 +17,6 @@ import { compareContextMap, composeContextMap, epicNames } from '../../skills/jo
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SAMPLE_DIR = path.resolve(HERE, '..', '..', 'sample', 'story-to-code');
 const STAGES = ['proposed', 'accepted', 'planned', 'built', 'validated', 'archived'];
-const INITIALS = 'H1';
 const BACKLOG = 'habits';
 const SLICE = 'streaks';
 const limits = parseLimits(fs.readFileSync(path.join(HERE, '..', '..', 'skills', 'jois-story-plan', 'references', 'diagram-conventions.md'), 'utf8'));
@@ -41,12 +40,13 @@ function filesAt(stage) {
   return files;
 }
 
+const INITIALS = JSON.parse(filesAt('proposed').get('.plans/habits/backlog.json')).initials;
 const plans = (file) => `.plans/${BACKLOG}/${file}`;
 const sliceFile = (name) => plans(`slices/${SLICE}/${name}`);
 
 test('every stage folder holds the files the spec lists', () => {
   const expected = {
-    proposed: [plans('user-stories/proposals.csv')],
+    proposed: [plans('backlog.json'), plans('user-stories/proposals.csv')],
     accepted: [plans('user-stories.csv')],
     planned: [sliceFile(`UC-${SLICE}.md`), sliceFile('tasks.md'), sliceFile('source.json')],
     built: [sliceFile('tasks.md'), sliceFile('review.md'), 'built.patch'],

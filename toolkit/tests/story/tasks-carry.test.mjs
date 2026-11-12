@@ -1,42 +1,42 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { carryTicks, parseTasks } from '../../skills/jois-story-plan/diagrams/tasks.js';
-import { document, tasksText, LOGIN_TASK, RESET_TASK } from './tasks-fixture.mjs';
+import { document, tasksText, CURRENT_TASK, BEST_TASK } from './tasks-fixture.mjs';
 
-const carry = (over) => carryTicks({ oldTasksText: tasksText({ login: 'x', reset: 'x' }), oldDocument: document, newTasksText: tasksText(), newDocument: document, ...over });
+const carry = (over) => carryTicks({ oldTasksText: tasksText({ current: 'x', best: 'x' }), oldDocument: document, newTasksText: tasksText(), newDocument: document, ...over });
 const doneIds = (text) => parseTasks(text).tasks.filter((t) => t.done).map((t) => t.id);
 
 test('a ticked task is written ticked when its criterion text is unchanged', () => {
   const r = carry();
-  assert.deepEqual(doneIds(r.text), [LOGIN_TASK, RESET_TASK]);
+  assert.deepEqual(doneIds(r.text), [CURRENT_TASK, BEST_TASK]);
   assert.deepEqual([r.reset, r.dropped], [[], []]);
 });
 
 test('a ticked task whose criterion was reworded is written unticked and listed as reset with its title', () => {
-  const reworded = document.replace('then they see their dashboard.', 'then they see a welcome page.');
+  const reworded = document.replace('then it shows a streak of 3.', 'then it shows a streak of 4.');
   const r = carry({ newDocument: reworded });
-  assert.deepEqual(doneIds(r.text), [RESET_TASK]);
-  assert.deepEqual(r.reset, [{ id: LOGIN_TASK, title: 'Show the dashboard after sign-in' }]);
+  assert.deepEqual(doneIds(r.text), [BEST_TASK]);
+  assert.deepEqual(r.reset, [{ id: CURRENT_TASK, title: 'Show the current streak of a habit' }]);
 });
 
 test('a ticked task the new file no longer holds is listed as dropped with its title', () => {
-  const r = carry({ newTasksText: tasksText().replace(RESET_TASK, 'T-sign-in-other') });
-  assert.deepEqual(r.dropped, [{ id: RESET_TASK, title: 'Send the reset link' }]);
+  const r = carry({ newTasksText: tasksText().replace(BEST_TASK, 'T-streaks-other') });
+  assert.deepEqual(r.dropped, [{ id: BEST_TASK, title: 'Show the best streak of a habit' }]);
 });
 
 test('a renamed task id is written unticked, and the old id is dropped', () => {
-  const r = carry({ newTasksText: tasksText().replace(LOGIN_TASK, 'T-sign-in-login-page') });
-  assert.deepEqual(doneIds(r.text), [RESET_TASK]);
-  assert.deepEqual(r.dropped.map((t) => t.id), [LOGIN_TASK]);
+  const r = carry({ newTasksText: tasksText().replace(CURRENT_TASK, 'T-streaks-current-page') });
+  assert.deepEqual(doneIds(r.text), [BEST_TASK]);
+  assert.deepEqual(r.dropped.map((t) => t.id), [CURRENT_TASK]);
 });
 
 test('a task unticked in the old file stays unticked', () => {
-  const r = carry({ oldTasksText: tasksText({ login: ' ', reset: 'x' }) });
-  assert.deepEqual(doneIds(r.text), [RESET_TASK]);
+  const r = carry({ oldTasksText: tasksText({ current: ' ', best: 'x' }) });
+  assert.deepEqual(doneIds(r.text), [BEST_TASK]);
 });
 
 test('a tick sent in the new text is cleared when the old file did not tick the task', () => {
-  const r = carry({ oldTasksText: tasksText(), newTasksText: tasksText({ login: 'x' }) });
+  const r = carry({ oldTasksText: tasksText(), newTasksText: tasksText({ current: 'x' }) });
   assert.deepEqual(doneIds(r.text), []);
 });
 
@@ -55,5 +55,5 @@ test('carrying an unticked file over itself changes no byte', () => {
 test('only the checkbox characters change, and CRLF line endings stay', () => {
   const crlf = tasksText().replace(/\n/g, '\r\n');
   const r = carry({ newTasksText: crlf });
-  assert.equal(r.text, tasksText({ login: 'x', reset: 'x' }).replace(/\n/g, '\r\n'));
+  assert.equal(r.text, tasksText({ current: 'x', best: 'x' }).replace(/\n/g, '\r\n'));
 });

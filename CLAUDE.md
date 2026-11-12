@@ -24,7 +24,7 @@ The toolkit has its own tests, separate from `npm test`: `cd toolkit; python che
 
 ## Line endings
 
-Git stores every tracked file with LF, and each user's `core.autocrlf` setting decides whether their working files are LF or CRLF, so the repo does not force one. `.gitattributes` pins only `planner/test/sample-data/**` and `toolkit/tests/story/fixtures/**` to LF, because tests match fixture text with `\n`. Each generated skill copy has the line ending of its source file, because `planner/scripts/sync-skill-logic.mjs` reads sources as LF and then writes each copy with its source's ending (CRLF in a CRLF checkout, LF otherwise, never a mix), so git reports no change after a run. The data CSVs keep CRLF, because the CSV writer emits it. No test guards line endings.
+Git stores every tracked file with LF, and each user's `core.autocrlf` setting decides whether their working files are LF or CRLF, so the repo does not force one. `.gitattributes` pins only `planner/test/sample-data/**` and `toolkit/sample/story-to-code/**` to LF, because tests match the text of the sample and its fixtures with `\n`. Each generated skill copy has the line ending of its source file, because `planner/scripts/sync-skill-logic.mjs` reads sources as LF and then writes each copy with its source's ending (CRLF in a CRLF checkout, LF otherwise, never a mix), so git reports no change after a run. The data CSVs keep CRLF, because the CSV writer emits it. No test guards line endings.
 
 ## Zones
 

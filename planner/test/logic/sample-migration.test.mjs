@@ -21,7 +21,7 @@ function olderLayoutFromSample() {
   put('backlogs/sample.csv', read('user-stories.csv'));
   put('lexicons/sample.csv', 'Term,Part of,Definition,Avoid,Notes\nAccount,,A person who signs in,,\n');
   for (const f of ['context-map.json', 'context-map.md']) put(`diagrams/sample/${f}`, read(f));
-  for (const f of ['UC-sign-in.md', 'source.json']) put(`diagrams/sample/sign-in/${f}`, read(`slices/sign-in/${f}`));
+  for (const f of ['UC-streaks.md', 'source.json']) put(`diagrams/sample/streaks/${f}`, read(`slices/streaks/${f}`));
   return root;
 }
 
@@ -35,7 +35,7 @@ test('the sample migrates from a copy of the older layout to the sample data lay
   assert.deepEqual(result.failed, []);
   assert.deepEqual(result.skipped, []);
   assert.deepEqual(listBacklogs(root), ['sample']);
-  for (const rel of ['user-stories.csv', 'context-map.json', 'context-map.md', 'slices/sign-in/UC-sign-in.md', 'slices/sign-in/source.json']) {
+  for (const rel of ['user-stories.csv', 'context-map.json', 'context-map.md', 'slices/streaks/UC-streaks.md', 'slices/streaks/source.json']) {
     assert.deepEqual(fs.readFileSync(path.join(root, 'sample', rel)), fs.readFileSync(path.join(rel === 'user-stories.csv' ? path.join(SAMPLE, 'sample') : PLAN_FIXTURES, rel)), rel);
   }
   assert.ok(fs.existsSync(path.join(root, 'sample', 'lexicon.csv')));

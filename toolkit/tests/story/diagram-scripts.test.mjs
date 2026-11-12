@@ -19,12 +19,12 @@ const FIXTURE_SLICE = SAMPLE_SLICE;
 function setup({ withSlice = false } = {}) {
   return sampleTree({ withSlice });
 }
-const sliceDir = (root, slice = 'sign-in') => path.join(slicesPath(root, 'sample'), slice);
+const sliceDir = (root, slice = 'streaks') => path.join(slicesPath(root, 'sample'), slice);
 const snapshot = (dir) => Object.fromEntries(fs.readdirSync(dir).sort().map((f) => [f, fs.readFileSync(path.join(dir, f), 'utf8')]));
 const fixtureFiles = () => fs.readdirSync(FIXTURE_SLICE).filter((f) => f !== 'source.json').map((name) => ({ name, content: fs.readFileSync(path.join(FIXTURE_SLICE, name), 'utf8') }));
-const SCOPE = { type: 'feature', epic: 'Identity and access', feature: 'Sign in' };
-const PAIRS = [{ id: 'B1-IAM-0001', title: 'Sign in with email' }, { id: 'B1-IAM-0002', title: 'Reset a password' }];
-const input = (root, over = {}) => ({ dataDir: root, name: 'sample', slice: 'sign-in', scope: SCOPE, stories: PAIRS, files: fixtureFiles(), ...over });
+const SCOPE = { type: 'feature', epic: 'Habit tracking', feature: 'Streaks' };
+const PAIRS = [{ id: 'H1-HT-0001', title: 'See the current streak' }, { id: 'H1-HT-0002', title: 'See the best streak' }];
+const input = (root, over = {}) => ({ dataDir: root, name: 'sample', slice: 'streaks', scope: SCOPE, stories: PAIRS, files: fixtureFiles(), ...over });
 
 const csvPath = (root) => pathOf(root, 'sample', 'backlog');
 const editCsv = (root, edit) => fs.writeFileSync(csvPath(root), edit(fs.readFileSync(csvPath(root), 'utf8')));
@@ -35,41 +35,41 @@ test('read: the committed mock is up to date and its files are returned', () => 
   const root = setup({ withSlice: true });
   const list = readDiagrams({ dataDir: root, name: 'sample' });
   assert.equal(list.ok, true);
-  assert.deepEqual(list.slices.map((s) => [s.slice, s.stale]), [['sign-in', false]]);
-  assert.match(formatDiagrams(list), /sign-in \| Feature: Identity and access > Sign in \| 2 stories \| up to date/);
-  const one = readDiagrams({ dataDir: root, name: 'sample', slice: 'sign-in' });
-  assert.match(formatDiagrams(one), /--- UC-sign-in\.md ---[\s\S]*## Class diagram/);
+  assert.deepEqual(list.slices.map((s) => [s.slice, s.stale]), [['streaks', false]]);
+  assert.match(formatDiagrams(list), /streaks \| Feature: Habit tracking > Streaks \| 2 stories \| up to date/);
+  const one = readDiagrams({ dataDir: root, name: 'sample', slice: 'streaks' });
+  assert.match(formatDiagrams(one), /--- UC-streaks\.md ---[\s\S]*## Class diagram/);
   assert.match(formatDiagrams(one), /## Changes to existing specs/);
-  assert.deepEqual(listSlices(slicesPath(root, 'sample')), ['sign-in']);
+  assert.deepEqual(listSlices(slicesPath(root, 'sample')), ['streaks']);
 });
 
 test('read: a renumber is healed in source.json and the specification list, and no diagram changes', () => {
   const root = setup({ withSlice: true });
-  // A story added ahead of "Reset a password" shifts its derived ID; the locked story keeps its code.
-  editCsv(root, (t) => t.replace('B1-IAM-0002,Identity and access,Sign in,Reset a password', ',Identity and access,Sign in,Verify the email,"As a member, I want to verify my email, so that it is mine.",2,Low,,"AC1: Given a, when b, then c.",,,\nB1-IAM-0002,Identity and access,Sign in,Reset a password'));
+  // A story added ahead of "See the best streak" shifts its derived ID; the locked story keeps its code.
+  editCsv(root, (t) => t.replace('H1-HT-0002,Habit tracking,Streaks,See the best streak', ',Habit tracking,Streaks,Name a habit,"As a person building habits, I want to name a habit, so that I know it.",2,Low,,"AC1: Given a, when b, then c.",,,\nH1-HT-0002,Habit tracking,Streaks,See the best streak'));
   const before = snapshot(sliceDir(root));
-  const r = readDiagrams({ dataDir: root, name: 'sample', slice: 'sign-in' });
+  const r = readDiagrams({ dataDir: root, name: 'sample', slice: 'streaks' });
   const [slice] = r.slices;
-  assert.deepEqual(slice.healed.map((h) => [h.title, h.from, h.to]), [['Reset a password', 'B1-IAM-0002', 'B1-IAM-0003']]);
-  assert.deepEqual(slice.added.map((a) => a.title), ['Verify the email']);
+  assert.deepEqual(slice.healed.map((h) => [h.title, h.from, h.to]), [['See the best streak', 'H1-HT-0002', 'H1-HT-0003']]);
+  assert.deepEqual(slice.added.map((a) => a.title), ['Name a habit']);
   assert.equal(slice.stale, true);
   const after = snapshot(sliceDir(root));
-  assert.equal(JSON.parse(after['source.json']).stories[1].id, 'B1-IAM-0003');
-  assert.match(after['UC-sign-in.md'], /- B1-IAM-0003 Reset a password/);
+  assert.equal(JSON.parse(after['source.json']).stories[1].id, 'H1-HT-0003');
+  assert.match(after['UC-streaks.md'], /- H1-HT-0003 See the best streak/);
   const blocks = (text) => text.match(/```mermaid[\s\S]*?```/g);
-  assert.equal(blocks(before['UC-sign-in.md']).length, 3);
-  assert.deepEqual(blocks(after['UC-sign-in.md']), blocks(before['UC-sign-in.md']), 'every mermaid block is byte-for-byte as before');
-  assert.equal(after['UC-sign-in.md'].replace(/- B1-IAM-0003/, '- B1-IAM-0002'), before['UC-sign-in.md'], 'only the generated list changed in the specification');
-  assert.match(formatDiagrams(r), /healed: "Reset a password" is now B1-IAM-0003 \(was B1-IAM-0002\)/);
+  assert.equal(blocks(before['UC-streaks.md']).length, 3);
+  assert.deepEqual(blocks(after['UC-streaks.md']), blocks(before['UC-streaks.md']), 'every mermaid block is byte-for-byte as before');
+  assert.equal(after['UC-streaks.md'].replace(/- H1-HT-0003/, '- H1-HT-0002'), before['UC-streaks.md'], 'only the generated list changed in the specification');
+  assert.match(formatDiagrams(r), /healed: "See the best streak" is now H1-HT-0003 \(was H1-HT-0002\)/);
 });
 
 test('read: a reworded story is changed and nothing is rewritten', () => {
   const root = setup({ withSlice: true });
-  editCsv(root, (t) => t.replace('then they are sent a reset link', 'then they are told to check their mail'));
+  editCsv(root, (t) => t.replace('then it shows a best streak of 5', 'then it shows a longest run of 5'));
   const before = snapshot(sliceDir(root));
-  const r = readDiagrams({ dataDir: root, name: 'sample', slice: 'sign-in' });
+  const r = readDiagrams({ dataDir: root, name: 'sample', slice: 'streaks' });
   assert.deepEqual(r.slices[0].stories.map((s) => s.status), ['ok', 'changed']);
-  assert.match(formatDiagrams(r), /changed: "Reset a password" was reworded/);
+  assert.match(formatDiagrams(r), /changed: "See the best streak" was reworded/);
   assert.deepEqual(snapshot(sliceDir(root)), before);
 });
 
@@ -100,7 +100,7 @@ test('write: the slice is written, read back, and the hashes are the writer\'s',
   const fixture = snapshot(FIXTURE_SLICE);
   for (const f of Object.keys(fixture).filter((n) => n !== 'source.json')) assert.equal(written[f], fixture[f].replace(/\r\n/g, '\n'), f);
   const source = JSON.parse(written['source.json']);
-  assert.deepEqual(source.stories.map((s) => [s.id, s.hash]), [['B1-IAM-0001', 'baf514d489ee'], ['B1-IAM-0002', 'ddf31b439280']]);
+  assert.deepEqual(source.stories.map((s) => [s.id, s.hash]), [['H1-HT-0001', 'afb3d4cdba1b'], ['H1-HT-0002', '3cbcd75e0d93']]);
   assert.match(formatDiagrams(readDiagrams({ dataDir: root, name: 'sample' })), /up to date/);
 });
 
@@ -119,18 +119,18 @@ test('write: the same slice twice changes no byte and says nothing changed', asy
 
 test('write: a Title that does not match is refused and says what the ID holds', async () => {
   const root = setup();
-  const r = await writeDiagram(input(root, { stories: [{ id: 'B1-IAM-0001', title: 'Reset a password' }, PAIRS[1]] }));
+  const r = await writeDiagram(input(root, { stories: [{ id: 'H1-HT-0001', title: 'See the best streak' }, PAIRS[1]] }));
   assert.equal(r.ok, false);
-  assert.match(r.text, /B1-IAM-0001 is now "Sign in with email" \(Identity and access > Sign in\), not "Reset a password"/);
+  assert.match(r.text, /H1-HT-0001 is now "See the current streak" \(Habit tracking > Streaks\), not "See the best streak"/);
   assert.equal(fs.existsSync(slicesPath(root, 'sample')), false);
-  assert.match((await writeDiagram(input(root, { stories: [{ id: 'B1-IAM-0001' }, PAIRS[1]] }))).text, /needs the story's current Title/);
+  assert.match((await writeDiagram(input(root, { stories: [{ id: 'H1-HT-0001' }, PAIRS[1]] }))).text, /needs the story's current Title/);
 });
 
 test('write: a story of the scope that was not listed, and a story outside the scope, are refused', async () => {
   const root = setup();
-  assert.match((await writeDiagram(input(root, { stories: [PAIRS[0]] }))).text, /"Reset a password" is in the scope but was not listed/);
-  assert.match((await writeDiagram(input(root, { stories: [...PAIRS, { id: 'B1-R-0001', title: 'Export a list as CSV' }] }))).text, /"Export a list as CSV" is not in the scope/);
-  assert.match((await writeDiagram(input(root, { scope: { type: 'feature', epic: 'Identity and access', feature: 'Nowhere' } }))).text, /No story of sample is in the scope/);
+  assert.match((await writeDiagram(input(root, { stories: [PAIRS[0]] }))).text, /"See the best streak" is in the scope but was not listed/);
+  assert.match((await writeDiagram(input(root, { stories: [...PAIRS, { id: 'H1-FT-0001', title: 'Count focus sessions by category' }] }))).text, /"Count focus sessions by category" is not in the scope/);
+  assert.match((await writeDiagram(input(root, { scope: { type: 'feature', epic: 'Habit tracking', feature: 'Nowhere' } }))).text, /No story of sample is in the scope/);
 });
 
 test('write: a slice name that would leave the backlog\'s diagrams folder writes nothing', async () => {
@@ -146,61 +146,61 @@ test('write: a slice name that would leave the backlog\'s diagrams folder writes
 
 test('write: one failing diagram writes nothing and every problem is listed', async () => {
   const root = setup();
-  const files = fixtureFiles().map((f) => ({ ...f, content: f.content.replace('FORM->>AUTH: 1.2', 'FORM->>GHOST: 1.2').replace('<<service>>\n    +authenticate', '+authenticate') }));
+  const files = fixtureFiles().map((f) => ({ ...f, content: f.content.replace('LIST->>SVC: 1.2', 'LIST->>GHOST: 1.2').replace('<<service>>\n    +currentStreak', '+currentStreak') }));
   const r = await writeDiagram(input(root, { files }));
   assert.equal(r.ok, false);
   assert.match(r.text, /2 problems/);
   assert.match(r.text, /GHOST/);
-  assert.match(r.text, /## Class diagram: AuthService has no stereotype/);
+  assert.match(r.text, /## Class diagram: StreakService has no stereotype/);
   assert.equal(fs.existsSync(slicesPath(root, 'sample')), false);
 });
 
 test('write: a slice under the same name for another scope is refused and names the existing scope', async () => {
   const root = setup({ withSlice: true });
   const before = snapshot(sliceDir(root));
-  const r = await writeDiagram(input(root, { scope: { type: 'epic', epic: 'Identity and access' } }));
+  const r = await writeDiagram(input(root, { scope: { type: 'epic', epic: 'Habit tracking' } }));
   assert.equal(r.ok, false);
-  assert.match(r.text, /already exists for another scope \(Feature: Identity and access > Sign in\)/);
+  assert.match(r.text, /already exists for another scope \(Feature: Habit tracking > Streaks\)/);
   assert.deepEqual(snapshot(sliceDir(root)), before);
 });
 
 test('write: a changed slice is rewritten, a file that was not sent is left alone and reported', async () => {
   const root = setup({ withSlice: true });
   fs.writeFileSync(path.join(sliceDir(root), 'notes.txt'), 'old notes\n');
-  const files = fixtureFiles().map((f) => (f.name === 'UC-sign-in.md' ? { ...f, content: f.content.replace('A member signs in', 'A registered member signs in') } : f));
+  const files = fixtureFiles().map((f) => (f.name === 'UC-streaks.md' ? { ...f, content: f.content.replace('A person opens', 'A returning person opens') } : f));
   const r = await writeDiagram(input(root, { files }));
   assert.equal(r.ok, true, r.errors?.join('\n'));
   assert.equal(r.changed, true);
   assert.deepEqual(r.leftover, ['notes.txt']);
   assert.match(r.text, /left as they are: notes\.txt/);
-  assert.match(fs.readFileSync(path.join(sliceDir(root), 'UC-sign-in.md'), 'utf8'), /A registered member signs in/);
+  assert.match(fs.readFileSync(path.join(sliceDir(root), 'UC-streaks.md'), 'utf8'), /A returning person opens/);
   assert.ok(fs.existsSync(path.join(sliceDir(root), 'notes.txt')));
-  assert.deepEqual(r.written, ['UC-sign-in.md']);
+  assert.deepEqual(r.written, ['UC-streaks.md']);
 });
 
 test('write: the specification\'s generated list is written by the writer whatever the model put in it', async () => {
   const root = setup();
-  const files = fixtureFiles().map((f) => (f.name === 'UC-sign-in.md' ? { ...f, content: f.content.replace('- B1-IAM-0001 Sign in with email', '- ZZZ-9999 invented') } : f));
+  const files = fixtureFiles().map((f) => (f.name === 'UC-streaks.md' ? { ...f, content: f.content.replace('- H1-HT-0001 See the current streak', '- ZZZ-9999 invented') } : f));
   assert.equal((await writeDiagram(input(root, { files }))).ok, true);
-  const spec = fs.readFileSync(path.join(sliceDir(root), 'UC-sign-in.md'), 'utf8');
-  assert.match(spec, /- B1-IAM-0001 Sign in with email/);
+  const spec = fs.readFileSync(path.join(sliceDir(root), 'UC-streaks.md'), 'utf8');
+  assert.match(spec, /- H1-HT-0001 See the current streak/);
   assert.doesNotMatch(spec, /ZZZ-9999/);
 });
 
 test('write: a document with a diagram that does not parse writes nothing and lists the parser message and line', async () => {
   const root = setup();
-  const files = fixtureFiles().map((f) => ({ ...f, content: f.content.replace('MAILER-->>U: 2.10 reset link received', 'MAILER-->>>U: 2.10 reset link received') }));
+  const files = fixtureFiles().map((f) => ({ ...f, content: f.content.replace('STORE-->>SVC: 2.10 ok', 'STORE-->>>SVC: 2.10 ok') }));
   const r = await writeDiagram(input(root, { files }));
   assert.equal(r.ok, false);
-  assert.match(r.text, /UC-sign-in\.md:\d+: ### Sequence: reset: does not parse as Mermaid: Parse error on line \d+/);
+  assert.match(r.text, /UC-streaks\.md:\d+: ### Sequence: best: does not parse as Mermaid: Parse error on line \d+/);
   assert.equal(fs.existsSync(slicesPath(root, 'sample')), false);
 });
 
 test('write: a second document is refused, naming the rule', async () => {
   const root = setup();
-  const r = await writeDiagram(input(root, { files: [...fixtureFiles(), { name: 'UC-sign-in-extra.md', content: '# extra' }] }));
+  const r = await writeDiagram(input(root, { files: [...fixtureFiles(), { name: 'UC-streaks-extra.md', content: '# extra' }] }));
   assert.equal(r.ok, false);
-  assert.match(r.text, /UC-sign-in-extra\.md: is not part of a slice: a slice is one document/);
+  assert.match(r.text, /UC-streaks-extra\.md: is not part of a slice: a slice is one document/);
 });
 
 // ---- the scripts as Bash runs them ----
@@ -208,7 +208,7 @@ test('write: a second document is refused, naming the rule', async () => {
 const run = (copy, script, args, body, root) => spawnSync(process.execPath, [path.join(copy.dir, script), ...args], {
   input: body === undefined ? '' : JSON.stringify(body), encoding: 'utf8', env: { ...process.env, PLANNER_CONFIG: tempConfig(root) },
 });
-const sliceBody = (over = {}) => ({ slice: 'sign-in', scope: SCOPE, stories: PAIRS, files: fixtureFiles(), ...over });
+const sliceBody = (over = {}) => ({ slice: 'streaks', scope: SCOPE, stories: PAIRS, files: fixtureFiles(), ...over });
 
 test('cli: write-diagram --check on the mock reports and writes nothing, the write then writes and a repeat changes nothing', () => {
   const root = setup();
@@ -218,16 +218,16 @@ test('cli: write-diagram --check on the mock reports and writes nothing, the wri
   assert.equal(fs.existsSync(slicesPath(root, 'sample')), false);
   const wrote = run(plan, 'write-diagram.mjs', ['sample'], sliceBody(), root);
   assert.equal(wrote.status, 0, wrote.stderr);
-  assert.match(wrote.stdout, /Wrote the slice "sign-in"/);
+  assert.match(wrote.stdout, /Wrote the slice "streaks"/);
   assert.match(run(plan, 'write-diagram.mjs', ['sample'], sliceBody(), root).stdout, /Nothing changed/);
-  const read = run(plan, 'read-diagrams.mjs', ['sample', '--slice', 'sign-in'], undefined, root);
+  const read = run(plan, 'read-diagrams.mjs', ['sample', '--slice', 'streaks'], undefined, root);
   assert.equal(read.status, 0, read.stderr);
-  assert.match(read.stdout, /sign-in \| Feature: Identity and access > Sign in \| 2 stories \| up to date/);
+  assert.match(read.stdout, /streaks \| Feature: Habit tracking > Streaks \| 2 stories \| up to date/);
 });
 
 test('cli: an invalid diagram is refused with --check and without, with the parser message, and nothing is written', () => {
   const root = setup();
-  const files = fixtureFiles().map((f) => ({ ...f, content: f.content.replace('MAILER-->>U: 2.10 reset link received', 'MAILER-->>>U: 2.10 reset link received') }));
+  const files = fixtureFiles().map((f) => ({ ...f, content: f.content.replace('STORE-->>SVC: 2.10 ok', 'STORE-->>>SVC: 2.10 ok') }));
   for (const args of [['sample', '--check'], ['sample']]) {
     const r = run(plan, 'write-diagram.mjs', args, sliceBody({ files }), root);
     assert.equal(r.status, 1, args.join(' '));
@@ -269,16 +269,16 @@ const tasksPath = (root) => path.join(sliceDir(root), TASKS);
 const withFile = (name, change) => fixtureFiles().map((f) => (f.name === name ? { ...f, content: change(f.content) } : f));
 const withoutFile = (name) => fixtureFiles().filter((f) => f.name !== name);
 const tick = (root, id) => fs.writeFileSync(tasksPath(root), fs.readFileSync(tasksPath(root), 'utf8').replace(`- [ ] ${id}`, `- [x] ${id}`));
-const LOGIN = 'T-sign-in-login-dashboard';
-const RESET = 'T-sign-in-reset-link';
-const REWORD = (text) => text.replace('when they ask for a reset', 'when they request a reset');
+const CURRENT = 'T-streaks-current-count';
+const RESET = 'T-streaks-best-count';
+const REWORD = (text) => text.replace('current streak is 2', 'current streak is two');
 
 test('write: a missing tasks.md, an uncovered criterion and a task without Verify are each refused with and without --check, and nothing is written', async () => {
   const root = setup();
   const cases = [
     [withoutFile(TASKS), /tasks\.md: is missing/],
-    [withFile(TASKS, (t) => t.replace(/\n## reset[\s\S]*$/, '\n')), /the AC id AC-sign-in-reset-link \(story "Reset a password"\) has no task/],
-    [withFile(TASKS, (t) => t.replace(/  Verify: sign in[^\n]*\n/, '')), new RegExp(`the task ${LOGIN} "Show the dashboard after sign-in" has no "Verify:" line`)],
+    [withFile(TASKS, (t) => t.replace(/\n## best[\s\S]*$/, '\n')), /the AC id AC-streaks-best \(story "See the best streak"\) has no task/],
+    [withFile(TASKS, (t) => t.replace(/  Verify: check[^\n]*\n/, '')), new RegExp(`the task ${CURRENT} "Show the current streak of a habit" has no "Verify:" line`)],
   ];
   for (const [files, pattern] of cases) {
     const written = await writeDiagram(input(root, { files }));
@@ -314,36 +314,36 @@ test('write: tasks.md is written with every task unticked on the first write and
 test('write: ticks stay when the criteria are unchanged, even though the skill sends every task unticked', async () => {
   const root = setup();
   await writeDiagram(input(root));
-  tick(root, LOGIN);
-  const files = withFile('UC-sign-in.md', (t) => t.replace('A member signs in', 'A registered member signs in'));
+  tick(root, CURRENT);
+  const files = withFile('UC-streaks.md', (t) => t.replace('A person opens', 'A returning person opens'));
   const r = await writeDiagram(input(root, { files }));
   assert.equal(r.ok, true, r.errors?.join('\n'));
-  assert.deepEqual(r.written, ['UC-sign-in.md']);
+  assert.deepEqual(r.written, ['UC-streaks.md']);
   const text = fs.readFileSync(tasksPath(root), 'utf8');
-  assert.ok(text.includes(`- [x] ${LOGIN}`), `- [x] ${LOGIN}`);
+  assert.ok(text.includes(`- [x] ${CURRENT}`), `- [x] ${CURRENT}`);
   assert.ok(text.includes(`- [ ] ${RESET}`), `- [ ] ${RESET}`);
 });
 
 test('write: a reworded criterion resets its task and the reply lists it by id and title; a removed task is listed as dropped', async () => {
   const root = setup();
   await writeDiagram(input(root));
-  tick(root, LOGIN);
+  tick(root, CURRENT);
   tick(root, RESET);
   editCsv(root, REWORD);
-  const reworded = await writeDiagram(input(root, { files: withFile('UC-sign-in.md', REWORD) }));
+  const reworded = await writeDiagram(input(root, { files: withFile('UC-streaks.md', REWORD) }));
   assert.equal(reworded.ok, true, reworded.errors?.join('\n'));
-  assert.deepEqual(reworded.reset, [{ id: RESET, title: 'Send the reset link' }]);
-  assert.match(reworded.text, new RegExp(`reset: task ${RESET} "Send the reset link"`));
+  assert.deepEqual(reworded.reset, [{ id: RESET, title: 'Show the best streak of a habit' }]);
+  assert.match(reworded.text, new RegExp(`reset: task ${RESET} "Show the best streak of a habit"`));
   const text = fs.readFileSync(tasksPath(root), 'utf8');
-  assert.ok(text.includes(`- [x] ${LOGIN}`), `- [x] ${LOGIN}`);
+  assert.ok(text.includes(`- [x] ${CURRENT}`), `- [x] ${CURRENT}`);
   assert.ok(text.includes(`- [ ] ${RESET}`), `- [ ] ${RESET}`);
 
   tick(root, RESET);
-  const renamed = withFile(TASKS, (t) => t.replace(RESET, 'T-sign-in-reset-mail').replace('Send the reset link', 'Mail the reset link'));
-  const dropped = await writeDiagram(input(root, { files: renamed.map((f) => (f.name === 'UC-sign-in.md' ? { ...f, content: REWORD(f.content) } : f)) }));
+  const renamed = withFile(TASKS, (t) => t.replace(RESET, 'T-streaks-best-run').replace('Show the best streak of a habit', 'Find the best run'));
+  const dropped = await writeDiagram(input(root, { files: renamed.map((f) => (f.name === 'UC-streaks.md' ? { ...f, content: REWORD(f.content) } : f)) }));
   assert.equal(dropped.ok, true, dropped.errors?.join('\n'));
-  assert.deepEqual(dropped.dropped, [{ id: RESET, title: 'Send the reset link' }]);
-  assert.match(dropped.text, new RegExp(`dropped: task ${RESET} "Send the reset link"`));
+  assert.deepEqual(dropped.dropped, [{ id: RESET, title: 'Show the best streak of a habit' }]);
+  assert.match(dropped.text, new RegExp(`dropped: task ${RESET} "Show the best streak of a habit"`));
 });
 
 test('write: a tick made by hand between two writes survives, and a repeated write says nothing changed with both files byte for byte equal', async () => {
@@ -357,19 +357,19 @@ test('write: a tick made by hand between two writes survives, and a repeated wri
   assert.match(again.text, /Nothing changed/);
   const after = snapshot(sliceDir(root));
   assert.equal(after[TASKS], before[TASKS]);
-  assert.equal(after['UC-sign-in.md'], before['UC-sign-in.md']);
+  assert.equal(after['UC-streaks.md'], before['UC-streaks.md']);
   assert.ok(after[TASKS].includes(`- [x] ${RESET}`), `- [x] ${RESET}`);
   assert.deepEqual(after, before);
 });
 
 test('read: a slice with tasks.md shows how many tasks are done and no byte of tasks.md changes', () => {
   const root = setup({ withSlice: true });
-  const six = Array.from({ length: 6 }, (_, i) => `- [${i < 2 ? 'x' : ' '}] T-sign-in-t${i} Task ${i}\n  Satisfies: AC-sign-in-dashboard (steps 1.1)\n  Verify: look\n`).join('\n');
+  const six = Array.from({ length: 6 }, (_, i) => `- [${i < 2 ? 'x' : ' '}] T-streaks-t${i} Task ${i}\n  Satisfies: AC-streaks-current (steps 1.1)\n  Verify: look\n`).join('\n');
   fs.writeFileSync(tasksPath(root), `# Tasks\n\n## login\n\n${six}`);
   const before = fs.readFileSync(tasksPath(root));
   const list = formatDiagrams(readDiagrams({ dataDir: root, name: 'sample' }));
   assert.match(list, /tasks: 2 of 6 done/);
-  assert.match(formatDiagrams(readDiagrams({ dataDir: root, name: 'sample', slice: 'sign-in' })), /tasks: 2 of 6 done/);
+  assert.match(formatDiagrams(readDiagrams({ dataDir: root, name: 'sample', slice: 'streaks' })), /tasks: 2 of 6 done/);
   assert.deepEqual(fs.readFileSync(tasksPath(root)), before);
 });
 
@@ -377,6 +377,6 @@ test('read: a slice without tasks.md shows no tasks line and reads as before', (
   const root = setup({ withSlice: true });
   fs.rmSync(tasksPath(root));
   const text = formatDiagrams(readDiagrams({ dataDir: root, name: 'sample' }));
-  assert.match(text, /sign-in \| Feature: Identity and access > Sign in \| 2 stories \| up to date/);
+  assert.match(text, /streaks \| Feature: Habit tracking > Streaks \| 2 stories \| up to date/);
   assert.doesNotMatch(text, /tasks:/);
 });
