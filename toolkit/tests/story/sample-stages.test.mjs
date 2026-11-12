@@ -117,6 +117,15 @@ test('stage built: built.patch applies to the baseline app with git am', () => {
     for (const name of ['app', 'wiki', 'CLAUDE.md']) {
       fs.cpSync(path.join(SAMPLE_DIR, name), path.join(dir, name), { recursive: true, filter: (src) => !/node_modules|[\\/]dist([\\/]|$)/.test(src) });
     }
+    // A checkout with core.autocrlf may hold CRLF, and the patch is LF, so read the copy as LF like the pinned sample does.
+    const toLf = (target) => {
+      for (const entry of fs.readdirSync(target, { withFileTypes: true })) {
+        const full = path.join(target, entry.name);
+        if (entry.isDirectory()) toLf(full);
+        else fs.writeFileSync(full, lf(fs.readFileSync(full, 'utf8')));
+      }
+    };
+    toLf(dir);
     const git = (...args) => spawnSync('git', args, { cwd: dir, encoding: 'utf8' });
     for (const args of [['init', '-q', '-b', 'sample'], ['config', 'user.name', 'Test'], ['config', 'user.email', 'test@example.invalid'], ['config', 'core.autocrlf', 'false'], ['add', '-A'], ['commit', '-q', '-m', 'baseline']]) {
       const r = git(...args);
