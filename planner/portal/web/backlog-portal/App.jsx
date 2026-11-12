@@ -3,6 +3,7 @@ import { backlogProblems, gatherFeatures } from '../../../logic/backlog/ids.js';
 import { groupByEpic } from '../../../logic/backlog/model.js';
 import { unitsOf, unitStoryCode, openCounts, orphanUnits, reviewOverview, openUnitsFor, acceptAll as acceptReviewUnits, acceptSummaryText } from '../../../logic/review/review.js';
 import { useBacklog } from './hooks/useBacklog.js';
+import { useConfirm } from './hooks/useConfirm.js';
 import { useReview } from './hooks/useReview.js';
 import { useProposals } from './hooks/useProposals.js';
 import { useLexicon } from './hooks/useLexicon.js';
@@ -11,6 +12,8 @@ import { acceptProposed, moveToProposed as moveStoryToProposed } from '../../../
 import FileBar from './components/FileBar.jsx';
 import Info from './components/Info.jsx';
 import StoryList from './components/StoryList.jsx';
+import TabHeader from './components/TabHeader.jsx';
+import EmptyState from './components/EmptyState.jsx';
 import StoryForm from './components/StoryForm.jsx';
 import StoriesTab from './components/StoriesTab.jsx';
 import GraphTab from './components/GraphTab.jsx';
@@ -48,6 +51,7 @@ const KEYBOARD_ICON = (
 );
 
 export default function App() {
+  const ask = useConfirm();
   const { state, selected, status, message, actions } = useBacklog();
   const { files, current, backlog, selectedId, view, checked, lastChecked } = state;
   const stories = backlog?.stories ?? [];
@@ -86,9 +90,10 @@ export default function App() {
   // Accept all (whole review or one Area): confirm with the number a dry run applies, then apply the run as one edit.
   const [acceptSummary, setAcceptSummary] = useState(null);
   useEffect(() => setAcceptSummary(null), [current]);
-  const acceptUnits = (units) => {
+  const acceptUnits = async (units) => {
     const expected = acceptReviewUnits(stories, units, backlog.headers, state.initials).applied.length;
-    if (expected && !window.confirm(`Apply ${expected} review suggestion${expected > 1 ? 's' : ''}?`)) return;
+    const noun = `review suggestion${expected > 1 ? 's' : ''}`;
+    if (expected && !(await ask({ title: `Apply ${expected} ${noun}?`, message: `${expected} ${noun} will be applied to the backlog.`, confirmLabel: 'Apply' }))) return;
     const { applied, skipped } = actions.acceptAll(units);
     if (applied.length) review.decide(applied.flatMap((u) => u.indexes), 'applied');
     review.notify(null);
@@ -132,11 +137,12 @@ export default function App() {
 
   // Editor -> Proposed for the open story. Its open review suggestions are marked dismissed (after a confirm, only
   // when there are any). Order: backlog, proposals, review, like accept, so a crash leaves a duplicate, not a lost story.
-  const moveToProposed = (story) => {
+  const moveToProposed = async (story) => {
     const result = moveStoryToProposed(stories, proposals.stories, story.id, backlog.headers, state.initials);
     if (result.error) return review.notify(result.error);
     const units = openUnitsFor(review.rows, story.code);
-    if (units.length && !window.confirm(`${story.code} has ${units.length} open review suggestion${units.length > 1 ? 's' : ''}. Moving it to Proposed marks ${units.length > 1 ? 'them' : 'it'} as dismissed. Continue?`)) return;
+    const message = `${story.code} has ${units.length} open review suggestion${units.length > 1 ? 's' : ''}. Moving it to Proposed marks ${units.length > 1 ? 'them' : 'it'} as dismissed.`;
+    if (units.length && !(await ask({ title: `Move ${story.code} to Proposed?`, message, confirmLabel: 'Move to Proposed' }))) return;
     actions.replaceStories(result.backlog);
     proposals.actions.replaceStories(result.proposals);
     if (units.length) review.decide(units.flatMap((u) => u.indexes), 'dismissed');
@@ -192,8 +198,8 @@ export default function App() {
   // Dragging a story or a group, and Renumber, renumber stories: their open review suggestions follow them.
   const moveStory = (id, epic, beforeId) => review.retarget(actions.moveStory(id, epic, beforeId));
   const moveGroup = (group, beforeKey) => review.retarget(actions.moveGroup(group, beforeKey));
-  const renumberDisplayed = () => {
-    const recoded = actions.renumberDisplayed();
+  const renumberDisplayed = async () => {
+    const recoded = await actions.renumberDisplayed();
     if (recoded) review.retarget(recoded);
   };
 
@@ -307,9 +313,9 @@ export default function App() {
           </div>
         )}
 
-        <p id="emptyPrompt" className="card muted" hidden={!!current}>
-          There are no backlog folders in the data folder yet. Click <strong>New</strong> to create one.
-        </p>
+        <div id="emptyPrompt" className="card" hidden={!!current}>
+          <EmptyState title="No backlog yet" help="There are no backlog folders in the data folder yet. Click New to create one." />
+        </div>
 
         <div id="tabs" className="tabs" role="tablist" aria-label="Views" onKeyDown={onTabKey}>
           {tabs.map((t) => (
@@ -320,9 +326,13 @@ export default function App() {
           ))}
         </div>
 
-        <div id="editor" className="editor" style={editorList.style} role="tabpanel" aria-labelledby="tabEditor" hidden={!current || view !== 'editor'}>
-          {inEditor && (
-            <>
+        <div id="editor" role="tabpanel" aria-labelledby="tabEditor" hidden={!current || view !== 'editor'}>
+          <TabHeader title="Editor" />
+          {inEditor && !stories.length && (
+            <EmptyState title="No stories yet" help="Draft a story here, or use the explore and propose skills." action={{ id: 'addStoryBtn', label: 'Add story', onClick: addStory }} />
+          )}
+          {inEditor && stories.length > 0 && (
+            <div className="editor" style={editorList.style}>
               <StoryList stories={stories} problems={problems} suggestionCounts={suggestionCounts} selectedId={selectedId} onSelect={actions.selectStory} onAdd={addStory} onMove={moveStory} onMoveGroup={moveGroup} onRenumber={renumberDisplayed} renumberDisabled={renumberDisabled} collapse={collapse} />
               {selected && (
                 <StoryForm
@@ -331,9 +341,9 @@ export default function App() {
                   onApplySuggestion={applyUnit} onDismissSuggestion={dismissUnit} onMoveToProposed={moveToProposed} onDelete={actions.deleteSelected}
                 />
               )}
-            </>
+              <ResizeHandle className="list-divider" {...editorList.handleProps} />
+            </div>
           )}
-          <ResizeHandle className="list-divider" {...editorList.handleProps} />
         </div>
 
         <ProposedTab

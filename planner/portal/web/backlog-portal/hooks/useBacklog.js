@@ -4,6 +4,7 @@ import { loadBacklog, newStory, displayOrder, applyBulk } from '../../../../logi
 import { commitEpic, commitEpics, moveStory, moveGroup, gatherFeatures, recodedBetween, removeStory, removeStories, wouldCycle, renumber } from '../../../../logic/backlog/ids.js';
 import { applySuggestions, acceptAll } from '../../../../logic/review/review.js';
 import { useAutosave } from './useAutosave.js';
+import { useConfirm } from './useConfirm.js';
 
 const store = createFileStore('backlog');
 const NEW_BACKLOG_NAME = 'new-backlog';
@@ -150,8 +151,8 @@ export function reducer(state, action) {
     }
     case 'bulk': {
       const stories = state.backlog.stories.map((s) => ({ ...s }));
-      applyBulk(stories, state.checked, action.patch);
-      return withStories(state, commitEpics(stories, state.checked, state.initials));
+      applyBulk(stories, action.ids, action.patch);
+      return withStories(state, commitEpics(stories, action.ids, state.initials));
     }
     default:
       return state;
@@ -167,6 +168,7 @@ export function useBacklog() {
   const stateRef = useRef(state);
   stateRef.current = state;
 
+  const ask = useConfirm();
   const autosave = useAutosave({ store, stateRef, onStatus: setStatus, onMessage: setMessage });
 
   useEffect(() => {
@@ -281,26 +283,33 @@ export function useBacklog() {
       },
 
       // Asks first. Resolves true when the story was deleted.
-      deleteSelected() {
+      async deleteSelected() {
         const { backlog, selectedId } = stateRef.current;
         if (backlog?.stories.find((s) => s.id === selectedId)?.frozen) {
           setMessage('A frozen story cannot be deleted.');
           return false;
         }
-        if (selectedId === null || !confirm('Delete the selected story?')) return false;
+        if (selectedId === null) return false;
+        const story = backlog?.stories.find((s) => s.id === selectedId);
+        const confirmed = await ask({ title: 'Delete this story?', message: `${story?.code || 'The selected story'} will be removed from the backlog.\n\nThis cannot be undone.`, confirmLabel: 'Delete', danger: true });
+        if (!confirmed) return false;
         dispatch({ type: 'delete', id: selectedId });
         return true;
       },
 
-      // Asks first. Deletes the ticked stories that are not frozen. Returns { deleted, skipped } (skipped: frozen ones kept);
+      // Asks first. Deletes the stories in `ids` (the ticked rows on screen) that are not frozen; `hiddenCount` ticked stories
+      // the search or filters hide are kept and named in the question. Returns { deleted, skipped } (skipped: frozen ones kept);
       // nothing is asked or deleted when all of them are frozen, and deleted is 0 when the user cancels.
-      deleteChecked() {
-        const { backlog, checked } = stateRef.current;
-        const { skipped } = removeStories(backlog.stories, checked, stateRef.current.initials);
-        const deleted = [...checked].filter((id) => backlog.stories.some((s) => s.id === id)).length - skipped;
+      async deleteChecked(ids, hiddenCount = 0) {
+        const { backlog } = stateRef.current;
+        const { skipped } = removeStories(backlog.stories, ids, stateRef.current.initials);
+        const deleted = [...ids].filter((id) => backlog.stories.some((s) => s.id === id)).length - skipped;
         if (deleted <= 0) return { deleted: 0, skipped };
-        if (!confirm(`Delete ${deleted} ${deleted === 1 ? 'story' : 'stories'}?${skipped ? `\n\n${skipped} frozen ${skipped === 1 ? 'story is' : 'stories are'} kept.` : ''}\n\nThis cannot be undone.`)) return { deleted: 0, skipped: 0 };
-        dispatch({ type: 'deleteMany', ids: checked });
+        const noun = deleted === 1 ? 'story' : 'stories';
+        const hiddenNote = hiddenCount ? `\n\n${hiddenCount} ticked ${hiddenCount === 1 ? 'story is' : 'stories are'} hidden by the search or filters and kept.` : '';
+        const message = `${deleted} visible ${noun} will be removed from the backlog.${skipped ? `\n\n${skipped} frozen ${skipped === 1 ? 'story is' : 'stories are'} kept.` : ''}${hiddenNote}\n\nThis cannot be undone.`;
+        if (!(await ask({ title: `Delete ${deleted} ${noun}?`, message, confirmLabel: 'Delete', danger: true }))) return { deleted: 0, skipped: 0 };
+        dispatch({ type: 'deleteMany', ids });
         return { deleted, skipped };
       },
 
@@ -334,18 +343,15 @@ export function useBacklog() {
         return recoded;
       },
       // Asks first. Resolves the recoded map, or null when nothing changes or the user cancels.
-      renumberDisplayed() {
+      async renumberDisplayed() {
         const { stories } = stateRef.current.backlog;
         const after = gatherFeatures(stories, stateRef.current.initials);
         if (after === stories) return null;
         const recoded = recodedBetween(stories, after);
         const n = recoded.size;
         const effect = n ? `${n} ${n === 1 ? 'story gets' : 'stories get'} a new ID, and links to ${n === 1 ? 'it are' : 'them are'} updated.` : 'No ID changes; the rows are only put in the order shown.';
-        if (!confirm(`Put the stories of each feature together, in the order shown, and renumber?
-
-${effect} Frozen stories keep their IDs.
-
-This cannot be undone.`)) return null;
+        const message = `Put the stories of each feature together, in the order shown, and renumber.\n\n${effect} Frozen stories keep their IDs.\n\nThis cannot be undone.`;
+        if (!(await ask({ title: 'Renumber the backlog?', message, confirmLabel: 'Renumber' }))) return null;
         dispatch({ type: 'renumberDisplayed' });
         return recoded;
       },
@@ -354,11 +360,10 @@ This cannot be undone.`)) return null;
 
       toggleChecked: (ids, on, anchor) => dispatch({ type: 'check', ids, on, anchor }),
       checkAll: (on, ids) => dispatch({ type: 'checkAll', on, ids }),
-      // Resolves { skipped }: the frozen ticked stories, which a bulk edit leaves as they are.
-      applyBulkPatch(patch) {
-        const { backlog, checked } = stateRef.current;
-        const skipped = backlog.stories.filter((s) => checked.has(s.id) && s.frozen).length;
-        dispatch({ type: 'bulk', patch });
+      // Edits the stories in `ids` (the ticked rows on screen). Resolves { skipped }: the frozen ones, which a bulk edit leaves.
+      applyBulkPatch(patch, ids) {
+        const skipped = stateRef.current.backlog.stories.filter((s) => ids.has(s.id) && s.frozen).length;
+        dispatch({ type: 'bulk', patch, ids });
         return { skipped };
       },
 
@@ -393,7 +398,7 @@ This cannot be undone.`)) return null;
         return { applied: result.applied, skipped: result.skipped };
       },
     };
-  }, [autosave]);
+  }, [autosave, ask]);
 
   const selected = state.backlog?.stories.find((s) => s.id === state.selectedId) ?? null;
 

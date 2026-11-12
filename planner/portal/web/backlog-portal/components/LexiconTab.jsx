@@ -3,7 +3,10 @@ import { childrenOf } from '../../../../logic/lexicon/lexicon.js';
 import { FIELD_LABELS, impactOf, isOpen, staleReason } from '../../../../logic/lexicon/lexicon-suggestions.js';
 import { wordDiff } from '../../lib/word-diff.js';
 import ResizeHandle from './ResizeHandle.jsx';
+import TabHeader from './TabHeader.jsx';
+import EmptyState from './EmptyState.jsx';
 import useListWidth from '../hooks/useListWidth.js';
+import { useConfirm } from '../hooks/useConfirm.js';
 
 const blankDraft = { name: '', partOf: '', definition: '', avoid: '', notes: '' };
 const toDraft = (t) => ({ name: t.name, partOf: t.partOf, definition: t.definition, avoid: t.avoid.join('; '), notes: t.notes });
@@ -33,6 +36,7 @@ const matches = (t, q) => [t.name, t.definition, t.notes, ...t.avoid].some((text
 // refuses (`error`, a list of messages) is shown and the term on screen stays as typed until it is fixed or discarded.
 // `onSave(term, replaces)` and `onRemove(name)` return { ok }.
 export default function LexiconTab({ hidden, lexicon, selected, error, message, suggestions, suggestionsMessage, onApplySuggestion, onDismissSuggestion, onSelect, onSave, onRemove, onClearError }) {
+  const ask = useConfirm();
   const [query, setQuery] = useState('');
   const [adding, setAdding] = useState(false);
   const list = useListWidth('lexicon');
@@ -50,16 +54,19 @@ export default function LexiconTab({ hidden, lexicon, selected, error, message, 
   };
 
   return (
-    <div id="lexiconView" className="editor" style={list.style} role="tabpanel" aria-labelledby="tabLexicon" hidden={hidden}>
+    <div id="lexiconView" role="tabpanel" aria-labelledby="tabLexicon" hidden={hidden}>
       {!hidden && (
         <>
+          <TabHeader title="Lexicon">
+            <button type="button" id="addTermBtn" className="primary" onClick={start}>Add term</button>
+          </TabHeader>
+          <div className="editor" style={list.style}>
           <div className="card story-list-panel">
             <div className="row">
               <div className="grow">
                 <label htmlFor="lexiconSearch">Search</label>
                 <input id="lexiconSearch" type="text" value={query} placeholder="term, definition or avoided word" onChange={(e) => setQuery(e.target.value)} />
               </div>
-              <button type="button" id="addTermBtn" className="primary" onClick={start}>Add term</button>
             </div>
             <ul className="story-list lexicon-list" style={{ marginTop: 10 }}>
               {shown.map(({ term, depth }) => (
@@ -71,7 +78,7 @@ export default function LexiconTab({ hidden, lexicon, selected, error, message, 
                 </li>
               ))}
             </ul>
-            {!lexicon.terms.length && <p className="muted">No terms yet. Add one, or use the jois-story-propose skill to draft some.</p>}
+            {!lexicon.terms.length && <EmptyState title="No terms yet" help="Choose Add term, or use the jois-story-propose skill to draft some." />}
             {lexicon.terms.length > 0 && !shown.length && <p className="muted">No term matches “{query}”.</p>}
           </div>
           <div>
@@ -93,14 +100,18 @@ export default function LexiconTab({ hidden, lexicon, selected, error, message, 
               <TermForm
                 key={`term-${lexicon.terms.findIndex((t) => t.name === selected.name)}`} term={selected} lexicon={lexicon} error={error}
                 onSave={(term) => onSave(term, selected.name)}
-                onRemove={() => confirm(`Delete the term "${selected.name}"?`) && onRemove(selected.name)}
+                onRemove={async () => {
+                  const confirmed = await ask({ title: `Delete the term "${selected.name}"?`, message: `The term "${selected.name}" will be removed from the lexicon.`, confirmLabel: 'Delete', danger: true });
+                  if (confirmed) onRemove(selected.name);
+                }}
               />
             )}
             {!adding && !selected && lexicon.terms.length > 0 && <p className="card muted">Select a term to see it.</p>}
           </div>
+          <ResizeHandle className="list-divider" {...list.handleProps} />
+          </div>
         </>
       )}
-      <ResizeHandle className="list-divider" {...list.handleProps} />
     </div>
   );
 }
@@ -161,7 +172,7 @@ function TermForm({ term, lexicon, error, onSave, onRemove, onCancel }) {
       {kids.length > 0 && <p className="muted">Part of this term: {kids.map((k) => k.name).join(', ')}.</p>}
       <div className="row">
         {term ? (
-          <button type="button" id="deleteTermBtn" className="danger" onClick={onRemove}>Delete term</button>
+          <button type="button" id="deleteTermBtn" onClick={onRemove}>Delete term</button>
         ) : (
           <>
             <button type="submit" id="confirmAddBtn" className="primary" disabled={!draft.name.trim() || !draft.definition.trim()}>Add</button>
@@ -258,7 +269,7 @@ function LexiconSuggestion({ lexicon, row, onApply, onDismiss }) {
       )}
       {refusal && <div className="error" role="alert">{refusal.map((m) => <div key={m}>{m}</div>)}</div>}
       <div className="suggestion-actions">
-        <button type="button" className="primary" disabled={Boolean(stale)} onClick={apply}>Apply</button>
+        <button type="button" disabled={Boolean(stale)} onClick={apply}>Apply</button>
         <button type="button" onClick={onDismiss}>Dismiss</button>
       </div>
     </div>
