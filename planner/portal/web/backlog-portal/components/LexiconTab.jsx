@@ -269,7 +269,7 @@ function LexiconSuggestion({ lexicon, row, onApply, onDismiss }) {
       )}
       {refusal && <div className="error" role="alert">{refusal.map((m) => <div key={m}>{m}</div>)}</div>}
       <div className="suggestion-actions">
-        <button type="button" className="primary" disabled={Boolean(stale)} onClick={apply}>Apply</button>
+        <button type="button" disabled={Boolean(stale)} onClick={apply}>Apply</button>
         <button type="button" onClick={onDismiss}>Dismiss</button>
       </div>
     </div>
