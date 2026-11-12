@@ -62,6 +62,25 @@ Text, muted, placeholder and disabled colours keep at least 4.5:1 contrast with 
 - `planner/portal/web/backlog-portal/hooks/useBacklog.js` holds the reducer state, and `planner/portal/web/backlog-portal/hooks/useAutosave.js` saves after a delay and retries on failure, for example when the file is locked in Excel.
 - `planner/portal/web/backlog-portal/components/` holds the tabs.
 
+### Component layout
+
+The large tabs are split into parts, so no file mixes several jobs. Each parent keeps the state and passes props down. Every path below is under `planner/portal/web/backlog-portal/components/` unless it says otherwise.
+
+- `GraphTab.jsx` composes `GraphToolbar.jsx`, `GraphCanvas.jsx` (with `graphGeometry.js`), `GraphDetail.jsx` and `GraphUnlinked.jsx`.
+- `StoryForm.jsx` composes `StoryHeader.jsx` and the sections `StoryFitSections.jsx`, `EstimateSection.jsx`, `DependenciesSection.jsx`, `CriteriaSection.jsx` and `ClarificationsSection.jsx`. `FormParts.jsx` holds the shared field parts, and `storyFormNav.js` holds the arrow-key navigation between fields.
+- `StoriesTab.jsx` composes `StoriesBulkBar.jsx`, `StoriesFilters.jsx` and `StoriesTable.jsx`, with the column list in `storiesColumns.js`.
+- `Layout.jsx` has the `Stack`, `Row` and `Grid` helpers. Each takes the spacing token (`--space-1` to `--space-6`) as a prop, so a gap is named by the scale and not written as a number.
+
+### App hooks and shortcuts
+
+`App.jsx` wires the tabs together and leaves the review, proposed and shortcut logic to three hooks in `planner/portal/web/backlog-portal/hooks/`:
+
+- `useReviewFlow.js` wraps `useReview` and adds the suggestion counts, Apply, Dismiss, Accept all and the step out of the Review tab when the review file goes away.
+- `useProposedFlow.js` wraps `useProposals` and adds accepting proposed stories and moving a story from the Editor to Proposed. It takes the `useReview` result, because a moved story's open suggestions are dismissed.
+- `useShortcuts.js` holds the shortcut table, which drives both the key handler and the Shortcuts popover, and returns the popover rows.
+
+The key handler skips a key when `ignoresKey` in `planner/portal/web/lib/shortcuts.js` says so. That function is pure, so a Node test covers it (`planner/test/portal/shortcuts.test.mjs`). It ignores only a plain key (no Ctrl, Alt or Meta) typed in an input, textarea, select or contenteditable element, so typing is never read as a shortcut. Every shortcut uses Ctrl or Alt, so each still works while a field has focus, as the Keyboard shortcuts requirement asks.
+
 ### Cues besides colour
 
 `planner/portal/web/backlog-portal/components/StateMark.jsx` prints the word and icon ("Incomplete", "Warning") beside every red or yellow row: the Editor list, the Stories table, the story form header, the Graph node and the unlinked list. A required story field that is empty shows "Required" beside its label and carries `aria-invalid`, an empty optional one shows "Not set", a selected Graph node says "Selected", and a failed save shows "Save failed" with a cross. Acceptance criteria have Move up and Move down buttons, and each Editor row has them too, within its feature, as the keyboard alternative to dragging.

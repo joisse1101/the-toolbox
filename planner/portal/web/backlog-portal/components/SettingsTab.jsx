@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import TabHeader from './TabHeader.jsx';
+import { Row } from './Layout.jsx';
 
 const SESSION_NOTE = 'Skill scripts and open Claude sessions use the new data folder only after they are started again.';
 
@@ -36,14 +37,14 @@ export default function SettingsTab({ hidden, settingsState }) {
         <>
           <section className="settings-group" aria-labelledby="settingsProjectHeading">
             <h3 id="settingsProjectHeading">Project</h3>
-            <div className="row">
+            <Row>
               <div className="grow">
                 <label htmlFor="projectName">Project name</label>
                 <input type="text" id="projectName" autoComplete="off" value={name} onChange={(e) => setName(e.target.value)} />
               </div>
               <button type="button" id="saveNameBtn" disabled={!nameChanged || working} onClick={() => actions.saveName(name)}>Save name</button>
-            </div>
-            <div className="row">
+            </Row>
+            <Row>
               <div className="grow">
                 <label htmlFor="codeBase">Code base</label>
                 <input type="text" id="codeBase" className="settings-path" value={settings.codeBase ?? ''} title={settings.codeBase ?? undefined} placeholder="Not set: the data folder below is used" readOnly />
@@ -58,11 +59,11 @@ export default function SettingsTab({ hidden, settingsState }) {
                   <p className="muted">Same as above: the data is copied, and the saved project follows.</p>
                 </div>
               )}
-            </div>
+            </Row>
           </section>
           <section className="settings-group" aria-labelledby="settingsStorageHeading">
             <h3 id="settingsStorageHeading">Storage</h3>
-            <div className="row">
+            <Row>
               <div className="grow">
                 <label htmlFor="dataDir">Data folder</label>
                 <input type="text" id="dataDir" className="settings-path" value={settings.dataDir} title={settings.dataDir} readOnly />
@@ -75,13 +76,13 @@ export default function SettingsTab({ hidden, settingsState }) {
                 <button type="button" id="initBtn" disabled={working || !!offer} onClick={actions.runInit}>Create missing folders</button>
                 <p className="muted">Adds any folder the planner expects. Existing files are not touched.</p>
               </div>
-            </div>
-            <div className="row">
+            </Row>
+            <Row>
               <div className="grow">
                 <label htmlFor="configPath">Config file</label>
                 <input type="text" id="configPath" className="settings-path" value={settings.configPath} title={settings.configPath} readOnly />
               </div>
-            </div>
+            </Row>
           </section>
 
           {offer && !offer.ready && (
@@ -91,11 +92,11 @@ export default function SettingsTab({ hidden, settingsState }) {
                 files there are left as they are. Just switch copies nothing and shows the files already there.
               </p>
               <ul id="overwriteList">{offer.exists.map((file) => <li key={file}><code>{file}</code></li>)}</ul>
-              <div className="row">
+              <Row>
                 <button type="button" id="overwriteBtn" className="offer-danger" disabled={working} onClick={() => actions.chooseRelocation('overwrite')}>Overwrite</button>
                 <button type="button" id="justSwitchBtn" disabled={working} onClick={() => actions.chooseRelocation('switch')}>Just switch</button>
                 <button type="button" id="cancelOfferBtn" disabled={working} onClick={() => actions.chooseRelocation('cancel')}>Cancel</button>
-              </div>
+              </Row>
             </div>
           )}
           {offer?.ready && (

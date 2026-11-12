@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import AddProjectDialog from './AddProjectDialog.jsx';
+import { Row } from './Layout.jsx';
 
 const ADD_PROJECT = 'add-project';
 
@@ -62,7 +63,7 @@ export default function FileBar({ files, current, initials = '', message, olderL
 
   return (
     <section className="card file-bar">
-      <div className="row">
+      <Row>
         <div className="grow project-pick">
           <label htmlFor="projectSelect">Project</label>
           <select id="projectSelect" value={projects.activeProject < 0 ? '' : String(projects.activeProject)} disabled={projects.working} onChange={onProjectChange}>
@@ -119,7 +120,7 @@ export default function FileBar({ files, current, initials = '', message, olderL
             <path d="M21 12a9 9 0 1 1-2.64-6.36" /><path d="M21 3v6h-6" />
           </svg>
         </button>
-      </div>
+      </Row>
       {!files.length && olderLayout.length > 0 && (
         <p id="olderLayoutNotice" className="warning" role="status">
           No backlog folder here, but this data folder holds the older layout. Open the Settings tab and choose "Migrate older layout" to copy it.
