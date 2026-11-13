@@ -45,7 +45,7 @@ The key is `source.json` and not `tasks.md`, because a slice that was reduced to
 
 Drop first every match whose path holds `.trees/`, `.scratch/`, `node_modules/`, `test/`, `tests/` or `sample/`. Use them only when nothing else is left, and then list their paths and ask which one.
 
-When the search finds nothing and the argument named a backlog, run `read-diagrams.mjs <backlog>` from the `jois-story-plan` skill folder, because the data folder may sit outside the project, and take the slices from its output: one `<slice> | <scope> | ...` line per slice, with a `tasks: <done> of <total> done` line under it. When no backlog was named and the search finds nothing, say no slices were found in the project, name the three places the scripts look (`PLANNER_CONFIG`, `.plans`, `planner.config.yaml`) and ask the user to type `<backlog>/<slice>`.
+When the search finds nothing and the argument named a backlog, run `read-diagrams.mjs <backlog>` from the `jois-story-plan` skill folder and take the slices from its output: one `<slice> | <scope> | ...` line per slice, with a `tasks: <done> of <total> done` line under it. When no backlog was named and the search finds nothing, say no slices were found in the project, say the scripts look only in the `.plans` folder of the current folder, and ask the user to type `<backlog>/<slice>`.
 
 Slices this command lists: every task ticked and no `ARCHIVED.md`.
 

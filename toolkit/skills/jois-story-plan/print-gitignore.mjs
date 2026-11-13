@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 // Prints the .gitignore block for the planner's data folder, built from the file table (references/plans-files.md), and
-// writes nothing. The user reviews the block and adds it to .gitignore themselves. When the data folder is outside the
-// project (the current folder), it says no block is needed. Usage:
+// writes nothing. The user reviews the block and adds it to .gitignore themselves. Usage:
 //   node <skill folder>/print-gitignore.mjs
-// The data folder comes from the PLANNER_CONFIG variable, else .plans or a planner.config.yaml in the current folder (see lib/skill-support/resolve-data-dir.mjs).
+// The data folder is the .plans folder in the current folder (see lib/skill-support/resolve-data-dir.mjs).
 
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
