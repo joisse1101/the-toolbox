@@ -1,18 +1,40 @@
 ---
 name: "JOIS: Apply"
 description: "Apply a slice one group of tasks at a time: hand each group to task-applier, record its results in tasks.md, then commit it by itself on an unprotected branch (never main or master, never a push), or stop with nothing committed in a doubtful case. The last group's code is reviewed with /jois-code:review and its findings fixed before the tests, which run once, as the task in the last group"
-allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git add:*), Bash(git commit:*), Bash(git branch --show-current:*), Bash(git rev-parse:*), Bash(node *jois-story-plan*read-diagrams.mjs*), Skill, Read, Edit, Write(**/slices/*/review.md), Glob, Agent, Monitor
+allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git add:*), Bash(git commit:*), Bash(git branch --show-current:*), Bash(git rev-parse:*), Bash(node *jois-story-plan*read-diagrams.mjs*), Skill, Read, Edit, Write(**/slices/*/review.md), Glob, Agent, Monitor, AskUserQuestion
 disable-model-invocation: true
 metadata:
-  version: "2.1.0"
-  last_updated: "2026-11-12"
+  version: "2.2.0"
+  last_updated: "2026-11-13"
 ---
 
 Apply a slice written by `jois-story-plan` by handing its tasks to the `task-applier` agent, one group at a time.
 
-## Argument
+## Finding the slice
 
-The argument is `slice <backlog>/<slice>`. For any other argument, such as a bare name, `slice` alone, `slice <backlog>` with no slice name, or `slice <backlog> <slice>` with a space instead of `/`, ask for `slice <backlog>/<slice>` and do nothing else.
+Read the argument as one or two words: drop a leading `slice`, then split on `/` or a space. These forms are accepted: `slice <backlog>/<slice>`, `<backlog>/<slice>`, `<backlog> <slice>` (with or without the word `slice`), a slice name alone, a backlog name alone, and no argument. Never guess: when the argument does not name exactly one slice, ask the user with AskUserQuestion. Read nothing but the slice list and write nothing until the user answers.
+
+Find the slices with Glob, narrowed by the words you have:
+
+| Words | Glob | Result |
+|---|---|---|
+| backlog and slice | `**/<backlog>/slices/<slice>/tasks.md` | one match is the slice; none: say the slice was not found and ask |
+| one word | `**/<word>/slices/*/tasks.md` and `**/slices/<word>/tasks.md` | a backlog match: list its slices and ask; one slice match: say which backlog it is in and use it; several slice matches: ask which backlog; both kinds of match: ask; none: say nothing matched and ask |
+| none | `**/slices/*/tasks.md` | list the slices and ask |
+
+Drop first every match whose path holds `.trees/`, `.scratch/`, `node_modules/`, `test/`, `tests/` or `sample/`. Use them only when nothing else is left, and then list their paths and ask which one.
+
+When the search finds nothing and the argument named a backlog, run `read-diagrams.mjs <backlog>` from the `jois-story-plan` skill folder, because the data folder may sit outside the project, and take the slices from its output: one `<slice> | <scope> | ...` line per slice, with a `tasks: <done> of <total> done` line under it. When no backlog was named and the search finds nothing, say no slices were found in the project, name the three places the scripts look (`PLANNER_CONFIG`, `.plans`, `planner.config.yaml`) and ask the user to type `<backlog>/<slice>`.
+
+Slices this command lists: at least one unticked task (`- [ ]`).
+
+A slice outside that list can still be typed in the free-text answer. The list is not a gate: the later steps decide whether the command can run.
+
+AskUserQuestion shows at most four options plus free text. When more than four slices qualify, print them all as plain text first, ordered by backlog name and then slice name, and offer the first three by name plus the free-text answer.
+
+When the same `<backlog>/slices/<slice>` matches in more than one place, list the paths and ask which one. Write nothing until the user answers.
+
+Once the slice is settled, announce its backlog and name. At the end of this command, and at every stop after the slice is settled, print this command's full form, `slice <backlog>/<slice>`, with the real names, as the last lines.
 
 ## Rules
 
@@ -25,18 +47,17 @@ The argument is `slice <backlog>/<slice>`. For any other argument, such as a bar
 A slice is the folder `<backlog>/slices/<slice>/` of the data folder the plan skill reads. It holds `tasks.md` and `UC-<slice>.md`. "The change" in the steps below means the slice.
 
 1. **Pick the slice.**
-   - Take `<backlog>` and `<slice>` from the argument `slice <backlog>/<slice>`.
+   - Follow the Finding the slice section, and never guess.
    - Announce the slice `<slice>` of the backlog `<backlog>`.
    - Work on that slice only.
 2. **Read its files.**
-   - Find `tasks.md` with Glob: `**/<backlog>/slices/<slice>/tasks.md`.
+   - Use the `tasks.md` that step 1 settled.
    - Read `tasks.md` and `UC-<slice>.md` from that folder.
    - If the folder or `tasks.md` does not exist, say what is missing, point to `jois-story-plan` and stop.
-   - If Glob finds more than one match (for example a copy under `.trees/`), list them and ask which one. Dispatch nothing until the user answers.
    - If `tasks.md` has no task line, say the slice has no tasks, point to `jois-story-plan` and stop. Do not say the slice is built.
    - A group is one `## <flow>` section of `tasks.md`.
    - A task is a checkbox line `- [ ] T-<slice>-<name> <title>` with its `Satisfies:` and `Verify:` lines.
-   - If no group has an unticked task, skip step 3 and step 4, say the slice is built, name `jois-story-plan` for the next slice and stop.
+   - If no group has an unticked task, skip step 3 and step 4, say the slice is built, print `/jois-code:apply slice <backlog>/<slice>` and `/jois-code:archive slice <backlog>/<slice>` with the real names, name `jois-story-plan` for the next slice and stop.
 3. **Check the slice is current.**
    - Look for `read-diagrams.mjs` in `~/.claude/skills/jois-story-plan/` and in this project's `.claude/skills/jois-story-plan/`.
    - If it is in neither, say the plan skill is not installed, name `Install-Toolkit.ps1` and stop.
@@ -209,7 +230,7 @@ A slice is the folder `<backlog>/slices/<slice>/` of the data folder the plan sk
 11. **Take the next group.**
     - Repeat from step 6 until no group has a pending task.
     - The review of step 10a runs once before the test task, and the test task in the last group runs as step 7 says. Its failures run the fix loop of step 9, and the loop asks the user if a failure stays unexplained.
-    - Then read the slice's `tasks.md` again. If no group has an unticked task, say the slice is built and name the next stage, and stop. The next stage is `/jois-code:archive slice <backlog>/<slice>` when the slice's `validation.md` says `Validated: yes` at the current commit, and `/jois-code:validate slice <backlog>/<slice>` first otherwise (a fix commit after the review makes the earlier validation out of date). Name `jois-story-plan` only for the next slice, after archive. Never suggest `/opsx:archive`.
+    - Then read the slice's `tasks.md` again. If no group has an unticked task, say the slice is built and name the next stage, and stop. The last lines print this command's full form, `/jois-code:apply slice <backlog>/<slice>`, and the full form of the next stage, with the real names. The next stage is `/jois-code:archive slice <backlog>/<slice>` when the slice's `validation.md` says `Validated: yes` at the current commit, and `/jois-code:validate slice <backlog>/<slice>` first otherwise (a fix commit after the review makes the earlier validation out of date). Name `jois-story-plan` only for the next slice, after archive. Never suggest `/opsx:archive`.
 
 ## Resuming
 

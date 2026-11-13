@@ -149,15 +149,39 @@ def test_old_agent_files_are_gone():
         assert not (TOOLKIT / "agents" / name).exists()
 
 
-def test_apply_command_takes_only_a_slice():
+def _finding_section(path):
+    return path.read_text(encoding="utf-8").split("## Finding the slice", 1)[1].split("\n## ", 1)[0]
+
+
+def test_apply_command_takes_a_slice_in_any_form_and_asks_when_unsure():
     text = APPLY_COMMAND.read_text(encoding="utf-8")
+    finding = _finding_section(APPLY_COMMAND)
+    for form in ("`slice <backlog>/<slice>`", "`<backlog>/<slice>`", "`<backlog> <slice>`",
+                 "a slice name alone", "a backlog name alone", "no argument"):
+        assert form in finding
+    assert "Never guess" in finding
+    assert "Slices this command lists: at least one unticked task (`- [ ]`)." in finding
     assert "/jois-code:apply slice <backlog>/<slice>" in text
-    assert "ask for `slice <backlog>/<slice>` and do nothing else" in text
+    assert "ask for `slice <backlog>/<slice>` and do nothing else" not in text
     assert "openspec" not in text.lower()
     assert "Never suggest `/opsx:archive`" in text
     allowed = next(line for line in _frontmatter(APPLY_COMMAND).splitlines() if line.startswith("allowed-tools:"))
+    assert "AskUserQuestion" in [tool.strip() for tool in allowed.split(":", 1)[1].split(", ")]
     assert "Bash(node *jois-story-plan*read-diagrams.mjs*)" in allowed
     assert "Bash(node *)" not in allowed and "Bash(node:*)" not in allowed
+
+
+def test_apply_and_archive_share_the_finding_section_except_the_list_filter_line():
+    def without_filter(path):
+        lines = _finding_section(path).splitlines()
+        filters = [line for line in lines if line.startswith("Slices this command lists:")]
+        assert len(filters) == 1
+        return [line for line in lines if not line.startswith("Slices this command lists:")]
+
+    archive = TOOLKIT / "commands" / "jois-code" / "archive.md"
+    assert without_filter(APPLY_COMMAND) == without_filter(archive)
+    for path in (APPLY_COMMAND, archive):
+        assert "/jois-code:" not in _finding_section(path)
 
 
 def test_agent_hook_keeps_the_git_and_gh_block():

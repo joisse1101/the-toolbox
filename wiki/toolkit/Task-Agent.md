@@ -24,7 +24,7 @@ An agent is a file under `toolkit/agents/` with `name`, `description` and `tools
 
 ## How a group runs
 
-`/jois-code:apply slice <backlog>/<slice>` hands the tasks of a slice to the `task-applier` agent, one group at a time. A group is one `##` section of the slice's `tasks.md`. An OpenSpec change is applied with `/opsx:apply`, not with this command. The group's working detail stays in the agent's own context, so the main conversation keeps one announcement before each group and one line after it. Before each dispatch the session says:
+`/jois-code:apply slice <backlog>/<slice>` hands the tasks of a slice to the `task-applier` agent, one group at a time. A group is one `##` section of the slice's `tasks.md`. The slice can also be given as `<backlog>/<slice>`, `<backlog> <slice>`, a slice name alone, a backlog name alone or nothing. When the argument is not exactly one slice, the command asks which one and dispatches nothing until you answer. An OpenSpec change is applied with `/opsx:apply`, not with this command. The group's working detail stays in the agent's own context, so the main conversation keeps one announcement before each group and one line after it. Before each dispatch the session says:
 
 - the group and its tasks
 - the files it expects to touch
