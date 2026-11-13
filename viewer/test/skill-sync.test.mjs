@@ -5,11 +5,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SKILLS, DEFAULT_SKILLS_DIR } from '../scripts/sync-skill-logic.mjs';
+import { SKILLS, DEFAULT_SKILLS_DIR } from '../scripts/sync-skill-logic.ts';
 
-// The generated copies in toolkit/skills/<skill>/lib and references must equal what viewer/scripts/sync-skill-logic.mjs
-// produces from the viewer's shared files. To fix a failure, run `node viewer/scripts/sync-skill-logic.mjs` and commit the result.
-const SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'sync-skill-logic.mjs');
+// The generated copies in toolkit/skills/<skill>/lib and references must equal what viewer/scripts/sync-skill-logic.ts
+// produces from the viewer's shared files. To fix a failure, run `node viewer/scripts/sync-skill-logic.ts` and commit the result.
+const SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'sync-skill-logic.ts');
 const GENERATED = ['lib', 'references'];
 
 const temp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'skill-sync-'));
@@ -63,17 +63,34 @@ test('every skill present gets its logic, support helpers and guidelines, each c
   runSync(skills, out);
   for (const skill of Object.keys(SKILLS)) {
     const files = filesUnder(path.join(out, skill));
-    for (const expected of ['lib/backlog/model.js', 'lib/skill-support/resolve-data-dir.mjs', 'lib/skill-support/write-atomic.mjs', 'references/product-backlog.md']) {
+    for (const expected of ['lib/backlog/model.mjs', 'lib/skill-support/resolve-data-dir.mjs', 'lib/skill-support/write-atomic.mjs', 'lib/storage/backlog-paths.mjs', 'references/product-backlog.md']) {
       assert.ok(files.includes(expected), `${skill} lacks ${expected}`);
     }
-    assert.equal(files.includes('lib/storage/write-log.cjs'), false, `${skill} copies the removed write log`);
-    assert.equal(files.some((f) => f === 'lib/storage/paths.cjs' || f === 'lib/storage/project-config.cjs'), false, `${skill} copies the viewer's config reader`);
+    assert.equal(files.includes('lib/storage/write-log.mjs'), false, `${skill} copies the removed write log`);
+    assert.equal(files.some((f) => f === 'lib/storage/paths.mjs' || f === 'lib/storage/project-config.mjs'), false, `${skill} copies the viewer's config reader`);
     assert.equal(files.some((f) => f.startsWith('lib/diagrams/')), false, `${skill} copies diagram logic`);
+    assert.equal(files.some((f) => /^lib\/.*\.(ts|js|cjs)$/.test(f)), false, `${skill} has a copy that is not an .mjs file`);
     for (const f of files) {
       const first = fs.readFileSync(path.join(out, skill, f), 'utf8').split(/\r?\n/)[0];
       assert.match(first, /^(\/\/|<!--) GENERATED\. Do not edit this copy\.( -->)?$/, `${skill}/${f} has no generated header`);
       assert.doesNotMatch(first, /viewer\//, `${skill}/${f} header names a path of this repo`);
     }
+  }
+});
+
+test('a copy is plain JavaScript: it names no .ts file and parses as an ES module', () => {
+  const out = temp();
+  const skills = temp();
+  fs.mkdirSync(path.join(skills, 'jois-story-propose'));
+  runSync(skills, out);
+  const lib = path.join(out, 'jois-story-propose', 'lib');
+  const copies = filesUnder(lib);
+  assert.ok(copies.length > 0);
+  for (const file of copies) {
+    const target = path.join(lib, ...file.split('/'));
+    assert.doesNotMatch(fs.readFileSync(target, 'utf8'), /from\s*['"]\.[^'"]*\.ts['"]/, `${file} imports a .ts file`);
+    const check = spawnSync(process.execPath, ['--check', target], { encoding: 'utf8' });
+    assert.equal(check.status, 0, `${file}: ${check.stderr}`);
   }
 });
 
@@ -96,12 +113,12 @@ test('the check names a copy that has drifted, is missing or has no source', () 
   const committed = temp();
   fs.cpSync(out, committed, { recursive: true });
   const review = path.join(committed, 'jois-story-review');
-  fs.appendFileSync(path.join(review, 'lib', 'backlog', 'model.js'), '// edited by hand\n');
+  fs.appendFileSync(path.join(review, 'lib', 'backlog', 'model.mjs'), '// edited by hand\n');
   fs.rmSync(path.join(review, 'references', 'product-backlog.md'));
-  fs.writeFileSync(path.join(review, 'lib', 'backlog', 'extra.js'), '');
+  fs.writeFileSync(path.join(review, 'lib', 'backlog', 'extra.mjs'), '');
   const problems = drift(committed, out);
-  assert.ok(problems.includes('jois-story-review/lib/backlog/model.js: differs'));
-  assert.ok(problems.includes('jois-story-review/lib/backlog/extra.js: not generated'));
+  assert.ok(problems.includes('jois-story-review/lib/backlog/model.mjs: differs'));
+  assert.ok(problems.includes('jois-story-review/lib/backlog/extra.mjs: not generated'));
   assert.ok(problems.includes('jois-story-review/references/product-backlog.md: missing'));
 });
 
@@ -124,7 +141,7 @@ test('a copy has its source line ending throughout: CRLF sources give CRLF copie
       const skills = path.join(root, eol, 'skills');
       for (const skill of Object.keys(SKILLS)) fs.mkdirSync(path.join(skills, skill), { recursive: true });
       const out = path.join(root, eol, 'out');
-      const run = spawnSync(process.execPath, [path.join(viewer, 'scripts', 'sync-skill-logic.mjs'), '--skills-dir', skills, '--out', out], { encoding: 'utf8' });
+      const run = spawnSync(process.execPath, [path.join(viewer, 'scripts', 'sync-skill-logic.ts'), '--skills-dir', skills, '--out', out], { encoding: 'utf8' });
       assert.equal(run.status, 0, run.stderr);
       outputs[eol] = out;
     }
