@@ -90,8 +90,10 @@ def test_known_lines_moved_to_the_wiki_are_read_through_their_link(name):
     sources = _sources_section(name)
 
     assert "`### Known, not fixed` and `### Not fixed by design`" in sources
-    assert "`See [Known limits](<path>#known-limits)`" in sources
-    assert "read the lines under its `Known limits` heading" in sources
+    assert "one link to a wiki page, written `See [<heading>](<path>#<anchor>)`" in sources
+    assert "such as `See [Known limits](<path>#known-limits)`" in sources
+    assert "read the lines under the linked heading" in sources
+    assert "If the file or heading is missing, write the link as the sub-bullet and say the lines could not be read" in sources
 
 
 @pytest.mark.parametrize("name", PR_COMMANDS)

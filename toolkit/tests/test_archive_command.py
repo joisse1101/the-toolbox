@@ -83,7 +83,7 @@ def test_every_stop_after_the_slice_is_settled_prints_the_full_form():
 def test_command_is_manual_only_and_versioned():
     frontmatter = _frontmatter()
     assert "disable-model-invocation: true" in frontmatter
-    assert 'version: "1.4.0"' in frontmatter
+    assert 'version: "1.4.1"' in frontmatter
     assert "last_updated:" in frontmatter
 
 
@@ -317,8 +317,19 @@ def test_command_writes_the_marker_with_the_pages_the_validation_and_the_review(
 
 def test_known_lines_are_written_verbatim_or_as_one_link_to_the_wiki_section():
     step = _last_step(8)
-    assert "write each line verbatim, or write one link instead when 8a moved the lines into the wiki" in step
-    assert "See [Known limits](<path>#known-limits)" in step
+    assert "write each line verbatim, with two exceptions that write a link and not the line" in step
+    assert "A line that 8a found stated in the wiki is written as `See [<heading>](<path>#<anchor>)`" in step
+    assert "When 8a moved the lines into the wiki, write one link instead: `See [Known limits](<path>#known-limits)`" in step
+    assert "no fact is written both here and in the wiki" in step
+
+
+def test_a_line_the_wiki_states_in_other_words_is_found_by_meaning():
+    step = _last_step(8)
+    assert "found by meaning and not by exact text" in step
+    assert "key terms" in step
+    assert "read the section around each hit" in step
+    assert "a lead to check, not proof" in step
+    assert "Record for each stated line the wiki page and heading" in step
 
 
 def test_known_limits_are_offered_once_and_skipped_when_there_is_nothing_to_carry():
@@ -327,6 +338,7 @@ def test_known_limits_are_offered_once_and_skipped_when_there_is_nothing_to_carr
     assert "every claim of `validation.md` whose verdict is `could not test`" in step
     assert "Drop each line the wiki already states" in step
     assert "ask nothing and go to 8b" in step
+    assert "search `wiki/` with Grep for its text" not in step
     assert "ask once with AskUserQuestion: \"Add to the wiki\" or \"Keep only in ARCHIVED.md\"" in step
 
 

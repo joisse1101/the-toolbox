@@ -4,7 +4,7 @@ description: "Fold a built and validated slice, named as slice <backlog>/<slice>
 allowed-tools: Bash(node *jois-story-plan*read-diagrams.mjs*), Bash(node *jois-story-plan*parse-mermaid.mjs*), Bash(node *jois-story-plan*remove-working-files.mjs*), Bash(node *read-story-context.mjs*), Bash(node *read-backlog.mjs*), Bash(python scripts/check_docs.py*), Bash(git status:*), Bash(git branch --show-current:*), Bash(git rev-parse:*), Bash(git diff --name-only:*), Bash(git merge-base --is-ancestor:*), Bash(git ls-files:*), Bash(git check-ignore:*), Bash(git add wiki/*), Bash(git add *slices*), Read, Write(wiki/**), Edit(wiki/**), Write(**/slices/*/ARCHIVED.md), Edit(**/slices/*/ARCHIVED.md), Glob, Grep, AskUserQuestion
 disable-model-invocation: true
 metadata:
-  version: "1.4.0"
+  version: "1.4.1"
   last_updated: "2026-11-13"
 ---
 
@@ -161,14 +161,14 @@ Once the slice is settled, announce its backlog and name. At the end of this com
 
    **8a. Offer the known limits.**
    - Collect the lines of `## Known, not fixed` and `## Not fixed by design` in `review.md`, and every claim of `validation.md` whose verdict is `could not test`. Read both files now, because the delete in 8c removes them.
-   - Drop each line the wiki already states: search `wiki/` with Grep for its text and keep only what is not found there. When nothing is left, which includes both lists saying `none` with no `could not test` claim, ask nothing and go to 8b.
+   - Drop each line the wiki already states, found by meaning and not by exact text, because a line may be reworded. Search `wiki/` with Grep for the line's key terms (distinctive nouns, identifiers, numbers), read the section around each hit, and treat the line as stated when that section says the same fact. A line that only says the wiki records it is a lead to check, not proof. Record for each stated line the wiki page and heading that state it, for 8b. Keep only what the wiki does not state. When nothing is left to offer, which includes both lists saying `none` with no `could not test` claim, ask nothing and go to 8b.
    - Show the remaining lines, then ask once with AskUserQuestion: "Add to the wiki" or "Keep only in ARCHIVED.md".
    - On "Add to the wiki", draft a `### Known limits` section at the end of the slice's block in `design.md`, after `### Decisions`, one bullet per line. Show it as a diff, ask ("Write it", "Change it") and write it only after the answer, then read the page back. Run `python scripts/check_docs.py` again and treat a failure as the first bullet of this step does. The section holds no diagram, so no Mermaid check is needed.
    - On "Keep only in ARCHIVED.md", write the lines into `ARCHIVED.md` in 8b and change no wiki page.
 
    **8b. Write and read back `ARCHIVED.md`.**
    - Write `ARCHIVED.md` in the slice folder with the date, the commit and the pages touched, then the validation and review summary. Take the validation table from `validation.md` (its `Tested commit:` and `Run kind:`, and the claim counts by verdict) and the review table from `review.md` (its `Review:` status, `Reviewed commit:`, `Fix rounds:` and which checks ran, such as static and behavioural). When `review.md` is missing or says `Review: not run`, write `not run` and name the reason, and leave the lines out.
-   - Under `### Known, not fixed` and `### Not fixed by design`, write each line verbatim, or write one link instead when 8a moved the lines into the wiki: `See [Known limits](<path>#known-limits)`, where `<path>` runs from the slice folder to the `design.md` that holds them. Write `none` under a list with nothing in it.
+   - Under `### Known, not fixed` and `### Not fixed by design`, write each line verbatim, with two exceptions that write a link and not the line, so no fact is written both here and in the wiki. A line that 8a found stated in the wiki is written as `See [<heading>](<path>#<anchor>)`, with the page and heading 8a recorded. When 8a moved the lines into the wiki, write one link instead: `See [Known limits](<path>#known-limits)`. `<path>` runs from the slice folder to the wiki page. Write `none` under a list with nothing in it.
    - Write it as short tables, so a reader sees where the slice went at a glance:
 
      ```
@@ -206,7 +206,7 @@ Once the slice is settled, announce its backlog and name. At the end of this com
 
      ### Known, not fixed
 
-     - <verbatim line>, or: See [Known limits](<path>#known-limits)
+     - <verbatim line>, or: See [<heading>](<path>#<anchor>)
 
      ### Not fixed by design
 

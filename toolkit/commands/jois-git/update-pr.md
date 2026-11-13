@@ -283,7 +283,7 @@ A validation bullet is manual, because validate tests the running code with agen
 
 `ARCHIVED.md` is what `/jois-code:archive` leaves in a slice folder after it removes the result files. Its summary is the archive's copy of them, so it comes after a current `validation.md` or `review.md`: when the folder still holds a current one, read that file as above and take from `ARCHIVED.md` only what the folder lacks. Read its `Tested commit` and `Reviewed commit` rows as the commit headers above, and apply the same branch and currency checks. A `Review` row of `not run` gives the not-run bullet.
 
-A known line in `ARCHIVED.md` is either the text itself or one link to a `Known limits` section of a wiki `design.md`, written `See [Known limits](<path>#known-limits)`. For a link, open that file, read the lines under its `Known limits` heading and write one sub-bullet per line, still with source `ARCHIVED.md`. If the file or heading is missing, write the link as the sub-bullet and say the lines could not be read.
+A known line in `ARCHIVED.md` is either the text itself or one link to a wiki page, written `See [<heading>](<path>#<anchor>)`, such as `See [Known limits](<path>#known-limits)`. For a link, open that file, read the lines under the linked heading and write one sub-bullet per line, still with source `ARCHIVED.md`. If the file or heading is missing, write the link as the sub-bullet and say the lines could not be read.
 
 A group whose commits touch an OpenSpec change also reads that change's `tasks.md`.
 
