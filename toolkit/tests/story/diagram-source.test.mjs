@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { loadBacklog } from '../../skills/jois-story-plan/lib/backlog/model.js';
+import { loadBacklog } from '../../skills/jois-story-plan/lib/backlog/model.mjs';
 import { buildSource, compareSource, scopeStories, storyHash, criteriaOf, storiesBlock, applyStoriesBlock } from '../../skills/jois-story-plan/diagrams/source.js';
 
 const HEADER = 'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes,Frozen,Clarifications';

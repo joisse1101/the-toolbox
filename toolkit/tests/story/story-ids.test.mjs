@@ -6,8 +6,8 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { sampleTree, putFile, FIXTURE_BACKLOG_CSV } from './helpers/backlog-tree.mjs';
 import { tempProject } from './helpers/temp-project.mjs';
-import { loadBacklog } from '../../skills/jois-story-review/lib/backlog/model.js';
-import { parseCsv } from '../../skills/jois-story-review/lib/backlog/csv.js';
+import { loadBacklog } from '../../skills/jois-story-review/lib/backlog/model.mjs';
+import { parseCsv } from '../../skills/jois-story-review/lib/backlog/csv.mjs';
 
 // A backlog file may hold IDs that are not the ones the portal derives (epic initials + position): the sample backlog stores
 // `H1-FOC-0001` for its Focus timer story, and the portal would renumber it `H1-FT-0001` on open. Every reader and every writer of the

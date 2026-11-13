@@ -4,11 +4,8 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-
-const require = createRequire(import.meta.url);
-const bp = require('../../../skills/jois-story-review/lib/storage/backlog-paths.cjs');
+import * as bp from '../../../skills/jois-story-review/lib/storage/backlog-paths.mjs';
 
 // A new empty data folder (the tests use no other).
 export const tempData = (prefix = 'backlog-tree-') => fs.mkdtempSync(path.join(os.tmpdir(), prefix));

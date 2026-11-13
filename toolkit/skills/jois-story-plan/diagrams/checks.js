@@ -1,7 +1,7 @@
 // The structural checks of a slice (references/diagram-conventions.md). They read the slice's one document and
 // return problems; whether a diagram is valid Mermaid is for the parser step (parse-mermaid.mjs) to judge, because these
 // checks are pure and have no DOM. Pure: the caller reads the file.
-import { sameTitle } from '../lib/backlog/story-ref.js';
+import { sameTitle } from '../lib/backlog/story-ref.mjs';
 import { criteriaOf } from './source.js';
 import { layerForStereotype } from './limits.js';
 import { readDocument } from './document.js';

@@ -1,22 +1,20 @@
 // How the jois-story-propose skill suggests renaming, deleting or editing (definition, avoid, notes, part of) a lexicon term. Usage:
 //   node <skill folder>/suggest-lexicon.mjs <backlog name> [--check]   (suggestions as JSON on stdin)
 // Reads <name>/user-stories.csv (it must exist) and <name>/lexicon.csv, appends open rows to <name>/lexicon/lexicon-suggestions.csv and
-// never touches the lexicon: the user applies a suggestion in the portal's Lexicon tab. The rules are lib/lexicon/lexicon-suggestions.js's
+// never touches the lexicon: the user applies a suggestion in the portal's Lexicon tab. The rules are lib/lexicon/lexicon-suggestions.mjs's
 // (a copy of the planner's); one invalid item means nothing is written. With --check the same validation runs and the impact is
 // reported; nothing is written. The data folder is the .plans folder in the current folder.
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { createRequire } from 'node:module';
-import { emptyLexicon, parseLexicon } from './lib/lexicon/lexicon.js';
-import { composeSuggestions, emptySuggestions, FIELD_LABELS, impactOf, parseSuggestions, validateItems } from './lib/lexicon/lexicon-suggestions.js';
+import { emptyLexicon, parseLexicon } from './lib/lexicon/lexicon.mjs';
+import { composeSuggestions, emptySuggestions, FIELD_LABELS, impactOf, parseSuggestions, validateItems } from './lib/lexicon/lexicon-suggestions.mjs';
 import { describeParseError, writeAtomic } from './lib/skill-support/write-atomic.mjs';
 import { dataDirOrThrow } from './lib/skill-support/resolve-data-dir.mjs';
 
-const require = createRequire(import.meta.url);
-const { backlogDir, backlogFile } = require('./lib/storage/backlog-paths.cjs'); // same name rules as the file API
-const { shown } = require('./lib/skill-support/paths.cjs');
+import { backlogDir, backlogFile } from './lib/storage/backlog-paths.mjs'; // same name rules as the file API
+import { shown } from './lib/skill-support/paths.mjs';
 
 const readIfThere = (dataDir, target, parse, empty) => {
   try {

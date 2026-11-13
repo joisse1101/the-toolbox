@@ -4,17 +4,17 @@ How the five story skills work inside. The skills are global toolkit items in `t
 
 ## Where the data folder comes from
 
-The scripts use `viewer/shared/skill-support/resolve-data-dir.mjs`, which is copied into each skill. It looks only for a `.plans/` folder in the current folder. It reads no environment variable and no config file, so a skill has one way to find its data and nothing can point it at the wrong folder by accident.
+The scripts use `viewer/shared/skill-support/resolve-data-dir.ts`, which is copied into each skill. It looks only for a `.plans/` folder in the current folder. It reads no environment variable and no config file, so a skill has one way to find its data and nothing can point it at the wrong folder by accident.
 
 It never reads a parent folder, so a skill started in a sub-folder finds nothing, and its message names the folder it looked in. When `.plans` is missing the skill reports that nothing was found and asks the user. When `.plans` is a file or cannot be read, the skill shows the error and does not guess another folder.
 
-`jois-story-propose`, `jois-story-review` and `jois-story-plan` have `init-plans.mjs`, which creates `<current folder>/.plans` only after the user agrees. It sits over `viewer/shared/skill-support/init-plans.mjs` and refuses a file named `.plans`. `jois-story-explore` only reports, because it never writes.
+`jois-story-propose`, `jois-story-review` and `jois-story-plan` have `init-plans.mjs`, which creates `<current folder>/.plans` only after the user agrees. It sits over `viewer/shared/skill-support/init-plans.ts` and refuses a file named `.plans`. `jois-story-explore` only reports, because it never writes.
 
 `.plans/` holds the same layout as any data folder. Committing it or git-ignoring it is the code base owner's choice, and the viewer never edits `.gitignore`.
 
 ## The generated copy
 
-`node viewer/scripts/sync-skill-logic.mjs` copies the shared logic into each skill's `lib/` and the guidelines into its `references/`. Each copy starts with a `GENERATED. Do not edit this copy.` line. The map of what each skill gets is `SKILLS` in that script. The script reads every source as LF, whatever the checkout converted, then writes each copy with its source file's line ending (CRLF in a CRLF checkout, LF otherwise, never a mix), so git reports no change and a CRLF checkout stays clean after a run.
+`node viewer/scripts/sync-skill-logic.ts` copies the shared logic into each skill's `lib/` and the guidelines into its `references/`. The shared sources are TypeScript (`.ts`), but an installed skill runs on whatever Node the user has and needs no build, so each copy is plain JavaScript. The script removes the types with Node's own `module.stripTypeScriptTypes`, the same stripping Node applies when it runs the `.ts` source, and writes the result as `lib/<path>.mjs`. An `.mjs` file is an ES module even in a skill that has no `package.json`. A relative import that ends in `.ts` in the source ends in `.mjs` in the copy. Every copy is an ES module, including the ones that were CommonJS before (the storage modules and the `paths` module of `skill-support`), so a skill script loads each one with a plain `import ... from './lib/....mjs'` and never with `createRequire`. Node marks `stripTypeScriptTypes` as experimental and prints a warning for it; the script silences that one warning and no other. Each copy starts with a `GENERATED. Do not edit this copy.` line. The map of what each skill gets is `SKILLS` in that script. The script follows only imports at the top level of a file, in the text after the types are removed, so an import inside a function and a type-only import bring no file along. The script reads every source as LF, whatever the checkout converted, then writes each copy with its source file's line ending (CRLF in a CRLF checkout, LF otherwise, never a mix), so git reports no change and a CRLF checkout stays clean after a run.
 
 `viewer/test/skill-sync.test.mjs` runs the script into a temp folder and fails when a committed copy differs. After changing `viewer/shared/` or `viewer/shared/guidelines/`, run the script and commit the copies, so the skills never run on stale logic.
 
@@ -28,7 +28,7 @@ A skill writes only through a writer script run with Bash. A writer validates ev
 
 ### Naming stories
 
-Stories are named by Title together with every ID, because IDs shift on `renumber`. `resolveStoryRef` in `viewer/shared/backlog/story-ref.js` compares the pair, trimmed and case-folded. The scripts check a Title only when one is given, so each skill's text requires passing it. On a mismatch nothing is written.
+Stories are named by Title together with every ID, because IDs shift on `renumber`. `resolveStoryRef` in `viewer/shared/backlog/story-ref.ts` compares the pair, trimmed and case-folded. The scripts check a Title only when one is given, so each skill's text requires passing it. On a mismatch nothing is written.
 
 ### The propose and explore skills
 
@@ -44,7 +44,7 @@ Every story has a `Clarifications` column of `Q1: ...` and `A1: ...` pairs, wher
 
 `jois-story-review` reviews a backlog against `viewer/shared/guidelines/product-backlog.md` and writes suggestions to `review.csv` through `write-review.mjs`. It never edits `user-stories.csv`, and its writer rejects any row for a frozen story (an old `unlock` row in a review file is shown as stale). It cites the guidelines through its `references/` copy and does not restate them. `read-backlog.mjs <backlog> [section]` serves the context in sections: `guidelines`, `sizing`, `lexicon`, `proposals`, `checks` and `epic-<n>`. The scope line counts frozen stories (`N of M stories submitted for review, K frozen (reference only)`), and frozen stories are reference only.
 
-`viewer/shared/review/review.js` is shared with the portal's Apply and Dismiss, so a suggestion applies the same way in both places. Each backlog has a lexicon, `<backlog>/lexicon.csv`, and its rules are in `viewer/shared/lexicon/lexicon.js` and `viewer/shared/lexicon/lexicon-suggestions.js`.
+`viewer/shared/review/review.ts` is shared with the portal's Apply and Dismiss, so a suggestion applies the same way in both places. Each backlog has a lexicon, `<backlog>/lexicon.csv`, and its rules are in `viewer/shared/lexicon/lexicon.ts` and `viewer/shared/lexicon/lexicon-suggestions.ts`.
 
 ## The plan skill
 
@@ -59,7 +59,7 @@ The plan skill's tool grant is unchanged (`Read`, `Grep`, `Glob` and its scripts
 
 The rules are in `toolkit/skills/jois-story-plan/references/diagram-conventions.md`, which is a copy of `viewer/shared/guidelines/diagram-conventions.md`, the source. Its fenced `diagram-limits` block is read by `toolkit/skills/jois-story-plan/diagrams/limits.js`.
 
-`write-freeze.mjs` is the plan skill's only write into `user-stories.csv`. It takes `[{ id, title }]` on stdin and runs after the slice is written, read back and verified with no critical finding open. It uses `freezeStories` from `viewer/shared/backlog/ids.js` (copied into the skill's `lib/` by the sync script) and the backlog initials from `backlog.json`, and it refuses a story with no ID or with an ID that lacks the initials. Then it writes only the `Frozen` cell of the stories it names, atomically, and reads the file back. Freezing is idempotent, and nothing unfreezes a story, so a mistaken freeze is fixed by hand in the CSV.
+`write-freeze.mjs` is the plan skill's only write into `user-stories.csv`. It takes `[{ id, title }]` on stdin and runs after the slice is written, read back and verified with no critical finding open. It uses `freezeStories` from `viewer/shared/backlog/ids.ts` (copied into the skill's `lib/` as `ids.mjs` by the sync script) and the backlog initials from `backlog.json`, and it refuses a story with no ID or with an ID that lacks the initials. Then it writes only the `Frozen` cell of the stories it names, atomically, and reads the file back. Freezing is idempotent, and nothing unfreezes a story, so a mistaken freeze is fixed by hand in the CSV.
 
 `write-diagram.mjs` runs `checks.js` and Mermaid's own parser on every block, writes nothing when a check fails, and writes `source.json` last. If the skill-local packages are missing it says to run `npm ci` in the skill folder and refuses the write. `toolkit/install/Install-Toolkit.ps1` runs that `npm ci` after copying the skill, and `-NoPackages` skips it.
 

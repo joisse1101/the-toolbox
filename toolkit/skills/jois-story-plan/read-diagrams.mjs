@@ -8,18 +8,16 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
-import { loadBacklog } from './lib/backlog/model.js';
+import { loadBacklog } from './lib/backlog/model.mjs';
 import { compareSource, applyStoriesBlock } from './diagrams/source.js';
 import { countTasks } from './diagrams/tasks.js';
 import { writeAtomic } from './lib/skill-support/write-atomic.mjs';
 import { dataDirOrThrow } from './lib/skill-support/resolve-data-dir.mjs';
 import { initialsOf } from './lib/skill-support/backlog-initials.mjs';
 
-const require = createRequire(import.meta.url);
-const { backlogDir, backlogFile, slicesDir } = require('./lib/storage/backlog-paths.cjs');
-const { GUIDELINES_DIR, shown } = require('./lib/skill-support/paths.cjs');
+import { backlogDir, backlogFile, slicesDir } from './lib/storage/backlog-paths.mjs';
+import { GUIDELINES_DIR, shown } from './lib/skill-support/paths.mjs';
 
 export const SLICE_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export const SOURCE_FILE = 'source.json';

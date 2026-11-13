@@ -6,7 +6,7 @@ import { pathOf, decidedPath } from './helpers/backlog-tree.mjs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { writeProposal, checkProposal, missingAfterWrite } from '../../skills/jois-story-propose/write-proposal.mjs';
-import { loadBacklog, serializeBacklog, proposalHeaders } from '../../skills/jois-story-propose/lib/backlog/model.js';
+import { loadBacklog, serializeBacklog, proposalHeaders } from '../../skills/jois-story-propose/lib/backlog/model.mjs';
 import { tempProject } from './helpers/temp-project.mjs';
 
 const SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../skills/jois-story-propose/write-proposal.mjs');

@@ -4,10 +4,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildProposals } from '../../skills/jois-story-propose/proposal-input.js';
-import { loadBacklog } from '../../skills/jois-story-propose/lib/backlog/model.js';
-import { validateFindings } from '../../skills/jois-story-propose/lib/review/review.js';
-import { applyTermItems, parseLexicon } from '../../skills/jois-story-propose/lib/lexicon/lexicon.js';
-import { emptySuggestions, validateItems } from '../../skills/jois-story-propose/lib/lexicon/lexicon-suggestions.js';
+import { loadBacklog } from '../../skills/jois-story-propose/lib/backlog/model.mjs';
+import { validateFindings } from '../../skills/jois-story-propose/lib/review/review.mjs';
+import { applyTermItems, parseLexicon } from '../../skills/jois-story-propose/lib/lexicon/lexicon.mjs';
+import { emptySuggestions, validateItems } from '../../skills/jois-story-propose/lib/lexicon/lexicon-suggestions.mjs';
 
 const TOOLKIT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const SKILLS = path.join(TOOLKIT, 'skills');

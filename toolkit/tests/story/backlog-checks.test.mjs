@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { loadBacklog } from '../../skills/jois-story-review/lib/backlog/model.js';
-import { parseLexicon } from '../../skills/jois-story-review/lib/lexicon/lexicon.js';
+import { loadBacklog } from '../../skills/jois-story-review/lib/backlog/model.mjs';
+import { parseLexicon } from '../../skills/jois-story-review/lib/lexicon/lexicon.mjs';
 import { backlogChecks } from '../../skills/jois-story-review/backlog-checks.js';
 
 const HEAD = 'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes,Frozen,Clarifications';

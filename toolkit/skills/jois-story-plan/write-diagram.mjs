@@ -10,9 +10,8 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
-import { resolveStoryRef } from './lib/backlog/story-ref.js';
+import { resolveStoryRef } from './lib/backlog/story-ref.mjs';
 import { parseLimits } from './diagrams/limits.js';
 import { buildSource, scopeStories, applyStoriesBlock } from './diagrams/source.js';
 import { checkSlice, formatProblems } from './diagrams/checks.js';
@@ -22,8 +21,7 @@ import { loadStories, slicePath, readSliceFolder, readConventions, scopeText, SO
 import { parseMermaid, mermaidMissing } from './parse-mermaid.mjs';
 import { dataDirOrThrow } from './lib/skill-support/resolve-data-dir.mjs';
 
-const require = createRequire(import.meta.url);
-const { GUIDELINES_DIR } = require('./lib/skill-support/paths.cjs');
+import { GUIDELINES_DIR } from './lib/skill-support/paths.mjs';
 
 const MAX_FILE_CHARS = 200000;
 const TASKS_FILE = 'tasks.md';

@@ -2,7 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 // "A writer adds a file": every file name a writer uses is a row of the table, so a new file with no row fails here.
@@ -10,9 +9,9 @@ import { fileURLToPath } from 'node:url';
 // sources, and from the files sections of the skills and commands, not from a list typed here.
 const TOOLKIT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const PLAN = path.join(TOOLKIT, 'skills', 'jois-story-plan');
-const require = createRequire(import.meta.url);
-const { PLANS_FILES } = await import(`file://${PLAN.split(path.sep).join('/')}/lib/skill-support/plans-files.mjs`);
-const bp = require(path.join(PLAN, 'lib', 'storage', 'backlog-paths.cjs'));
+const planUrl = `file://${PLAN.split(path.sep).join('/')}`;
+const { PLANS_FILES } = await import(`${planUrl}/lib/skill-support/plans-files.mjs`);
+const bp = await import(`${planUrl}/lib/storage/backlog-paths.mjs`);
 const read = (file) => fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
 
 // A name is covered when a row has it as its whole path or as its last part (`ARCHIVED.md` for `slices/<slice>/ARCHIVED.md`).

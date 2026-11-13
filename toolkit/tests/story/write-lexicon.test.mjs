@@ -6,7 +6,7 @@ import { pathOf, decidedPath } from './helpers/backlog-tree.mjs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { writeLexicon, checkLexicon } from '../../skills/jois-story-propose/write-lexicon.mjs';
-import { parseLexicon } from '../../skills/jois-story-propose/lib/lexicon/lexicon.js';
+import { parseLexicon } from '../../skills/jois-story-propose/lib/lexicon/lexicon.mjs';
 import { tempProject } from './helpers/temp-project.mjs';
 
 const SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../skills/jois-story-propose/write-lexicon.mjs');
