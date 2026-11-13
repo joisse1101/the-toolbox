@@ -1,10 +1,10 @@
 ---
 name: "JOIS: Apply"
 description: "Apply a slice one group of tasks at a time: hand each group to task-applier, record its results in tasks.md, then commit it by itself on an unprotected branch (never main or master, never a push), or stop with nothing committed in a doubtful case. The last group's code is reviewed with /jois-code:review and its findings fixed before the tests, which run once, as the task in the last group"
-allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git add:*), Bash(git commit:*), Bash(git branch --show-current:*), Bash(git rev-parse:*), Bash(node *jois-story-plan*read-diagrams.mjs*), Skill, Read, Edit, Write(**/slices/*/review.md), Glob, Agent, Monitor, AskUserQuestion
+allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git add:*), Bash(git commit:*), Bash(git branch --show-current:*), Bash(git rev-parse:*), Bash(git ls-files:*), Bash(node *jois-story-plan*read-diagrams.mjs*), Skill, Read, Edit, Write(**/slices/*/review.md), Glob, Agent, Monitor, AskUserQuestion
 disable-model-invocation: true
 metadata:
-  version: "2.2.0"
+  version: "2.3.0"
   last_updated: "2026-11-13"
 ---
 
@@ -18,6 +18,8 @@ This command writes these files in the slice folder:
 - `review.md`
 
 The lifecycle of each file is in [the file table](../../skills/jois-story-plan/references/plans-files.md).
+
+`review.md` is a working file: `/jois-code:archive` copies it into `ARCHIVED.md` and then removes it. This command never stages it and never reads it back except to replace it. `tasks.md` is staged with each group's commit only when `git ls-files` lists it (step 10).
 
 ## Finding the slice
 
@@ -72,7 +74,7 @@ A slice is the folder `<backlog>/slices/<slice>/` of the data folder the plan sk
    - If it is in neither, say the plan skill is not installed, name `Install-Toolkit.ps1` and stop.
    - Run `node <that folder>/read-diagrams.mjs <backlog> --slice <slice>` and read the whole output.
    - Never re-implement the comparison yourself, and never redraw the slice.
-   - The script repairs a shifted story ID in the slice's `source.json`. That write stays inside the untracked slice folder.
+   - The script repairs a shifted story ID in the slice's `source.json`. That write stays inside the slice folder.
    - If the output says `STALE`, or has a `changed:`, `missing:`, `new:` or `ambiguous:` line, or the command fails: dispatch nothing. Name each story by its Title, say the slice must be redrawn with `jois-story-plan`, and stop.
    - A `healed:` line alone does not make the slice stale. Mention it and go on.
    - Keep the text of `UC-<slice>.md` in mind for the briefs.
@@ -187,7 +189,8 @@ A slice is the folder `<backlog>/slices/<slice>/` of the data folder the plan sk
      - An empty result (detached HEAD), `main`, `master` or a failed command counts as protected: stop and say the branch is protected.
    - Run no test here. Tests run only through the test task in the last group of `tasks.md` (step 7). The behavioural check of step 10a runs the project's own checks in a throwaway copy; it is not the test task.
    - Run `git status` and `git diff --stat`.
-     - Ignore `<backlog>/slices/` in this check, and never stage or commit anything under it. Read the index before any `git add`, and leave what was staged as it is. If a file under it is already staged, stop and name it. It is not tracked by git here, so the ticks stay local, and `/jois-code:archive` does not stage it either.
+     - Run `git ls-files <the slice's tasks.md>`. When it lists the file, `tasks.md` is tracked: stage it by explicit path with each group's commit, so the ticks travel with the code. When it lists nothing, never stage it. Never stage `review.md` or any other file under `<backlog>/slices/`.
+     - Ignore the slice's folder in the checks below, apart from the tracked `tasks.md` of this step. Read the index before any `git add`, and leave what was staged as it is. If a file under that folder is already staged, stop and name it.
      - A tracked file outside the group's reported files and outside that folder changed: stop and name the file.
      - Something unrelated outside that folder already staged or edited: stop and name it.
    - **Split the group** when it is more than one concern (over about 200 lines or 5 files, or more than one layer).
@@ -199,6 +202,7 @@ A slice is the folder `<backlog>/slices/<slice>/` of the data folder the plan sk
      - A single task over the size limit has no cut: treat it as one concern and commit it as one.
      - If one changed file holds two concerns: stop with nothing committed and name the file. `git add -p` does not work here.
    - Stage each concern in turn, in the order of the group's tasks. This holds for a group of one concern too.
+     - Put the tracked `tasks.md` in the last concern of the group's commits, so one split group still ends with the ticks.
      - Stage with `git add <explicit paths>`, and commit with `git commit -- <the same paths>` so nothing else staged is swept in.
      - Commit with its own `type(scope): subject` message: lowercase, imperative, no trailing period.
      - Take the type from what the concern does (feat, fix, docs, test and so on, as the rule lists).
@@ -234,7 +238,7 @@ A slice is the folder `<backlog>/slices/<slice>/` of the data folder the plan sk
      - A header of four lines: `Review:` (`run` or `not run`, with the reason when not run), `Date:`, `Reviewed commit:` (`git rev-parse HEAD` after the last fix commit) and `Fix rounds:` (a number).
      - Then the parts: `Static check:` and `Behavioural check:`, each `run` or `not run`, with the reason when not run.
      - Then a `## Known, not fixed` list, one line per failure the user chose not to fix, with the user's choice as the reason, and a `## Not fixed by design` list of the optional cleanups and `could not test` verdicts. Write `none` under a list with nothing in it.
-     - The slice folder is not tracked by git here. Never stage it.
+     - `review.md` is a working file that archive copies and removes. Never stage it.
 
 11. **Take the next group.**
     - Repeat from step 6 until no group has a pending task.

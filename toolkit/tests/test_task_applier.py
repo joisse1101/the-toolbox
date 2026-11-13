@@ -223,6 +223,22 @@ def test_apply_command_records_the_review_for_archive_in_the_slice_form():
     assert "Write" not in tools
 
 
+def test_apply_command_stages_a_tracked_tasks_md_and_never_review_md():
+    text = APPLY_COMMAND.read_text(encoding="utf-8")
+    allowed = next(line for line in _frontmatter(APPLY_COMMAND).splitlines() if line.startswith("allowed-tools:"))
+    assert "Bash(git ls-files:*)" in [tool.strip() for tool in allowed.split(":", 1)[1].split(", ")]
+    step = step_ten(text)
+    assert "Run `git ls-files <the slice's tasks.md>`" in step
+    assert "stage it by explicit path with each group's commit" in step
+    assert "Never stage `review.md`" in step
+    assert "`review.md` is a working file" in text
+    assert "copies it into `ARCHIVED.md` and then removes it" in text
+    assert "never reads it back except to replace it" in text
+    assert "untracked slice folder" not in text
+    assert "The slice folder is not tracked by git here" not in text
+    assert "It is not tracked by git here" not in text
+
+
 def test_apply_command_has_no_deferral_or_held_back_rule():
     text = APPLY_COMMAND.read_text(encoding="utf-8")
     for gone in ("deferrable", "held-back", "held back", "One rerun", "nothing is deferred"):
@@ -264,5 +280,4 @@ def test_no_toolkit_file_allows_rm():
 def test_apply_command_does_not_say_the_change_folder_is_committed_at_archive():
     text = APPLY_COMMAND.read_text(encoding="utf-8")
     assert "committed at archive" not in text
-    assert "`/jois-code:archive` does not stage it either" in text
-    assert "so the ticks stay local, and `/jois-code:archive` does not stage it either" in text
+    assert "so the ticks stay local" not in text
