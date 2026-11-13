@@ -29,19 +29,61 @@ def _last_step(number):
     return _text().split(f"\n{number}. **", 1)[1].split("\n## ", 1)[0]
 
 
-# Task 1.1: the form and the refusal
+def _finding():
+    return _text().split("## Finding the slice", 1)[1].split("\n## ", 1)[0]
 
-def test_command_has_one_form_and_refuses_any_other_argument():
-    text = _text()
-    assert "/jois-code:archive slice <backlog>/<slice>" in text
-    assert "Never guess" in text
-    assert "ask for `slice <backlog>/<slice>` and do nothing else. Read nothing and write nothing" in text
+
+# Finding the slice
+
+def test_finding_section_names_each_accepted_form():
+    finding = _finding()
+    for form in ("`slice <backlog>/<slice>`", "`<backlog>/<slice>`", "`<backlog> <slice>`",
+                 "a slice name alone", "a backlog name alone", "no argument"):
+        assert form in finding
+    assert "Never guess" in _text()
+
+
+def test_finding_section_asks_with_askuserquestion_when_the_slice_is_not_settled():
+    finding = _finding()
+    assert "AskUserQuestion" in finding
+    assert "AskUserQuestion" in _allowed_tools()
+    assert "Read nothing but the slice list and write nothing until the user answers" in finding
+    assert "**/<backlog>/slices/<slice>/tasks.md" in finding
+    assert "**/slices/*/tasks.md" in finding
+
+
+def test_finding_section_skips_copies_and_falls_back_to_the_plan_skill_reader():
+    finding = _finding()
+    for folder in ("`.trees/`", "`.scratch/`", "`node_modules/`", "`test/`", "`tests/`", "`sample/`"):
+        assert folder in finding
+    assert "`read-diagrams.mjs <backlog>`" in finding
+    assert "list the paths and ask which one" in finding
+
+
+def test_finding_section_has_the_list_filter_line_and_the_four_option_rule():
+    finding = _finding()
+    assert "Slices this command lists: every task ticked and no `ARCHIVED.md`." in finding
+    assert "more than four slices qualify" in finding
+
+
+def test_finding_section_never_names_its_command_and_ends_with_the_full_form_line():
+    finding = _finding()
+    assert "/jois-code:" not in finding
+    assert "archive" not in finding.lower().replace("archived.md", "")
+    assert "print this command's full form, `slice <backlog>/<slice>`, with the real names" in finding
+
+
+def test_every_stop_after_the_slice_is_settled_prints_the_full_form():
+    full_form = "`/jois-code:archive slice <backlog>/<slice>`"
+    assert full_form in _step(3, 4)
+    assert full_form in _last_step(8)
+    assert full_form in _text().split("## Resuming", 1)[1]
 
 
 def test_command_is_manual_only_and_versioned():
     frontmatter = _frontmatter()
     assert "disable-model-invocation: true" in frontmatter
-    assert 'version: "1.2.0"' in frontmatter
+    assert 'version: "1.3.0"' in frontmatter
     assert "last_updated:" in frontmatter
 
 
@@ -61,7 +103,6 @@ def test_command_names_each_stop_condition_of_a_stale_slice():
         assert condition in step
     assert "read-diagrams.mjs" in step
     assert "jois-story-plan" in step
-    assert "list them and ask which one" in step
 
 
 def test_command_checks_tasks_decisions_and_questions():
