@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Keeps the standards for a user-story backlog (Epic, Feature, User Story, acceptance criteria, size and INVEST) in one file, `planner/guidelines/product-backlog.md`, so that writing and reviewing stories apply the same rules.
+Keeps the standards for a user-story backlog (Epic, Feature, User Story, acceptance criteria, size and INVEST) in one file, `viewer/shared/guidelines/product-backlog.md`, so that writing and reviewing stories apply the same rules.
 
 ## Requirements
 

@@ -1,7 +1,7 @@
 # portal-safe-actions Specification
 
 ## Purpose
-Keeps destructive actions in the planner portal safe and predictable, and gives every tab the same shape so the user always knows where the main action is.
+Keeps destructive actions in the viewer safe and predictable, and gives every tab the same shape so the user always knows where the main action is.
 
 ## Requirements
 

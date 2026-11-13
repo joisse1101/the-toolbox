@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines what the repo's `wiki/` holds so a user can learn the planner and the toolkit from it, and so `CLAUDE.md` and the READMEs route to it and do not restate it.
+Defines what the repo's `wiki/` holds so a user can learn the viewer and the toolkit from it, and so `CLAUDE.md` and the READMEs route to it and do not restate it.
 
 ## Requirements
 

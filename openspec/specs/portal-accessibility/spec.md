@@ -1,7 +1,7 @@
 # portal-accessibility Specification
 
 ## Purpose
-Makes every part of the planner portal reachable by keyboard and readable by assistive technology, and makes sure no meaning is carried by colour alone.
+Makes every part of the viewer reachable by keyboard and readable by assistive technology, and makes sure no meaning is carried by colour alone.
 
 ## Requirements
 

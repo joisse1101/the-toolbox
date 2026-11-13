@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Lets the user keep a list of projects in the project config and switch between them from a dropdown beside the backlog dropdown. A project is a folder of planner data, either a code base (data in its `.plans` folder) or a plain data folder.
+Lets the user keep a list of projects in the project config and switch between them from a dropdown beside the backlog dropdown. A project is a folder of viewer data, either a code base (data in its `.plans` folder) or a plain data folder.
 
 ## Requirements
 

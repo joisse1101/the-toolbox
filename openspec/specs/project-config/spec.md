@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Lets a planner project be named and pointed at its data directory from a visible YAML file and the portal, and prepares a directory with the structure the planner needs. It replaces the hidden `PLANNER_DATA_DIR` environment variable.
+Lets a viewer project be named and pointed at its data directory from a visible YAML file and the portal, and prepares a directory with the structure the viewer needs. It replaces the hidden `PLANNER_DATA_DIR` environment variable.
 
 ## Requirements
 

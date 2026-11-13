@@ -1,7 +1,7 @@
 # portal-visual-system Specification
 
 ## Purpose
-Gives the planner portal one set of design scales and consistent interaction states, so every tab looks and behaves alike at any window size.
+Gives the viewer one set of design scales and consistent interaction states, so every tab looks and behaves alike at any window size.
 
 ## Requirements
 
