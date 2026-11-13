@@ -75,14 +75,14 @@ Add Project SHALL offer to link a code base. The user chooses the folder with th
 - **THEN** no second entry is added and the portal switches to the existing one
 
 ### Requirement: Add a project by creating a new one
-Add Project SHALL offer to create a new project from a name. The system SHALL create the folder `planner/data/<name>` holding the first backlog and the starting files that init creates, add it to the list as a `dataDir` entry with that name and make it active. The name SHALL follow the rules for a backlog name and SHALL NOT match an existing folder in `planner/data` or an existing project's name, ignoring case. A refused name creates nothing.
+Add Project SHALL offer to create a new project from a name. The system SHALL create the folder `viewer/data/<name>` holding the first backlog and the starting files that init creates, add it to the list as a `dataDir` entry with that name and make it active. The name SHALL follow the rules for a backlog name and SHALL NOT match an existing folder in `viewer/data` or an existing project's name, ignoring case. A refused name creates nothing.
 
 #### Scenario: New project
 - **WHEN** the user creates the project `Billing`
-- **THEN** `planner/data/Billing` exists with a first backlog, the list holds a `Billing` entry and it is active
+- **THEN** `viewer/data/Billing` exists with a first backlog, the list holds a `Billing` entry and it is active
 
 #### Scenario: Name taken
-- **WHEN** `planner/data/billing` already exists and the user creates `Billing`
+- **WHEN** `viewer/data/billing` already exists and the user creates `Billing`
 - **THEN** the request is refused, the reason is shown and nothing is created
 
 #### Scenario: Invalid name
@@ -102,7 +102,7 @@ The system SHALL show the config's active `codeBase` or `dataDir` as a project w
 
 #### Scenario: No config
 - **WHEN** no config file exists
-- **THEN** the dropdown shows `data` for `planner/data` as the active project
+- **THEN** the dropdown shows `data` for `viewer/data` as the active project
 
 ### Requirement: Saving the list keeps the config intact
 The system SHALL save the list through the same write as other config changes, keeping any comment in the file, and SHALL write nothing when validation refuses the result.

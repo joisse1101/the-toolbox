@@ -18,7 +18,7 @@ A repo path in inline code on a wiki page or in a `CLAUDE.md` SHALL be written f
 
 #### Scenario: A moved file path
 - **WHEN** an architecture page names the CSV parser
-- **THEN** it SHALL write `planner/logic/backlog/csv.js` and not `backlog/csv.js`
+- **THEN** it SHALL write `viewer/shared/backlog/csv.js` and not `backlog/csv.js`
 
 ### Requirement: Architecture knowledge lives in the wiki
 The wiki SHALL hold the architecture detail that `CLAUDE.md` held: the logic modules, the portal server and web app, the data folder layout and config, and the story-skill internals. Every reason stated in the old text SHALL still be stated.
