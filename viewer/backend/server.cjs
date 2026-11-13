@@ -6,10 +6,10 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
-const { HttpError, validateBacklogName } = require('../shared/storage/file-name.cjs');
+const { HttpError, validateBacklogName } = require('../shared/storage/file-name.ts');
 const { writeBacklogFiles } = require('./storage/backlog-files.cjs');
-const { validateInitials, readInitials, writeInitials, findConflict, defaultInitials } = require('../shared/storage/backlog-initials.cjs');
-const { PLANS_DIR, KINDS, BACKLOG_FILE, backlogDir, backlogFile, listBacklogs, detectOlderLayout } =require('../shared/storage/backlog-paths.cjs');
+const { validateInitials, readInitials, writeInitials, findConflict, defaultInitials } = require('../shared/storage/backlog-initials.ts');
+const { PLANS_DIR, KINDS, BACKLOG_FILE, backlogDir, backlogFile, listBacklogs, detectOlderLayout } =require('../shared/storage/backlog-paths.ts');
 // The config is read when paths.cjs loads. Run as the server, a bad config ends the process with the message that names the key.
 let paths;
 try {
@@ -120,7 +120,7 @@ async function writeNew(file, content) {
 // The other backlogs of the data folder as { name, initials, frozenCodes } for the initials checks. The model is an ES
 // module, so it loads with a dynamic import. A sibling whose file cannot be read counts as holding no frozen IDs.
 async function siblingsOf(dataDir, name) {
-  const { loadBacklog } = await import('../shared/backlog/model.js');
+  const { loadBacklog } = await import('../shared/backlog/model.ts');
   return listBacklogs(dataDir)
     .filter((other) => other !== name)
     .map((other) => {

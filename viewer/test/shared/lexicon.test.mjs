@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   parseLexicon, composeLexicon, lexiconProblems, saveTerm, renameTerm, deleteTerm, applyTermItems, emptyLexicon,
-} from '../../shared/lexicon/lexicon.js';
+} from '../../shared/lexicon/lexicon.ts';
 
 const CANONICAL = [
   'Term,Part of,Definition,Avoid,Notes',

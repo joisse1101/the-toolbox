@@ -8,7 +8,7 @@ import { startingFiles } from '../../backend/storage/starting-files.js';
 
 const require = createRequire(import.meta.url);
 const { writeBacklogFiles } = require('../../backend/storage/backlog-files.cjs');
-const { backlogFile, listBacklogs, KINDS } = require('../../shared/storage/backlog-paths.cjs');
+const { backlogFile, listBacklogs, KINDS } = require('../../shared/storage/backlog-paths.ts');
 
 // Temp folders go under the project's .scratch/, never the system temp folder.
 const scratch = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '.scratch');

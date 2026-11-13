@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { reducer } from '../../frontend/src/tools/backlog/shell/useBacklog.js';
-import { loadBacklog, applyBulk } from '../../shared/backlog/model.js';
-import { moveToProposed } from '../../shared/backlog/proposals.js';
+import { loadBacklog, applyBulk } from '../../shared/backlog/model.ts';
+import { moveToProposed } from '../../shared/backlog/proposals.ts';
 
 const FILE = 'Epic,Title,Depends On\r\nBilling,A,\r\nBilling,B,\r\nOnboarding,C,\r\n';
 

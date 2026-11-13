@@ -1,5 +1,5 @@
 import StateMark from '../../../../shared/ui/StateMark.jsx';
-import { storyIssues, storyLabel as title } from '../../../../../../shared/backlog/model.js';
+import { storyIssues, storyLabel as title } from '../../../../../../shared/backlog/model.ts';
 import { issueClass, rowTooltip } from '../../shared/issues.js';
 
 // The stories or groups that no arrow touches, listed below the graph.

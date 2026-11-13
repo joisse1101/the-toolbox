@@ -1,5 +1,5 @@
 import EmptyState from '../../../../shared/ui/EmptyState.jsx';
-import { storyIssues, storyLabel as title } from '../../../../../../shared/backlog/model.js';
+import { storyIssues, storyLabel as title } from '../../../../../../shared/backlog/model.ts';
 import { issueClass, rowTooltip } from '../../shared/issues.js';
 import { stateWord } from '../../../../shared/ui/StateMark.jsx';
 import { NODE_W, NODE_H, BAND_PAD, MIN_LABEL_ZOOM, slot, edgeKey, clip, edgePath } from './graphGeometry.js';

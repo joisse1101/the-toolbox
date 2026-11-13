@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { loadBacklog } from '../../shared/backlog/model.js';
+import { loadBacklog } from '../../shared/backlog/model.ts';
 import {
   parseReview, serializeReview, validateFindings, fillCurrent, mergeStatus, suggestionState, applySuggestions,
   unitsOf, unitState, acceptAll, acceptSummaryText, criterionNumberOf, displayRow, openCounts, openUnitsFor, retargetRows, reviewOverview, REVIEW_COLUMNS,
-} from '../../shared/review/review.js';
+} from '../../shared/review/review.ts';
 
 const INITIALS = 'B1';
 const load = (text) => loadBacklog(text, { initials: INITIALS });

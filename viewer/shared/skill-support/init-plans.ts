@@ -8,7 +8,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { PLANS_DIR } from './resolve-data-dir.mjs';
+import { PLANS_DIR } from './resolve-data-dir.ts';
 
 export function initPlans({ cwd = process.cwd() } = {}) {
   const here = path.resolve(cwd);

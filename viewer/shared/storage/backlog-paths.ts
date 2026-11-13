@@ -11,7 +11,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { HttpError, validateBacklogName } = require('./file-name.cjs');
+const { HttpError, validateBacklogName } = require('./file-name.ts');
 
 const BACKLOG_FILE = 'user-stories.csv';
 

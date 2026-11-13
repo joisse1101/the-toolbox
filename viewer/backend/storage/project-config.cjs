@@ -7,7 +7,7 @@
 const fs = require('fs');
 const path = require('path');
 const YAML = require('yaml');
-const { PLANS_DIR } = require('../../shared/storage/backlog-paths.cjs');
+const { PLANS_DIR } = require('../../shared/storage/backlog-paths.ts');
 const {
   confineDir, confineCodeBase, checkFolder, checkCodeBase, initFolders, initCodeBase, copyData, copyToCodeBase, planCopy, planCopyToCodeBase, migrateOlderLayout,
 } = require('./project-folders.cjs');

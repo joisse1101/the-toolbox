@@ -4,8 +4,8 @@ import GraphToolbar from './GraphToolbar.jsx';
 import GraphDetail from './GraphDetail.jsx';
 import GraphCanvas from './GraphCanvas.jsx';
 import GraphUnlinked from './GraphUnlinked.jsx';
-import { storyLabel as title } from '../../../../../../shared/backlog/model.js';
-import { wouldCycle } from '../../../../../../shared/backlog/ids.js';
+import { storyLabel as title } from '../../../../../../shared/backlog/model.ts';
+import { wouldCycle } from '../../../../../../shared/backlog/ids.ts';
 import { layoutGraph, groupStories, relatedIds, fitView, zoomAt, panBy, toGraphPoint } from './graph.js';
 import { edgeKey, bandGeometry } from './graphGeometry.js';
 

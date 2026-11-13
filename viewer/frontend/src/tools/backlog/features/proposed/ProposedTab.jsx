@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { backlogProblems } from '../../../../../../shared/backlog/ids.js';
+import { backlogProblems } from '../../../../../../shared/backlog/ids.ts';
 import StoryList from '../../shared/StoryList.jsx';
 import StoryForm from '../../shared/story-form/StoryForm.jsx';
 import ResizeHandle from '../../../../shared/ui/ResizeHandle.jsx';

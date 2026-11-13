@@ -5,7 +5,7 @@
 // A lexicon is { headers, hasBom, terms: [{ name, partOf, definition, avoid: [], notes, cells: [] }] }.
 // Names compare ignoring case and surrounding spaces. Pure: no file access.
 
-import { parseCsv, toCsv } from '../backlog/csv.js';
+import { parseCsv, toCsv } from '../backlog/csv.ts';
 
 export const COLUMNS = ['Term', 'Part of', 'Definition', 'Avoid', 'Notes'];
 const TERM_KEYS = ['term', 'definition', 'avoid', 'notes', 'partOf'];

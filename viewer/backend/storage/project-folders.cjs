@@ -8,7 +8,7 @@ const os = require('os');
 const path = require('path');
 
 const { writeBacklogFiles } = require('./backlog-files.cjs');
-const { KIND_FILES, PLANS_DIR, listBacklogs, detectOlderLayout, validateBacklogName } = require('../../shared/storage/backlog-paths.cjs');
+const { KIND_FILES, PLANS_DIR, listBacklogs, detectOlderLayout, validateBacklogName } = require('../../shared/storage/backlog-paths.ts');
 
 const ROOT = path.resolve(__dirname, '..', '..', '..');
 

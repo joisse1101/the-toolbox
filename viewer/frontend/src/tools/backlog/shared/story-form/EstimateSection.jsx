@@ -1,4 +1,4 @@
-import { POINTS, SPLIT_ABOVE, PRIORITIES } from '../../../../../../shared/backlog/model.js';
+import { POINTS, SPLIT_ABOVE, PRIORITIES } from '../../../../../../shared/backlog/model.ts';
 import Info from '../../../../shared/ui/Info.jsx';
 import guideline from '../../../../../../shared/guidelines/sprint-points-guideline.md?raw';
 import { Row } from '../../../../shared/ui/Layout.jsx';

@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { newStory, loadBacklog, serializeBacklog, COLUMNS } from '../../shared/backlog/model.js';
-import { renumber } from '../../shared/backlog/ids.js';
+import { newStory, loadBacklog, serializeBacklog, COLUMNS } from '../../shared/backlog/model.ts';
+import { renumber } from '../../shared/backlog/ids.ts';
 import {
   isPlaceholder, nextPlaceholder, removeProposed, reorderProposed, moveProposed, acceptProposed, moveToProposed,
-} from '../../shared/backlog/proposals.js';
+} from '../../shared/backlog/proposals.ts';
 
 let n = 1000;
 const st = (epic, extra = {}) => Object.assign(newStory(COLUMNS), { id: ++n, epic, codedEpic: epic, ...extra });

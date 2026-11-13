@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseLexicon, findTerm, saveTerm } from '../../shared/lexicon/lexicon.js';
+import { parseLexicon, findTerm, saveTerm } from '../../shared/lexicon/lexicon.ts';
 import {
   applySuggestion, composeSuggestions, emptySuggestions, impactOf, openRows, parseSuggestions, staleReason, validateItems,
-} from '../../shared/lexicon/lexicon-suggestions.js';
+} from '../../shared/lexicon/lexicon-suggestions.ts';
 
 const LEXICON = parseLexicon(
   'Term,Part of,Definition,Avoid,Notes\r\n' +

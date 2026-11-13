@@ -4,7 +4,7 @@
 // Accepting moves stories into the backlog; `renumber` (ids.js) then gives them real IDs and rewrites every
 // `Depends On` entry that named a placeholder now held by a story. Stories are never mutated.
 
-import { renumber, backlogProblems } from './ids.js';
+import { renumber, backlogProblems } from './ids.ts';
 
 const PLACEHOLDER = /^NEW-(\d+)$/;
 

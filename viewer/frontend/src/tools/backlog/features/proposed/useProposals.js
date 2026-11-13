@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { createFileStore } from '../../../../shared/api/files.js';
-import { COLUMNS, loadBacklog, newStory, proposalHeaders } from '../../../../../../shared/backlog/model.js';
-import { nextPlaceholder, removeProposed, moveProposed } from '../../../../../../shared/backlog/proposals.js';
+import { COLUMNS, loadBacklog, newStory, proposalHeaders } from '../../../../../../shared/backlog/model.ts';
+import { nextPlaceholder, removeProposed, moveProposed } from '../../../../../../shared/backlog/proposals.ts';
 import { useAutosave } from '../../../../shared/hooks/useAutosave.js';
 import { useConfirm } from '../../../../shared/hooks/useConfirm.js';
 

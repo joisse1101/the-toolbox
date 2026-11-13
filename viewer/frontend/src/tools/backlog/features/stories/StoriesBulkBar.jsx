@@ -1,4 +1,4 @@
-import { PRIORITIES } from '../../../../../../shared/backlog/model.js';
+import { PRIORITIES } from '../../../../../../shared/backlog/model.ts';
 
 export const KEEP = 'keep'; // bulk Priority "No change" ('' is "None", which clears)
 

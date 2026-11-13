@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { resolveDataDir, dataDirOrThrow, PLANS_DIR } from '../../shared/skill-support/resolve-data-dir.mjs';
+import { resolveDataDir, dataDirOrThrow, PLANS_DIR } from '../../shared/skill-support/resolve-data-dir.ts';
 
 // The scenarios of "A story skill uses only .plans in the current folder" in the toolkit-story-skills spec.
 const TEST_DIR = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -31,7 +31,7 @@ function withVariable(value, fn) {
 }
 
 test('the .plans name matches PLANS_DIR of backlog-paths.cjs', () => {
-  const { PLANS_DIR: planner } = createRequire(import.meta.url)('../../shared/storage/backlog-paths.cjs');
+  const { PLANS_DIR: planner } = createRequire(import.meta.url)('../../shared/storage/backlog-paths.ts');
   assert.equal(PLANS_DIR, planner);
 });
 
@@ -100,7 +100,7 @@ test('dataDirOrThrow returns the .plans folder when it exists', () => {
 
 test('a fresh code base after init: .plans is found with no yaml present, and its backlog is listed', async () => {
   const { initCodeBase } = createRequire(import.meta.url)('../../backend/storage/project-config.cjs');
-  const { listBacklogs } = createRequire(import.meta.url)('../../shared/storage/backlog-paths.cjs');
+  const { listBacklogs } = createRequire(import.meta.url)('../../shared/storage/backlog-paths.ts');
   const codeBase = temp();
   assert.deepEqual((await initCodeBase(codeBase)).created, ['.plans', 'new-backlog']);
   assert.deepEqual(fs.readdirSync(codeBase), ['.plans'], 'init writes no yaml into the code base');

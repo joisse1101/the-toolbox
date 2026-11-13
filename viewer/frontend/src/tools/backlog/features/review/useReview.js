@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createFileStore } from '../../../../shared/api/files.js';
-import { parseReview, serializeReview, retargetRows } from '../../../../../../shared/review/review.js';
+import { parseReview, serializeReview, retargetRows } from '../../../../../../shared/review/review.ts';
 
 const store = createFileStore('review');
 const SAVE_DEBOUNCE_MS = 400;

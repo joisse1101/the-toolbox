@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { acceptProposed, moveToProposed as moveStoryToProposed } from '../../../../../../shared/backlog/proposals.js';
-import { openUnitsFor } from '../../../../../../shared/review/review.js';
+import { acceptProposed, moveToProposed as moveStoryToProposed } from '../../../../../../shared/backlog/proposals.ts';
+import { openUnitsFor } from '../../../../../../shared/review/review.ts';
 import { useProposals } from './useProposals.js';
 
 // Proposed stories for the open backlog (its proposals file; the tab is always there, the file may not be), and the

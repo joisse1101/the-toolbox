@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 
-const { PLANS_DIR } = createRequire(import.meta.url)('../../shared/storage/backlog-paths.cjs');
+const { PLANS_DIR } = createRequire(import.meta.url)('../../shared/storage/backlog-paths.ts');
 const { loadConfig, saveConfig, configPath, DEFAULT_CONFIG_PATH, DEFAULT_DATA_DIR } = createRequire(import.meta.url)('../../backend/storage/project-config.cjs');
 
 function tmp() {

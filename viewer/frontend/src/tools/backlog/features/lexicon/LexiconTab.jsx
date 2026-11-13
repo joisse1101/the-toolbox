@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { childrenOf } from '../../../../../../shared/lexicon/lexicon.js';
-import { FIELD_LABELS, impactOf, isOpen, staleReason } from '../../../../../../shared/lexicon/lexicon-suggestions.js';
+import { childrenOf } from '../../../../../../shared/lexicon/lexicon.ts';
+import { FIELD_LABELS, impactOf, isOpen, staleReason } from '../../../../../../shared/lexicon/lexicon-suggestions.ts';
 import { wordDiff } from '../../../../shared/lib/word-diff.js';
 import ResizeHandle from '../../../../shared/ui/ResizeHandle.jsx';
 import TabHeader from '../../../../shared/ui/TabHeader.jsx';

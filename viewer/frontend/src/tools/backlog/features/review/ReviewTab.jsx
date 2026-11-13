@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
-import { reviewOverview, unitStoryCode } from '../../../../../../shared/review/review.js';
+import { reviewOverview, unitStoryCode } from '../../../../../../shared/review/review.ts';
 import { Suggestion } from '../../shared/Suggestions.jsx';
-import { storyLabel } from '../../../../../../shared/backlog/model.js';
+import { storyLabel } from '../../../../../../shared/backlog/model.ts';
 import TabHeader from '../../../../shared/ui/TabHeader.jsx';
 import EmptyState from '../../../../shared/ui/EmptyState.jsx';
 import { useConfirm } from '../../../../shared/hooks/useConfirm.js';

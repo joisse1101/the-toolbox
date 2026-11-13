@@ -5,8 +5,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const { HttpError } = require('./file-name.cjs');
-const { backlogDir } = require('./backlog-paths.cjs');
+const { HttpError } = require('./file-name.ts');
+const { backlogDir } = require('./backlog-paths.ts');
 
 const SETTINGS_FILE = 'backlog.json';
 const INITIALS_RULE = 'Initials are 1 to 6 letters or digits, start with a letter and have no hyphen.';

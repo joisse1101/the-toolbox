@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
-import { backlogProblems, gatherFeatures } from '../../../../shared/backlog/ids.js';
-import { groupByEpic } from '../../../../shared/backlog/model.js';
+import { backlogProblems, gatherFeatures } from '../../../../shared/backlog/ids.ts';
+import { groupByEpic } from '../../../../shared/backlog/model.ts';
 import { useBacklog } from './shell/useBacklog.js';
 import { useTab } from './shell/useTab.js';
 import NotFoundPage from '../../app/NotFoundPage.jsx';
@@ -19,7 +19,7 @@ import StoriesTab from './features/stories/StoriesTab.jsx';
 import GraphTab from './features/graph/GraphTab.jsx';
 import ReviewTab from './features/review/ReviewTab.jsx';
 import ProposedTab from './features/proposed/ProposedTab.jsx';
-import { openRows } from '../../../../shared/lexicon/lexicon-suggestions.js';
+import { openRows } from '../../../../shared/lexicon/lexicon-suggestions.ts';
 import LexiconTab from './features/lexicon/LexiconTab.jsx';
 import SettingsTab from './features/settings/SettingsTab.jsx';
 import { useSettings } from './features/settings/useSettings.js';

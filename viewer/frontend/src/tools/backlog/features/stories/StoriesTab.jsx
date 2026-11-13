@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { fitWidths, makeRoom } from '../../../../shared/lib/panel-size.js';
-import { displayOrder } from '../../../../../../shared/backlog/model.js';
-import { matchesQuery } from '../../../../../../shared/backlog/story-search.js';
+import { displayOrder } from '../../../../../../shared/backlog/model.ts';
+import { matchesQuery } from '../../../../../../shared/backlog/story-search.ts';
 import { filterOptions, filterStories, sortStories, visibleChecked } from './story-table.js';
 import TabHeader from '../../../../shared/ui/TabHeader.jsx';
 import EmptyState from '../../../../shared/ui/EmptyState.jsx';

@@ -1,4 +1,4 @@
-import { unitState, displayRow } from '../../../../../shared/review/review.js';
+import { unitState, displayRow } from '../../../../../shared/review/review.ts';
 import { wordDiff } from '../../../shared/lib/word-diff.js';
 
 // An append adds to the field the row names (Notes text, or a Clarifications question).

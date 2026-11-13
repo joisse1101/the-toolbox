@@ -1,4 +1,4 @@
-import { storyIssues, storyLabel } from '../../../../../../shared/backlog/model.js';
+import { storyIssues, storyLabel } from '../../../../../../shared/backlog/model.ts';
 import { issueClass, rowTooltip } from '../../shared/issues.js';
 import StateMark from '../../../../shared/ui/StateMark.jsx';
 import ResizeHandle from '../../../../shared/ui/ResizeHandle.jsx';

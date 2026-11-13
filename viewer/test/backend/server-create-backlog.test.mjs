@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { tempConfig } from '../helpers/temp-config.mjs';
 import { startingFiles } from '../../backend/storage/starting-files.js';
-import { backlogFile } from '../../shared/storage/backlog-paths.cjs';
+import { backlogFile } from '../../shared/storage/backlog-paths.ts';
 
 // The New button's create route. Mock data only: the committed sample data copied to a temp folder under .scratch/.
 const here = path.dirname(fileURLToPath(import.meta.url));

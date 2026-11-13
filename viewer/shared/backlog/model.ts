@@ -2,9 +2,9 @@
 // Recognised columns are matched by header name; every other column is carried through in
 // `story.cells` untouched. Unparseable User Story / User Acceptance Criteria cells keep their raw text.
 
-import { parseCsv, toCsv } from './csv.js';
-import { renumber } from './ids.js';
-import { composeStory, parseStory, roleIsBlank, composeCriteria, parseCriteria, composeClarifications, parseClarifications } from './story-text.js';
+import { parseCsv, toCsv } from './csv.ts';
+import { renumber } from './ids.ts';
+import { composeStory, parseStory, roleIsBlank, composeCriteria, parseCriteria, composeClarifications, parseClarifications } from './story-text.ts';
 
 export const COLUMNS = [
   'ID', 'Epic', 'Feature', 'Title', 'User Story', 'Sprint points', 'Priority', 'Depends On', 'User Acceptance Criteria', 'Notes', 'Frozen', 'Clarifications',

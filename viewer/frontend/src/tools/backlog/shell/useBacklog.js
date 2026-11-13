@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { createFileStore } from '../../../shared/api/files.js';
-import { loadBacklog, newStory, displayOrder, applyBulk } from '../../../../../shared/backlog/model.js';
-import { commitEpic, commitEpics, moveStory, moveGroup, gatherFeatures, recodedBetween, removeStory, removeStories, wouldCycle, renumber } from '../../../../../shared/backlog/ids.js';
-import { applySuggestions, acceptAll } from '../../../../../shared/review/review.js';
+import { loadBacklog, newStory, displayOrder, applyBulk } from '../../../../../shared/backlog/model.ts';
+import { commitEpic, commitEpics, moveStory, moveGroup, gatherFeatures, recodedBetween, removeStory, removeStories, wouldCycle, renumber } from '../../../../../shared/backlog/ids.ts';
+import { applySuggestions, acceptAll } from '../../../../../shared/review/review.ts';
 import { useAutosave } from '../../../shared/hooks/useAutosave.js';
 import { useConfirm } from '../../../shared/hooks/useConfirm.js';
 

@@ -1,4 +1,4 @@
-import { COLUMNS, BENCHED_COLUMN, NO_EPIC, NO_FEATURE, clarificationsCellText, criteriaCellText, storyCellText } from './model.js';
+import { COLUMNS, BENCHED_COLUMN, NO_EPIC, NO_FEATURE, clarificationsCellText, criteriaCellText, storyCellText } from './model.ts';
 
 const KNOWN = new Set([...COLUMNS, BENCHED_COLUMN].map((c) => c.toLowerCase()));
 

@@ -27,9 +27,9 @@ const GUIDELINES = path.join(LOGIC, 'guidelines');
 export const DEFAULT_SKILLS_DIR = path.join(REPO, 'toolkit', 'skills');
 
 // backlog-initials.mjs gives a script the initials to pass to loadBacklog (it reads backlog.json, else the default).
-const SUPPORT = ['skill-support/paths.cjs', 'skill-support/write-atomic.mjs', 'skill-support/resolve-data-dir.mjs', 'skill-support/backlog-initials.mjs'];
+const SUPPORT = ['skill-support/paths.ts', 'skill-support/write-atomic.ts', 'skill-support/resolve-data-dir.ts', 'skill-support/backlog-initials.ts'];
 // The skills that may create `.plans` after asking (explore only reports, so it has no init-plans.mjs).
-const INIT = ['skill-support/init-plans.mjs', 'skill-support/plans-files.mjs'];
+const INIT = ['skill-support/init-plans.ts', 'skill-support/plans-files.ts'];
 const STORY_GUIDELINES = ['product-backlog.md', 'sprint-points-guideline.md', 'plans-files.md'];
 
 // What each skill's scripts import (paths under viewer/shared/; the files those import come along). Diagram logic is
@@ -37,28 +37,28 @@ const STORY_GUIDELINES = ['product-backlog.md', 'sprint-points-guideline.md', 'p
 export const SKILLS = {
   'jois-story-review': {
     // read-backlog, backlog-checks, write-review
-    logic: ['backlog/model.js', 'backlog/ids.js', 'lexicon/lexicon.js', 'review/review.js', 'storage/backlog-paths.cjs', ...SUPPORT, ...INIT],
+    logic: ['backlog/model.ts', 'backlog/ids.ts', 'lexicon/lexicon.ts', 'review/review.ts', 'storage/backlog-paths.ts', ...SUPPORT, ...INIT],
     guidelines: STORY_GUIDELINES,
   },
   'jois-story-explore': {
     // read-story-context
     logic: [
-      'backlog/csv.js', 'backlog/model.js', 'backlog/story-search.js', 'backlog/story-ref.js', 'review/review.js',
-      'lexicon/lexicon-suggestions.js', 'storage/backlog-paths.cjs', ...SUPPORT,
+      'backlog/csv.ts', 'backlog/model.ts', 'backlog/story-search.ts', 'backlog/story-ref.ts', 'review/review.ts',
+      'lexicon/lexicon-suggestions.ts', 'storage/backlog-paths.ts', ...SUPPORT,
     ],
     guidelines: STORY_GUIDELINES,
   },
   'jois-story-propose': {
     // proposal-input, write-proposal, write-lexicon, suggest-lexicon, and read-story-context (a copy of the explore skill's reader)
     logic: [
-      'backlog/csv.js', 'backlog/model.js', 'backlog/proposals.js', 'backlog/ids.js', 'backlog/story-ref.js', 'backlog/story-search.js',
-      'backlog/story-text.js', 'review/review.js', 'lexicon/lexicon.js', 'lexicon/lexicon-suggestions.js', 'storage/backlog-paths.cjs', ...SUPPORT, ...INIT,
+      'backlog/csv.ts', 'backlog/model.ts', 'backlog/proposals.ts', 'backlog/ids.ts', 'backlog/story-ref.ts', 'backlog/story-search.ts',
+      'backlog/story-text.ts', 'review/review.ts', 'lexicon/lexicon.ts', 'lexicon/lexicon-suggestions.ts', 'storage/backlog-paths.ts', ...SUPPORT, ...INIT,
     ],
     guidelines: STORY_GUIDELINES,
   },
   'jois-story-plan': {
     // read-diagrams, write-diagram, write-context-map, write-freeze (the diagram logic is the skill's own)
-    logic: ['backlog/model.js', 'backlog/ids.js', 'backlog/story-ref.js', 'storage/backlog-paths.cjs', ...SUPPORT, ...INIT],
+    logic: ['backlog/model.ts', 'backlog/ids.ts', 'backlog/story-ref.ts', 'storage/backlog-paths.ts', ...SUPPORT, ...INIT],
     guidelines: [...STORY_GUIDELINES, 'diagram-conventions.md'],
   },
 };

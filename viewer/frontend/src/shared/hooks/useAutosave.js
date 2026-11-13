@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { serializeBacklog } from '../../../../shared/backlog/model.js';
+import { serializeBacklog } from '../../../../shared/backlog/model.ts';
 import { useConfirm } from './useConfirm.js';
 
 const SAVE_DEBOUNCE_MS = 600;

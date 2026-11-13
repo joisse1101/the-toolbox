@@ -4,11 +4,11 @@
 
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
-import { loadBacklog } from '../backlog/model.js';
+import { loadBacklog } from '../backlog/model.ts';
 
 const require = createRequire(import.meta.url);
-const { readInitials, defaultInitials } = require('../storage/backlog-initials.cjs');
-const { backlogFile, listBacklogs } = require('../storage/backlog-paths.cjs');
+const { readInitials, defaultInitials } = require('../storage/backlog-initials.ts');
+const { backlogFile, listBacklogs } = require('../storage/backlog-paths.ts');
 
 // The other backlogs of the data folder as { name, initials, frozenCodes }. A sibling whose file cannot be read counts as
 // holding no frozen IDs.

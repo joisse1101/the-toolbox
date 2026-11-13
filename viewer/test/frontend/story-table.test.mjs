@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { loadBacklog } from '../../shared/backlog/model.js';
+import { loadBacklog } from '../../shared/backlog/model.ts';
 import { NONE, filterOptions, filterStories, sortStories, visibleChecked } from '../../frontend/src/tools/backlog/features/stories/story-table.js';
 
 const CSV = [

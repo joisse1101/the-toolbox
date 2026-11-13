@@ -1,4 +1,4 @@
-import { storyCellText } from '../../../../../../shared/backlog/model.js';
+import { storyCellText } from '../../../../../../shared/backlog/model.ts';
 import { Grid } from '../../../../shared/ui/Layout.jsx';
 import { Label, CellWarning } from '../../../../shared/ui/FormParts.jsx';
 import { needs, invalid } from './fieldCues.js';
