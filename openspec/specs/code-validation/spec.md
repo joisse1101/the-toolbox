@@ -73,7 +73,7 @@ Validate SHALL test a user-interface claim by driving the interface with `playwr
 - **THEN** validate drives the page and reports what it saw
 
 ### Requirement: Result file of a slice run
-After a slice run, validate SHALL write a result file into the slice folder. It SHALL record each claim, its verdict and evidence, and whether the run was full or partial. A PR run SHALL write no file and print its report only.
+After a slice run, validate SHALL write a result file into the slice folder. It SHALL record each claim, its verdict and evidence, and whether the run was full or partial. A PR run SHALL write no file and print its report only. The result file is a working file: validate SHALL say in its command file that `/jois-code:archive` copies its summary into `ARCHIVED.md` and then removes it, and validate SHALL NOT read a result file of an earlier run back.
 
 #### Scenario: Full run
 - **WHEN** a slice run tests every claim
@@ -86,6 +86,10 @@ After a slice run, validate SHALL write a result file into the slice folder. It 
 #### Scenario: PR run
 - **WHEN** the target is a PR number
 - **THEN** no file is written
+
+#### Scenario: Slice already reduced by archive
+- **WHEN** validate is run on a slice whose folder holds only `ARCHIVED.md` and `source.json`
+- **THEN** validate says the slice is archived and its tasks are gone, and tests nothing
 
 ### Requirement: What counts as validated
 A slice SHALL count as validated only when its latest full run has every claim `met`. A partial run SHALL NOT make a slice validated, and a run with any `not met` or `could not test` claim SHALL NOT either.
