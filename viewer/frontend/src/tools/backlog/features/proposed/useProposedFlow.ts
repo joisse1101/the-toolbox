@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
-import type { BacklogFile, Story } from '../../../../../../shared/types.ts';
+import type { BacklogFile, ReviewRow, ReviewStatus, Story } from '../../../../../../shared/types.ts';
 import type { Ask } from '../../../../shared/hooks/useConfirm.ts';
 import type { BacklogActions } from '../../shell/useBacklog.ts';
-import type { useReview } from '../review/useReview.ts';
 import { acceptProposed, moveToProposed as moveStoryToProposed } from '../../../../../../shared/backlog/proposals.ts';
 import { openUnitsFor } from '../../../../../../shared/review/review.ts';
 import { useProposals } from './useProposals.ts';
@@ -20,7 +19,11 @@ export function useProposedFlow({ current, stories, backlog, initials, actions, 
   backlog: BacklogFile | null;
   initials: string;
   actions: BacklogActions;
-  review: ReturnType<typeof useReview>;
+  // the slice of the review feature's result this flow uses (a feature never imports another feature)
+  review: {
+    rows: ReviewRow[]; notify: (message: string) => void; decide: (indexes: Iterable<number>, status: ReviewStatus) => void;
+    retarget: (recoded: ReadonlyMap<string, string>) => void;
+  };
   ask: Ask;
   reveal: (epic: string, feature: string) => void;
 }) {
