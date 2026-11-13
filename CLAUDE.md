@@ -11,7 +11,7 @@ cd viewer
 npm install
 npm start            # unified: build if needed + server + open browser (-- --dev for hot reload)
 npm run build        # vite build -> viewer/frontend/dist/ (required after any change to viewer/frontend/ or viewer/shared/ before the server shows it)
-node viewer/backend/server.cjs   # serves viewer/frontend/dist/ + CSV API on 127.0.0.1:3000 (PORT env to change; the data folder comes from `viewer/viewer.config.yaml`, or the file `VIEWER_CONFIG` names)
+node viewer/backend/server.cjs   # serves viewer/frontend/dist/ + CSV API on 127.0.0.1:3000 (PORT env to change; VIEWER_DIST_DIR serves another dist folder; the data folder comes from `viewer/viewer.config.yaml`, or the file `VIEWER_CONFIG` names)
 npm run dev          # Vite dev server with HMR; proxies /api to the backend, so run both
 npm test             # node --test --import ./test/setup.mjs test/*.test.mjs test/*/*.test.mjs (setup.mjs points VIEWER_CONFIG at test/sample-config.yaml, whose dataDir is test/sample-data/)
 node --test viewer/test/shared/ids.test.mjs                  # single test file
@@ -35,6 +35,8 @@ This repo holds local tools for a team lead's admin work: the backlog viewer in 
 - `viewer/frontend/` imports `viewer/frontend/` and `viewer/shared/` (the guidelines included).
 - `viewer/backend/` and `viewer/frontend/` never import each other.
 - `toolkit/` imports nothing outside itself.
+
+Inside `viewer/frontend/src/` the same test enforces three more rules: `shared/` imports nothing under `tools/` or `app/`, a tool imports no other tool, and a feature (`tools/<tool>/features/<feature>/`) imports no other feature (code two features share goes in `tools/<tool>/shared/`). `app/` may import tools. The frontend is one page: `viewer/frontend/index.html` is the only HTML entry, and React Router (`viewer/frontend/src/app/routes.jsx`) gives each tool and tab its address.
 
 Nothing in `viewer/shared/` imports the backend or the frontend, and nothing imports the contents of `viewer/data/`. The architecture behind this is in the wiki, see the table below.
 

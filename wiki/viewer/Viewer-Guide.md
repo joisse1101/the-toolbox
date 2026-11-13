@@ -12,6 +12,17 @@ Run the commands from `viewer/`, which holds `package.json` and `node_modules/`.
 
 The server serves the folder named by `dataDir` in `viewer/viewer.config.yaml`, or by `codeBase` (then `<code base>/.plans`). Without a config file the folder is `viewer/data/`. The file `VIEWER_CONFIG` names, when set, is read instead of the config file. You can switch the folder from the Settings tab without editing the config by hand.
 
+## Addresses
+
+The portal is one page, and each part has its own address that you can bookmark, reload or reach with the browser's Back and Forward buttons:
+
+- `/` is the home page, with a link to each tool.
+- `/backlog` opens the Editor, at `/backlog/editor`.
+- `/backlog/editor`, `/backlog/stories`, `/backlog/graph`, `/backlog/proposed`, `/backlog/lexicon`, `/backlog/review` and `/backlog/settings` open the tab of that name.
+- `/backlog-portal/` still works: it sends you to `/backlog`.
+
+Choosing a tab changes the address and adds a history entry, so Back returns to the previous tab. When the address names a tab that cannot be shown, the portal replaces the address without adding a history entry. With no backlog open every tab but Settings has nothing to show, so the address becomes `/backlog/settings`. With no review file, `/backlog/review` becomes `/backlog/editor`. An address that names no tab shows the Not Found page.
+
 ## The top of the page
 
 The header shows the project name and a save chip with three states, "Saved", "Saving" and "Save failed". Every tab saves by itself shortly after you stop typing, so there is no Save button. When a save fails, for example because the file is open in Excel, the unsaved edits stay on screen and the portal retries until the file is writable. The browser also warns if you close the tab while a save is pending.
@@ -87,7 +98,7 @@ The Settings tab shows the data folder, the code base and the path of the config
 
 ## Where the facts come from
 
-The tab behaviour above was checked against the components in `viewer/frontend/src/backlog-portal/components/` and the specs `user-story-editor`, `story-proposals`, `backlog-review-suggestions`, `backlog-lexicon` and `project-config` in `openspec/specs/`. Where an older spec text and the component disagree, this page follows the component. Two examples are the `user-story-editor` spec, which still says the Open folder button opens `backlogs/` and that there is no apply-all in the Review tab, and `CLAUDE.md`, which says init creates only the data folder. The code opens the data folder, offers Accept all and Clear all, and creates `new-backlog`.
+The tab behaviour above was checked against the components in `viewer/frontend/src/tools/backlog/` and the specs `user-story-editor`, `story-proposals`, `backlog-review-suggestions`, `backlog-lexicon` and `project-config` in `openspec/specs/`. Where an older spec text and the component disagree, this page follows the component. Two examples are the `user-story-editor` spec, which still says the Open folder button opens `backlogs/` and that there is no apply-all in the Review tab, and `CLAUDE.md`, which says init creates only the data folder. The code opens the data folder, offers Accept all and Clear all, and creates `new-backlog`.
 
 ## Moving from planner/
 

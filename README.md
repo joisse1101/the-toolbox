@@ -29,7 +29,7 @@ npm start        # builds if needed, runs the server, opens http://localhost:300
 npm start -- --dev   # server + Vite dev server with hot reload (http://localhost:5173/)
 ```
 
-Options after `--`: `--build` forces a rebuild, `--no-open` skips opening the browser. Set `PORT` to use another port. The server listens on `127.0.0.1` only. Stop everything with Ctrl+C. The backlog portal is the page `/backlog-portal/`.
+Options after `--`: `--build` forces a rebuild, `--no-open` skips opening the browser. Set `PORT` to use another port. The server listens on `127.0.0.1` only. Stop everything with Ctrl+C. The backlog tool is at `/backlog` (the old `/backlog-portal/` address redirects there).
 
 You can still run the pieces yourself: `npm run build`, `node viewer/backend/server.cjs`, `npm run dev` (needs the server running; it proxies `/api`).
 

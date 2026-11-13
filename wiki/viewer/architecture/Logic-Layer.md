@@ -8,7 +8,7 @@ The code is in four zones that depend in one direction only, and `viewer/test/zo
 
 ## What the layer is
 
-`viewer/shared/` is pure logic: no DOM and no HTTP. It is shared by the server, the browser and, as a generated copy, the story skills (see "The sync script" below). It is grouped in folders by domain. Code only the skills use sits in `viewer/shared/skill-support/`, code only the server uses sits in `viewer/backend/storage/`, and code only the browser uses sits in `viewer/frontend/src/lib/` (`collapse`, `panel-size`, `story-table`, `word-diff`). There is no backup feature.
+`viewer/shared/` is pure logic: no DOM and no HTTP. It is shared by the server, the browser and, as a generated copy, the story skills (see "The sync script" below). It is grouped in folders by domain. Code only the skills use sits in `viewer/shared/skill-support/`, code only the server uses sits in `viewer/backend/storage/`, and code only the browser uses sits under `viewer/frontend/src/`, for example in `viewer/frontend/src/shared/lib/` (`collapse`, `panel-size`, `word-diff`) and `viewer/frontend/src/tools/backlog/features/stories/` (`story-table`). There is no backup feature.
 
 ## Backlog modules
 

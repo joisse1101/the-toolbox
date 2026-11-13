@@ -36,13 +36,43 @@ Like every route, these answer only a loopback Host. A bad config ends the serve
 
 ## The web app
 
-`viewer/frontend/src/` is a multi-page Vite build. The pages are listed in `build.rollupOptions.input` in `viewer/frontend/vite.config.mjs`, and `viewer/frontend/src/main.jsx` is the landing page. It imports logic from `viewer/shared/` by relative path.
+The web app is one page. `viewer/frontend/index.html` is the only HTML entry of the Vite build, and `viewer/frontend/src/main.jsx` mounts React Router 7 there in declarative mode (a `BrowserRouter` around the route list in `viewer/frontend/src/app/routes.jsx`). The app imports logic from `viewer/shared/` by relative path.
+
+### Addresses
+
+Each tool and each tab has its own address, so a bookmark, a reload and the browser's Back and Forward buttons all work. The routes are:
+
+- `/` is the home page (`viewer/frontend/src/app/HomePage.jsx`), which links to each tool.
+- `/backlog` redirects to `/backlog/editor`.
+- `/backlog/:tab` is the backlog tool (`viewer/frontend/src/tools/backlog/BacklogTool.jsx`). The tabs are `editor`, `stories`, `graph`, `proposed`, `lexicon`, `review` and `settings`, listed in `viewer/frontend/src/tools/backlog/tabs.js`.
+- `/backlog-portal/*` redirects to `/backlog`, so an old bookmark still works.
+- Any other address shows the Not Found page (`viewer/frontend/src/app/NotFoundPage.jsx`).
+
+The open tab comes only from the address. `resolveTab` in `viewer/frontend/src/tools/backlog/tabs.js` turns the address's tab into the tab to show: it gives `settings` when no backlog is open, `editor` in place of `review` when there is no review file, and nothing (the Not Found page) for a name that is not a tab. `useTab` in `viewer/frontend/src/tools/backlog/shell/useTab.js` waits until the backlog and the review file have been read, so a reload on `/backlog/review` does not fall back before the review file is known. When the resolved tab differs from the address, it replaces the address without adding a history entry, so Back does not return to an address that cannot be shown. Choosing a tab adds a history entry.
+
+### Folder layout
+
+`viewer/frontend/src/` is grouped by tool and by feature:
+
+- `app/` holds the route list, the home page and the Not Found page.
+- `shared/` holds what every tool may use: `ui/` (components), `hooks/`, `lib/` (pure logic), `api/` (the file API client) and `style.css`.
+- `viewer/frontend/src/tools/backlog/` holds the backlog tool: `BacklogTool.jsx` (the top component), `tabs.js`, `backlog.css`, `shell/` (header, file bar, tab state, backlog and project state, shortcuts), `shared/` (code several backlog features use, such as `StoryList.jsx` and `story-form/`) and `features/<feature>/` (one folder per tab: `editor`, `stories`, `graph`, `proposed`, `lexicon`, `review`, `settings`).
+
+`viewer/test/zones.test.mjs` enforces three import rules inside the frontend:
+
+- Code in `viewer/frontend/src/shared/` imports nothing under `tools/` or `app/`.
+- A tool imports no other tool.
+- A feature imports no other feature.
+
+Code that two backlog features need goes in `viewer/frontend/src/tools/backlog/shared/`, so a tab can be moved or removed alone. `app/` may import tools, because the routes there mount them.
+
+The server sends `viewer/frontend/dist/index.html` for any path that is not under `/api/` and whose last segment has no file extension, so a reload or a bookmark on `/backlog/graph` loads the app and the router takes over. A path with an extension that has no file in `dist/` answers `404`, so a missing script or style file is not hidden behind the page. `staticTarget` in `viewer/backend/server.cjs` makes this choice. The `VIEWER_DIST_DIR` environment variable points the server at another dist folder, which the static-file test uses.
 
 `viewer/frontend/src/shared/api/files.js` is the API client. `createFileStore(kind)` gives `list`, `read`, `create`, `write`, `rename` and `openFolder`, with the backlog named without `.csv`. `viewer/frontend/src/shared/style.css` holds the common styles.
 
 ### Design scales
 
-`viewer/frontend/src/shared/style.css` defines the design scales as CSS variables in `:root`, so the landing page and the portal share them. `viewer/frontend/src/tools/backlog/backlog.css` uses the names and holds no one-off font size.
+`viewer/frontend/src/shared/style.css` defines the design scales as CSS variables in `:root`, so the home page and the backlog tool share them. `viewer/frontend/src/tools/backlog/backlog.css` uses the names and holds no one-off font size.
 
 - Type: `--text-xs` 12px, `--text-sm` 14px, `--text-md` 16px, `--text-lg` 20px, `--text-xl` 24px. Sizes are in `px`, never `em`, and no text is below 12px or lighter than weight 400.
 - Spacing: `--space-1` to `--space-6`, which are 4, 8, 12, 16, 24 and 32px.
@@ -56,28 +86,28 @@ Text, muted, placeholder and disabled colours keep at least 4.5:1 contrast with 
 
 ### The backlog portal
 
-`viewer/frontend/src/backlog-portal/` is the only tool so far. These parts are worth knowing:
+`viewer/frontend/src/tools/backlog/` is the only tool so far. These parts are worth knowing:
 
 - `viewer/frontend/src/tools/backlog/features/graph/graph.js` lays out the dependency graph for the Graph tab. `groupStories` folds the stories into features or epics for the Features and Epics levels, which are read-only and reuse `layoutGraph`.
 - `viewer/frontend/src/tools/backlog/shell/useBacklog.js` holds the reducer state, and `viewer/frontend/src/shared/hooks/useAutosave.js` saves after a delay and retries on failure, for example when the file is locked in Excel.
-- `viewer/frontend/src/backlog-portal/components/` holds the tabs.
+- `viewer/frontend/src/tools/backlog/features/<feature>/` holds each tab, for example `viewer/frontend/src/tools/backlog/features/editor/EditorTab.jsx`.
 
 ### Component layout
 
-The large tabs are split into parts, so no file mixes several jobs. Each parent keeps the state and passes props down. Every path below is under `viewer/frontend/src/backlog-portal/components/` unless it says otherwise.
+The large tabs are split into parts, so no file mixes several jobs. Each parent keeps the state and passes props down. Every path below is under `viewer/frontend/src/tools/backlog/` unless it says otherwise.
 
-- `GraphTab.jsx` composes `GraphToolbar.jsx`, `GraphCanvas.jsx` (with `graphGeometry.js`), `GraphDetail.jsx` and `GraphUnlinked.jsx`.
-- `StoryForm.jsx` composes `StoryHeader.jsx` and the sections `StoryFitSections.jsx`, `EstimateSection.jsx`, `DependenciesSection.jsx`, `CriteriaSection.jsx` and `ClarificationsSection.jsx`. `FormParts.jsx` holds the shared field parts, and `storyFormNav.js` holds the arrow-key navigation between fields.
-- `StoriesTab.jsx` composes `StoriesBulkBar.jsx`, `StoriesFilters.jsx` and `StoriesTable.jsx`, with the column list in `storiesColumns.js`.
-- `Layout.jsx` has the `Stack`, `Row` and `Grid` helpers. Each takes the spacing token (`--space-1` to `--space-6`) as a prop, so a gap is named by the scale and not written as a number.
+- `viewer/frontend/src/tools/backlog/features/graph/GraphTab.jsx` composes `GraphToolbar.jsx`, `GraphCanvas.jsx` (with `graphGeometry.js`), `GraphDetail.jsx` and `GraphUnlinked.jsx` in the same folder.
+- `viewer/frontend/src/tools/backlog/shared/story-form/StoryForm.jsx` composes `StoryHeader.jsx` and the sections `StoryFitSections.jsx`, `EstimateSection.jsx`, `DependenciesSection.jsx`, `CriteriaSection.jsx` and `ClarificationsSection.jsx`, and `storyFormNav.js` holds the arrow-key navigation between fields. The shared field parts are in `viewer/frontend/src/shared/ui/FormParts.jsx`.
+- `viewer/frontend/src/tools/backlog/features/stories/StoriesTab.jsx` composes `StoriesBulkBar.jsx`, `StoriesFilters.jsx` and `StoriesTable.jsx`, with the column list in `storiesColumns.js`.
+- `viewer/frontend/src/shared/ui/Layout.jsx` has the `Stack`, `Row` and `Grid` helpers. Each takes the spacing token (`--space-1` to `--space-6`) as a prop, so a gap is named by the scale and not written as a number.
 
-### App hooks and shortcuts
+### Backlog tool hooks and shortcuts
 
-`App.jsx` wires the tabs together and leaves the review, proposed and shortcut logic to three hooks in `viewer/frontend/src/backlog-portal/hooks/`:
+`BacklogTool.jsx` wires the tabs together and leaves the review, proposed and shortcut logic to three hooks:
 
-- `useReviewFlow.js` wraps `useReview` and adds the suggestion counts, Apply, Dismiss, Accept all and the step out of the Review tab when the review file goes away.
-- `useProposedFlow.js` wraps `useProposals` and adds accepting proposed stories and moving a story from the Editor to Proposed. It takes the `useReview` result, because a moved story's open suggestions are dismissed.
-- `useShortcuts.js` holds the shortcut table, which drives both the key handler and the Shortcuts popover, and returns the popover rows.
+- `viewer/frontend/src/tools/backlog/features/review/useReviewFlow.js` wraps `useReview` and adds the suggestion counts, Apply, Dismiss and Accept all. It no longer steps out of the Review tab when the review file goes away: the address fallback in `useTab` does that.
+- `viewer/frontend/src/tools/backlog/features/proposed/useProposedFlow.js` wraps `useProposals` and adds accepting proposed stories and moving a story from the Editor to Proposed. It takes the `useReview` result, because a moved story's open suggestions are dismissed.
+- `viewer/frontend/src/tools/backlog/shell/useShortcuts.js` holds the shortcut table, which drives both the key handler and the Shortcuts popover, and returns the popover rows.
 
 The key handler skips a key when `ignoresKey` in `viewer/frontend/src/tools/backlog/shell/shortcuts.js` says so. That function is pure, so a Node test covers it (`viewer/test/frontend/shortcuts.test.mjs`). It ignores only a plain key (no Ctrl, Alt or Meta) typed in an input, textarea, select or contenteditable element, so typing is never read as a shortcut. Every shortcut uses Ctrl or Alt, so each still works while a field has focus, as the Keyboard shortcuts requirement asks.
 
@@ -107,7 +137,7 @@ The Stories table's bulk bar is quiet until a row is ticked: it has no accent bo
 
 `viewer/frontend/src/shared/hooks/useCollapsed.js` keeps the Editor's folded epics and features. Closed keys are named by epic or feature name, kept in `localStorage` under `planner.collapsed.<backlog>`, and pruned once the backlog is loaded. The rules are in `viewer/frontend/src/shared/lib/collapse.js`.
 
-`App` holds this hook, calls `reveal` when a story is added, accepted or given another Epic or Feature, and passes it to `StoryList` as the opt-in `collapse` prop. That prop also shows the Collapse and Expand buttons. The Proposed tab's list keeps its own folds, which are not stored.
+`BacklogTool` holds this hook, calls `reveal` when a story is added, accepted or given another Epic or Feature, and passes it to `StoryList` as the opt-in `collapse` prop. That prop also shows the Collapse and Expand buttons. The Proposed tab's list keeps its own folds, which are not stored.
 
 ### Locking a group
 
