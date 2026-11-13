@@ -29,8 +29,8 @@ export const DEFAULT_SKILLS_DIR = path.join(REPO, 'toolkit', 'skills');
 // backlog-initials.mjs gives a script the initials to pass to loadBacklog (it reads backlog.json, else the default).
 const SUPPORT = ['skill-support/paths.cjs', 'skill-support/write-atomic.mjs', 'skill-support/resolve-data-dir.mjs', 'skill-support/backlog-initials.mjs'];
 // The skills that may create `.plans` after asking (explore only reports, so it has no init-plans.mjs).
-const INIT = ['skill-support/init-plans.mjs'];
-const STORY_GUIDELINES =['product-backlog.md', 'sprint-points-guideline.md'];
+const INIT = ['skill-support/init-plans.mjs', 'skill-support/plans-files.mjs'];
+const STORY_GUIDELINES = ['product-backlog.md', 'sprint-points-guideline.md', 'plans-files.md'];
 
 // What each skill's scripts import (paths under planner/logic/; the files those import come along). Diagram logic is
 // not here: it belongs to jois-story-plan and is not copied.

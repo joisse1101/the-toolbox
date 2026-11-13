@@ -71,9 +71,13 @@ Each slice has a `## Changes to existing specs` section, after `## Open question
 
 At the design checkpoint, before it shows the outline, the skill reads the archived slices in the current folder's wiki that touch the same Epic, Feature or entities, found the same way as in the explore skill. It reuses a design decision an archived slice settled and names its source, so the decision is not asked again. It draws an entity that an archived slice owns as a stub, `(see <slice>)`. When the new slice would draw an archived entity or decision differently, it asks you at the checkpoint and draws nothing of it until you answer. With no wiki or no archived slice it says so once and plans as before.
 
-A slice that is built and validated is folded into the wiki by `/jois-code:archive`, which applies those rows. It marks the slice folder with `ARCHIVED.md` (the date, the commit and the pages touched) and deletes nothing. The marker file is not a slice file the plan skill reads or checks, and a redraw with `jois-story-plan` leaves it as it is.
+A slice that is built and validated is folded into the wiki by `/jois-code:archive`, which applies those rows. It marks the slice folder with `ARCHIVED.md` (the date, the commit, the pages touched and the validation and review summary), and after the user says yes it deletes the working files, so the folder keeps only `ARCHIVED.md` and `source.json`. The marker file is not a slice file the plan skill reads or checks, and a redraw with `jois-story-plan` leaves it as it is.
 
 After the slice is written and read back, the skill runs `jois-story-verify` on it, corrects the problems that belong to the slice through the plan writer (up to 2 rounds, without a second question, because your yes covers this slice), and lists everything else, such as a story finding, a `TBC` decision or an open question, for you to decide. The skill reports slices as stale when their stories changed, and redraws only when you ask. It writes the slice, the map and one more thing: the `Frozen` flag, described below. For a change to a story or a term it offers `jois-story-propose`, and it needs its own packages, installed by `npm ci` in the skill folder.
+
+### Printing the .gitignore block
+
+`print-gitignore.mjs` in the plan skill's folder prints the `.gitignore` block that keeps only the committed planner files in git, for the data folder it resolves like the other scripts. It writes nothing, and says no block is needed when the data folder is outside the project. Each skill's `init-plans.mjs` prints the same block after its "Created" line. The user reviews the block and adds it to `.gitignore` themselves. The block is built from the file table in [Data Folder](architecture/Data-Folder.md#lifecycle-of-each-file).
 
 ### Freezing the stories of a slice
 
@@ -82,6 +86,14 @@ The plan skill's one write into the backlog is the `Frozen` column. After the sl
 The writer refuses a story that has no ID, and a story whose ID does not begin with the backlog's initials (for example `IAM-0003` in a backlog with initials `B1`). For the second case, open the backlog in the portal once so it rewrites the IDs, then freeze again. Freezing a story twice leaves the same result as freezing it once.
 
 No skill and no portal control unfreezes a story. A freeze made by mistake is fixed by hand: open `<backlog>/user-stories.csv` in a text editor or Excel and clear the `Frozen` cell of that story. A change to a frozen story needs a superseding story, described next.
+
+### Committing the plan files
+
+After the freeze, the plan skill asks once whether to commit the slice's plan files: `UC-<slice>.md`, `tasks.md` and `source.json`. The freeze is the last write of a plan, so the question never comes earlier. The options are "Yes, commit" and "Not now".
+
+On "Yes, commit" the skill stages the three files by explicit path and commits them as `docs(plans): plan <backlog>/<slice>`. It stages no other file and never pushes. Picking "Yes, commit" counts as the confirmation of the commit rule, so there is no confirmation word. On "Not now" it commits nothing, and the files stay untracked until you commit them.
+
+The skill does not ask in two cases. When `git rev-parse --is-inside-work-tree` says the folder is not inside a git repository, it commits nothing. When `git check-ignore` reports the slice's `tasks.md` as ignored, it says the project's `.gitignore` ignores the plan files and commits nothing. The freeze also changes `user-stories.csv`, which is the portal's file, so the question names it and leaves it to you to commit.
 
 ## The contradiction rule
 

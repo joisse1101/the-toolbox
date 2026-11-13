@@ -11,8 +11,8 @@ hooks:
           command: >-
             powershell -NoProfile -Command "if ([Console]::In.ReadToEnd() -match 'gh\s+(pr\s+(merge|.*--auto)|api\b.*merge)') { [Console]::Error.WriteLine('update-pr never merges: the user runs gh pr merge'); exit 2 }"
 metadata:
-  version: "1.3.0"
-  last_updated: "2026-11-11"
+  version: "1.4.0"
+  last_updated: "2026-11-13"
 ---
 
 # Update PR
@@ -260,6 +260,7 @@ Read the result files of the slices this branch built first. A slice is the fold
 Find the slices of the branch:
 
 - Glob `**/slices/*/validation.md`, `**/slices/*/validation.partial.md` and `**/slices/*/review.md` from the project root.
+- Also glob `**/slices/*/ARCHIVED.md` for a slice whose folder holds none of those three files.
 - Read the header of each file: `Tested commit:` in a validation file, `Reviewed commit:` in `review.md`.
 - Keep a file when its commit is on this branch: `git merge-base --is-ancestor <commit> HEAD` succeeds and `git merge-base --is-ancestor <commit> origin/<base>` fails.
 - If two folders name the same slice (for example a copy under `.trees/`), keep only the one whose commit is on this branch. If both are, list them and ask which one in the step 5 question.
@@ -276,8 +277,13 @@ Sort each current file by its header:
 | `validation.partial.md` | Only when no current `validation.md` exists: the story it tested and its counts, marked as a partial run of one story. Source `validation.partial.md`. |
 | `review.md` with `Review: run` | `/jois-code:review` at the reviewed commit, with the fix rounds and whether the static and behavioural checks ran, then one sub-bullet per line under `## Known, not fixed`. Source `review.md`. |
 | `review.md` with `Review: not run` | The review was not run, with the reason the file gives. Source `review.md`. |
+| `ARCHIVED.md` | Only for a slice whose folder holds no current `validation.md` and no current `review.md`: the validation bullet from its `## Validation` table (tested commit, run, claim counts) and the review bullet from its `## Review` table (status, reviewed commit, fix rounds, checks), then one sub-bullet per line under `### Known, not fixed` and `### Not fixed by design`. Source `ARCHIVED.md`. |
 
 A validation bullet is manual, because validate tests the running code with agents and a browser, not only the repository's test command. Quote only the counts and reasons the file records, and never call a slice validated that the file does not.
+
+`ARCHIVED.md` is what `/jois-code:archive` leaves in a slice folder after it removes the result files. Its summary is the archive's copy of them, so it comes after a current `validation.md` or `review.md`: when the folder still holds a current one, read that file as above and take from `ARCHIVED.md` only what the folder lacks. Read its `Tested commit` and `Reviewed commit` rows as the commit headers above, and apply the same branch and currency checks. A `Review` row of `not run` gives the not-run bullet.
+
+A known line in `ARCHIVED.md` is either the text itself or one link to a wiki page, written `See [<heading>](<path>#<anchor>)`, such as `See [Known limits](<path>#known-limits)`. For a link, open that file, read the lines under the linked heading and write one sub-bullet per line, still with source `ARCHIVED.md`. If the file or heading is missing, write the link as the sub-bullet and say the lines could not be read.
 
 A group whose commits touch an OpenSpec change also reads that change's `tasks.md`.
 
@@ -390,6 +396,7 @@ When presenting a PR, tag every bullet and step with one of these:
 - `validation.md`
 - `validation.partial.md`
 - `review.md`
+- `ARCHIVED.md`
 - `tasks.md N.N, result recorded`
 - `tasks.md N.N, no result recorded`
 - `chat`

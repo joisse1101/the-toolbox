@@ -9,6 +9,10 @@ metadata:
 
 Check a PR, or the current branch, against the repo's rules and against what it claims to do, and print one report with two parts: the static findings and the behavioural verdicts.
 
+## Files this command writes
+
+This command writes no file itself. In the slice form, `/jois-code:validate` writes its own result files. The lifecycle of each file is in [the file table](../../skills/jois-story-plan/references/plans-files.md).
+
 ## Forms
 
 - `/jois-code:review <PR number>` reviews that PR.

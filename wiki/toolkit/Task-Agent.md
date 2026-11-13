@@ -33,7 +33,7 @@ An agent is a file under `toolkit/agents/` with `name`, `description` and `tools
 - how to open the agent's transcript, which is its row in the agent panel and then Enter, or `/tasks`
 - the agent's turn limit
 
-A slice task carries a `Satisfies:` line naming acceptance-criteria rows and a `Verify:` line, so the agent reads `UC-<slice>.md` first, names those rows in the Satisfies part of its report and follows the `Verify:` line. It still stops with a `blocked:` line when a task could only be done by dropping part of a named criterion. The command copies each `result:` clause after the task's `Verify:` line in the slice's `tasks.md` and never stages the slice folder.
+A slice task carries a `Satisfies:` line naming acceptance-criteria rows and a `Verify:` line, so the agent reads `UC-<slice>.md` first, names those rows in the Satisfies part of its report and follows the `Verify:` line. It still stops with a `blocked:` line when a task could only be done by dropping part of a named criterion. The command copies each `result:` clause after the task's `Verify:` line in the slice's `tasks.md`. It stages `tasks.md` with each group's commit only when `git ls-files` lists it, and never stages `review.md`.
 
 After each report it says whether the group is done, failed or blocked, and a failure starts a fix round (see Fixing failures below). While the agent works, the command watches the agent's transcript file, `subagents/agent-<id>.jsonl`, with the `Monitor` tool. If the file does not change for 3 minutes, the command says the agent looks stalled and is probably waiting for a permission approval. It shows the agent's last tool call and where to open the transcript, so you can approve the prompt there. A long test run or build looks the same, so the last tool call tells which it is. The watch never edits a permission rule, and if the command cannot find the transcript, it says the watch did not start.
 
@@ -61,7 +61,7 @@ Re-install the rule and the test runner for the commit exception to take effect.
 The purpose is to commit a finished group without a stop, and to stop with nothing committed when something is doubtful. The command commits by itself only when all of these hold:
 
 - The branch is a named branch other than `main` or `master`.
-- Nothing foreign is staged or edited. The folder `<backlog>/slices/` is ignored in this check and never staged, because git does not track it here.
+- Nothing foreign is staged or edited. The slice folder is ignored in this check. Only its `tasks.md` is staged, with each group's commit and only when `git ls-files` lists it. `review.md` is never staged.
 - The group's tasks are all done. No test runs between groups.
 - No single file holds two concerns.
 

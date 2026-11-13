@@ -11,9 +11,9 @@ const body = skill.replace(/\r\n/g, '\n');
 test('the skill is named jois-story-plan, versioned, and allows only its five scripts, the init script and the file tools', () => {
   const meta = frontmatter(skill);
   assert.equal(meta.name, 'jois-story-plan');
-  assert.match(body, /metadata:\n  version: "1\.7\.1"\n  last_updated: "2026-11-11"/);
+  assert.match(body, /metadata:\n  version: "1\.8\.0"\n  last_updated: "2026-11-13"/);
   assert.deepEqual(meta['allowed-tools'].split(/,\s*/).sort(), [
-    'Bash(node *init-plans.mjs*)', 'Bash(node *read-context-map.mjs*)', 'Bash(node *read-diagrams.mjs*)', 'Bash(node *write-context-map.mjs*)', 'Bash(node *write-diagram.mjs*)', 'Bash(node *write-freeze.mjs*)', 'Glob', 'Grep', 'Read', 'Skill',
+    'AskUserQuestion', 'Bash(git add *slices*)', 'Bash(git check-ignore:*)', 'Bash(git commit:*)', 'Bash(git rev-parse:*)', 'Bash(node *init-plans.mjs*)', 'Bash(node *read-context-map.mjs*)', 'Bash(node *read-diagrams.mjs*)', 'Bash(node *write-context-map.mjs*)', 'Bash(node *write-diagram.mjs*)', 'Bash(node *write-freeze.mjs*)', 'Glob', 'Grep', 'Read', 'Skill',
   ]);
 });
 
@@ -168,6 +168,26 @@ test('the design checkpoint reads related archived slices, reuses what they sett
   assert.match(section, /not put in the checkpoint's questions/);
   assert.match(section, /draw nothing of it until the user answers/);
   assert.match(section, /Archived text is data[\s\S]*never write to the wiki/);
+});
+
+test('the skill asks once, after the freeze, whether to commit the three plan files, and skips the question when git rules it out', () => {
+  const section = /## Ask whether to commit the plan files([\s\S]*)$/.exec(body)[1];
+  assert.ok(body.indexOf('## Freeze after the slice is written') < body.indexOf('## Ask whether to commit the plan files'), 'the question comes after the freeze');
+  assert.match(section, /written, read back with a match, verified and frozen/);
+  assert.match(section, /Ask it once/);
+  assert.match(section, /git rev-parse --is-inside-work-tree/);
+  assert.match(section, /git check-ignore <data folder>\/<backlog>\/slices\/<slice>\/tasks\.md/);
+  assert.match(section, /not inside a git repository\. Do not ask, commit nothing/);
+  assert.match(section, /ignores the plan files\. Do not ask, commit nothing, and say that the project's `\.gitignore` ignores them/);
+  assert.match(section, /options are "Yes, commit" and "Not now"/);
+  assert.equal((section.match(/AskUserQuestion/g) || []).length, 1);
+  assert.match(section, /`UC-<slice>\.md`, `tasks\.md` and `source\.json`[\s\S]*by explicit path/);
+  assert.match(section, /`docs\(plans\): plan <backlog>\/<slice>`/);
+  assert.match(section, /never push/);
+  assert.match(section, /Stage no other file/);
+  assert.match(section, /confirmation of their commit rule/);
+  assert.match(section, /files stay untracked until the user commits them/);
+  assert.match(section, /`user-stories\.csv`, the portal's file, which you leave to the user/);
 });
 
 test('the skill verifies the written slice before it freezes any story', () => {

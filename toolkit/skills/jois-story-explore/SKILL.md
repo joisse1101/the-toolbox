@@ -13,6 +13,10 @@ Help the user work out new stories for one backlog by talking them through. **Ne
 
 `<skill folder>` in the commands below is the folder this skill was loaded from (the base directory shown when the skill starts).
 
+## Files this skill writes
+
+This skill writes no file. See [the file table](references/plans-files.md) for the files the other story skills write and how long each lives.
+
 ## Data folder
 
 The script finds the backlog data folder itself, in the current folder only and never in a parent folder: the config file named by the `PLANNER_CONFIG` variable, else a `.plans` folder in the current folder, else a `planner.config.yaml` in the current folder (its `codeBase` or `dataDir` line). If the script says the config or `.plans` cannot be used, show its message.

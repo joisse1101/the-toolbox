@@ -3,11 +3,20 @@ name: "JOIS: Validate"
 description: "Test whether code does what its plan or its PR says: turn a slice (or a PR and its linked issue) into a list of claims, test each claim in a throwaway checkout under .scratch/ with the code-validator agent, and report each as met, not met or could not test, with evidence. A slice run writes a result file into the slice folder; a PR run only prints. Never edits the code, commits, pushes or writes to GitHub"
 allowed-tools: Bash(node *jois-story-plan*read-diagrams.mjs*), Bash(git status:*), Bash(git branch --show-current:*), Bash(git config user.name:*), Bash(git rev-parse:*), Bash(git fetch:*), Bash(git check-ignore:*), Bash(git diff:*), Bash(git worktree:*), Bash(npm ci:*), Bash(python -m venv:*), Bash(gh pr view:*), Bash(gh issue view:*), Read, Write, Glob, Agent, Monitor, AskUserQuestion
 metadata:
-  version: "1.2.1"
+  version: "1.2.2"
   last_updated: "2026-11-12"
 ---
 
 Test whether code does what its plan or its PR says, and report each requirement as `met`, `not met` or `could not test`, with evidence.
+
+## Files this command writes
+
+In the slice form, this command writes these working files in the slice folder:
+
+- `validation.md`
+- `validation.partial.md`
+
+`/jois-code:archive` copies their summary into `ARCHIVED.md` and then removes them. A PR run writes no file. The lifecycle of each file is in [the file table](../../skills/jois-story-plan/references/plans-files.md).
 
 ## Forms
 
@@ -35,9 +44,10 @@ The argument alone picks the form. Never guess between them.
 
 2. **Slice form: read and check the slice.**
    - Skip this step for a PR.
-   - Find the slice with Glob: `**/<backlog>/slices/<slice>/tasks.md`. Read `tasks.md` and `UC-<slice>.md` from that folder.
-   - If the folder or `tasks.md` is missing, say what is missing, point to `jois-story-plan` and stop.
+   - Find the slice with Glob: `**/<backlog>/slices/<slice>/source.json`, so a slice that archive reduced to its record is found too.
    - If Glob finds more than one match (for example a copy under `.trees/`), list them and ask which one. Test nothing until the user answers.
+   - If the folder holds `ARCHIVED.md` and no `tasks.md`, the slice has been reduced by archive: say the slice is archived on the date `ARCHIVED.md` names and its tasks are gone, test nothing and stop.
+   - Otherwise read `tasks.md` and `UC-<slice>.md` from that folder. If the folder or `tasks.md` is missing, say what is missing, point to `jois-story-plan` and stop.
    - Look for `read-diagrams.mjs` in this project's `.claude/skills/jois-story-plan/` first, then in `~/.claude/skills/jois-story-plan/`. If it is in neither, say the plan skill is not installed, name `Install-Toolkit.ps1` and stop.
    - Run `node <that folder>/read-diagrams.mjs <backlog> --slice <slice>` from the project root and read the whole output. Never re-implement the comparison. When the home copy is refused (a session can block reads outside the project) and a project copy exists, run the project copy. Stop only when no copy runs.
    - Stop and test nothing in each of these cases: the output says `STALE`, it has a `changed:`, `missing:`, `new:` or `ambiguous:` line, or the command fails.
@@ -115,7 +125,7 @@ The argument alone picks the form. Never guess between them.
    - A full run writes `validation.md` into the slice folder. It overwrites the earlier one.
    - A partial run (one story named) writes `validation.partial.md` into the slice folder. A partial run never writes `validation.md`, so an earlier full run stays as it was.
    - The file starts with a header of four lines: `Run kind:` (`full` or `partial`), `Date:`, `Tested commit:` and `Validated:` (`yes` or `no`, with the rule of step 9 in one sentence). A partial run always has `Validated: no`. Then one row per claim: claim ID, source, verdict, evidence.
-   - The slice folder is not tracked by git here. Never stage it.
+   - Never stage a result file.
 
 9. **Say what counts as validated.**
    - A slice counts as validated only when its latest full run has every claim `met`.
