@@ -11,18 +11,24 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-// The same name as PLANS_DIR in viewer/shared/storage/backlog-paths.cjs. This file imports nothing from the viewer,
+// The same name as PLANS_DIR in viewer/shared/storage/backlog-paths.ts. This file imports nothing from the viewer,
 // so the literal is repeated and a test checks the two match.
 export const PLANS_DIR = '.plans';
 
-export function resolveDataDir({ cwd = process.cwd() } = {}) {
+export type DataDirResult =
+  | { status: 'found'; dataDir: string }
+  | { status: 'none'; cwd: string }
+  | { status: 'error'; path: string; problem: string };
+
+export function resolveDataDir({ cwd = process.cwd() }: { cwd?: string } = {}): DataDirResult {
   const here = path.resolve(cwd);
   const plans = path.join(here, PLANS_DIR);
-  let stat = null;
+  let stat: fs.Stats | null = null;
   try {
     stat = fs.statSync(plans);
   } catch (err) {
-    if (err.code !== 'ENOENT' && err.code !== 'ENOTDIR') return { status: 'error', path: plans, problem: `cannot be read: ${err.message}` };
+    const e = err as NodeJS.ErrnoException; // a failed stat is a system error
+    if (e.code !== 'ENOENT' && e.code !== 'ENOTDIR') return { status: 'error', path: plans, problem: `cannot be read: ${e.message}` };
   }
   if (stat?.isDirectory()) return { status: 'found', dataDir: plans };
   if (stat) return { status: 'error', path: plans, problem: 'is a file, not a folder' };
@@ -30,7 +36,7 @@ export function resolveDataDir({ cwd = process.cwd() } = {}) {
 }
 
 // The data folder for a script, or throws an Error whose message a person can act on (never a guessed folder).
-export function dataDirOrThrow(options) {
+export function dataDirOrThrow(options?: { cwd?: string }): string {
   const found = resolveDataDir(options);
   if (found.status === 'found') return found.dataDir;
   if (found.status === 'error') {

@@ -1,9 +1,9 @@
 // Small RFC 4180 CSV parser/serializer. Rows are arrays of strings.
 
-export function parseCsv(text) {
+export function parseCsv(text: string): string[][] {
   if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
-  const rows = [];
-  let row = [];
+  const rows: string[][] = [];
+  let row: string[] = [];
   let field = '';
   let inQuotes = false;
   let i = 0;
@@ -43,12 +43,12 @@ export function parseCsv(text) {
   return rows;
 }
 
-function quote(value) {
+function quote(value: unknown): string {
   const s = String(value ?? '');
   return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
 // CRLF line endings and a trailing newline, the form Excel writes.
-export function toCsv(rows) {
+export function toCsv(rows: readonly (readonly unknown[])[]): string {
   return rows.map((r) => r.map(quote).join(',') + '\r\n').join('');
 }

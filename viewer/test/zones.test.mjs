@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 // The zones depend on each other in one direction only (see CLAUDE.md). This reads every source file's relative
 // imports and checks where each one points.
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const SOURCE = /\.(c|m)?jsx?$/;
+const SOURCE = /\.(c|m)?[jt]sx?$/;
 const SKIP = new Set(['node_modules', 'dist', '.git', 'data', '.trees']);
 const IMPORT = /(?:from|import|require\(|import\()\s*['"](\.{1,2}\/[^'"?]+)/g;
 

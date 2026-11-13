@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 // A JSON.parse failure message plus line, column and a short excerpt, so a missing comma can be found.
-export function describeParseError(err, text, what = 'stories') {
+export function describeParseError(err: Error, text: string, what = 'stories'): string {
   const message = err.message.replace(/\s*\(line \d+ column \d+\)/, ''); // the position is reported below
   const at = /position (\d+)/.exec(message);
   if (!at) return `The ${what} on stdin are not valid JSON: ${message}`;
@@ -16,14 +16,14 @@ export function describeParseError(err, text, what = 'stories') {
 
 // Write beside the target, then rename over it, so a failure never leaves a partly written file. A .tmp file is
 // not listed by the file API. Returns an error message, or null.
-export function writeAtomic(dir, file, text) {
+export function writeAtomic(dir: string, file: string, text: string): string | null {
   const tmp = path.join(dir, `${file}.${process.pid}.tmp`);
   try {
     fs.writeFileSync(tmp, text, 'utf8');
     fs.renameSync(tmp, path.join(dir, file));
   } catch (err) {
     fs.rmSync(tmp, { force: true });
-    return `Could not write ${path.basename(dir)}/${file}: ${err.message} (is it open in Excel?)`;
+    return `Could not write ${path.basename(dir)}/${file}: ${(err as Error).message} (is it open in Excel?)`;
   }
   return null;
 }

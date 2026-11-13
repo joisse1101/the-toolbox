@@ -4,20 +4,21 @@
 // Accepting moves stories into the backlog; `renumber` (ids.js) then gives them real IDs and rewrites every
 // `Depends On` entry that named a placeholder now held by a story. Stories are never mutated.
 
+import type { Proposal, Story } from '../types.ts';
 import { renumber, backlogProblems } from './ids.ts';
 
 const PLACEHOLDER = /^NEW-(\d+)$/;
 
-export const isPlaceholder = (code) => PLACEHOLDER.test(code);
+export const isPlaceholder = (code: string): boolean => PLACEHOLDER.test(code);
 
-const liveEpic = (s) => String(s.epic ?? '').trim();
+const liveEpic = (s: Story): string => String(s.epic ?? '').trim();
 
 // The next free placeholder: one above every NEW-<n> the proposals use and every one the backlog still mentions in
 // Depends On, so a number is never reused while anything refers to it (a reused number would be bound silently
 // by `renumber` to the wrong story). A writer outside the portal must use the same rule.
-export function nextPlaceholder(proposed, backlog = []) {
+export function nextPlaceholder(proposed: readonly Proposal[], backlog: readonly Story[] = []): string {
   let max = 0;
-  const see = (code) => {
+  const see = (code: string): void => {
     const m = PLACEHOLDER.exec(code);
     if (m) max = Math.max(max, Number(m[1]));
   };
@@ -30,7 +31,7 @@ export function nextPlaceholder(proposed, backlog = []) {
 }
 
 // Delete a proposed story and strip its placeholder from the other proposed stories. IDs are not recomputed.
-export function removeProposed(stories, id) {
+export function removeProposed(stories: Proposal[], id: number): Proposal[] {
   const gone = stories.find((s) => s.id === id);
   if (!gone) return stories;
   return stories
@@ -42,7 +43,7 @@ export function removeProposed(stories, id) {
 }
 
 // Array move: put the story before `beforeId`, or at the end when that is null or not found. IDs are not recomputed.
-export function reorderProposed(stories, id, beforeId = null) {
+export function reorderProposed(stories: Proposal[], id: number, beforeId: number | null = null): Proposal[] {
   const s = stories.find((x) => x.id === id);
   if (!s || beforeId === id) return stories;
   const rest = stories.filter((x) => x.id !== id);
@@ -53,7 +54,7 @@ export function reorderProposed(stories, id, beforeId = null) {
 
 // Drag in the list: the story joins `epic`, before `beforeId` or (null) after the last story of that epic, or at the
 // end for a new epic. Array move only; the ID stays.
-export function moveProposed(stories, id, epic, beforeId = null) {
+export function moveProposed(stories: Proposal[], id: number, epic: unknown, beforeId: number | null = null): Proposal[] {
   const s = stories.find((x) => x.id === id);
   const target = String(epic ?? '').trim();
   if (!s || !target || beforeId === id) return stories;
@@ -69,8 +70,8 @@ export function moveProposed(stories, id, epic, beforeId = null) {
   return moved === s && rest.every((x, i) => x === stories[i]) ? stories : rest;
 }
 
-const cycleIds =(stories) => {
-  const ids = new Set();
+const cycleIds = (stories: readonly Story[]): Set<number> => {
+  const ids = new Set<number>();
   for (const [id, msgs] of backlogProblems(stories)) if (msgs.some((m) => m.includes('dependency cycle'))) ids.add(id);
   return ids;
 };
@@ -80,7 +81,13 @@ const cycleIds =(stories) => {
 // A benched story is never accepted: the user un-benches it first. Open Clarifications do not block.
 // `initials` are the backlog's. A story accepted into the backlog starts unfrozen.
 // Returns { backlog, proposals, accepted } (accepted: the moved stories with their new IDs), or { error } and nothing moves.
-export function acceptProposed(backlogStories, proposedStories, ids, headers, initials) {
+export function acceptProposed(
+  backlogStories: Story[],
+  proposedStories: Proposal[],
+  ids: ReadonlySet<number>,
+  headers: readonly string[],
+  initials: string,
+): { backlog: Story[]; proposals: Proposal[]; accepted: Story[] } | { error: string } {
   const chosen = proposedStories.filter((s) => ids.has(s.id));
   if (!chosen.length) return { error: 'There is no proposed story to accept.' };
   const noEpic = chosen.filter((s) => !liveEpic(s));
@@ -110,13 +117,14 @@ export function acceptProposed(backlogStories, proposedStories, ids, headers, in
   }
   const backlog = renumber(placed, initials);
 
-  const newCode = new Map(); // placeholder -> real ID ('' when the Epic gives no prefix)
-  for (const c of copies) newCode.set(c.code, backlog.find((s) => s.id === c.id).code);
+  const newCode = new Map<string, string>(); // placeholder -> real ID ('' when the Epic gives no prefix)
+  const inBacklog = (id: number): Story => backlog.find((s) => s.id === id) as Story; // every copy was placed, so it is there
+  for (const c of copies) newCode.set(c.code, inBacklog(c.id).code);
 
   const before = cycleIds(backlogStories);
   const cycle = [...cycleIds(backlog)].filter((id) => !before.has(id));
   if (cycle.length) {
-    const names = cycle.map((id) => backlog.find((s) => s.id === id)).map((s) => s.code || s.title.trim() || 'a story');
+    const names = cycle.map(inBacklog).map((s) => s.code || s.title.trim() || 'a story');
     return { error: `Accepting would create a dependency cycle (${names.join(', ')}). Nothing was moved.` };
   }
 
@@ -124,24 +132,24 @@ export function acceptProposed(backlogStories, proposedStories, ids, headers, in
     .filter((s) => !ids.has(s.id))
     .map((s) => {
       if (!s.dependsOn.some((e) => newCode.has(e))) return s;
-      const deps = [];
+      const deps: string[] = [];
       for (const e of s.dependsOn) {
-        const target = newCode.has(e) ? newCode.get(e) : e;
+        const target = newCode.get(e) ?? e;
         if (target && !deps.includes(target)) deps.push(target);
       }
       return { ...s, dependsOn: deps, ambiguous: s.ambiguous.filter((e) => deps.includes(e)) };
     });
 
-  return { backlog, proposals, accepted: copies.map((c) => backlog.find((s) => s.id === c.id)) };
+  return { backlog, proposals, accepted: copies.map((c) => inBacklog(c.id)) };
 }
 
 // Rewrite `Depends On` entries through `map` (old code -> new code); entries not in the map stay. Same array when nothing changes.
-function relink(stories, map) {
+function relink(stories: readonly Story[], map: ReadonlyMap<string, string>): Story[] {
   return stories.map((s) => {
     if (!s.dependsOn.some((e) => map.has(e))) return s;
-    const deps = [];
+    const deps: string[] = [];
     for (const e of s.dependsOn) {
-      const target = map.has(e) ? map.get(e) : e;
+      const target = map.get(e) ?? e;
       if (target && !deps.includes(target)) deps.push(target);
     }
     return { ...s, dependsOn: deps, ambiguous: s.ambiguous.filter((e) => deps.includes(e)) };
@@ -154,7 +162,13 @@ function relink(stories, map) {
 // (the moved story's own, and the proposals') follows the new codes. A story without an ID and a frozen story cannot be moved. `initials` are the backlog's.
 // Returns { backlog, proposals, moved, recoded } (recoded: old code -> new code of the backlog stories whose ID changed,
 // '' when one lost its ID) or { error }.
-export function moveToProposed(backlogStories, proposedStories, id, headers, initials) {
+export function moveToProposed(
+  backlogStories: Story[],
+  proposedStories: Proposal[],
+  id: number,
+  headers: readonly string[],
+  initials: string,
+): { backlog: Story[]; proposals: Proposal[]; moved: Proposal; recoded: Map<string, string> } | { error: string } {
   const story = backlogStories.find((s) => s.id === id);
   if (!story) return { error: 'The story is not in the backlog.' };
   if (!story.code) return { error: 'Give the story an Epic before moving it to Proposed.' };
@@ -165,7 +179,7 @@ export function moveToProposed(backlogStories, proposedStories, id, headers, ini
   const rest = relink(backlogStories.filter((s) => s.id !== id), toPlaceholder);
   const backlog = renumber(rest, initials);
 
-  const newCode = new Map(); // old backlog code -> code after the renumber ('' when the story lost its ID)
+  const newCode = new Map<string, string>(); // old backlog code -> code after the renumber ('' when the story lost its ID)
   rest.forEach((s, i) => {
     if (s.code && backlog[i].code !== s.code) newCode.set(s.code, backlog[i].code);
   });

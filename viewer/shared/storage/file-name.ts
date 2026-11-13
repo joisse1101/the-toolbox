@@ -1,10 +1,12 @@
-'use strict';
 // Backlog-name rules for every file the tools read or write: the backend's file API and the AI skill scripts share them.
 
 const RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
 
-class HttpError extends Error {
-  constructor(status, message, code) {
+export class HttpError extends Error {
+  status: number;
+  code: string | undefined;
+
+  constructor(status: number, message: string, code?: string) {
     super(message);
     this.status = status;
     this.code = code;
@@ -12,11 +14,11 @@ class HttpError extends Error {
 }
 
 // Names a project-level folder in the data folder that is not a backlog.
-const RESERVED_BACKLOG_NAMES = ['logs'];
+export const RESERVED_BACKLOG_NAMES = ['logs'];
 
 // Returns the backlog name (its folder name) or throws HttpError(400). A trailing .csv is accepted and dropped, so
 // `iam.csv` and `iam` are the same backlog. The name must be a valid Windows folder name and hold no separator.
-function validateBacklogName(raw) {
+export function validateBacklogName(raw: unknown): string {
   if (typeof raw !== 'string') throw new HttpError(400, 'Backlog name is required', 'invalid-name');
   let name = raw.trim();
   if (/\.csv$/i.test(name)) name = name.slice(0, -4);
@@ -34,5 +36,3 @@ function validateBacklogName(raw) {
   if (name.length > 116) throw new HttpError(400, 'Backlog name is too long', 'invalid-name');
   return name;
 }
-
-module.exports = { HttpError, validateBacklogName, RESERVED_BACKLOG_NAMES };

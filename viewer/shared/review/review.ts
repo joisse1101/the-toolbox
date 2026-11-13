@@ -2,11 +2,36 @@
 // decides whether a suggestion is still current and applies it to the stories (used by the portal).
 // No DOM and no file access. One row = one field edit; rows that share a Group are applied together.
 
+import type { Criterion, ReviewRow, Story } from '../types.ts';
 import { parseCsv, toCsv } from '../backlog/csv.ts';
 import { parseStory, roleIsBlank, parseCriteria } from '../backlog/story-text.ts';
 import { POINTS, newStory, storyCellText, emptyCriterion } from '../backlog/model.ts';
 import { renumber, commitEpics, wouldCycle } from '../backlog/ids.ts';
 import { resolveStoryRef } from '../backlog/story-ref.ts';
+
+// A finding as the model sends it: loose until validateFindings has checked it.
+export type Finding = Record<string, unknown>;
+
+// The rows applied together: a group is one unit, an ungrouped row is its own unit. `indexes` are the rows' positions in the file.
+export interface ReviewUnit {
+  key: string;
+  group: string;
+  rows: ReviewRow[];
+  indexes: number[];
+}
+
+export type SuggestionState = { state: 'open' } | { state: 'frozen' } | { state: 'stale'; why: string };
+
+export type SkipReason = 'check' | 'frozen' | 'failed';
+
+export type ApplyResult = { stories: Story[]; createdIds: number[] } | { error: string };
+
+// A criterion or a question found by its text: where it is, or why it is not there exactly once.
+export interface Located {
+  pos?: number;
+  index?: number;
+  why?: string;
+}
 
 export const REVIEW_COLUMNS = [
   'Story ID', 'Field', 'Action', 'Current', 'Suggested', 'Reason', 'Area', 'Confidence', 'Group', 'Status',
@@ -22,7 +47,7 @@ export const CONFIDENCES = ['ready', 'confirm'];
 export const STATUSES = ['open', 'applied', 'dismissed'];
 
 // Which actions each field accepts on an existing story. `add-story` rows (a story to create) accept any field.
-const ALLOWED_ACTIONS = {
+const ALLOWED_ACTIONS: Record<string, string[]> = {
   Epic: ['replace'],
   Feature: ['replace'],
   Title: ['replace'],
@@ -40,35 +65,36 @@ const AC_ONLY = /^\s*AC(\d+)\s*$/i; // the label alone, as a remove row's Sugges
 const AC_NUMBER = /^\s*AC(\d+)\b/i; // the label alone (remove) or the start of a criterion line (replace)
 const BOM = '﻿';
 
-const str = (v) => (typeof v === 'string' ? v.trim() : '');
-const norm = (s) => String(s ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
-const blank = (v) => !String(v ?? '').trim();
+const str = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
+const norm = (s: unknown): string => String(s ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
+const blank = (v: unknown): boolean => !String(v ?? '').trim();
 
 // ---------- CSV <-> rows ----------
 
-export function serializeReview(rows) {
+export function serializeReview(rows: readonly ReviewRow[]): string {
   return BOM + toCsv([REVIEW_COLUMNS, ...rows.map((r) => [
     r.storyId, r.field, r.action, r.current, r.suggested, r.reason, r.area, r.confidence, r.group, r.status,
   ])]);
 }
 
 // Rows with an unknown Field/Action are skipped (counted), a bad Status reads as open.
-export function parseReview(text) {
+export function parseReview(text: unknown): { ok: true; rows: ReviewRow[]; skipped: number } | { ok: false; error: string } {
   const table = parseCsv(String(text ?? ''));
   if (!table.length) return { ok: true, rows: [], skipped: 0 };
-  const idx = {};
+  const idx: Record<string, number> = {};
   table[0].forEach((h, i) => {
     const col = REVIEW_COLUMNS.find((c) => c.toLowerCase() === h.trim().toLowerCase());
     if (col && !(col in idx)) idx[col] = i;
   });
   const missing = REVIEW_COLUMNS.filter((c) => !(c in idx));
   if (missing.length) return { ok: false, error: `The review file is missing the column${missing.length > 1 ? 's' : ''} ${missing.join(', ')}.` };
-  const rows = [];
+  const rows: ReviewRow[] = [];
   let skipped = 0;
   for (const r of table.slice(1)) {
     if (!r.some((c) => c !== '')) continue;
-    const get = (c) => r[idx[c]] ?? '';
-    const row = {
+    const get = (c: string): string => r[idx[c]] ?? '';
+    const status = get('Status').trim();
+    const row: ReviewRow = {
       storyId: get('Story ID').trim(),
       field: get('Field').trim(),
       action: get('Action').trim(),
@@ -78,7 +104,7 @@ export function parseReview(text) {
       area: get('Area').trim(),
       confidence: get('Confidence').trim() === 'confirm' ? 'confirm' : 'ready',
       group: get('Group').trim(),
-      status: STATUSES.includes(get('Status').trim()) ? get('Status').trim() : 'open',
+      status: status === 'applied' || status === 'dismissed' ? status : 'open',
     };
     const legacy = LEGACY_ACTIONS.includes(row.action);
     const fieldOk = legacy ? row.field === '' : FIELDS.includes(row.field); // an old unlock row has no Field
@@ -93,10 +119,10 @@ export function parseReview(text) {
 
 // ---------- story helpers ----------
 
-export const criterionText = (c, n) => `AC${n}: Given ${c.given}, when ${c.when}, then ${c.then}`;
+export const criterionText = (c: Criterion, n: number): string => `AC${n}: Given ${c.given}, when ${c.when}, then ${c.then}`;
 
 // The live value of a field as the review's `Current` column holds it.
-export function fieldValue(story, field) {
+export function fieldValue(story: Story, field: string): string {
   switch (field) {
     case 'Epic': return story.epic;
     case 'Feature': return story.feature;
@@ -109,20 +135,20 @@ export function fieldValue(story, field) {
   }
 }
 
-const hasBlankOnly = (criteria) => criteria.every((c) => blank(c.given) && blank(c.when) && blank(c.then));
+const hasBlankOnly = (criteria: readonly Criterion[]): boolean => criteria.every((c) => blank(c.given) && blank(c.when) && blank(c.then));
 
 // One criterion line -> { given, when, then }, or null when it does not parse as exactly one criterion.
-function parseOneCriterion(text) {
+function parseOneCriterion(text: string): Criterion | null {
   const r = parseCriteria(text);
   return r.ok && r.criteria.length === 1 ? r.criteria[0] : null;
 }
 
-const criterionBody = (c) => norm(`Given ${c.given}, when ${c.when}, then ${c.then}`);
+const criterionBody = (c: Criterion): string => norm(`Given ${c.given}, when ${c.when}, then ${c.then}`);
 
 // The criterion a replace or remove row targets, found by the text the writer recorded in `current` (the label is
 // only a hint, since earlier removals renumber the criteria): the one named by the label if its text matches,
 // else the only criterion with that text. { pos } is 1-based; { why } says why there is no single match.
-export function locateCriterion(story, row) {
+export function locateCriterion(story: Story, row: Pick<ReviewRow, 'current' | 'suggested'>): Located {
   const wanted = norm(String(row.current ?? '').replace(AC_LABEL, ''));
   const n = Number(AC_NUMBER.exec(row.suggested)?.[1]);
   const named = story.criteria[n - 1];
@@ -133,12 +159,12 @@ export function locateCriterion(story, row) {
 }
 
 // The pairs of a story's Clarifications as the story read numbers them: n = position among the pairs that are not blank.
-const readPairs = (story) => story.clarifications.filter((p) => !blank(p.q) || !blank(p.a));
+const readPairs = (story: Story): Story['clarifications'] => story.clarifications.filter((p) => !blank(p.q) || !blank(p.a));
 
 // The pair a resolve row targets, found by the question text the writer recorded in `current` (a removal renumbers the
 // pairs, so a number would not hold). { index } is the position in story.clarifications; { why } says why there is no
 // single match.
-export function locatePair(story, row) {
+export function locatePair(story: Story, row: Pick<ReviewRow, 'current'>): Located {
   const wanted = norm(row.current);
   const hits = story.clarifications.flatMap((p, i) => (norm(p.q) === wanted ? [i] : []));
   if (hits.length === 1) return { index: hits[0] };
@@ -146,7 +172,7 @@ export function locatePair(story, row) {
 }
 
 // A resolve row's effect: its Suggested text goes to the end of Notes on a new line, and the question is removed.
-function resolvePair(story, row) {
+function resolvePair(story: Story, row: ReviewRow): Story {
   const found = locatePair(story, row);
   const v = row.suggested.trim();
   return {
@@ -156,10 +182,10 @@ function resolvePair(story, row) {
   };
 }
 
-const sameCriterion = (a, b) => norm(a.given) === norm(b.given) && norm(a.when) === norm(b.when) && norm(a.then) === norm(b.then);
+const sameCriterion = (a: Criterion, b: Criterion): boolean => norm(a.given) === norm(b.given) && norm(a.when) === norm(b.when) && norm(a.then) === norm(b.then);
 
 // A resolve finding names its pair by number, as a number or as the digits ("2", "Q2"); NaN when it names none.
-const pairNumber = (v) => (typeof v === 'number' ? v : Number(/^\s*Q?(\d+)\s*$/i.exec(String(v ?? ''))?.[1]));
+const pairNumber = (v: unknown): number => (typeof v === 'number' ? v : Number(/^\s*Q?(\d+)\s*$/i.exec(String(v ?? ''))?.[1]));
 
 // ---------- validation (the write script runs this on the model's findings) ----------
 
@@ -167,14 +193,14 @@ const pairNumber = (v) => (typeof v === 'number' ? v : Number(/^\s*Q?(\d+)\s*$/i
 // A finding on a frozen story is rejected. A finding may carry `storyTitle` (the Title of the story it
 // names) and a Depends On finding `targetTitle` (the Title of the story in Suggested): a Title that is given is checked against the
 // backlog, and with `requireTitles` it must be given. The Titles are not part of the stored row.
-export function validateFindings(findings, backlog, { requireTitles = false } = {}) {
+export function validateFindings(findings: unknown, backlog: { stories: Story[] }, { requireTitles = false }: { requireTitles?: boolean } = {}): string[] {
   if (!Array.isArray(findings)) return ['The input must be a JSON array of findings.'];
-  const errors = [];
+  const errors: string[] = [];
   const stories = backlog.stories;
-  const byCode = new Map();
+  const byCode = new Map<string, Story[]>();
   for (const s of stories) if (s.code) byCode.set(s.code, [...(byCode.get(s.code) ?? []), s]);
 
-  const rows = findings.map((f) => ({
+  const rows = (findings as (Finding | null | undefined)[]).map((f) => ({
     storyId: str(f?.storyId), field: str(f?.field), action: str(f?.action), suggested: str(f?.suggested),
     reason: str(f?.reason), area: str(f?.area), confidence: str(f?.confidence), group: str(f?.group),
     storyTitle: str(f?.storyTitle), targetTitle: str(f?.targetTitle), pair: pairNumber(f?.pair),
@@ -182,18 +208,18 @@ export function validateFindings(findings, backlog, { requireTitles = false } = 
   const refs = stories.filter((s) => s.code).map((s) => ({ code: s.code, title: s.title, epic: s.epic, feature: s.feature }));
 
   // New stories declared per group, for Depends On targets and the Title check.
-  const newIds = new Map(); // group -> Set of NEW ids
-  const newTitles = new Map(); // group|id -> true
+  const newIds = new Map<string, Set<string>>(); // group -> Set of NEW ids
+  const newTitles = new Map<string, boolean>(); // group|id -> true
   for (const r of rows) {
     if (r.action !== 'add-story' || !NEW_ID.test(r.storyId)) continue;
     if (!newIds.has(r.group)) newIds.set(r.group, new Set());
-    newIds.get(r.group).add(r.storyId);
+    newIds.get(r.group)!.add(r.storyId);
     if (r.field === 'Title' && r.suggested) newTitles.set(`${r.group}|${r.storyId}`, true);
   }
 
   rows.forEach((r, i) => {
     const at = `Finding ${i + 1}${r.storyId ? ` (${r.storyId} ${r.field})` : ''}`;
-    const bad = (msg) => errors.push(`${at}: ${msg}`);
+    const bad = (msg: string): number => errors.push(`${at}: ${msg}`);
 
     if (!FIELDS.includes(r.field)) bad(`Field "${r.field}" is not one of ${FIELDS.join(', ')}.`);
     if (!ACTIONS.includes(r.action)) bad(`Action "${r.action}" is not one of ${ACTIONS.join(', ')}.`);
@@ -207,7 +233,7 @@ export function validateFindings(findings, backlog, { requireTitles = false } = 
     }
 
     const isNew = r.action === 'add-story';
-    let story = null;
+    let story: Story | null = null;
     if (isNew) {
       if (!NEW_ID.test(r.storyId)) bad(`an add-story row needs a Story ID like NEW-1, not "${r.storyId}".`);
       if (!r.group) bad('an add-story row needs a Group.');
@@ -284,7 +310,7 @@ export function validateFindings(findings, backlog, { requireTitles = false } = 
   });
 
   // A group is applied as one unit, so every row in it needs the user's confirmation.
-  const groups = new Map();
+  const groups = new Map<string, typeof rows>();
   rows.forEach((r) => {
     if (r.group) groups.set(r.group, [...(groups.get(r.group) ?? []), r]);
   });
@@ -295,12 +321,12 @@ export function validateFindings(findings, backlog, { requireTitles = false } = 
 }
 
 // Adds Current (from the backlog as read) and Status open. Assumes validateFindings found no errors.
-export function fillCurrent(findings, backlog) {
+export function fillCurrent(findings: readonly Finding[], backlog: { stories: Story[] }): ReviewRow[] {
   const byCode = new Map(backlog.stories.filter((s) => s.code).map((s) => [s.code, s]));
   return findings.map((f) => {
-    const row = {
+    const row: ReviewRow = {
       storyId: str(f.storyId), field: str(f.field), action: str(f.action), current: '', suggested: str(f.suggested),
-      reason: str(f.reason), area: str(f.area), confidence: str(f.confidence), group: str(f.group), status: 'open',
+      reason: str(f.reason), area: str(f.area), confidence: str(f.confidence) as ReviewRow['confidence'], group: str(f.group), status: 'open', // validateFindings checked the confidence
     };
     const story = byCode.get(row.storyId);
     if (story && row.action === 'resolve') {
@@ -319,17 +345,20 @@ export function fillCurrent(findings, backlog) {
   });
 }
 
-const rowKey = (r) => [r.storyId, r.field, r.action, r.suggested].join('\u0000');
+const rowKey = (r: ReviewRow): string => [r.storyId, r.field, r.action, r.suggested].join('\u0000');
 
 // A re-run replaces the rows, but a row identical to one already decided keeps its Status.
-export function mergeStatus(newRows, oldRows) {
-  const old = new Map(oldRows.map((r) => [rowKey(r), r.status]));
-  return newRows.map((r) => (old.has(rowKey(r)) ? { ...r, status: old.get(rowKey(r)) } : r));
+export function mergeStatus(newRows: readonly ReviewRow[], oldRows: readonly ReviewRow[]): ReviewRow[] {
+  const old = new Map(oldRows.map((r) => [rowKey(r), r.status] as const));
+  return newRows.map((r) => {
+    const status = old.get(rowKey(r));
+    return status ? { ...r, status } : r;
+  });
 }
 
 // ---------- portal side: is a suggestion still current, and apply it ----------
 
-const findStory = (stories, code) => {
+const findStory = (stories: readonly Story[], code: string): Story | null => {
   const hits = stories.filter((s) => s.code === code);
   return hits.length === 1 ? hits[0] : null;
 };
@@ -337,18 +366,18 @@ const findStory = (stories, code) => {
 // { state: 'open' }, { state: 'stale', why } or { state: 'frozen' } (current, but its story is frozen, so it can never
 // be applied). add-story rows are never stale on their own (their group decides).
 // An old unlock row is always stale: a story cannot be unlocked or unfrozen any more.
-export function suggestionState(row, stories) {
+export function suggestionState(row: ReviewRow, stories: readonly Story[]): SuggestionState {
   if (LEGACY_ACTIONS.includes(row.action)) return { state: 'stale', why: 'unlock rows are no longer used: a frozen story cannot be unfrozen' };
   const base = editState(row, stories);
   if (base.state === 'open' && row.action !== 'add-story' && findStory(stories, row.storyId)?.frozen) return { state: 'frozen' };
   return base;
 }
 
-function editState(row, stories) {
+function editState(row: ReviewRow, stories: readonly Story[]): SuggestionState {
   if (row.action === 'add-story') return { state: 'open' };
   const story = findStory(stories, row.storyId);
   if (!story) return { state: 'stale', why: `${row.storyId} no longer exists or was renumbered` };
-  const stale = (why) => ({ state: 'stale', why });
+  const stale = (why: string): SuggestionState => ({ state: 'stale', why });
 
   if (row.field === 'Depends On') {
     const has = story.dependsOn.includes(row.suggested);
@@ -360,7 +389,7 @@ function editState(row, stories) {
     if (story.rawCriteria !== null) return stale('the criteria are free text');
     if (row.action === 'remove') {
       const found = locateCriterion(story, row);
-      return found.pos ? { state: 'open' } : stale(found.why);
+      return found.pos ? { state: 'open' } : stale(found.why ?? '');
     }
     const wanted = parseOneCriterion(row.suggested);
     if (!wanted) return stale('the suggested criterion is not valid');
@@ -368,7 +397,7 @@ function editState(row, stories) {
       return story.criteria.some((c) => sameCriterion(c, wanted)) ? stale('that criterion already exists') : { state: 'open' };
     }
     const found = locateCriterion(story, row);
-    return found.pos ? { state: 'open' } : stale(found.why);
+    return found.pos ? { state: 'open' } : stale(found.why ?? '');
   }
   if (row.field === 'Clarifications') {
     if (story.rawClarifications !== null) return stale('the Clarifications are free text');
@@ -387,9 +416,9 @@ function editState(row, stories) {
 }
 
 // Units shown and applied together: a group is one unit, an ungrouped row is its own unit.
-export function unitsOf(rows) {
-  const units = [];
-  const byGroup = new Map();
+export function unitsOf(rows: readonly ReviewRow[]): ReviewUnit[] {
+  const units: ReviewUnit[] = [];
+  const byGroup = new Map<string, ReviewUnit>();
   rows.forEach((row, index) => {
     if (row.status !== 'open') return;
     if (!row.group) {
@@ -401,14 +430,14 @@ export function unitsOf(rows) {
       byGroup.set(row.group, u);
       units.push(u);
     }
-    byGroup.get(row.group).rows.push(row);
-    byGroup.get(row.group).indexes.push(index);
+    byGroup.get(row.group)!.rows.push(row);
+    byGroup.get(row.group)!.indexes.push(index);
   });
   return units;
 }
 
 // { state: 'open' }, { state: 'stale', why } or { state: 'frozen' } for a whole unit (stale wins over frozen).
-export function unitState(unit, stories) {
+export function unitState(unit: ReviewUnit, stories: readonly Story[]): SuggestionState {
   let frozen = false;
   for (const row of unit.rows) {
     const s = suggestionState(row, stories);
@@ -420,7 +449,7 @@ export function unitState(unit, stories) {
 
 // Why Accept all leaves a unit alone before trying it, or null when it may be tried: a `confirm` default needs a
 // human check, and a frozen story cannot be edited.
-function skipReason(unit, stories) {
+function skipReason(unit: ReviewUnit, stories: readonly Story[]): SkipReason | null {
   if (unit.rows.some((r) => r.confidence === 'confirm')) return 'check';
   return unitState(unit, stories).state === 'frozen' ? 'frozen' : null;
 }
@@ -428,18 +457,23 @@ function skipReason(unit, stories) {
 // Accept all: apply the units in order, each on the stories the previous one left. A unit that is skipped, stale or
 // refused stays open and the run goes on. Returns { stories, applied: [units], skipped: [{ unit, reason }] } with
 // reason `check`, `frozen` or `failed`; `stories` is the input when nothing was applied. `initials` are the backlog's.
-export function acceptAll(stories, units, headers, initials) {
+export function acceptAll(
+  stories: Story[],
+  units: readonly ReviewUnit[],
+  headers: readonly string[],
+  initials: string,
+): { stories: Story[]; applied: ReviewUnit[]; skipped: { unit: ReviewUnit; reason: SkipReason }[] } {
   let current = stories;
-  const applied = [];
-  const skipped = [];
+  const applied: ReviewUnit[] = [];
+  const skipped: { unit: ReviewUnit; reason: SkipReason }[] = [];
   for (const unit of units) {
     const reason = skipReason(unit, current);
     if (reason) {
       skipped.push({ unit, reason });
       continue;
     }
-    const result = unitState(unit, current).state === 'stale' ? { error: true } : applySuggestions(current, unit.rows, headers, initials);
-    if (result.error) {
+    const result: ApplyResult = unitState(unit, current).state === 'stale' ? { error: 'stale' } : applySuggestions(current, unit.rows, headers, initials);
+    if ('error' in result) {
       skipped.push({ unit, reason: 'failed' });
       continue;
     }
@@ -449,22 +483,22 @@ export function acceptAll(stories, units, headers, initials) {
   return { stories: current, applied, skipped };
 }
 
-const SKIP_LABEL = { frozen: 'frozen story', check: 'needs a check', failed: 'could not be applied' };
+const SKIP_LABEL: Record<SkipReason, string> = { frozen: 'frozen story', check: 'needs a check', failed: 'could not be applied' };
 
 // One line for the end of an Accept all run: how many were applied and how many stayed open, by reason.
-export function acceptSummaryText(appliedCount, skipped) {
+export function acceptSummaryText(appliedCount: number, skipped: readonly { reason: SkipReason }[]): string {
   const applied = `Applied ${appliedCount}.`;
   if (!skipped.length) return applied;
-  const counts = new Map();
+  const counts = new Map<SkipReason, number>();
   for (const { reason } of skipped) counts.set(reason, (counts.get(reason) ?? 0) + 1);
-  const why = Object.keys(SKIP_LABEL).filter((r) => counts.has(r)).map((r) => `${counts.get(r)} ${SKIP_LABEL[r]}`).join(', ');
+  const why = (Object.keys(SKIP_LABEL) as SkipReason[]).filter((r) => counts.has(r)).map((r) => `${counts.get(r)} ${SKIP_LABEL[r]}`).join(', ');
   return `${applied} Left ${skipped.length} open (${why}).`;
 }
 
 // The position of the criterion a unit's single replace or remove row targets in the story, or null for anything
 // else (an add, another field, a split group, a criterion that cannot be found). The story form shows such a unit
 // under that criterion.
-export function criterionNumberOf(unit, story) {
+export function criterionNumberOf(unit: ReviewUnit, story: Story): number | null {
   const row = unit.rows[0];
   if (unit.group || row.field !== 'User Acceptance Criteria' || (row.action !== 'replace' && row.action !== 'remove')) return null;
   if (story.rawCriteria !== null) return null;
@@ -474,7 +508,7 @@ export function criterionNumberOf(unit, story) {
 // The row as the screen shows it: the AC<n> labels are generated numbers, so a criterion row shows the number its
 // criterion has now (a replace or remove) or will get (an add: the end of the list), not the one the review saw.
 // Display only: the stored row, and so the matching, is untouched.
-export function displayRow(row, stories) {
+export function displayRow(row: ReviewRow, stories: readonly Story[]): ReviewRow {
   if (row.field !== 'User Acceptance Criteria' || !['replace', 'remove', 'add'].includes(row.action)) return row;
   const story = findStory(stories, row.storyId);
   if (!story || story.rawCriteria !== null) return row;
@@ -482,11 +516,11 @@ export function displayRow(row, stories) {
     ? (hasBlankOnly(story.criteria) ? 1 : story.criteria.length + 1)
     : locateCriterion(story, row).pos;
   if (!pos) return row;
-  const relabel = (text) => text.replace(AC_NUMBER, `AC${pos}`);
+  const relabel = (text: string): string => text.replace(AC_NUMBER, `AC${pos}`);
   return { ...row, current: relabel(row.current), suggested: relabel(row.suggested) };
 }
 
-function editExisting(story, row) {
+function editExisting(story: Story, row: ReviewRow): Story {
   const v = row.suggested.trim();
   switch (row.field) {
     case 'Epic': return { ...story, epic: v };
@@ -499,16 +533,18 @@ function editExisting(story, row) {
       return row.action === 'resolve' ? resolvePair(story, row) : { ...story, clarifications: [...story.clarifications, { q: v, a: '' }] };
     case 'User Story': {
       const us = parseStory(v);
+      if (!us.ok) return story; // suggestionState does not parse it; a text that does not read as a story changes nothing
       return { ...story, asA: us.asA, iWant: us.iWant, soThat: us.soThat, rawUserStory: null };
     }
     case 'User Acceptance Criteria': {
       // Found by text; rows of one unit edited in sequence may no longer match, so fall back to the labelled slot.
-      const n = locateCriterion(story, row).pos ?? Number(AC_NUMBER.exec(v)[1]);
+      const n = locateCriterion(story, row).pos ?? Number((AC_NUMBER.exec(v) as RegExpExecArray)[1]);
       if (row.action === 'remove') {
         const left = story.criteria.filter((_, i) => i !== n - 1);
         return { ...story, criteria: left.length ? left : [emptyCriterion()] }; // a story always keeps one (blank) row
       }
       const c = parseOneCriterion(v);
+      if (!c) return story; // suggestionState already refused a row whose criterion is not valid
       if (row.action === 'replace') {
         return { ...story, criteria: story.criteria.map((x, i) => (i === n - 1 ? { ...c } : x)) };
       }
@@ -519,13 +555,13 @@ function editExisting(story, row) {
   }
 }
 
-function buildNewStory(headers, rows, original) {
+function buildNewStory(headers: readonly string[], rows: readonly ReviewRow[], original: Story | undefined): Story {
   const s = newStory(headers);
   if (original) {
     s.epic = original.epic;
     s.feature = original.feature;
   }
-  const criteria = [];
+  const criteria: Criterion[] = [];
   for (const row of rows) {
     const v = row.suggested.trim();
     switch (row.field) {
@@ -537,9 +573,11 @@ function buildNewStory(headers, rows, original) {
       case 'Clarifications': s.clarifications = [...s.clarifications, { q: v, a: '' }]; break;
       case 'User Story': {
         const us = parseStory(v);
-        s.asA = us.asA;
-        s.iWant = us.iWant;
-        s.soThat = us.soThat;
+        if (us.ok) {
+          s.asA = us.asA;
+          s.iWant = us.iWant;
+          s.soThat = us.soThat;
+        }
         break;
       }
       case 'User Acceptance Criteria': {
@@ -558,17 +596,23 @@ function buildNewStory(headers, rows, original) {
 // Apply the rows of one unit (one row, or a whole group) to the stories. Pure: returns { stories } or { error }
 // and never changes the input. Edits go through the same helpers as manual edits (commitEpics / renumber), so IDs
 // and Depends On links keep following their stories. `initials` are the backlog's.
-export function applySuggestions(stories, rows, headers, initials) {
+export function applySuggestions(stories: Story[], rows: readonly ReviewRow[], headers: readonly string[], initials: string): ApplyResult {
   for (const row of rows) {
     const s = suggestionState(row, stories);
     if (s.state === 'stale') return { error: `Cannot apply: ${s.why}.` };
     if (s.state === 'frozen') return { error: `Cannot apply: ${row.storyId} is frozen and cannot be edited.` };
   }
 
-  const idOf = (code) => findStory(stories, code)?.id;
-  const edits = new Map(); // story id -> rows
-  const newGroups = new Map(); // group|NEW-n -> { rows, anchor id }
-  const depRows = []; // { fromId | newKey, action, targetId | targetNew }
+  interface DependsOnLink {
+    from: number | undefined;
+    action: string;
+    target: string;
+    group: string;
+  }
+  const idOf = (code: string): number | undefined => findStory(stories, code)?.id;
+  const edits = new Map<number | undefined, ReviewRow[]>(); // story id -> rows
+  const newGroups = new Map<string, { rows: ReviewRow[] }>(); // group|NEW-n -> { rows, anchor id }
+  const depRows: DependsOnLink[] = []; // { fromId | newKey, action, targetId | targetNew }
   const firstExisting = rows.find((r) => r.action !== 'add-story');
   const anchorId = firstExisting ? idOf(firstExisting.storyId) : undefined;
 
@@ -576,7 +620,7 @@ export function applySuggestions(stories, rows, headers, initials) {
     if (row.action === 'add-story') {
       const key = `${row.group}|${row.storyId}`;
       if (!newGroups.has(key)) newGroups.set(key, { rows: [] });
-      newGroups.get(key).rows.push(row);
+      newGroups.get(key)!.rows.push(row);
     } else if (row.field === 'Depends On') {
       depRows.push({ from: idOf(row.storyId), action: row.action, target: row.suggested, group: row.group });
     } else {
@@ -586,13 +630,13 @@ export function applySuggestions(stories, rows, headers, initials) {
   }
 
   // Edit existing stories (criterion replaces before adds so AC labels still mean what the review saw).
-  const epicChanged = new Set();
+  const epicChanged = new Set<number>();
   let next = stories.map((s) => {
     const list = edits.get(s.id);
     if (!list) return s;
     // Labels mean what the review saw: replace first, then removes from the last criterion up, then adds.
-    const rank = (r) => (r.action === 'replace' ? 0 : r.action === 'remove' ? 1 : 2);
-    const label = (r) => Number(AC_NUMBER.exec(r.suggested)?.[1] ?? 0);
+    const rank = (r: ReviewRow): number => (r.action === 'replace' ? 0 : r.action === 'remove' ? 1 : 2);
+    const label = (r: ReviewRow): number => Number(AC_NUMBER.exec(r.suggested)?.[1] ?? 0);
     const ordered = [...list].sort((a, b) => rank(a) - rank(b) || (rank(a) === 1 ? label(b) - label(a) : 0));
     let out = s;
     for (const row of ordered) {
@@ -603,7 +647,7 @@ export function applySuggestions(stories, rows, headers, initials) {
   });
 
   // Create the new stories (they take the Epic and Feature of the story the group narrows).
-  const created = new Map(); // group|NEW-n -> story
+  const created = new Map<string, Story>(); // group|NEW-n -> story
   const original = next.find((s) => s.id === anchorId);
   for (const [key, { rows: newRows }] of newGroups) {
     const fields = newRows.filter((r) => r.field !== 'Depends On');
@@ -616,11 +660,11 @@ export function applySuggestions(stories, rows, headers, initials) {
   next = renumber(next, initials);
 
   // Depends On last, once every story has its final code. Targets are resolved by story, not by old code.
-  const codeOf = (id) => next.find((s) => s.id === id)?.code ?? '';
-  const links = [...depRows];
+  const codeOf = (id: number | undefined): string => next.find((s) => s.id === id)?.code ?? '';
+  const links: DependsOnLink[] = [...depRows];
   for (const [key, { rows: newRows }] of newGroups) {
     for (const r of newRows.filter((x) => x.field === 'Depends On')) {
-      links.push({ from: created.get(key).id, action: 'add', target: r.suggested, group: r.group });
+      links.push({ from: created.get(key)?.id, action: 'add', target: r.suggested, group: r.group });
     }
   }
   const resolved = links.map((l) => ({
@@ -649,11 +693,11 @@ export function applySuggestions(stories, rows, headers, initials) {
 
 // The story a unit is shown on: the story of its first row that edits an existing story (a split group is shown
 // on the story it narrows). undefined for a unit that only creates stories.
-export const unitStoryCode = (unit) => unit.rows.find((r) => r.action !== 'add-story')?.storyId;
+export const unitStoryCode = (unit: ReviewUnit): string | undefined => unit.rows.find((r) => r.action !== 'add-story')?.storyId;
 
 // Open suggestions per story code (stale ones do not count; ones held back because the story is frozen do). A group counts once.
-export function openCounts(rows, stories) {
-  const counts = new Map();
+export function openCounts(rows: readonly ReviewRow[], stories: readonly Story[]): Map<string, number> {
+  const counts = new Map<string, number>();
   for (const unit of unitsOf(rows)) {
     const code = unitStoryCode(unit);
     if (!code || unitState(unit, stories).state === 'stale') continue;
@@ -664,14 +708,14 @@ export function openCounts(rows, stories) {
 
 // The open units (applicable or stale) shown on a story code: what moving the story away leaves without a target.
 // Applied and dismissed rows are not units. Dismiss them with `indexes`.
-export const openUnitsFor = (rows, code) => unitsOf(rows).filter((u) => code && unitStoryCode(u) === code);
+export const openUnitsFor = (rows: readonly ReviewRow[], code: string): ReviewUnit[] => unitsOf(rows).filter((u) => code && unitStoryCode(u) === code);
 
 // Open rows follow their story when IDs are recomputed: `recoded` maps old code -> new code. Applied and dismissed rows
 // are history and stay as written. Depends On rows also name other stories, in Current and Suggested.
 // Same array when nothing changes.
-export function retargetRows(rows, recoded) {
-  const to = (code) => (recoded.has(code) ? recoded.get(code) : code);
-  const list = (text) => String(text).split(';').map((c) => to(c.trim())).join(';');
+export function retargetRows(rows: ReviewRow[], recoded: ReadonlyMap<string, string>): ReviewRow[] {
+  const to = (code: string): string => recoded.get(code) ?? code;
+  const list = (text: string): string => String(text).split(';').map((c) => to(c.trim())).join(';');
   let changed = false;
   const out = rows.map((r) => {
     if (r.status !== 'open') return r;
@@ -688,23 +732,26 @@ export function retargetRows(rows, recoded) {
 }
 
 // Units whose story is not in the backlog any more (renumbered, moved or deleted): shown as stale in one place.
-export function orphanUnits(rows, stories) {
+export function orphanUnits(rows: readonly ReviewRow[], stories: readonly Story[]): ReviewUnit[] {
   const codes = new Set(stories.map((s) => s.code).filter(Boolean));
-  return unitsOf(rows).filter((u) => !codes.has(unitStoryCode(u)));
+  return unitsOf(rows).filter((u) => !codes.has(unitStoryCode(u) ?? ''));
 }
 
 // The Review tab: open suggestions grouped by Area (in backlog order within an Area), and a separate list of the
 // ones that are out of date (stale, or their story is gone). Every unit still has its row indexes for Dismiss.
-export function reviewOverview(rows, stories) {
-  const order = new Map();
+export function reviewOverview(
+  rows: readonly ReviewRow[],
+  stories: readonly Story[],
+): { sections: { area: string; units: ReviewUnit[] }[]; outOfDate: ReviewUnit[]; openCount: number } {
+  const order = new Map<string, number>();
   stories.forEach((s, i) => {
     if (s.code && !order.has(s.code)) order.set(s.code, i);
   });
-  const sections = AREAS.map((area) => ({ area, units: [] }));
-  const outOfDate = [];
+  const sections = AREAS.map((area) => ({ area, units: [] as ReviewUnit[] }));
+  const outOfDate: ReviewUnit[] = [];
   for (const unit of unitsOf(rows)) {
     const code = unitStoryCode(unit);
-    const state = order.has(code) ? unitState(unit, stories) : { state: 'stale', why: `${code ?? 'the story'} no longer exists or was renumbered` };
+    const state: SuggestionState = code !== undefined && order.has(code) ? unitState(unit, stories) : { state: 'stale', why: `${code ?? 'the story'} no longer exists or was renumbered` };
     if (state.state === 'stale') {
       outOfDate.push(unit);
       continue;
@@ -712,8 +759,8 @@ export function reviewOverview(rows, stories) {
     const section = sections.find((s) => s.area === unit.rows[0].area) ?? sections[0];
     section.units.push(unit);
   }
-  const rank = (u) => order.get(unitStoryCode(u)) ?? Infinity;
-  const byStory = (a, b) => rank(a) - rank(b) || a.indexes[0] - b.indexes[0];
+  const rank = (u: ReviewUnit): number => order.get(unitStoryCode(u) ?? '') ?? Infinity;
+  const byStory = (a: ReviewUnit, b: ReviewUnit): number => rank(a) - rank(b) || a.indexes[0] - b.indexes[0];
   sections.forEach((s) => s.units.sort(byStory));
   const openCount = sections.reduce((n, s) => n + s.units.length, 0);
   return { sections, outOfDate, openCount };

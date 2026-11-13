@@ -2,6 +2,7 @@
 // Recognised columns are matched by header name; every other column is carried through in
 // `story.cells` untouched. Unparseable User Story / User Acceptance Criteria cells keep their raw text.
 
+import type { Backlog, BacklogFile, Criterion, Story } from '../types.ts';
 import { parseCsv, toCsv } from './csv.ts';
 import { renumber } from './ids.ts';
 import { composeStory, parseStory, roleIsBlank, composeCriteria, parseCriteria, composeClarifications, parseClarifications } from './story-text.ts';
@@ -19,12 +20,15 @@ export const SPLIT_ABOVE = 13;
 export const PRIORITIES = ['Critical', 'High', 'Medium', 'Low'];
 
 const BOM = '﻿';
-const COLUMN_BY_LOWER = new Map([...COLUMNS, BENCHED_COLUMN].map((c) => [c.toLowerCase(), c]));
+const COLUMN_BY_LOWER = new Map<string, string>([...COLUMNS, BENCHED_COLUMN].map((c) => [c.toLowerCase(), c]));
 
 let nextId = 1;
 
-function columnIndex(headers) {
-  const idx = {};
+// Column name -> position in the row, for the recognised columns the headers hold.
+type ColumnIndex = Record<string, number>;
+
+function columnIndex(headers: readonly string[]): ColumnIndex {
+  const idx: ColumnIndex = {};
   headers.forEach((h, i) => {
     const col = COLUMN_BY_LOWER.get(h.trim().toLowerCase());
     if (col && !(col in idx)) idx[col] = i;
@@ -32,11 +36,11 @@ function columnIndex(headers) {
   return idx;
 }
 
-export function emptyCriterion() {
+export function emptyCriterion(): Criterion {
   return { given: '', when: '', then: '' };
 }
 
-export function newStory(headers) {
+export function newStory(headers: readonly unknown[]): Story {
   return {
     id: nextId++,
     cells: headers.map(() => ''),
@@ -56,8 +60,8 @@ export function newStory(headers) {
   };
 }
 
-function storyFromCells(cells, idx) {
-  const get = (col) => cells[idx[col]] ?? '';
+function storyFromCells(cells: string[], idx: ColumnIndex): Story {
+  const get = (col: string): string => cells[idx[col]] ?? '';
   const story = newStory(cells);
   story.cells = cells;
   story.epic = get('Epic');
@@ -95,13 +99,13 @@ function storyFromCells(cells, idx) {
 }
 
 // The headers of a proposals file: the backlog's, plus the Benched column when missing.
-export const proposalHeaders = (headers) => (headers.some((h) => h.trim().toLowerCase() === 'benched') ? [...headers] : [...headers, BENCHED_COLUMN]);
+export const proposalHeaders = (headers: readonly string[]): string[] => (headers.some((h) => h.trim().toLowerCase() === 'benched') ? [...headers] : [...headers, BENCHED_COLUMN]);
 
 // `placeholderIds`: a proposals file, whose NEW-<n> IDs are kept as written instead of being derived (see proposals.js).
 // `initials`: the backlog's initials, which start every derived ID (required unless `placeholderIds`).
 // An old `Locked` column is removed here, so it is neither read as frozen nor written back; `changed` then says the
 // file needs saving.
-export function loadBacklog(text, { placeholderIds = false, initials } = {}) {
+export function loadBacklog(text: string, { placeholderIds = false, initials }: { placeholderIds?: boolean; initials?: string } = {}): BacklogFile {
   const parsed = parseCsv(text);
   const lockedAt = parsed.length ? parsed[0].findIndex((h) => h.trim().toLowerCase() === OLD_LOCKED_COLUMN) : -1;
   const rows = lockedAt < 0 ? parsed : parsed.map((r) => r.filter((_, i) => i !== lockedAt));
@@ -123,25 +127,25 @@ export function loadBacklog(text, { placeholderIds = false, initials } = {}) {
     });
   // IDs follow position, so recompute them (this also gives IDs to files that have none). `changed` = needs saving.
   // Proposed stories are never frozen.
-  const stories = placeholderIds ? loaded.map((s) => (s.frozen ? { ...s, frozen: false } : s)) : renumber(loaded, initials);
+  const stories = placeholderIds ? loaded.map((s) => (s.frozen ? { ...s, frozen: false } : s)) : renumber(loaded, initials as string);
   const changed = lockedAt >= 0 || (!placeholderIds && stories !== loaded);
   return { headers, stories, hasBom: text.charCodeAt(0) === 0xfeff, changed };
 }
 
 // The text written into the User Story / User Acceptance Criteria cells (also feeds the previews).
-export function storyCellText(story) {
+export function storyCellText(story: Story): string {
   return story.rawUserStory ?? composeStory(story);
 }
 
-export function criteriaCellText(story) {
+export function criteriaCellText(story: Story): string {
   return story.rawCriteria ?? composeCriteria(story.criteria);
 }
 
-export function clarificationsCellText(story) {
+export function clarificationsCellText(story: Story): string {
   return story.rawClarifications ?? composeClarifications(story.clarifications);
 }
 
-export function serializeBacklog(backlog) {
+export function serializeBacklog(backlog: Backlog): string {
   const idx = columnIndex(backlog.headers);
   const rows = backlog.stories.map((s) => {
     const cells = s.cells.slice();
@@ -165,27 +169,27 @@ export function serializeBacklog(backlog) {
 }
 
 // Header-only content for a brand-new backlog (BOM so Excel opens it as UTF-8).
-export function newBacklogText() {
+export function newBacklogText(): string {
   return BOM + toCsv([COLUMNS]);
 }
 
 // Advisory only: derived from the points, never stored. Off-scale values above 13 count too.
-export function shouldSplit(story) {
+export function shouldSplit(story: Pick<Story, 'points'>): boolean {
   return Number(story.points) > SPLIT_ABOVE;
 }
 
-const blank = (v) => !String(v ?? '').trim();
+const blank = (v: unknown): boolean => !String(v ?? '').trim();
 
 // Advisory completeness check. errors = incomplete (red), warnings = estimate problems (yellow).
 // A cell kept as raw text counts as present.
 // `problems` = dependency warnings for this story from backlogProblems().
-export function storyIssues(story, problems = []) {
-  const errors = [];
-  for (const [key, label] of [['epic', 'Epic'], ['feature', 'Feature'], ['title', 'Title']]) {
+export function storyIssues(story: Story, problems: readonly string[] = []): { errors: string[]; warnings: string[] } {
+  const errors: string[] = [];
+  for (const [key, label] of [['epic', 'Epic'], ['feature', 'Feature'], ['title', 'Title']] as const) {
     if (blank(story[key])) errors.push(`${label} is missing`);
   }
   if (story.rawUserStory === null) {
-    for (const [key, label] of [['asA', 'As'], ['iWant', 'I want'], ['soThat', 'So that']]) {
+    for (const [key, label] of [['asA', 'As'], ['iWant', 'I want'], ['soThat', 'So that']] as const) {
       if (key === 'asA' ? roleIsBlank(story[key]) : blank(story[key])) errors.push(`${label} is missing`);
     }
   }
@@ -210,33 +214,50 @@ export const NO_FEATURE = '(No feature)';
 
 // Each epic group also has `features`: the same stories split by Feature, in order of first occurrence
 // (blank feature = one group whose `feature` is '').
-export function groupByEpic(stories) {
-  const groups = new Map();
+export interface FeatureGroup {
+  feature: string;
+  label: string;
+  stories: Story[];
+}
+
+export interface EpicGroup {
+  epic: string;
+  label: string;
+  stories: Story[];
+  features: FeatureGroup[];
+}
+
+export function groupByEpic(stories: readonly Story[]): EpicGroup[] {
+  const groups = new Map<string, Omit<EpicGroup, 'features'> & { features: Map<string, FeatureGroup> }>();
   for (const s of stories) {
     const epic = String(s.epic ?? '').trim();
     if (!groups.has(epic)) groups.set(epic, { epic, label: epic || NO_EPIC, stories: [], features: new Map() });
-    const group = groups.get(epic);
+    const group = groups.get(epic)!;
     group.stories.push(s);
     const feature = String(s.feature ?? '').trim();
     if (!group.features.has(feature)) group.features.set(feature, { feature, label: feature || NO_FEATURE, stories: [] });
-    group.features.get(feature).stories.push(s);
+    group.features.get(feature)!.stories.push(s);
   }
   return [...groups.values()].map((g) => ({ ...g, features: [...g.features.values()] }));
 }
 
 // The order stories are shown in (panel, Stories tab, Ctrl+Up/Down): epic, then feature. The file order is untouched.
-export function displayOrder(stories) {
+export function displayOrder(stories: readonly Story[]): Story[] {
   return groupByEpic(stories).flatMap((g) => g.features.flatMap((f) => f.stories));
 }
 
 // Bulk edit. Only defined fields are set: priority undefined = no change ('' clears it); a blank epic or
 // feature means no change. A frozen story is read-only in every field, so it is skipped completely.
 // Returns { changed, skipped }: the stories changed, and the frozen listed ones left as they were.
-export function applyBulk(stories, ids, { priority, epic, feature } = {}) {
-  const patch = {};
+export function applyBulk(
+  stories: Story[],
+  ids: ReadonlySet<number>,
+  { priority, epic, feature }: { priority?: string; epic?: string; feature?: string } = {},
+): { changed: number; skipped: number } {
+  const patch: Partial<Pick<Story, 'priority' | 'epic' | 'feature'>> = {};
   if (priority !== undefined) patch.priority = priority;
-  if (!blank(epic)) patch.epic = epic.trim();
-  if (!blank(feature)) patch.feature = feature.trim();
+  if (!blank(epic)) patch.epic = (epic as string).trim();
+  if (!blank(feature)) patch.feature = (feature as string).trim();
   let changed = 0;
   let skipped = 0;
   for (const s of stories) {
@@ -252,6 +273,6 @@ export function applyBulk(stories, ids, { priority, epic, feature } = {}) {
 }
 
 // Story list label: the title, or 'New story' while it is blank.
-export function storyLabel(story) {
+export function storyLabel(story: Pick<Story, 'title'>): string {
   return String(story.title ?? '').trim() || 'New story';
 }

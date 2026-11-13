@@ -2,11 +2,21 @@
 // mismatch comes back as a message that lets the agent find the story again. Pure: `stories` is a list of
 // { code, title, epic, feature, benched? } (backlog stories, or proposed ones).
 
-// The same comparison as the repeated-story key of the proposals writer: ignoring case and surrounding spaces.
-export const sameTitle = (a, b) => String(a ?? '').trim().toLowerCase() === String(b ?? '').trim().toLowerCase();
+export interface StoryRefEntry {
+  code: string;
+  title: string;
+  epic: string;
+  feature: string;
+  benched?: boolean;
+}
 
-const where = (s) => [s.epic, s.feature].map((x) => String(x ?? '').trim()).filter(Boolean).join(' > ') || 'no Epic';
-const quoted = (t) => `"${String(t ?? '').trim()}"`;
+export type StoryRefResult<T> = { ok: true; story: T | undefined } | { ok: false; message: string };
+
+// The same comparison as the repeated-story key of the proposals writer: ignoring case and surrounding spaces.
+export const sameTitle = (a: unknown, b: unknown): boolean => String(a ?? '').trim().toLowerCase() === String(b ?? '').trim().toLowerCase();
+
+const where = (s: StoryRefEntry): string => [s.epic, s.feature].map((x) => String(x ?? '').trim()).filter(Boolean).join(' > ') || 'no Epic';
+const quoted = (t: unknown): string => `"${String(t ?? '').trim()}"`;
 
 // { id, title } -> { ok: true, story } (story is undefined when the ID is not in the list and no Title was required or given)
 // or { ok: false, message }.
@@ -14,7 +24,11 @@ const quoted = (t) => `"${String(t ?? '').trim()}"`;
 //             given is always checked.
 //   key:      the name of the Title in the caller's input, used in the "add the Title" message.
 //   hint:     where to look when no story has the Title, e.g. "the index section (read-story-context.mjs <backlog> --section index)".
-export function resolveStoryRef(stories, { id, title }, { required = false, key = 'storyTitle', hint = 'the index section (read-story-context.mjs <backlog> --section index)' } = {}) {
+export function resolveStoryRef<T extends StoryRefEntry>(
+  stories: readonly T[],
+  { id, title }: { id: string; title?: unknown },
+  { required = false, key = 'storyTitle', hint = 'the index section (read-story-context.mjs <backlog> --section index)' }: { required?: boolean; key?: string; hint?: string } = {},
+): StoryRefResult<T> {
   const held = stories.filter((s) => s.code === id);
   const given = typeof title === 'string' && title.trim() !== '';
   if (!given) {

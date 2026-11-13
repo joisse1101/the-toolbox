@@ -3,14 +3,16 @@
 //   User Acceptance Criteria: AC<n>: Given <g>, when <w>, then <t>   (one per line)
 // Parsing is a case-insensitive keyword split, first occurrence of each keyword, in order.
 
-const isBlank = (...vals) => vals.every((v) => !String(v ?? '').trim());
+import type { Clarification, Criterion } from '../types.ts';
+
+const isBlank = (...vals: unknown[]): boolean => vals.every((v) => !String(v ?? '').trim());
 
 // The comma directly before a keyword is a separator, not part of the field.
-const clean = (s) => s.trim().replace(/,\s*$/, '').trim();
+const clean = (s: string): string => s.trim().replace(/,\s*$/, '').trim();
 
 // Splits `text` at each keyword regex in order. Returns the text between them, or null on failure.
-function splitByKeywords(text, keywords) {
-  const parts = [];
+function splitByKeywords(text: string, keywords: RegExp[]): string[] | null {
+  const parts: string[] = [];
   let rest = text;
   let started = false;
   for (const kw of keywords) {
@@ -29,35 +31,37 @@ const STORY_KEYWORDS = [/\bas\b/i, /\bi want\b/i, /\bso that\b/i];
 const CRITERION_KEYWORDS = [/\bgiven\b/i, /\bwhen\b/i, /\bthen\b/i];
 
 // `asA` is the role with its article: "a team lead", "an approver".
-export function composeStory({ asA = '', iWant = '', soThat = '' }) {
+export function composeStory({ asA = '', iWant = '', soThat = '' }: { asA?: string; iWant?: string; soThat?: string }): string {
   if (isBlank(asA, iWant, soThat)) return '';
   return `As ${asA}, I want ${iWant}, so that ${soThat}`;
 }
 
 // A role that is empty, or only the article ("As a , I want …"), names nobody.
-export const roleIsBlank = (asA) => !String(asA ?? '').trim().replace(/^an?$/i, '');
+export const roleIsBlank = (asA: unknown): boolean => !String(asA ?? '').trim().replace(/^an?$/i, '');
 
-export function parseStory(text) {
+export type ParsedStory = { ok: true; asA: string; iWant: string; soThat: string } | { ok: false };
+
+export function parseStory(text: unknown): ParsedStory {
   if (!String(text ?? '').trim()) return { ok: true, asA: '', iWant: '', soThat: '' };
-  const parts = splitByKeywords(text, STORY_KEYWORDS);
+  const parts = splitByKeywords(String(text), STORY_KEYWORDS);
   if (!parts) return { ok: false };
   const [asA, iWant, soThat] = parts;
   return { ok: true, asA, iWant, soThat };
 }
 
 // Criteria with no text at all are skipped; the rest are numbered by position.
-export function composeCriteria(criteria) {
+export function composeCriteria(criteria: readonly Criterion[]): string {
   return criteria
     .filter((c) => !isBlank(c.given, c.when, c.then))
     .map((c, i) => `AC${i + 1}: Given ${c.given}, when ${c.when}, then ${c.then}`)
     .join('\n');
 }
 
-export function parseCriteria(text) {
+export function parseCriteria(text: unknown): { ok: true; criteria: Criterion[] } | { ok: false } {
   const lines = String(text ?? '')
     .split(/\r?\n/)
     .filter((l) => l.trim());
-  const criteria = [];
+  const criteria: Criterion[] = [];
   for (const line of lines) {
     const body = line.replace(/^\s*AC\d+\s*:/i, '');
     const parts = splitByKeywords(body, CRITERION_KEYWORDS);
@@ -72,10 +76,10 @@ export function parseCriteria(text) {
 const Q_LINE = /^\s*Q\d+\s*:[ \t]?(.*)$/i;
 const A_LINE = /^\s*A\d+\s*:[ \t]?(.*)$/i;
 
-export const emptyClarification = () => ({ q: '', a: '' });
+export const emptyClarification = (): Clarification => ({ q: '', a: '' });
 
 // Pairs with neither question nor answer are skipped; the rest are numbered by position.
-export function composeClarifications(pairs) {
+export function composeClarifications(pairs: readonly Clarification[]): string {
   return pairs
     .filter((p) => !isBlank(p.q, p.a))
     .map((p, i) => `Q${i + 1}: ${p.q.trim()}\nA${i + 1}:${p.a.trim() ? ` ${p.a.trim()}` : ''}`)
@@ -83,9 +87,9 @@ export function composeClarifications(pairs) {
 }
 
 // { ok: true, pairs } or { ok: false } when the text does not follow the form (it is then kept raw).
-export function parseClarifications(text) {
-  const pairs = [];
-  let cur = null;
+export function parseClarifications(text: unknown): { ok: true; pairs: Clarification[] } | { ok: false } {
+  const pairs: Clarification[] = [];
+  let cur: Clarification | null = null;
   let inAnswer = false;
   for (const line of String(text ?? '').split(/\r?\n/)) {
     const q = !inAnswer || Q_LINE.test(line) ? Q_LINE.exec(line) : null;
@@ -114,4 +118,4 @@ export function parseClarifications(text) {
 }
 
 // Open questions: a question with an empty answer. Derived, never stored.
-export const openCount = (pairs) => pairs.filter((p) => p.q.trim() && !p.a.trim()).length;
+export const openCount = (pairs: readonly Clarification[]): number => pairs.filter((p) => p.q.trim() && !p.a.trim()).length;
