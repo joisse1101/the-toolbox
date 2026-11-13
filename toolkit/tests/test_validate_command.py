@@ -172,3 +172,14 @@ def test_allowed_tools_cover_the_git_commands_the_steps_use():
 
 def test_command_checks_the_agents_before_asking_about_a_foreign_pr():
     assert "do the agent check that opens step 5" in _step(4, 5).lower()
+
+
+def test_result_files_are_working_files_that_archive_removes_and_nobody_stages():
+    text = _text()
+    files_section = text.split("## Files this command writes\n", 1)[1].split("\n## ", 1)[0]
+    assert "`validation.md`" in files_section
+    assert "`validation.partial.md`" in files_section
+    assert "`/jois-code:archive` copies their summary into `ARCHIVED.md` and then removes them" in files_section
+    assert "plans-files.md" in files_section
+    assert "Never stage a result file." in _step(8, 9)
+    assert "The slice folder is not tracked by git here" not in text

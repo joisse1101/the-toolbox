@@ -9,6 +9,15 @@ metadata:
 
 Test whether code does what its plan or its PR says, and report each requirement as `met`, `not met` or `could not test`, with evidence.
 
+## Files this command writes
+
+In the slice form, this command writes these working files in the slice folder:
+
+- `validation.md`
+- `validation.partial.md`
+
+`/jois-code:archive` copies their summary into `ARCHIVED.md` and then removes them. A PR run writes no file. The lifecycle of each file is in [the file table](../../skills/jois-story-plan/references/plans-files.md).
+
 ## Forms
 
 The argument alone picks the form. Never guess between them.
@@ -115,7 +124,7 @@ The argument alone picks the form. Never guess between them.
    - A full run writes `validation.md` into the slice folder. It overwrites the earlier one.
    - A partial run (one story named) writes `validation.partial.md` into the slice folder. A partial run never writes `validation.md`, so an earlier full run stays as it was.
    - The file starts with a header of four lines: `Run kind:` (`full` or `partial`), `Date:`, `Tested commit:` and `Validated:` (`yes` or `no`, with the rule of step 9 in one sentence). A partial run always has `Validated: no`. Then one row per claim: claim ID, source, verdict, evidence.
-   - The slice folder is not tracked by git here. Never stage it.
+   - Never stage a result file.
 
 9. **Say what counts as validated.**
    - A slice counts as validated only when its latest full run has every claim `met`.

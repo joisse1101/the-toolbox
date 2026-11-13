@@ -21,6 +21,17 @@ Each writer also takes `--check`, which runs the same validation and writes noth
 
 `<skill folder>` in the commands below is the folder this skill was loaded from (the base directory shown when the skill starts).
 
+## Files this skill writes
+
+This skill writes these files under `<backlog>/`, each through its writer script:
+
+- `user-stories/proposals.csv`
+- `user-stories/review.csv` and `user-stories/review.csv.decided`
+- `lexicon.csv`
+- `lexicon/lexicon-suggestions.csv`
+
+When this skill creates `.plans` with `init-plans.mjs`, show the `.gitignore` block the script prints after its "Created" line, and say the user reviews it and adds it to `.gitignore` themselves. Nothing writes `.gitignore`. The lifecycle of each file is in [the file table](references/plans-files.md).
+
 ## Data folder
 
 The scripts find the backlog data folder themselves, in the current folder only and never in a parent folder: the config file named by the `PLANNER_CONFIG` variable, else a `.plans` folder in the current folder, else a `planner.config.yaml` in the current folder (its `codeBase` or `dataDir` line). If a script says no data folder was found, tell the user which folder it looked in and ask whether to create `.plans` there. Create it only on a yes, with `node <skill folder>/init-plans.mjs` run from the current folder (it creates `.plans` and nothing else, and refuses a file named `.plans`); on a no, create and write nothing. The user can instead start the session in the code base folder or set `PLANNER_CONFIG`. A new `.plans` holds no backlog: the user creates one in the planner. If a script says the config or `.plans` cannot be used, show its message. Do not prefix the command with the variable: every command you run starts with `node`. Never guess a folder.

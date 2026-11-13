@@ -10,6 +10,15 @@ metadata:
 
 Apply a slice written by `jois-story-plan` by handing its tasks to the `task-applier` agent, one group at a time.
 
+## Files this command writes
+
+This command writes these files in the slice folder:
+
+- `tasks.md` (the ticks)
+- `review.md`
+
+The lifecycle of each file is in [the file table](../../skills/jois-story-plan/references/plans-files.md).
+
 ## Finding the slice
 
 Read the argument as one or two words: drop a leading `slice`, then split on `/` or a space. These forms are accepted: `slice <backlog>/<slice>`, `<backlog>/<slice>`, `<backlog> <slice>` (with or without the word `slice`), a slice name alone, a backlog name alone, and no argument. Never guess: when the argument does not name exactly one slice, ask the user with AskUserQuestion. Read nothing but the slice list and write nothing until the user answers.

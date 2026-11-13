@@ -23,6 +23,15 @@ When `jois-story-plan` starts this skill with the Skill tool on a slice it has j
 
 When the user runs this skill directly, none of this applies: route each finding as "Route each finding" says.
 
+## Files this skill writes
+
+This skill writes a file only after the user approves it, and only through the scripts of other skills:
+
+- `slices/<slice>/UC-<slice>.md`, `slices/<slice>/tasks.md` and `slices/<slice>/source.json`, through the plan skill's `write-diagram.mjs`
+- `user-stories/review.csv`, through `write-review.mjs`
+
+The lifecycle of each file is in [the file table](../jois-story-plan/references/plans-files.md), which the plan skill holds.
+
 ## Step 0: find the scripts
 
 Load the installed story skills with the Skill tool, one at a time (`jois-story-plan`, `jois-story-review`, `jois-story-propose`, then `jois-story-explore`), and note the folder each was loaded from (the base directory shown when it starts). A skill that is not installed is skipped. You need the folders, and the text of the review skill only when you write a suggestion. Run each script as `node <skill folder>/<script> ...` from the folder of the skill that holds it:

@@ -10,6 +10,15 @@ metadata:
 
 Fold a finished slice into the project's wiki, so the wiki reads by topic and not as a list of changes.
 
+## Files this command writes
+
+This command writes these files:
+
+- `ARCHIVED.md` in the slice folder
+- the wiki pages under `wiki/`
+
+The lifecycle of each file is in [the file table](../../skills/jois-story-plan/references/plans-files.md).
+
 ## Wiki layout
 
 Each topic is a folder, `wiki/<topic>/`, named for the topic in lowercase words joined by `-`. A reader opens the short page that answers their kind of question, and never has to read through the plan to find how a feature is used. The folder holds up to three pages:
