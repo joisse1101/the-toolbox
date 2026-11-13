@@ -18,7 +18,7 @@ The repo is ESM (`"type": "module"` in `viewer/package.json`), and the viewer co
 
 Adding a tool takes four steps:
 
-1. Create `viewer/frontend/src/tools/<tool-name>/` with a top component, `<ToolName>Tool.jsx` (like `viewer/frontend/src/tools/backlog/BacklogTool.jsx`), and add its route or routes in `viewer/frontend/src/app/routes.jsx`. There is no new HTML page and no Vite input: the app has one `viewer/frontend/index.html`. Import `viewer/frontend/src/shared/api/files.js`, the shared components and hooks in `viewer/frontend/src/shared/`, and any pure logic from `viewer/shared/`. Keep to the zone rules: the tool imports no other tool, and a feature folder in it imports no other feature (see [CLAUDE.md](../CLAUDE.md)).
+1. Create `viewer/frontend/src/tools/<tool-name>/` with a top component, `<ToolName>Tool.tsx` (like `viewer/frontend/src/tools/backlog/BacklogTool.tsx`), and add its route or routes in `viewer/frontend/src/app/routes.tsx`. There is no new HTML page and no Vite input: the app has one `viewer/frontend/index.html`. Import `viewer/frontend/src/shared/api/files.ts`, the shared components and hooks in `viewer/frontend/src/shared/`, and any pure logic from `viewer/shared/`. Keep to the zone rules: the tool imports no other tool, and a feature folder in it imports no other feature (see [CLAUDE.md](../CLAUDE.md)).
 2. Register a new kind of file in `KIND_FILES` in `viewer/shared/storage/backlog-paths.ts`, with its name and its fixed path inside a backlog folder. The server's `STORES` is built from those kinds, so only registered kinds are reachable.
 3. In the tool, use `createFileStore('<kind>')` for `list`, `read`, `create`, `write`, `rename` and `openFolder`, one file per backlog.
-4. Add a link to the tool in `viewer/frontend/src/app/HomePage.jsx`, then run `npm run build`.
+4. Add a link to the tool in `viewer/frontend/src/app/HomePage.tsx`, then run `npm run build`.
