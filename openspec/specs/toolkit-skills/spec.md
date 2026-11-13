@@ -161,8 +161,7 @@ that explains why, the type of change ticked from the commit types (breaking whe
 marked `!` or `BREAKING CHANGE`), the commit titles under changes made, and a testing section. The
 testing section SHALL hold the automated and manual checkboxes, an Author Verification subsection and
 a How to Test This PR subsection. The Related Issues section SHALL be omitted when there are no
-related issues. The body SHALL have no visual-proof section and SHALL end with the attribution line the
-environment requires.
+related issues. The body SHALL have no visual-proof section and SHALL NOT end with an attribution line.
 
 A group SHALL need no tests when its commit type is `chore`, `build`, `ci`, `docs` or `revert` and the
 group's diff changes no behavior. The command SHALL judge that from the diff and SHALL NOT use a list of
@@ -204,6 +203,10 @@ tests and why, so the author can change it.
 #### Scenario: Author overrides the judgment
 - **WHEN** the presentation says a group needs no tests and the author replies that it does
 - **THEN** the next presentation SHALL show the testing section for that group
+
+#### Scenario: No attribution line in the body
+- **WHEN** the command writes a PR body
+- **THEN** the body SHALL end with its last template section or the last change line, with no attribution or generated-by line added
 
 ### Requirement: Author verification is recorded, not invented
 The skill SHALL draft Author Verification from the matching OpenSpec `tasks.md` and from the
