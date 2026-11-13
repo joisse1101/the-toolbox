@@ -1113,8 +1113,12 @@ The toolkit SHALL include a command `jois-code:apply`, the single file `toolkit/
 - **THEN** the command SHALL still list the slices of `accounts` with an unticked task, read through the plan skill's slice reader, and ask which one
 
 #### Scenario: Full form printed at the end
-- **WHEN** the command stops after the slice was settled
-- **THEN** its last lines SHALL include `/jois-code:apply slice <backlog>/<slice>` with the real names, so a rerun can be copied
+- **WHEN** the command finishes with no task left unticked
+- **THEN** the last line of its final reply SHALL be the command of the next stage with the real names, `/jois-code:archive slice <backlog>/<slice>` or, when the slice's `validation.md` does not say `Validated: yes` at the current commit, `/jois-code:validate slice <backlog>/<slice>`, and the command SHALL NOT print its own command
+
+#### Scenario: No command line during the run or at an early stop
+- **WHEN** the command finishes a group, asks a question, waits for an agent, or stops before the slice is built
+- **THEN** the command SHALL NOT print any slash command line, and a reply after the run has ended SHALL NOT print one either
 
 #### Scenario: Slice has no tasks
 - **WHEN** the slice's `tasks.md` has no task line

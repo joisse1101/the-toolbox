@@ -42,8 +42,8 @@ The command `/jois-code:archive` SHALL work on one slice. It SHALL accept the sl
 - **THEN** archive still lists the slices of `iam`, read through the plan skill's slice reader, and asks which one
 
 #### Scenario: Full form printed at the end
-- **WHEN** archive stops, at the confirmation word or earlier, after the slice was settled
-- **THEN** its last lines include `/jois-code:archive slice <backlog>/<slice>` with the real names, so a rerun can be copied
+- **WHEN** archive finishes, stops at the confirmation word, refuses the slice or stops early, at any point after the slice was settled
+- **THEN** archive prints no slash command line, neither its own nor another stage's, and a reply after the run has ended prints none either
 
 ### Requirement: Archive refuses a slice that is not ready
 Archive SHALL write nothing and name each reason when any of these holds: the slice is stale, missing or ambiguous; a task is not ticked; a design decision is `TBC`; a story in scope has an open clarification question; or the latest full result file is not `Validated: yes` at a current commit (see the scenarios). It SHALL NOT archive a slice that is only planned.
