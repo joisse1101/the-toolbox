@@ -58,7 +58,7 @@ The open tab comes only from the address. `resolveTab` in `viewer/frontend/src/t
 - `shared/` holds what every tool may use: `ui/` (components), `hooks/`, `lib/` (pure logic), `api/` (the file API client) and `style.css`.
 - `viewer/frontend/src/tools/backlog/` holds the backlog tool: `BacklogTool.tsx` (the top component), `tabs.ts`, `backlog.css`, `shell/` (header, file bar, tab state, backlog and project state, shortcuts), `shared/` (code several backlog features use, such as `StoryList.tsx` and `story-form/`) and `features/<feature>/` (one folder per tab: `editor`, `stories`, `graph`, `proposed`, `lexicon`, `review`, `settings`).
 
-`viewer/test/zones.test.mjs` enforces three import rules inside the frontend:
+`viewer/test/zones.test.ts` enforces three import rules inside the frontend:
 
 - Code in `viewer/frontend/src/shared/` imports nothing under `tools/` or `app/`.
 - A tool imports no other tool.
@@ -109,7 +109,7 @@ The large tabs are split into parts, so no file mixes several jobs. Each parent 
 - `viewer/frontend/src/tools/backlog/features/proposed/useProposedFlow.ts` wraps `useProposals` and adds accepting proposed stories and moving a story from the Editor to Proposed. It takes the `useReview` result, because a moved story's open suggestions are dismissed.
 - `viewer/frontend/src/tools/backlog/shell/useShortcuts.ts` holds the shortcut table, which drives both the key handler and the Shortcuts popover, and returns the popover rows.
 
-The key handler skips a key when `ignoresKey` in `viewer/frontend/src/tools/backlog/shell/shortcuts.ts` says so. That function is pure, so a Node test covers it (`viewer/test/frontend/shortcuts.test.mjs`). It ignores only a plain key (no Ctrl, Alt or Meta) typed in an input, textarea, select or contenteditable element, so typing is never read as a shortcut. Every shortcut uses Ctrl or Alt, so each still works while a field has focus, as the Keyboard shortcuts requirement asks.
+The key handler skips a key when `ignoresKey` in `viewer/frontend/src/tools/backlog/shell/shortcuts.ts` says so. That function is pure, so a Node test covers it (`viewer/test/frontend/shortcuts.test.ts`). It ignores only a plain key (no Ctrl, Alt or Meta) typed in an input, textarea, select or contenteditable element, so typing is never read as a shortcut. Every shortcut uses Ctrl or Alt, so each still works while a field has focus, as the Keyboard shortcuts requirement asks.
 
 ### Cues besides colour
 

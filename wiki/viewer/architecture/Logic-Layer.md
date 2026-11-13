@@ -4,7 +4,7 @@ The shared code in `viewer/shared/` and the script that copies it into the story
 
 ## Zones
 
-The code is in four zones that depend in one direction only, and `viewer/test/zones.test.mjs` enforces it. `viewer/shared/` imports nothing outside itself. `viewer/backend/` imports `viewer/backend/` and `viewer/shared/`, and `viewer/frontend/` imports `viewer/frontend/` and `viewer/shared/` (the guidelines included). The backend and the frontend never import each other, so code that both need goes to `viewer/shared/`. `toolkit/` imports nothing outside itself. Nothing in `viewer/shared/` imports the backend or the frontend, and nothing imports the contents of `viewer/data/`.
+The code is in four zones that depend in one direction only, and `viewer/test/zones.test.ts` enforces it. `viewer/shared/` imports nothing outside itself. `viewer/backend/` imports `viewer/backend/` and `viewer/shared/`, and `viewer/frontend/` imports `viewer/frontend/` and `viewer/shared/` (the guidelines included). The backend and the frontend never import each other, so code that both need goes to `viewer/shared/`. `toolkit/` imports nothing outside itself. Nothing in `viewer/shared/` imports the backend or the frontend, and nothing imports the contents of `viewer/data/`.
 
 ## What the layer is
 

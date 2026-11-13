@@ -23,11 +23,11 @@ Slices, the context map and `backlog.json` are not kinds, so the portal's file A
 
 ## Lifecycle of each file
 
-Each file under a backlog folder has one lifecycle: `committed` (belongs in git), `local` (stays on the machine, ignored), `user decides` (untracked until the user commits it) or `removed by archive` (`/jois-code:archive` deletes it once `ARCHIVED.md` holds its summary). The table that gives each path, its writer and its lifecycle is [the plans-files guideline](../../../viewer/shared/guidelines/plans-files.md). The same rows are data in `viewer/shared/skill-support/plans-files.ts`, and `viewer/test/shared/plans-files-guideline.test.mjs` fails when the two differ.
+Each file under a backlog folder has one lifecycle: `committed` (belongs in git), `local` (stays on the machine, ignored), `user decides` (untracked until the user commits it) or `removed by archive` (`/jois-code:archive` deletes it once `ARCHIVED.md` holds its summary). The table that gives each path, its writer and its lifecycle is [the plans-files guideline](../../../viewer/shared/guidelines/plans-files.md). The same rows are data in `viewer/shared/skill-support/plans-files.ts`, and `viewer/test/shared/plans-files-guideline.test.ts` fails when the two differ.
 
 In short, the backlog's CSVs, `backlog.json`, the context map, `ARCHIVED.md` and `source.json` are committed. The proposals, review files and lexicon suggestions are local. A slice's `UC-<slice>.md` and `tasks.md` are the user's to decide, and its `review.md`, `validation.md` and `validation.partial.md` are local. Archive removes all of those working files.
 
-The `.gitignore` block that matches the table is printed by `toolkit/skills/jois-story-plan/print-gitignore.mjs`, and by each skill's `init-plans.mjs` when it creates `.plans`. It ignores the contents of each folder and re-includes the files that are not `local`, and `viewer/test/shared/plans-files-git.test.mjs` checks it against real `git status` on a mock tree. Nothing writes `.gitignore`.
+The `.gitignore` block that matches the table is printed by `toolkit/skills/jois-story-plan/print-gitignore.mjs`, and by each skill's `init-plans.mjs` when it creates `.plans`. It ignores the contents of each folder and re-includes the files that are not `local`, and `viewer/test/shared/plans-files-git.test.ts` checks it against real `git status` on a mock tree. Nothing writes `.gitignore`.
 
 ## Initials in backlog.json
 
