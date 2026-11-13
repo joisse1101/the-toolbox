@@ -1,6 +1,6 @@
 # User Flows
 
-The routines a team lead follows with the planner and its story skills, one flow each. Every flow names the portal tab or skill involved and the file it reads or writes. Files are named from the backlog folder, written `<backlog>/`, inside the data folder. The tabs are described on [Planner Guide](Planner-Guide.md), the skills on [Story Skills](Story-Skills.md), and the folder layout on [Data Folder](architecture/Data-Folder.md).
+The routines a team lead follows with the viewer and its story skills, one flow each. Every flow names the portal tab or skill involved and the file it reads or writes. Files are named from the backlog folder, written `<backlog>/`, inside the data folder. The tabs are described on [Viewer Guide](Viewer-Guide.md), the skills on [Story Skills](Story-Skills.md), and the folder layout on [Data Folder](architecture/Data-Folder.md).
 
 Follow the flows in the order given the first time. The portal and the skills share nothing but these files, so each flow ends with a file on disk that the next one reads. When you change a file in the portal while a skill session is open, tell the session with `/jois-story:re-read`, which re-reads the backlog, proposals and lexicon and says what changed.
 
@@ -8,7 +8,7 @@ Follow the flows in the order given the first time. The portal and the skills sh
 
 Use the **Backlog** file bar of the portal. The result is a new folder in the data folder with empty starting files, so every skill and tab works on it at once.
 
-1. Start the portal (`npm start` in `planner/`) and open it in the browser.
+1. Start the portal (`npm start` in `viewer/`) and open it in the browser.
 2. Press **New** in the file bar (or Alt+Shift+N). The portal creates `<backlog>/user-stories.csv` and the other starting files of the folder layout under the name `new-backlog`, selects it and opens it with one blank story.
 3. Type the real name in the Backlog name box and leave the field. The portal renames the folder.
 
@@ -42,7 +42,7 @@ A story already in the backlog is not proposed again. A change to it comes back 
 
 Use the review skill, then the Review tab or the story form. The skill writes `<backlog>/user-stories/review.csv`, and applying a suggestion edits `<backlog>/user-stories.csv` and marks the row in `review.csv`.
 
-1. Ask Claude to use `jois-story-review` on the backlog. It reads the backlog Epic by Epic against `planner/guidelines/product-backlog.md`, then writes its findings to `<backlog>/user-stories/review.csv` and reports them in the chat. It never edits `user-stories.csv`, and it treats frozen stories as reference only.
+1. Ask Claude to use `jois-story-review` on the backlog. It reads the backlog Epic by Epic against `viewer/shared/guidelines/product-backlog.md`, then writes its findings to `<backlog>/user-stories/review.csv` and reports them in the chat. It never edits `user-stories.csv`, and it treats frozen stories as reference only.
 2. Open the **Review** tab, which appears once the review file exists. Each suggestion shows its story, the proposed value, the reason, and Apply and Dismiss. The same suggestion also shows next to its field in the Editor's story form, and the story list shows a count.
 3. Press **Apply** to make the edit, or **Dismiss** to drop it. A suggestion marked out of date can only be dismissed, and one on a frozen story cannot be applied. **Accept all** applies a whole area after you confirm the count.
    Clear all on the Review tab and every other delete or clear in the portal opens one confirmation dialog first, which names what will go and how many. Cancel is focused, and nothing is removed until you press the red button.
@@ -96,7 +96,7 @@ Running archive on a reduced slice only says when it was archived and writes not
 
 ## Change the data folder or code base
 
-Use the Settings tab. It reads and writes the config file, `planner/planner.config.yaml` (or the file `PLANNER_CONFIG` names), and copies backlog files between folders.
+Use the Settings tab. It reads and writes the config file, `viewer/viewer.config.yaml` (or the file `VIEWER_CONFIG` names), and copies backlog files between folders.
 
 Every tab has its title on the left and its actions on the right, and a tab with nothing to show gives one empty message with the next action. The Settings tab groups its fields under **Project** and **Storage**, shows each path in a box you can select and copy, and puts each button's explanation beside it.
 
@@ -109,10 +109,10 @@ The server refuses a relative path, a system folder, a drive root and any folder
 
 ## Switch between saved projects
 
-Use the **Project** dropdown in the file bar. It reads and writes the `projects` list and the active path in `planner/planner.config.yaml` (or the file `PLANNER_CONFIG` names), and it touches no backlog file.
+Use the **Project** dropdown in the file bar. It reads and writes the `projects` list and the active path in `viewer/viewer.config.yaml` (or the file `VIEWER_CONFIG` names), and it touches no backlog file.
 
 1. Open the **Project** dropdown and choose a saved project. The portal saves its path as the active one and reloads.
-2. To add one, choose **Add Project...**. Link a code base (it offers to create `.plans/` and a first backlog when it has none) or create a project from a name in `planner/data/<name>`. A project already in the list is switched to and not added twice.
+2. To add one, choose **Add Project...**. Link a code base (it offers to create `.plans/` and a first backlog when it has none) or create a project from a name in `viewer/data/<name>`. A project already in the list is switched to and not added twice.
 3. Restart skill sessions, because they read the active path only when they start.
 
 A project whose folder has gone is shown disabled.

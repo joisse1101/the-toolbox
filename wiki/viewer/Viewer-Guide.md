@@ -1,16 +1,16 @@
-# Planner Guide
+# Viewer Guide
 
-The planner is a local web page, the backlog portal, for editing the user-story backlogs of a project. It saves every edit to plain CSV files that Excel can open, and the story skills (see [Story Skills](Story-Skills.md)) write their suggestions into the same files, so the portal and the skills never talk to each other directly. This page says how to start the portal and what each tab shows and edits. The step-by-step routines are on [User Flows](User-Flows.md).
+The viewer is a local web page, the backlog portal, for editing the user-story backlogs of a project. It saves every edit to plain CSV files that Excel can open, and the story skills (see [Story Skills](Story-Skills.md)) write their suggestions into the same files, so the portal and the skills never talk to each other directly. This page says how to start the portal and what each tab shows and edits. The step-by-step routines are on [User Flows](User-Flows.md).
 
 ## Words used on this page
 
-A **backlog** is one folder of the data folder that holds a `user-stories.csv`. A **story** is one row of it, written as "As a ..., I want ..., so that ...", with acceptance criteria. Stories are grouped into a **feature**, and features into an **epic**. The **data folder** is the folder the portal reads and writes, and a **code base** is a project folder that keeps its backlogs in a `.plans` folder inside it. The layout of the data folder is on [Data Folder](architecture/Data-Folder.md). The rules for good epics, features and stories are in `planner/guidelines/product-backlog.md`, and the portal shows its sizing guideline next to the points selector.
+A **backlog** is one folder of the data folder that holds a `user-stories.csv`. A **story** is one row of it, written as "As a ..., I want ..., so that ...", with acceptance criteria. Stories are grouped into a **feature**, and features into an **epic**. The **data folder** is the folder the portal reads and writes, and a **code base** is a project folder that keeps its backlogs in a `.plans` folder inside it. The layout of the data folder is on [Data Folder](architecture/Data-Folder.md). The rules for good epics, features and stories are in `viewer/shared/guidelines/product-backlog.md`, and the portal shows its sizing guideline next to the points selector.
 
 ## Run the portal
 
-Run the commands from `planner/`, which holds `package.json` and `node_modules/`. `npm install` once, then `npm start`: it builds the page if needed, starts the server on `127.0.0.1:3000` (set `PORT` to change it) and opens the browser. `npm start -- --dev` runs the Vite development server with hot reload instead. After you change anything under `planner/portal/web/` or `planner/logic/`, run `npm run build` before the server shows the change.
+Run the commands from `viewer/`, which holds `package.json` and `node_modules/`. `npm install` once, then `npm start`: it builds the page if needed, starts the server on `127.0.0.1:3000` (set `PORT` to change it) and opens the browser. `npm start -- --dev` runs the Vite development server with hot reload instead. After you change anything under `viewer/frontend/src/` or `viewer/shared/`, run `npm run build` before the server shows the change.
 
-The server serves the folder named by `dataDir` in `planner/planner.config.yaml`, or by `codeBase` (then `<code base>/.plans`). Without a config file the folder is `planner/data/`. The file `PLANNER_CONFIG` names, when set, is read instead of the config file. You can switch the folder from the Settings tab without editing the config by hand.
+The server serves the folder named by `dataDir` in `viewer/viewer.config.yaml`, or by `codeBase` (then `<code base>/.plans`). Without a config file the folder is `viewer/data/`. The file `VIEWER_CONFIG` names, when set, is read instead of the config file. You can switch the folder from the Settings tab without editing the config by hand.
 
 ## The top of the page
 
@@ -18,7 +18,7 @@ The header shows the project name and a save chip with three states, "Saved", "S
 
 The file bar under the header holds a project dropdown, the backlog dropdown, the backlog name (edit it and leave the field to rename the backlog), the **Initials** box (see [Story IDs, dependencies and frozen stories](#story-ids-dependencies-and-frozen-stories)), **New**, **Open folder** and a refresh button. New creates a backlog called `new-backlog` (`new-backlog-2` and so on when the name is taken) with empty starting files, opens it with one blank story and puts the cursor in its name. It never copies the backlog that is open. Open folder opens the data folder in Windows Explorer. Refresh re-reads every file from disk; the portal also does this when you return to the browser tab, and unsaved local edits win over what is on disk. When the data folder holds no backlog but holds the older layout, the file bar says so and points to the Settings tab.
 
-The project dropdown lists the saved projects, with **Add Project...** first. Choosing a project saves its path as the active one and reloads the portal, and no file is touched. A project whose folder is gone is shown disabled. Add Project links a code base, with an optional name, and offers to create `.plans/` and a first backlog when it has none, or it creates a new project in `planner/data/<name>`. The list of projects is the `projects` key of the config, described on [Data Folder](architecture/Data-Folder.md).
+The project dropdown lists the saved projects, with **Add Project...** first. Choosing a project saves its path as the active one and reloads the portal, and no file is touched. A project whose folder is gone is shown disabled. Add Project links a code base, with an optional name, and offers to create `.plans/` and a first backlog when it has none, or it creates a new project in `viewer/data/<name>`. The list of projects is the `projects` key of the config, described on [Data Folder](architecture/Data-Folder.md).
 
 The keyboard shortcuts are listed behind the keyboard button in the header. Alt+N adds a story and Alt+D deletes the selected one, both only on the Editor tab. Ctrl+Up and Ctrl+Down select the previous and next story, and Alt+Shift+N creates a new backlog from any tab. On a Mac, Option replaces Alt.
 
@@ -87,4 +87,14 @@ The Settings tab shows the data folder, the code base and the path of the config
 
 ## Where the facts come from
 
-The tab behaviour above was checked against the components in `planner/portal/web/backlog-portal/components/` and the specs `user-story-editor`, `story-proposals`, `backlog-review-suggestions`, `backlog-lexicon` and `project-config` in `openspec/specs/`. Where an older spec text and the component disagree, this page follows the component. Two examples are the `user-story-editor` spec, which still says the Open folder button opens `backlogs/` and that there is no apply-all in the Review tab, and `CLAUDE.md`, which says init creates only the data folder. The code opens the data folder, offers Accept all and Clear all, and creates `new-backlog`.
+The tab behaviour above was checked against the components in `viewer/frontend/src/backlog-portal/components/` and the specs `user-story-editor`, `story-proposals`, `backlog-review-suggestions`, `backlog-lexicon` and `project-config` in `openspec/specs/`. Where an older spec text and the component disagree, this page follows the component. Two examples are the `user-story-editor` spec, which still says the Open folder button opens `backlogs/` and that there is no apply-all in the Review tab, and `CLAUDE.md`, which says init creates only the data folder. The code opens the data folder, offers Accept all and Clear all, and creates `new-backlog`.
+
+## Moving from planner/
+
+The app used to live in `planner/` and now lives in `viewer/`. Git moves the tracked files, but not the files it ignores (your config, your data and `node_modules/`), so after pulling you move those by hand. Do these steps in order: <!-- docs-check: ignore -->
+
+1. Move `planner/planner.config.yaml` to `viewer/viewer.config.yaml`. <!-- docs-check: ignore -->
+2. Move everything in `planner/data/` to `viewer/data/`. <!-- docs-check: ignore -->
+3. Run `npm install` in `viewer/`, because `node_modules/` did not move.
+4. Delete the leftover `planner/` folder. <!-- docs-check: ignore -->
+5. If a shell profile sets `PLANNER_CONFIG`, rename the variable to `VIEWER_CONFIG`, because the old name is no longer read.

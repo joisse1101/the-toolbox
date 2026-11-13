@@ -65,7 +65,7 @@ Unchecked: these two version numbers come from memory of the Node release notes 
 
 ### Where the story skills find their data
 
-The story skills read a data folder that the planner also uses. How they find it is on [Story Skills Internals](../planner/architecture/Story-Skills-Internals.md).
+The story skills read a data folder that the viewer also uses. How they find it is on [Story Skills Internals](../viewer/architecture/Story-Skills-Internals.md).
 
 ## Migrating from the old names
 
@@ -140,4 +140,4 @@ The `.venv/` folder ignores itself, so it stays out of git. The story skills' ow
 
 ## Specs and history
 
-The root `openspec/` holds the OpenSpec specs for the toolkit's skills, commands, rules and agents (`toolkit-*` and `jois-stage`), and the changes that shaped them, next to the planner's. It is documentation only, and the installer never copies it. The `/opsx:*` commands need the `openspec` CLI, and the `jois-git` commands need `git` and `gh` (`/jois-git:write-issue` also uses `glab` on GitLab repos).
+The root `openspec/` holds the OpenSpec specs for the toolkit's skills, commands, rules and agents (`toolkit-*` and `jois-stage`), and the changes that shaped them, next to the viewer's. It is documentation only, and the installer never copies it. The `/opsx:*` commands need the `openspec` CLI, and the `jois-git` commands need `git` and `gh` (`/jois-git:write-issue` also uses `glab` on GitLab repos).

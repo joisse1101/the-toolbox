@@ -1,16 +1,16 @@
 # Story to Code
 
-This page follows one feature from an idea to merged code: the stages in order, what each one writes, and how to find the next command when you come back to the work later. Each stage has its own page with the detail, linked from its row. The flow uses the story skills of the planner and the `jois-code` commands of the toolkit, so install both first (see [Install](toolkit/Install.md)).
+This page follows one feature from an idea to merged code: the stages in order, what each one writes, and how to find the next command when you come back to the work later. Each stage has its own page with the detail, linked from its row. The flow uses the story skills of the viewer and the `jois-code` commands of the toolkit, so install both first (see [Install](toolkit/Install.md)).
 
-A **slice** is the unit the flow builds: a set of stories planned together into one folder, `<backlog>/slices/<slice>/`, holding the use-case document `UC-<slice>.md`, the build tasks `tasks.md` and `source.json`. A **backlog** is a folder of the planner's data folder that holds `user-stories.csv`.
+A **slice** is the unit the flow builds: a set of stories planned together into one folder, `<backlog>/slices/<slice>/`, holding the use-case document `UC-<slice>.md`, the build tasks `tasks.md` and `source.json`. A **backlog** is a folder of the viewer's data folder that holds `user-stories.csv`.
 
 ## The stages
 
 Start Claude in the code base folder, because the skills look for the data folder (`.plans`) in the current folder only. Then run the stages in this order. Explore and review are optional, and every other stage needs the one before it.
 
-1. **Explore** the idea with `jois-story-explore`. It discusses scope, splitting and acceptance criteria and writes nothing. See [Story Skills](planner/Story-Skills.md).
+1. **Explore** the idea with `jois-story-explore`. It discusses scope, splitting and acceptance criteria and writes nothing. See [Story Skills](viewer/Story-Skills.md).
 2. **Propose** the agreed stories with `/jois-story:propose`. It writes them to `<backlog>/user-stories/proposals.csv`.
-3. **Accept** them in the portal's Proposed tab, which moves them into `<backlog>/user-stories.csv`. See [User Flows](planner/User-Flows.md).
+3. **Accept** them in the portal's Proposed tab, which moves them into `<backlog>/user-stories.csv`. See [User Flows](viewer/User-Flows.md).
 4. **Review** the backlog with `jois-story-review` when you want a wider check. Apply or dismiss its suggestions in the portal's Review tab.
 5. **Plan** a slice with `jois-story-plan`. It asks the design questions the stories leave open, writes the slice folder, freezes the stories it covers, checks the slice with verify and then asks whether to commit the plan files (`UC-<slice>.md`, `tasks.md` and `source.json`) with "Yes, commit" or "Not now". It skips the question when the folder is not a git repository or git ignores the files. See [Story Skills](planner/Story-Skills.md#committing-the-plan-files).
 6. **Verify** the slice with `/jois-story:verify` if you changed it or its stories since it was planned. It reports what would break the build and fixes the slice only after you approve.

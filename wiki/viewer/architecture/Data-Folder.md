@@ -1,6 +1,6 @@
 # Data Folder
 
-The data folder holds the backlog files the portal edits and the story skills write. It is private to the user. The default is `planner/data/`, which is git-ignored for that reason. The project config's `dataDir` can name another folder, and its `codeBase` makes it `<codeBase>/.plans/`, which has the same layout. Everything below applies to whichever folder is served.
+The data folder holds the backlog files the portal edits and the story skills write. It is private to the user. The default is `viewer/data/`, which is git-ignored for that reason. The project config's `dataDir` can name another folder, and its `codeBase` makes it `<codeBase>/.plans/`, which has the same layout. Everything below applies to whichever folder is served.
 
 ## Layout
 
@@ -37,7 +37,7 @@ A backlog the server creates gets `backlog.json` at once, and a rename moves the
 
 The initials of one backlog must not clash with a sibling, meaning another backlog in the same data folder. A sibling clashes when it uses the same initials, ignoring case, or when one of its frozen story IDs starts with them and a hyphen. The second case is why initials that a sibling retired are still refused: its frozen IDs keep them. The check cannot see backlogs in another data folder, so two data folders can reuse the same initials.
 
-The server writes the file atomically, to a temporary file first and then a rename, so a failed write never leaves half a file. The functions are in `planner/logic/storage/backlog-initials.cjs`.
+The server writes the file atomically, to a temporary file first and then a rename, so a failed write never leaves half a file. The functions are in `viewer/shared/storage/backlog-initials.cjs`.
 
 ## The older layout
 
@@ -45,26 +45,26 @@ The older layout had `backlogs/`, `reviews/`, `proposals/`, `lexicons/`, `lexico
 
 ## Storage modules
 
-- `planner/logic/storage/file-name.cjs` has `validateBacklogName`, the one set of backlog-name rules. A trailing `.csv` is dropped. Separators, invalid Windows characters and the reserved name `logs` are refused.
-- `planner/logic/storage/backlog-paths.cjs` is the one place that builds the path of a backlog's file from its name and a kind. It has `backlogDir`, `backlogFile`, `reviewDecidedFile`, `slicesDir` and `contextMapFiles`, plus `listBacklogs` and `detectOlderLayout`. `KIND_FILES` registers the kinds, and `PLANS_DIR` names `.plans`.
-- `planner/logic/storage/paths.cjs` holds `DATA_DIR`, the folder named by `dataDir` in the project config as read at load, for short-lived scripts. `getDataDir()` and `setDataDir()` are what the server uses, so a switch takes effect at once. `legacyDataHint` says how to move data an earlier layout left in `data/` or `user-stories/`.
-- `planner/logic/storage/project-config.cjs` reads, validates and saves `planner/planner.config.yaml`, or the file `PLANNER_CONFIG` names. `loadConfig` returns `projects` (resolved, with `.plans` applied, and a synthetic entry when the active path is not listed or there is no list) and `activeProject` (its index, matched by resolved path). `addProject` appends an entry, and the first add writes the active path into the list. `replaceActive` gives the active entry the new path without a second entry. Both keep the file's comments.
-- `planner/logic/storage/project-folders.cjs` holds the folder checks, `initFolders`, `planCopy` and `planCopyToCodeBase` (read-only: the files an overwrite would replace), `copyData` and `migrateOlderLayout` that the Settings tab uses. Init creates only the data folder. Copy skips any `backups/` folder and never overwrites unless the `overwrite` option is set, and then it replaces only files present in both places. It reads each copied or overwritten file back and reports `copied`, `overwritten`, `skipped` and `failed`, plus `stopped` when a file could not be written.
+- `viewer/shared/storage/file-name.cjs` has `validateBacklogName`, the one set of backlog-name rules. A trailing `.csv` is dropped. Separators, invalid Windows characters and the reserved name `logs` are refused.
+- `viewer/shared/storage/backlog-paths.cjs` is the one place that builds the path of a backlog's file from its name and a kind. It has `backlogDir`, `backlogFile`, `reviewDecidedFile`, `slicesDir` and `contextMapFiles`, plus `listBacklogs` and `detectOlderLayout`. `KIND_FILES` registers the kinds, and `PLANS_DIR` names `.plans`.
+- `viewer/backend/storage/paths.cjs` holds `DATA_DIR`, the folder named by `dataDir` in the project config as read at load, for short-lived scripts. `getDataDir()` and `setDataDir()` are what the server uses, so a switch takes effect at once. `legacyDataHint` says how to move data an earlier layout left in `data/` or `user-stories/`.
+- `viewer/backend/storage/project-config.cjs` reads, validates and saves `viewer/viewer.config.yaml`, or the file `VIEWER_CONFIG` names. `loadConfig` returns `projects` (resolved, with `.plans` applied, and a synthetic entry when the active path is not listed or there is no list) and `activeProject` (its index, matched by resolved path). `addProject` appends an entry, and the first add writes the active path into the list. `replaceActive` gives the active entry the new path without a second entry. Both keep the file's comments.
+- `viewer/backend/storage/project-folders.cjs` holds the folder checks, `initFolders`, `planCopy` and `planCopyToCodeBase` (read-only: the files an overwrite would replace), `copyData` and `migrateOlderLayout` that the Settings tab uses. Init creates only the data folder. Copy skips any `backups/` folder and never overwrites unless the `overwrite` option is set, and then it replaces only files present in both places. It reads each copied or overwritten file back and reports `copied`, `overwritten`, `skipped` and `failed`, plus `stopped` when a file could not be written.
 
 ## The project config
 
-The config file is `planner/planner.config.yaml`. It is git-ignored, so copy `planner/planner.config.example.yaml` and edit it. The file `PLANNER_CONFIG` names is read instead when that variable is set. All keys are optional, and a missing file means the defaults.
+The config file is `viewer/viewer.config.yaml`. It is git-ignored, so copy `viewer/viewer.config.example.yaml` and edit it. The file `VIEWER_CONFIG` names is read instead when that variable is set. All keys are optional, and a missing file means the defaults.
 
 - `projectName` is shown in the portal header. The default is empty.
-- `dataDir` is the folder that holds the data, absolute or relative to the config file's folder. The default is `planner/data/`, which is also used when there is no config file.
+- `dataDir` is the folder that holds the data, absolute or relative to the config file's folder. The default is `viewer/data/`, which is also used when there is no config file.
 - `codeBase` is the folder of a code base you work on, absolute or relative to the config file's folder. The data folder is then `<codeBase>/.plans/`, with the layout above. You never type `.plans`.
-- `projects` is an optional list of saved projects, each with one path (`codeBase` or `dataDir`) and an optional `name`. The top-level `codeBase` or `dataDir` stays the active project, so a config written before the list existed keeps working. Without a list, the active folder shows as one project, and the list is written the first time you add a project. Code older than the list refuses the key as unknown, so delete the list to roll back. `planner/planner.config.example.yaml` shows the shape.
+- `projects` is an optional list of saved projects, each with one path (`codeBase` or `dataDir`) and an optional `name`. The top-level `codeBase` or `dataDir` stays the active project, so a config written before the list existed keeps working. Without a list, the active folder shows as one project, and the list is written the first time you add a project. Code older than the list refuses the key as unknown, so delete the list to roll back. `viewer/viewer.config.example.yaml` shows the shape.
 
 A bad key or value fails naming it, and the server stops at startup with that message. A config with both `codeBase` and `dataDir` fails naming both, because the two keys name the same thing in different ways. `saveConfig` writes one and removes the other in one write, so the file never holds both.
 
-The variables `PLANNER_DATA_DIR` and `TLT_DATA_DIR` are no longer read. If you used one, create `planner/planner.config.yaml` once with `dataDir` set to the same path, then remove the variable.
+The variables `PLANNER_DATA_DIR` and `TLT_DATA_DIR` are no longer read. If you used one, create `viewer/viewer.config.yaml` once with `dataDir` set to the same path, then remove the variable.
 
-Committing `.plans/` is the code base owner's choice. Anyone with the code base sees a committed `.plans/`, and it stays in history. The planner never edits `.gitignore`, so add `.plans/` there yourself to keep it private.
+Committing `.plans/` is the code base owner's choice. Anyone with the code base sees a committed `.plans/`, and it stays in history. The viewer never edits `.gitignore`, so add `.plans/` there yourself to keep it private.
 
 ## Folder actions
 

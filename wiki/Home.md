@@ -1,23 +1,23 @@
 # Home
 
-Welcome. This wiki holds the docs for this project, one page per topic. The project has two parts: the backlog planner in `planner/` and the toolkit in `toolkit/`.
+Welcome. This wiki holds the docs for this project, one page per topic. The project has two parts: the backlog viewer in `viewer/` and the toolkit in `toolkit/`.
 
 ## From story to code
 
 - [Story to Code](Story-To-Code.md)
 
-## Planner
+## Viewer
 
-- [Planner Guide](planner/Planner-Guide.md)
-- [User Flows](planner/User-Flows.md)
-- [Story Skills](planner/Story-Skills.md)
+- [Viewer Guide](viewer/Viewer-Guide.md)
+- [User Flows](viewer/User-Flows.md)
+- [Story Skills](viewer/Story-Skills.md)
 
-## Planner architecture
+## Viewer architecture
 
-- [Logic Layer](planner/architecture/Logic-Layer.md)
-- [Portal](planner/architecture/Portal.md)
-- [Data Folder](planner/architecture/Data-Folder.md)
-- [Story Skills Internals](planner/architecture/Story-Skills-Internals.md)
+- [Logic Layer](viewer/architecture/Logic-Layer.md)
+- [Portal](viewer/architecture/Portal.md)
+- [Data Folder](viewer/architecture/Data-Folder.md)
+- [Story Skills Internals](viewer/architecture/Story-Skills-Internals.md)
 
 ## Toolkit
 
