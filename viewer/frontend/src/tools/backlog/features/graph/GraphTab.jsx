@@ -31,7 +31,7 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
     return hues;
   }, [stories]);
 
-  const [view, setView] = useState({ x: 0, y: 0, k: 1 });
+  const [view, setCamera] = useState({ x: 0, y: 0, k: 1 });
   const [selectedId, setSelectedId] = useState(null);
   const [selectedEdge, setSelectedEdge] = useState(null);
   const [linkFrom, setLinkFrom] = useState(null); // story id: Link mode, the next story chosen is its dependency
@@ -52,14 +52,14 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
   const fit = () => {
     const size = panelSize();
     if (!size.width) return false;
-    setView(fitView(bounds, size, undefined, FIT_MIN_ZOOM));
+    setCamera(fitView(bounds, size, undefined, FIT_MIN_ZOOM));
     return true;
   };
   const latestFit = useRef(fit);
   latestFit.current = fit;
   const zoomBy = (factor, point) => {
     const size = panelSize();
-    setView((v) => zoomAt(v, point ?? { x: size.width / 2, y: size.height / 2 }, factor));
+    setCamera((v) => zoomAt(v, point ?? { x: size.width / 2, y: size.height / 2 }, factor));
   };
 
   // A different backlog starts at the Stories level with nothing selected and the whole graph in view; so does each level.
@@ -93,9 +93,9 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
     const onWheel = (e) => {
       e.preventDefault();
       const r = el.getBoundingClientRect();
-      if (e.ctrlKey) setView((v) => zoomAt(v, { x: e.clientX - r.left, y: e.clientY - r.top }, Math.exp(-e.deltaY * 0.003)));
-      else if (e.shiftKey) setView((v) => panBy(v, -(e.deltaY || e.deltaX), 0));
-      else setView((v) => panBy(v, -e.deltaX, -e.deltaY));
+      if (e.ctrlKey) setCamera((v) => zoomAt(v, { x: e.clientX - r.left, y: e.clientY - r.top }, Math.exp(-e.deltaY * 0.003)));
+      else if (e.shiftKey) setCamera((v) => panBy(v, -(e.deltaY || e.deltaX), 0));
+      else setCamera((v) => panBy(v, -e.deltaX, -e.deltaY));
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
@@ -204,7 +204,7 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
       const dy = e.clientY - g.last.y;
       g.last = { x: e.clientX, y: e.clientY };
       g.moved += Math.abs(dx) + Math.abs(dy);
-      setView((v) => panBy(v, dx, dy));
+      setCamera((v) => panBy(v, dx, dy));
     } else {
       setDrag({ from: g.id, point: toGraphPoint(view, panelPoint(e)) });
     }
@@ -226,7 +226,7 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
   const onKeyDown = (e) => {
     if (e.ctrlKey || e.altKey || e.metaKey) return;
     const pan = { ArrowLeft: [KEY_PAN, 0], ArrowRight: [-KEY_PAN, 0], ArrowUp: [0, KEY_PAN], ArrowDown: [0, -KEY_PAN] }[e.key];
-    if (pan) setView((v) => panBy(v, ...pan));
+    if (pan) setCamera((v) => panBy(v, ...pan));
     else if (e.key === '+' || e.key === '=') zoomBy(ZOOM_STEP);
     else if (e.key === '-') zoomBy(1 / ZOOM_STEP);
     else if (e.key === '0') fit();

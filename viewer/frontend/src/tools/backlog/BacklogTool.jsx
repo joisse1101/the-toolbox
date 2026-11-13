@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router';
 import { backlogProblems, gatherFeatures } from '../../../../shared/backlog/ids.js';
 import { groupByEpic } from '../../../../shared/backlog/model.js';
 import { useBacklog } from './shell/useBacklog.js';
+import { useTab } from './shell/useTab.js';
+import NotFoundPage from '../../app/NotFoundPage.jsx';
 import { useConfirm } from '../../shared/hooks/useConfirm.js';
 import { useReviewFlow } from './features/review/useReviewFlow.js';
 import { useProposedFlow } from './features/proposed/useProposedFlow.js';
@@ -10,10 +13,8 @@ import { useLexicon } from './features/lexicon/useLexicon.js';
 import { useLexiconSuggestions } from './features/lexicon/useLexiconSuggestions.js';
 import FileBar from './shell/FileBar.jsx';
 import Info from '../../shared/ui/Info.jsx';
-import StoryList from './shared/StoryList.jsx';
-import TabHeader from '../../shared/ui/TabHeader.jsx';
 import EmptyState from '../../shared/ui/EmptyState.jsx';
-import StoryForm from './shared/story-form/StoryForm.jsx';
+import EditorTab from './features/editor/EditorTab.jsx';
 import StoriesTab from './features/stories/StoriesTab.jsx';
 import GraphTab from './features/graph/GraphTab.jsx';
 import ReviewTab from './features/review/ReviewTab.jsx';
@@ -23,8 +24,6 @@ import LexiconTab from './features/lexicon/LexiconTab.jsx';
 import SettingsTab from './features/settings/SettingsTab.jsx';
 import { useSettings } from './features/settings/useSettings.js';
 import { useProjects } from './shell/useProjects.js';
-import ResizeHandle from '../../shared/ui/ResizeHandle.jsx';
-import useListWidth from '../../shared/hooks/useListWidth.js';
 import useCollapsed from '../../shared/hooks/useCollapsed.js';
 
 const STATUS_TEXT = { saved: 'Saved', saving: 'Saving…', failed: '✕ Save failed', idle: 'No file' };
@@ -37,8 +36,8 @@ const KEYBOARD_ICON = (
 
 export default function App() {
   const ask = useConfirm();
-  const { state, selected, status, message, actions } = useBacklog();
-  const { files, current, backlog, selectedId, view, checked, lastChecked } = state;
+  const { state, selected, status, message, ready, actions } = useBacklog();
+  const { files, current, backlog, selectedId, checked, lastChecked } = state;
   const stories = backlog?.stories ?? [];
   const problems = useMemo(() => backlogProblems(stories), [stories]);
   const renumberDisabled = useMemo(() => !state.initials || gatherFeatures(stories, state.initials) === stories, [stories, state.initials]); // nothing to put in order (and no backlog open yet: no initials)
@@ -61,15 +60,16 @@ export default function App() {
 
   // Review suggestions and Proposed stories for the open backlog (see the two flow hooks).
   const { review, suggestionCounts, orphans, selectedUnits, applyUnit, dismissUnit, acceptSummary, acceptUnits, openReviewCount, dismissOrphans } =
-    useReviewFlow({ current, stories, backlog, initials: state.initials, selected, view, actions, ask });
+    useReviewFlow({ current, stories, backlog, initials: state.initials, selected, actions, ask });
   const reload = review.reload;
+  // The tab comes from the address. It is only resolved once the backlog list and the review file have been read.
+  const { tab, setTab } = useTab({ settled: ready && (!current || review.loaded), hasBacklog: !!current, hasReview: review.exists });
   const { proposals, proposedNotice, acceptSelected, acceptAll, moveToProposed } =
     useProposedFlow({ current, stories, backlog, initials: state.initials, actions, review, ask, reveal });
   const refreshProposals = proposals.actions.refreshFromDisk;
 
   // The lexicon of the open backlog (its lexicon file); the tab is always there, the file may not be.
   const lexicon = useLexicon(current);
-  const editorList = useListWidth('editor');
   const refreshLexicon = lexicon.actions.refreshFromDisk;
   const lexiconSuggestions = useLexiconSuggestions(current);
   const reloadLexiconSuggestions = lexiconSuggestions.reload;
@@ -86,12 +86,13 @@ export default function App() {
   const projectName = settingsState.settings?.projectName ?? '';
   useEffect(() => {
     document.title = projectName ? `${projectName} - Backlog portal` : 'Backlog portal';
+    return () => { document.title = 'Backlog planner'; }; // the title of the home page
   }, [projectName]);
   // After a folder switch the page reloads; land on Settings so the note about skill sessions is seen.
   useEffect(() => {
-    if (settingsState.switched) actions.setView('settings');
+    if (settingsState.switched) setTab('settings', { replace: true });
   }, []); // once, on load
-  const showSettings = view === 'settings' || !current; // with no backlog there is nothing else to show
+  const showSettings = tab === 'settings' || !current; // with no backlog there is nothing else to show
 
   // Ask the Story form to focus a field once it has rendered (default: Epic).
   const [focusRequest, setFocusRequest] = useState(null);
@@ -143,7 +144,7 @@ export default function App() {
     if (actions.moveSelection(delta)) requestFocus(focusedId);
   };
 
-  const inEditor = view === 'editor';
+  const inEditor = tab === 'editor';
   const shortcutRows = useShortcuts({
     hasBacklog: !!backlog, hasSelected: !!selected, inEditor, addStory, newBacklog, deleteSelected: actions.deleteSelected, moveSelection,
   });
@@ -151,17 +152,17 @@ export default function App() {
   // The tab bar is built from this one array, so a tab, its panel and its keyboard position cannot drift apart.
   const tabs = [
     ...(current ? [
-      { view: 'editor', tabId: 'tabEditor', panelId: 'editor', label: 'Editor' },
-      { view: 'stories', tabId: 'tabStories', panelId: 'storiesView', label: 'Stories' },
-      { view: 'graph', tabId: 'tabGraph', panelId: 'graphView', label: 'Graph' },
-      { view: 'proposed', tabId: 'tabProposed', panelId: 'proposedView', label: `Proposed (${proposals.stories.length})` },
-      { view: 'lexicon', tabId: 'tabLexicon', panelId: 'lexiconView', label: `Lexicon (${lexicon.lexicon.terms.length}${openSuggestions ? `, ${openSuggestions} suggested` : ''})` },
-      ...(review.exists ? [{ view: 'review', tabId: 'tabReview', panelId: 'reviewView', label: openReviewCount ? `Review (${openReviewCount})` : 'Review' }] : []),
+      { tab: 'editor', tabId: 'tabEditor', panelId: 'editor', label: 'Editor' },
+      { tab: 'stories', tabId: 'tabStories', panelId: 'storiesView', label: 'Stories' },
+      { tab: 'graph', tabId: 'tabGraph', panelId: 'graphView', label: 'Graph' },
+      { tab: 'proposed', tabId: 'tabProposed', panelId: 'proposedView', label: `Proposed (${proposals.stories.length})` },
+      { tab: 'lexicon', tabId: 'tabLexicon', panelId: 'lexiconView', label: `Lexicon (${lexicon.lexicon.terms.length}${openSuggestions ? `, ${openSuggestions} suggested` : ''})` },
+      ...(review.exists ? [{ tab: 'review', tabId: 'tabReview', panelId: 'reviewView', label: openReviewCount ? `Review (${openReviewCount})` : 'Review' }] : []),
     ] : []),
-    { view: 'settings', tabId: 'tabSettings', panelId: 'settingsView', label: 'Settings' },
+    { tab: 'settings', tabId: 'tabSettings', panelId: 'settingsView', label: 'Settings' },
   ];
-  const activeView = showSettings ? 'settings' : view;
-  const focusableView = tabs.some((t) => t.view === activeView) ? activeView : tabs[0].view; // the one Tab stop
+  const activeTab = showSettings ? 'settings' : tab;
+  const focusableTab = tabs.some((t) => t.tab === activeTab) ? activeTab : tabs[0].tab; // the one Tab stop
   // Left and Right move between tabs (wrapping), Home and End jump to the ends; selection follows focus.
   const onTabKey = (e) => {
     const from = tabs.findIndex((t) => t.tabId === e.target.id);
@@ -173,20 +174,22 @@ export default function App() {
     else if (e.key === 'End') to = tabs.length - 1;
     else return;
     e.preventDefault();
-    actions.setView(tabs[to].view);
+    setTab(tabs[to].tab);
     document.getElementById(tabs[to].tabId).focus();
   };
 
   const openInEditor = (id) => {
     actions.selectStory(id);
-    actions.setView('editor');
+    setTab('editor');
   };
+
+  if (tab === null) return <NotFoundPage />;
 
   return (
     <>
       <main className="page">
         <header className="top">
-          <h1><a href="/" className="home" title="All tools">&larr;</a> Backlog portal{projectName && <span className="muted"> - {projectName}</span>}</h1>
+          <h1><Link to="/" className="home" title="All tools">&larr;</Link> Backlog portal{projectName && <span className="muted"> - {projectName}</span>}</h1>
           <div className="top-right">
             <Info id="shortcuts" buttonId="shortcutsBtn" buttonClass="shortcuts-btn" label="Keyboard shortcuts" icon={KEYBOARD_ICON} popoverId="shortcutsText" popoverClass="right">
               <dl className="shortcut-list">
@@ -225,34 +228,21 @@ export default function App() {
         <div id="tabs" className="tabs" role="tablist" aria-label="Views" onKeyDown={onTabKey}>
           {tabs.map((t) => (
             <button
-              key={t.view} type="button" role="tab" id={t.tabId} className="tab" aria-controls={t.panelId}
-              aria-selected={t.view === activeView} tabIndex={t.view === focusableView ? 0 : -1} onClick={() => actions.setView(t.view)}
+              key={t.tab} type="button" role="tab" id={t.tabId} className="tab" aria-controls={t.panelId}
+              aria-selected={t.tab === activeTab} tabIndex={t.tab === focusableTab ? 0 : -1} onClick={() => setTab(t.tab)}
             >{t.label}</button>
           ))}
         </div>
 
-        <div id="editor" role="tabpanel" aria-labelledby="tabEditor" hidden={!current || view !== 'editor'}>
-          <TabHeader title="Editor" />
-          {inEditor && !stories.length && (
-            <EmptyState title="No stories yet" help="Draft a story here, or use the explore and propose skills." action={{ id: 'addStoryBtn', label: 'Add story', onClick: addStory }} />
-          )}
-          {inEditor && stories.length > 0 && (
-            <div className="editor" style={editorList.style}>
-              <StoryList stories={stories} problems={problems} suggestionCounts={suggestionCounts} selectedId={selectedId} onSelect={actions.selectStory} onAdd={addStory} onMove={moveStory} onMoveGroup={moveGroup} onRenumber={renumberDisplayed} renumberDisabled={renumberDisabled} collapse={collapse} />
-              {selected && (
-                <StoryForm
-                  story={selected} stories={stories} problems={problems} suggestions={selectedUnits} focusRequest={focusRequest}
-                  onFocused={() => setFocusRequest(null)} onEdit={actions.editStory} onCommitEpic={actions.commitEpic} onOpen={actions.selectStory}
-                  onApplySuggestion={applyUnit} onDismissSuggestion={dismissUnit} onMoveToProposed={moveToProposed} onDelete={actions.deleteSelected}
-                />
-              )}
-              <ResizeHandle className="list-divider" {...editorList.handleProps} />
-            </div>
-          )}
-        </div>
+        <EditorTab
+          hidden={!current || tab !== 'editor'} stories={stories} problems={problems} suggestionCounts={suggestionCounts} selectedId={selectedId} selected={selected}
+          selectedUnits={selectedUnits} focusRequest={focusRequest} renumberDisabled={renumberDisabled} collapse={collapse} actions={actions}
+          onFocused={() => setFocusRequest(null)} onAdd={addStory} onMove={moveStory} onMoveGroup={moveGroup} onRenumber={renumberDisplayed}
+          onApplySuggestion={applyUnit} onDismissSuggestion={dismissUnit} onMoveToProposed={moveToProposed}
+        />
 
         <ProposedTab
-          hidden={!current || view !== 'proposed'} proposed={proposals.stories} backlogStories={stories}
+          hidden={!current || tab !== 'proposed'} proposed={proposals.stories} backlogStories={stories}
           selected={proposals.selected} selectedId={proposals.state.selectedId} notice={proposedNotice}
           onSelect={proposals.actions.selectStory} onAdd={() => proposals.actions.addStory(stories)} onDelete={proposals.actions.deleteMany}
           onEdit={proposals.actions.editStory} onCommitEpic={proposals.actions.commitEpic} onMove={proposals.actions.moveStory}
@@ -260,7 +250,7 @@ export default function App() {
         />
 
         <LexiconTab
-          hidden={!current || view !== 'lexicon'} lexicon={lexicon.lexicon} selected={lexicon.selected} error={lexicon.state.error} message={lexicon.message}
+          hidden={!current || tab !== 'lexicon'} lexicon={lexicon.lexicon} selected={lexicon.selected} error={lexicon.state.error} message={lexicon.message}
           suggestions={lexiconSuggestions.file} suggestionsMessage={lexiconSuggestions.message}
           onApplySuggestion={(index, row, avoid) => {
             const result = lexicon.actions.apply(row, avoid);
@@ -272,13 +262,13 @@ export default function App() {
         />
 
         <StoriesTab
-          stories={stories} headers={backlog?.headers ?? []} problems={problems} checked={checked} lastChecked={lastChecked} hidden={!current || view !== 'stories'}
+          stories={stories} headers={backlog?.headers ?? []} problems={problems} checked={checked} lastChecked={lastChecked} hidden={!current || tab !== 'stories'}
           onOpen={openInEditor} onCheck={actions.toggleChecked} onCheckAll={actions.checkAll} onApplyBulk={actions.applyBulkPatch} onDeleteChecked={actions.deleteChecked}
         />
 
         {review.exists && (
           <ReviewTab
-            rows={review.rows} stories={stories} hidden={!current || view !== 'review'}
+            rows={review.rows} stories={stories} hidden={!current || tab !== 'review'}
             onOpen={openInEditor} onApply={applyUnit} onDismiss={dismissUnit} onAcceptAll={acceptUnits} onClear={review.clear}
           />
         )}
@@ -286,7 +276,7 @@ export default function App() {
         <SettingsTab hidden={!showSettings} settingsState={settingsState} />
 
         <GraphTab
-          stories={stories} problems={problems} current={current} hidden={!current || view !== 'graph'}
+          stories={stories} problems={problems} current={current} hidden={!current || tab !== 'graph'}
           onOpen={openInEditor} onAddDependency={actions.addDependency} onRemoveDependency={actions.removeDependency}
         />
       </main>

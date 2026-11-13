@@ -15,7 +15,6 @@ const initial = {
   backlog: null, // { headers, stories, hasBom }
   initials: '', // the open backlog's initials; every ID is computed with them
   selectedId: null,
-  view: 'editor', // 'editor' | 'stories' | 'graph' | 'proposed' | 'lexicon' | 'settings' | 'review'
   checked: new Set(), // story ids ticked in the Stories tab (separate from selectedId)
   lastChecked: null, // id of the last ticked row, for shift-click ranges
   edits: 0, // bumped by every change to the backlog; the auto-save runs when it changes
@@ -54,8 +53,6 @@ export function reducer(state, action) {
       return { ...state, current: action.name };
     case 'select':
       return { ...state, selectedId: action.id };
-    case 'view':
-      return { ...state, view: action.view };
     // A frozen story is read-only: an edit action for it changes nothing, even when the form is stale.
     case 'edit': {
       if (state.backlog.stories.some((s) => s.id === action.id && s.frozen)) return state;
@@ -164,6 +161,7 @@ export function useBacklog() {
   const [state, dispatch] = useReducer(reducer, initial);
   const [status, setStatus] = useState({ kind: 'idle', detail: '' });
   const [message, setMessage] = useState(null);
+  const [ready, setReady] = useState(false); // the first read of the backlog list (and the first backlog) is done
 
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -240,6 +238,8 @@ export function useBacklog() {
           if (files.length) await loadFile(files[0], true);
         } catch (err) {
           setMessage(err.message);
+        } finally {
+          setReady(true);
         }
       },
 
@@ -274,7 +274,6 @@ export function useBacklog() {
 
       openFolder: () => wrap(() => store.openFolder()),
 
-      setView: (view) => dispatch({ type: 'view', view }),
       selectStory: (id) => dispatch({ type: 'select', id }),
 
       // `headers` is passed when the backlog was loaded in the same tick, before state has re-rendered.
@@ -402,5 +401,5 @@ export function useBacklog() {
 
   const selected = state.backlog?.stories.find((s) => s.id === state.selectedId) ?? null;
 
-  return { state, selected, status, message, actions };
+  return { state, selected, status, message, ready, actions };
 }

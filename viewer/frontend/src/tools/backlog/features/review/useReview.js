@@ -13,6 +13,11 @@ const RETRY_MAX_MS = 30000;
 export function useReview(current) {
   const [rows, setRows] = useState([]);
   const [exists, setExists] = useState(false); // the backlog has a review file (even one with no open rows)
+  // The backlog whose first read is done. `loaded` compares it with `current` during render, because a plain flag would
+  // still be true for one render after `current` changes, before the effect clears it, and a reload on /backlog/review
+  // would then fall back to Editor before the review file is read.
+  const [loadedFor, setLoadedFor] = useState(undefined);
+  const loaded = loadedFor === current;
   const [message, setMessage] = useState(null); // problem with the review file itself
   const [notice, setNotice] = useState(null); // why the last Apply did nothing
   const m = useRef({ rows: [], name: null, dirty: false, dirtyName: null, inFlight: null, timer: null, retry: null, delay: RETRY_START_MS }).current;
@@ -98,6 +103,7 @@ export function useReview(current) {
       setNotice(null);
       setMessage(null);
       if (current) await load();
+      if (!cancelled) setLoadedFor(current);
     })();
     return () => {
       cancelled = true;
@@ -148,7 +154,7 @@ export function useReview(current) {
   }, [m]);
 
   return useMemo(
-    () => ({ rows, exists, message, notice, notify: setNotice, decide, clear, retarget, settle, reload: load }),
-    [rows, exists, message, notice, decide, clear, retarget, settle, load],
+    () => ({ rows, exists, loaded, message, notice, notify: setNotice, decide, clear, retarget, settle, reload: load }),
+    [rows, exists, loaded, message, notice, decide, clear, retarget, settle, load],
   );
 }

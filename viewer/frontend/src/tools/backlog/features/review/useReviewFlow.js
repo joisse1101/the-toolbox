@@ -3,8 +3,8 @@ import { unitsOf, unitStoryCode, openCounts, orphanUnits, reviewOverview, accept
 import { useReview } from './useReview.js';
 
 // Review suggestions for the open backlog (its review file), shown next to the fields they concern: the counts and
-// units the Editor needs, Apply, Dismiss and Accept all, and leaving the Review tab when the file goes away.
-export function useReviewFlow({ current, stories, backlog, initials, selected, view, actions, ask }) {
+// units the Editor needs, Apply, Dismiss and Accept all. (Leaving the Review tab when the file goes away is resolveTab's job, see useTab.)
+export function useReviewFlow({ current, stories, backlog, initials, selected, actions, ask }) {
   const review = useReview(current);
   const reviewUnits = useMemo(() => unitsOf(review.rows), [review.rows]);
   const suggestionCounts = useMemo(() => openCounts(review.rows, stories), [review.rows, stories]);
@@ -30,11 +30,5 @@ export function useReviewFlow({ current, stories, backlog, initials, selected, v
   };
   const openReviewCount = useMemo(() => reviewOverview(review.rows, stories).openCount, [review.rows, stories]);
   const dismissOrphans = () => review.decide(orphans.flatMap((u) => u.indexes), 'dismissed');
-  // The Review tab only exists while the backlog has a review file; leave it when the file goes away.
-  const leaveReview = view === 'review' && !review.exists;
-  useEffect(() => {
-    if (leaveReview) actions.setView('editor');
-  }, [leaveReview, actions]);
-
   return { review, suggestionCounts, orphans, selectedUnits, applyUnit, dismissUnit, acceptSummary, acceptUnits, openReviewCount, dismissOrphans };
 }

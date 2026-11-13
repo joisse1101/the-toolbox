@@ -11,7 +11,7 @@ const INITIALS = 'B1';
 function opened(text = FILE, initials = INITIALS) {
   const backlog = loadBacklog(text, { initials });
   let state = {
-    files: [], current: 'x.csv', backlog: null, initials: '', selectedId: null, view: 'editor', checked: new Set(), lastChecked: null, edits: 0,
+    files: [], current: 'x.csv', backlog: null, initials: '', selectedId: null, checked: new Set(), lastChecked: null, edits: 0,
   };
   state = reducer(state, { type: 'loaded', name: 'x.csv', backlog, initials });
   return state;
