@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { sampleTree, putFile, FIXTURE_BACKLOG_CSV } from './helpers/backlog-tree.mjs';
+import { tempProject } from './helpers/temp-project.mjs';
 import { loadBacklog } from '../../skills/jois-story-review/lib/backlog/model.js';
 import { parseCsv } from '../../skills/jois-story-review/lib/backlog/csv.js';
 
@@ -20,7 +20,7 @@ const script = (skill, name) => path.join(SKILLS, skill, name);
 // The accepted backlog of the sample holds the derived IDs, so the test makes the drift itself: a stored ID the portal would renumber.
 const csvText = fs.readFileSync(FIXTURE_BACKLOG_CSV, 'utf8').replace('H1-FT-0001', 'H1-FOC-0001');
 const driftedTree = () => {
-  const root = sampleTree();
+  const root = sampleTree({ into: tempProject().dataDir });
   putFile(root, 'sample', 'backlog', csvText);
   return root;
 };
@@ -30,11 +30,9 @@ const reporting = derived.find((s) => s.title === 'Count focus sessions by categ
 const STORED_ID = stored.find((r) => r[3] === 'Count focus sessions by category')[0];
 const DERIVED_ID = reporting.code;
 
+// `root` is the `.plans` of a temp project (see driftedTree), so the script runs from its parent folder.
 function run(root, skill, name, args, input) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'story-ids-config-'));
-  const config = path.join(dir, 'planner.config.yaml');
-  fs.writeFileSync(config, `dataDir: ${JSON.stringify(path.resolve(root))}\n`);
-  return spawnSync(process.execPath, [script(skill, name), ...args], { encoding: 'utf8', input, env: { ...process.env, PLANNER_CONFIG: config } });
+  return spawnSync(process.execPath, [script(skill, name), ...args], { encoding: 'utf8', input, cwd: path.dirname(root) });
 }
 
 test('the fixture backlog stores an ID that differs from the derived one', () => {

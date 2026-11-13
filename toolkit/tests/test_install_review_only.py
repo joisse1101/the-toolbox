@@ -5,8 +5,6 @@ project, then runs the two scripts the command can use from the installed folder
 data. Nothing touches the home folder or the real planner data.
 """
 
-import json
-import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -36,18 +34,17 @@ def project(tmp_path):
     for flags in (("-Skill", "jois-story-review"), ("-Command", "jois-story")):
         done = _install(project, *flags)
         assert done.returncode == 0, done.stdout + done.stderr
-    config = tmp_path / "planner.config.yaml"
-    config.write_text(f"dataDir: {json.dumps(str(SAMPLE_DATA))}\n", encoding="utf-8")
-    return project, config
+    # A story script finds its data only as `.plans` in the current folder, so the sample data goes there.
+    shutil.copytree(SAMPLE_DATA, project / ".plans")
+    return project
 
 
-def _node(config, script, *args, stdin=None):
-    env = dict(os.environ, PLANNER_CONFIG=str(config))
-    return subprocess.run([NODE, str(script), *args], capture_output=True, text=True, env=env, input=stdin, timeout=60)
+def _node(project, script, *args, stdin=None):
+    return subprocess.run([NODE, str(script), *args], capture_output=True, text=True, cwd=project, input=stdin, timeout=60)
 
 
 def test_only_the_review_skill_and_the_commands_are_installed(project):
-    root, _ = project
+    root = project
     skills = sorted(p.name for p in (root / ".claude" / "skills").iterdir())
     assert skills == ["jois-story-review"]
     commands = sorted(p.name for p in (root / ".claude" / "commands" / "jois-story").iterdir())
@@ -65,10 +62,10 @@ def test_the_review_command_names_a_skill_for_each_script_and_does_not_need_prop
 
 
 def test_the_installed_review_skill_holds_the_scripts_the_command_falls_back_on(project):
-    root, config = project
+    root = project
     skill = root / ".claude" / "skills" / "jois-story-review"
-    menu = _node(config, skill / "read-backlog.mjs", "sample")
+    menu = _node(root, skill / "read-backlog.mjs", "sample")
     assert menu.returncode == 0, menu.stderr
     assert "Sections of sample" in menu.stdout
-    check = _node(config, skill / "write-review.mjs", "sample", "--append", "--check", stdin="[]")
+    check = _node(root, skill / "write-review.mjs", "sample", "--append", "--check", stdin="[]")
     assert check.returncode == 0, check.stdout + check.stderr
