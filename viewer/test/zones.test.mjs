@@ -36,6 +36,26 @@ function allowed(file) {
   return null;
 }
 
+// Rules inside viewer/frontend/src: shared/ stays below the tools, a tool stays apart from other tools, and a feature
+// stays apart from other features. app/ may import tools, because it mounts them. Returns the rule broken, or null.
+const SRC = 'viewer/frontend/src';
+function frontendBreach(file, target) {
+  if (!starts(file, SRC)) return null;
+  if (starts(file, `${SRC}/shared`) && (starts(target, `${SRC}/tools`) || starts(target, `${SRC}/app`))) {
+    return 'shared/ imports tools/ or app/';
+  }
+  const tool = file.match(/^viewer\/frontend\/src\/tools\/([^/]+)\//);
+  if (!tool) return null;
+  const otherTool = target.match(/^viewer\/frontend\/src\/tools\/([^/]+)(\/|$)/);
+  if (otherTool && otherTool[1] !== tool[1]) return 'a tool imports another tool';
+  const feature = file.match(/^viewer\/frontend\/src\/tools\/[^/]+\/features\/([^/]+)\//);
+  const otherFeature = target.match(/^viewer\/frontend\/src\/tools\/([^/]+)\/features\/([^/]+)(\/|$)/);
+  if (feature && otherFeature && (otherFeature[1] !== tool[1] || otherFeature[2] !== feature[1])) {
+    return 'a feature imports another feature';
+  }
+  return null;
+}
+
 function imports(file) {
   const text = fs.readFileSync(path.join(REPO, file), 'utf8');
   return [...text.matchAll(IMPORT)].map((m) => rel(path.resolve(path.dirname(path.join(REPO, file)), m[1])));
@@ -50,6 +70,18 @@ test('every source file imports only from the zones its own zone may depend on',
   for (const file of files) {
     for (const target of imports(file)) {
       if (!allowed(file).some((folder) => starts(target, folder))) breaches.push(`${file} -> ${target}`);
+    }
+  }
+  assert.deepEqual(breaches, []);
+});
+
+test('inside the frontend, shared/ stays below the tools, and tools and features stay apart', () => {
+  assert.ok(files.some((f) => starts(f, `${SRC}/tools/backlog/features`)), 'no feature files found');
+  const breaches = [];
+  for (const file of files) {
+    for (const target of imports(file)) {
+      const rule = frontendBreach(file, target);
+      if (rule) breaches.push(`${file} -> ${target} (${rule})`);
     }
   }
   assert.deepEqual(breaches, []);
@@ -76,4 +108,15 @@ test('the rules reject what they are for', () => {
   assert.equal(imports('toolkit/skills/jois-story-review/write-review.mjs', 'viewer/backend/server.cjs'), false);
   assert.equal(imports('toolkit/skills/jois-story-propose/write-proposal.mjs', 'viewer/shared/backlog/model.js'), false);
   assert.equal(imports('viewer/frontend/src/main.jsx', 'toolkit/skills/jois-story-review/write-review.mjs'), false);
+});
+
+test('the frontend rules reject what they are for', () => {
+  const T = `${SRC}/tools/backlog`;
+  assert.ok(frontendBreach(`${SRC}/shared/ui/Info.jsx`, `${T}/shared/issues.js`));
+  assert.ok(frontendBreach(`${SRC}/shared/ui/Info.jsx`, `${SRC}/app/routes.jsx`));
+  assert.ok(frontendBreach(`${T}/shell/FileBar.jsx`, `${SRC}/tools/other/Thing.jsx`));
+  assert.ok(frontendBreach(`${T}/features/stories/StoriesTab.jsx`, `${T}/features/graph/graph.js`));
+  assert.equal(frontendBreach(`${T}/features/stories/StoriesTab.jsx`, `${T}/shared/issues.js`), null);
+  assert.equal(frontendBreach(`${T}/features/stories/StoriesTab.jsx`, `${SRC}/shared/ui/EmptyState.jsx`), null);
+  assert.equal(frontendBreach(`${SRC}/app/routes.jsx`, `${T}/BacklogTool.jsx`), null);
 });
