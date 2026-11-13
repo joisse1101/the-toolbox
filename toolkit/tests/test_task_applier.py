@@ -171,12 +171,14 @@ def test_apply_command_takes_a_slice_in_any_form_and_asks_when_unsure():
     assert "Bash(node *)" not in allowed and "Bash(node:*)" not in allowed
 
 
-def test_apply_and_archive_share_the_finding_section_except_the_list_filter_line():
+def test_apply_and_archive_share_the_finding_section_except_the_list_filter_line_and_the_glob_key():
+    # Archive finds a slice by source.json, so a slice reduced to its record is still found; apply keys on tasks.md.
     def without_filter(path):
         lines = _finding_section(path).splitlines()
         filters = [line for line in lines if line.startswith("Slices this command lists:")]
         assert len(filters) == 1
-        return [line for line in lines if not line.startswith("Slices this command lists:")]
+        globs = ("| backlog and slice |", "| one word |", "| none |", "The key is `source.json`")
+        return [line for line in lines if line and not line.startswith(("Slices this command lists:",) + globs)]
 
     archive = TOOLKIT / "commands" / "jois-code" / "archive.md"
     assert without_filter(APPLY_COMMAND) == without_filter(archive)
