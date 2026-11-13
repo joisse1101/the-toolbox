@@ -177,7 +177,8 @@ def test_apply_and_archive_share_the_finding_section_except_the_list_filter_line
         lines = _finding_section(path).splitlines()
         filters = [line for line in lines if line.startswith("Slices this command lists:")]
         assert len(filters) == 1
-        globs = ("| backlog and slice |", "| one word |", "| none |", "The key is `source.json`")
+        # The closing-line rule differs by design: apply prints the next stage's line once, archive prints none.
+        globs = ("| backlog and slice |", "| one word |", "| none |", "The key is `source.json`", "Once the slice is settled, announce")
         return [line for line in lines if line and not line.startswith(("Slices this command lists:",) + globs)]
 
     archive = TOOLKIT / "commands" / "jois-code" / "archive.md"

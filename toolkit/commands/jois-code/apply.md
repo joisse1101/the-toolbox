@@ -4,7 +4,7 @@ description: "Apply a slice one group of tasks at a time: hand each group to tas
 allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git add:*), Bash(git commit:*), Bash(git branch --show-current:*), Bash(git rev-parse:*), Bash(git ls-files:*), Bash(node *jois-story-plan*read-diagrams.mjs*), Skill, Read, Edit, Write(**/slices/*/review.md), Glob, Agent, Monitor, AskUserQuestion
 disable-model-invocation: true
 metadata:
-  version: "2.3.0"
+  version: "2.4.0"
   last_updated: "2026-11-13"
 ---
 
@@ -45,7 +45,7 @@ AskUserQuestion shows at most four options plus free text. When more than four s
 
 When the same `<backlog>/slices/<slice>` matches in more than one place, list the paths and ask which one. Write nothing until the user answers.
 
-Once the slice is settled, announce its backlog and name. At the end of this command, and at every stop after the slice is settled, print this command's full form, its slash command name followed by `slice <backlog>/<slice>`, with the real names, as the last lines.
+Once the slice is settled, announce its backlog and name. Print no command line during the run, and never print this command's own line. Print the next stage's line once, as the last line of the final reply of a finished run, and never in a later reply.
 
 ## Rules
 
@@ -68,7 +68,7 @@ A slice is the folder `<backlog>/slices/<slice>/` of the data folder the plan sk
    - If `tasks.md` has no task line, say the slice has no tasks, point to `jois-story-plan` and stop. Do not say the slice is built.
    - A group is one `## <flow>` section of `tasks.md`.
    - A task is a checkbox line `- [ ] T-<slice>-<name> <title>` with its `Satisfies:` and `Verify:` lines.
-   - If no group has an unticked task, skip step 3 and step 4, say the slice is built, print `/jois-code:apply slice <backlog>/<slice>` and `/jois-code:archive slice <backlog>/<slice>` with the real names, name `jois-story-plan` for the next slice and stop.
+   - If no group has an unticked task, skip step 3 and step 4, say the slice is built, name the next stage as step 11 does (validate or archive, one line only, with the real names), name `jois-story-plan` for the next slice and stop.
 3. **Check the slice is current.**
    - Look for `read-diagrams.mjs` in `~/.claude/skills/jois-story-plan/` and in this project's `.claude/skills/jois-story-plan/`.
    - If it is in neither, say the plan skill is not installed, name `Install-Toolkit.ps1` and stop.
@@ -243,7 +243,7 @@ A slice is the folder `<backlog>/slices/<slice>/` of the data folder the plan sk
 11. **Take the next group.**
     - Repeat from step 6 until no group has a pending task.
     - The review of step 10a runs once before the test task, and the test task in the last group runs as step 7 says. Its failures run the fix loop of step 9, and the loop asks the user if a failure stays unexplained.
-    - Then read the slice's `tasks.md` again. If no group has an unticked task, say the slice is built and name the next stage, and stop. The last lines print this command's full form, `/jois-code:apply slice <backlog>/<slice>`, and the full form of the next stage, with the real names. The next stage is `/jois-code:archive slice <backlog>/<slice>` when the slice's `validation.md` says `Validated: yes` at the current commit, and `/jois-code:validate slice <backlog>/<slice>` first otherwise (a fix commit after the review makes the earlier validation out of date). Name `jois-story-plan` only for the next slice, after archive. Never suggest `/opsx:archive`.
+    - Then read the slice's `tasks.md` again. If no group has an unticked task, say the slice is built and name the next stage, and stop. Print only the one line of the next stage, with the real names, as the last line of this final reply, and not this command's own line. The next stage is `/jois-code:archive slice <backlog>/<slice>` when the slice's `validation.md` says `Validated: yes` at the current commit, and `/jois-code:validate slice <backlog>/<slice>` first otherwise (a fix commit after the review makes the earlier validation out of date). Name `jois-story-plan` only for the next slice, after archive. Never suggest `/opsx:archive`.
 
 ## Resuming
 

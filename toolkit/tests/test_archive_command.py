@@ -66,24 +66,26 @@ def test_finding_section_has_the_list_filter_line_and_the_four_option_rule():
     assert "more than four slices qualify" in finding
 
 
-def test_finding_section_never_names_its_command_and_ends_with_the_full_form_line():
+def test_finding_section_never_names_its_command_and_prints_no_command_line():
     finding = _finding()
     assert "/jois-code:" not in finding
     assert "archive" not in finding.lower().replace("archived.md", "")
-    assert "print this command's full form, its slash command name followed by `slice <backlog>/<slice>`, with the real names" in finding
+    assert "full form" not in finding
 
 
-def test_every_stop_after_the_slice_is_settled_prints_the_full_form():
-    full_form = "`/jois-code:archive slice <backlog>/<slice>`"
-    assert full_form in _step(3, 4)
-    assert full_form in _last_step(8)
-    assert full_form in _text().split("## Resuming", 1)[1]
+def test_the_command_prints_no_slash_command_line_and_says_so_in_rules():
+    text = _text()
+    rules = text.split("## Rules", 1)[1].split("\n## ", 1)[0]
+    assert "Print no slash command line, neither this command's nor another stage's, at any stop and in any later reply" in rules
+    assert "`/jois-code:archive slice <backlog>/<slice>`" not in text
+    assert "full form" not in text
+    assert "rerun can be copied" not in text
 
 
 def test_command_is_manual_only_and_versioned():
     frontmatter = _frontmatter()
     assert "disable-model-invocation: true" in frontmatter
-    assert 'version: "1.4.1"' in frontmatter
+    assert 'version: "1.5.0"' in frontmatter
     assert "last_updated:" in frontmatter
 
 

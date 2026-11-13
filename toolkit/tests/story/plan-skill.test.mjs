@@ -11,7 +11,7 @@ const body = skill.replace(/\r\n/g, '\n');
 test('the skill is named jois-story-plan, versioned, and allows only its five scripts, the init script and the file tools', () => {
   const meta = frontmatter(skill);
   assert.equal(meta.name, 'jois-story-plan');
-  assert.match(body, /metadata:\n  version: "1\.8\.0"\n  last_updated: "2026-11-13"/);
+  assert.match(body, /metadata:\n  version: "1\.9\.0"\n  last_updated: "2026-11-13"/);
   assert.deepEqual(meta['allowed-tools'].split(/,\s*/).sort(), [
     'AskUserQuestion', 'Bash(git add *slices*)', 'Bash(git check-ignore:*)', 'Bash(git commit:*)', 'Bash(git rev-parse:*)', 'Bash(node *init-plans.mjs*)', 'Bash(node *read-context-map.mjs*)', 'Bash(node *read-diagrams.mjs*)', 'Bash(node *write-context-map.mjs*)', 'Bash(node *write-diagram.mjs*)', 'Bash(node *write-freeze.mjs*)', 'Glob', 'Grep', 'Read', 'Skill',
   ]);
@@ -188,6 +188,15 @@ test('the skill asks once, after the freeze, whether to commit the three plan fi
   assert.match(section, /confirmation of their commit rule/);
   assert.match(section, /files stay untracked until the user commits them/);
   assert.match(section, /`user-stories\.csv`, the portal's file, which you leave to the user/);
+});
+
+test('the skill ends a finished run with the apply command once, and never at an early stop or in a later reply', () => {
+  const section = /## Ask whether to commit the plan files([\s\S]*)$/.exec(body)[1];
+  assert.match(section, /follows the answer to this question, or with the freeze reply when the question does not apply/);
+  assert.match(section, /`\/jois-code:apply slice <backlog>\/<slice>`/);
+  assert.match(section, /Print it once per run/);
+  assert.match(section, /Never print it at an early stop \(the write was rejected, the read-back did not match, or a critical finding blocks the freeze\), and never in a later reply/);
+  assert.equal((body.match(/\/jois-code:apply/g) || []).length, 1, 'the apply line is named only in the closing paragraph');
 });
 
 test('the skill verifies the written slice before it freezes any story', () => {
