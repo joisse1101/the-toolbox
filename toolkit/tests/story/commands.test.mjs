@@ -26,7 +26,7 @@ test('no command names a retired tool, launcher, old skill name or old command n
   for (const name of NAMES) {
     assert.doesNotMatch(
       read(name),
-      /mcp__|read_context|read_file|search_stories|check_drafts|write_proposals|write_lexicon|write_review|suggest_lexicon_change|shape-stories|plan-stories|explore-stories|propose-stories|review-backlog|\/story:|\.ps1|backlog-tools|planner\/data|reviews\/<|lexicons\//,
+      /mcp__|read_context|read_file|search_stories|check_drafts|write_proposals|write_lexicon|write_review|suggest_lexicon_change|shape-stories|plan-stories|explore-stories|propose-stories|review-backlog|\/story:|\.ps1|backlog-tools|viewer\/data|reviews\/<|lexicons\//,
       name,
     );
   }

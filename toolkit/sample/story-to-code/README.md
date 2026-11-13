@@ -56,7 +56,7 @@ Recording runs the whole flow once in a mock repo and costs real model tokens, s
 The walk built streaks (the current and the best streak of a habit) on 2026-11-12 with Claude Code 2.1.322 and Sonnet. It ran headless (`claude -p --model sonnet --output-format json`, one call per stage) because no person was at the keyboard, which changed three things.
 
 - **Answers given up front.** The prompts held the agreed stories and the design answers, and said to take the recommended option wherever a command would ask the user. A headless session cannot answer `AskUserQuestion`, so apply and archive each stopped once on a question and were run again with that instruction.
-- **Accept is scripted.** The portal's Accept all button was replaced by `acceptProposed` and `serializeBacklog` from `planner/logic`, the same functions the portal calls.
+- **Accept is scripted.** The portal's Accept all button was replaced by `acceptProposed` and `serializeBacklog` from `viewer/shared`, the same functions the portal calls.
 - **The proposals file was rebuilt.** Accept emptied it before it was copied, so `stages/proposed/.plans/habits/user-stories/proposals.csv` is rebuilt from what the propose run printed.
 
 What the walk showed, so a rerun does not hit it again:

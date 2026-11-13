@@ -30,7 +30,7 @@ test('every script the skill names exists in the skill folder, and none of its o
 
 test('the skill never runs a story writer and names no retired tool, launcher or repo setting', () => {
   assert.match(body, /never run a writer of `jois-story-propose` or `jois-story-review`/);
-  for (const retired of ['repo_tree', 'repo_grep', 'repo_read', 'repo.json', 'read_diagrams', 'check_diagram', 'write_diagram', 'diagram-tools', 'backlog-tools', 'launcher', 'planner/guidelines', 'plan-stories', '/story:']) {
+  for (const retired of ['repo_tree', 'repo_grep', 'repo_read', 'repo.json', 'read_diagrams', 'check_diagram', 'write_diagram', 'diagram-tools', 'backlog-tools', 'launcher', 'viewer/shared/guidelines', 'plan-stories', '/story:']) {
     assert.ok(!body.includes(retired), `the skill still names ${retired}`);
   }
 });

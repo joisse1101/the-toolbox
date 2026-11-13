@@ -69,7 +69,7 @@ Each topic that used to be explained here is on a wiki page.
 | Topic | Page |
 | --- | --- |
 | Skills that carry scripts, the `npm ci` step and the Node version for the story skills | [Install](../wiki/toolkit/Install.md) |
-| Where the story skills find their data | [Story Skills Internals](../wiki/planner/architecture/Story-Skills-Internals.md) |
+| Where the story skills find their data | [Story Skills Internals](../wiki/viewer/architecture/Story-Skills-Internals.md) |
 | Naming, the domains and the migration from the old names | [Toolkit Guide](../wiki/toolkit/Toolkit-Guide.md) and [Install](../wiki/toolkit/Install.md) |
 | Every skill, command, rule and agent | [Toolkit Guide](../wiki/toolkit/Toolkit-Guide.md) |
 | The design skill and the `jois-git`, `jois-code` and `jois-docs` commands in detail | [Command Details](../wiki/toolkit/Command-Details.md) |
