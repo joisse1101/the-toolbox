@@ -6,7 +6,8 @@
     "dev": "vite --config frontend/vite.config.mjs",
     "build": "vite build --config frontend/vite.config.mjs",
     "start": "node scripts/start.mjs --build",
-    "test": "node --test --import ./test/setup.mjs test/*.test.mjs test/*/*.test.mjs"
+    "test": "node --test --import ./test/setup.mjs test/*.test.mjs test/*/*.test.mjs",
+    "typecheck": "tsc -p tsconfig.node.json && tsc -p frontend/tsconfig.json"
   },
   "dependencies": {
     "react": "^19.3.1",
@@ -15,7 +16,11 @@
     "yaml": "^2.9.1"
   },
   "devDependencies": {
+    "@types/node": "24.19.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "^6.2.1",
+    "typescript": "7.0.2",
     "vite": "^8.3.6"
   }
 }
