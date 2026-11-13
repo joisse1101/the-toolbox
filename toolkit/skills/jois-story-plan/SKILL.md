@@ -1,10 +1,10 @@
 ---
 name: jois-story-plan
 description: Draw the context map of a backlog with the user (bounded contexts, the Epics each holds, the owner and the links between them), and turn the shaped stories of one Epic, one Feature or one story of a backlog (a folder of the data folder that holds `user-stories.csv`) into a slice in `<backlog>/slices/<slice>/`: one markdown document holding the use-case specification, a class diagram and sequence diagrams as fenced Mermaid blocks, drawn to references/diagram-conventions.md, and a `tasks.md` of build tasks, one or more per acceptance criterion, written with it. Decides the scope (Epic, Feature or story) with the user first, holds a design checkpoint (an outline and the open design decisions, asked of the user) before drafting at design level, grounded in the existing code when the current folder holds the code of the flow, shows the complete document, asks one yes/no and writes only after the user confirms. Reports slices and a context map that are stale because stories or Epics changed. Never changes the backlog, the proposals, the reviews, the lexicon or the repo. Use when the user wants to plan, draw, diagram or specify stories, or to redraw a slice.
-allowed-tools: Bash(node *read-diagrams.mjs*), Bash(node *read-context-map.mjs*), Bash(node *write-diagram.mjs*), Bash(node *write-context-map.mjs*), Bash(node *write-freeze.mjs*), Bash(node *init-plans.mjs*), Skill, Read, Grep, Glob
+allowed-tools: Bash(node *read-diagrams.mjs*), Bash(node *read-context-map.mjs*), Bash(node *write-diagram.mjs*), Bash(node *write-context-map.mjs*), Bash(node *write-freeze.mjs*), Bash(node *init-plans.mjs*), Bash(git rev-parse:*), Bash(git check-ignore:*), Bash(git add *slices*), Bash(git commit:*), AskUserQuestion, Skill, Read, Grep, Glob
 metadata:
-  version: "1.7.1"
-  last_updated: "2026-11-11"
+  version: "1.8.0"
+  last_updated: "2026-11-13"
 ---
 
 # Plan stories into diagrams
@@ -204,3 +204,19 @@ node <skill folder>/write-freeze.mjs data-portal <<'JSON'
 [{ "id": "B1-IAM-0001", "title": "Sign in with email" }, { "id": "B1-IAM-0002", "title": "Reset a password" }]
 JSON
 ```
+
+## Ask whether to commit the plan files
+
+The freeze is the last write of a plan, so ask this question after it and never before: the slice must be written, read back with a match, verified and frozen. Ask it once.
+
+First check whether the question applies, with two commands run from the current folder:
+
+- `git rev-parse --is-inside-work-tree`: when it fails or does not print `true`, the folder is not inside a git repository. Do not ask, commit nothing and say nothing more about git.
+- `git check-ignore <data folder>/<backlog>/slices/<slice>/tasks.md`: when it prints the path, git ignores the plan files. Do not ask, commit nothing, and say that the project's `.gitignore` ignores them.
+
+Otherwise end the reply with one `AskUserQuestion` ("Commit the plan files?") whose options are "Yes, commit" and "Not now", and **stop**. Before the question, name the three files by path and say that the freeze also changed `user-stories.csv`, the portal's file, which you leave to the user to commit.
+
+- **"Yes, commit"**: stage `UC-<slice>.md`, `tasks.md` and `source.json` of the slice by explicit path (`git add <path> <path> <path>`), then commit them with `docs(plans): plan <backlog>/<slice>`. Stage no other file and never push. This pick is the user's confirmation of their commit rule, so you do not ask for a confirmation word. Say the commit's short hash and the three files.
+- **"Not now"**: commit nothing, and say that the files stay untracked until the user commits them.
+
+A typed "yes" is not a pick of "Yes, commit": ask the question again.

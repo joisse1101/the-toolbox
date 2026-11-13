@@ -72,6 +72,15 @@ test('explore and propose may read files with Read, Grep and Glob, and explore h
   assert.ok(!explore.some((t) => /^(Write|Edit|MultiEdit|NotebookEdit)$/.test(t) || /write-|init-plans/.test(t)), 'explore holds no tool that writes');
 });
 
+test('plan may ask the commit question and run only the git commands it needs, and stages by path under slices', () => {
+  const { patterns, front } = parse(path.join(TOOLKIT, 'skills', 'jois-story-plan', 'SKILL.md'));
+  const tools = /^allowed-tools: (.*)$/m.exec(front)[1].split(/,\s*/);
+  assert.ok(tools.includes('AskUserQuestion'));
+  for (const p of ['git rev-parse:*', 'git check-ignore:*', 'git add *slices*', 'git commit:*']) assert.ok(patterns.includes(p), `plan allows ${p}`);
+  assert.ok(!patterns.some((p) => /^git (push|add \*$|add -|commit -a)/.test(p)), 'plan allows no push and no broad add');
+  assert.ok(!patterns.some((p) => /git (push|reset|checkout|rm)/.test(p)));
+});
+
 test('the matcher refuses a command that starts with the variable', () => {
   assert.equal(matches('node *read-backlog.mjs*', 'node /x/read-backlog.mjs sample'), true);
   assert.equal(matches('node *read-backlog.mjs*', 'PLANNER_CONFIG=/c.yaml node /x/read-backlog.mjs sample'), false);

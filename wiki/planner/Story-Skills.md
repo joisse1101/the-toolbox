@@ -87,6 +87,14 @@ The writer refuses a story that has no ID, and a story whose ID does not begin w
 
 No skill and no portal control unfreezes a story. A freeze made by mistake is fixed by hand: open `<backlog>/user-stories.csv` in a text editor or Excel and clear the `Frozen` cell of that story. A change to a frozen story needs a superseding story, described next.
 
+### Committing the plan files
+
+After the freeze, the plan skill asks once whether to commit the slice's plan files: `UC-<slice>.md`, `tasks.md` and `source.json`. The freeze is the last write of a plan, so the question never comes earlier. The options are "Yes, commit" and "Not now".
+
+On "Yes, commit" the skill stages the three files by explicit path and commits them as `docs(plans): plan <backlog>/<slice>`. It stages no other file and never pushes. Picking "Yes, commit" counts as the confirmation of the commit rule, so there is no confirmation word. On "Not now" it commits nothing, and the files stay untracked until you commit them.
+
+The skill does not ask in two cases. When `git rev-parse --is-inside-work-tree` says the folder is not inside a git repository, it commits nothing. When `git check-ignore` reports the slice's `tasks.md` as ignored, it says the project's `.gitignore` ignores the plan files and commits nothing. The freeze also changes `user-stories.csv`, which is the portal's file, so the question names it and leaves it to you to commit.
+
 ## The contradiction rule
 
 The rule keeps a new story from silently clashing with what is already agreed. The explore and propose skills apply it to every new or changed story, and the plan skill carries its result into the slice. It has four steps.
