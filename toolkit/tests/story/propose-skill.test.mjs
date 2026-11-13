@@ -140,7 +140,7 @@ test('every script the skill names ships in its folder, and every writer is run 
 test('the skill names no retired tool, launcher or old skill name, and has a Data folder section', () => {
   assert.doesNotMatch(text, /mcp__|read_context|read_file|search_stories|check_drafts|write_proposals|write_lexicon|write_review|suggest_lexicon_change|shape-stories|plan-stories|explore-stories|propose-stories|\/story:|planner\/guidelines|planner\/data|lexicon-suggestions\/<backlog name>/);
   assert.match(text, /## Data folder/);
-  assert.match(text, /PLANNER_CONFIG/);
+  assert.doesNotMatch(text, /PLANNER_CONFIG/);
   assert.match(text, /`<skill folder>`/);
 });
 
