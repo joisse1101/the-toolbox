@@ -1,35 +1,75 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
-import { createFileStore } from '../../../shared/api/files.ts';
+import type { Backlog, BacklogFile, ReviewRow, Story } from '../../../../../shared/types.ts';
+import { createFileStore, messageOf } from '../../../shared/api/files.ts';
 import { loadBacklog, newStory, displayOrder, applyBulk } from '../../../../../shared/backlog/model.ts';
 import { commitEpic, commitEpics, moveStory, moveGroup, gatherFeatures, recodedBetween, removeStory, removeStories, wouldCycle, renumber } from '../../../../../shared/backlog/ids.ts';
 import { applySuggestions, acceptAll } from '../../../../../shared/review/review.ts';
 import { useAutosave } from '../../../shared/hooks/useAutosave.ts';
+import type { StatusReport } from '../../../shared/hooks/useAutosave.ts';
 import { useConfirm } from '../../../shared/hooks/useConfirm.ts';
 
 const store = createFileStore('backlog');
 const NEW_BACKLOG_NAME = 'new-backlog';
 
-const initial = {
+export interface BacklogState {
+  files: string[];
+  current: string | null; // selected file name
+  backlog: BacklogFile | null;
+  initials: string; // the open backlog's initials; every ID is computed with them
+  selectedId: number | null;
+  checked: Set<number>; // story ids ticked in the Stories tab (separate from selectedId)
+  lastChecked: number | null; // id of the last ticked row, for shift-click ranges
+  edits: number; // bumped by every change to the backlog; the auto-save runs when it changes
+}
+
+export type BulkPatch = { priority?: string; epic?: string; feature?: string };
+export type GroupRef = { epic: string; feature?: string };
+
+export type BacklogAction =
+  | { type: 'files'; files: string[] }
+  | { type: 'loaded'; name: string; backlog: BacklogFile; initials: string; keepSelection?: boolean }
+  | { type: 'cleared' }
+  | { type: 'renamed'; name: string }
+  | { type: 'select'; id: number | null }
+  | { type: 'edit'; id: number; change: (draft: Story) => void }
+  | { type: 'add'; story: Story }
+  | { type: 'commitEpic'; id: number }
+  | { type: 'move'; id: number; epic: unknown; beforeId?: number | null }
+  | { type: 'moveGroup'; group: GroupRef; beforeKey?: string | null }
+  | { type: 'renumberDisplayed' }
+  | { type: 'delete'; id: number }
+  | { type: 'deleteMany'; ids: ReadonlySet<number> }
+  | { type: 'addDependency'; id: number; code: string }
+  | { type: 'removeDependency'; id: number; code: string }
+  | { type: 'applySuggestions'; rows: readonly ReviewRow[] }
+  | { type: 'acceptSuggestions'; stories: Story[] }
+  | { type: 'replaceStories'; stories: Story[] }
+  | { type: 'setInitials'; initials: string }
+  | { type: 'check'; ids: Iterable<number>; on: boolean; anchor: number | null }
+  | { type: 'checkAll'; ids: Iterable<number>; on: boolean }
+  | { type: 'bulk'; ids: ReadonlySet<number>; patch: BulkPatch };
+
+const initial: BacklogState = {
   files: [],
-  current: null, // selected file name
-  backlog: null, // { headers, stories, hasBom }
-  initials: '', // the open backlog's initials; every ID is computed with them
+  current: null,
+  backlog: null,
+  initials: '',
   selectedId: null,
-  checked: new Set(), // story ids ticked in the Stories tab (separate from selectedId)
-  lastChecked: null, // id of the last ticked row, for shift-click ranges
-  edits: 0, // bumped by every change to the backlog; the auto-save runs when it changes
+  checked: new Set(),
+  lastChecked: null,
+  edits: 0,
 };
 
 // Story objects are never mutated once they are in state: every change replaces the story (or all of them).
 // Deleted stories drop out of the ticked set.
-function withStories(state, stories, extra = {}) {
+function withStories(state: BacklogState, stories: Story[], extra: Partial<BacklogState> = {}): BacklogState {
   const ids = new Set(stories.map((s) => s.id));
   const checked = new Set([...state.checked].filter((id) => ids.has(id)));
-  return { ...state, backlog: { ...state.backlog, stories }, checked, edits: state.edits + 1, ...extra };
+  return { ...state, backlog: { ...state.backlog!, stories }, checked, edits: state.edits + 1, ...extra };
 }
 
 // IDs and links are recomputed by the ids.js function a case calls; an unchanged result leaves the state alone.
-export function reducer(state, action) {
+export function reducer(state: BacklogState, action: BacklogAction): BacklogState {
   switch (action.type) {
     case 'files':
       return { ...state, files: action.files };
@@ -41,7 +81,7 @@ export function reducer(state, action) {
         current: action.name,
         backlog: action.backlog,
         initials: action.initials,
-        selectedId: stories.length ? stories[Math.min(Math.max(previousIndex, 0), stories.length - 1)].id : null,
+        selectedId: stories.length ? stories[Math.min(Math.max(previousIndex, 0), stories.length - 1)]!.id : null,
         checked: new Set(), // ids are assigned per load, so a selection cannot survive a reload
         lastChecked: null,
         edits: state.edits + (action.backlog.changed ? 1 : 0), // IDs assigned on load must be saved
@@ -55,8 +95,8 @@ export function reducer(state, action) {
       return { ...state, selectedId: action.id };
     // A frozen story is read-only: an edit action for it changes nothing, even when the form is stale.
     case 'edit': {
-      if (state.backlog.stories.some((s) => s.id === action.id && s.frozen)) return state;
-      const stories = state.backlog.stories.map((s) => {
+      if (state.backlog!.stories.some((s) => s.id === action.id && s.frozen)) return state;
+      const stories = state.backlog!.stories.map((s) => {
         if (s.id !== action.id) return s;
         const draft = { ...s, criteria: s.criteria.map((c) => ({ ...c })), clarifications: s.clarifications.map((p) => ({ ...p })) };
         action.change(draft);
@@ -65,34 +105,34 @@ export function reducer(state, action) {
       return withStories(state, stories);
     }
     case 'add':
-      return withStories(state, [...state.backlog.stories, action.story], { selectedId: action.story.id });
+      return withStories(state, [...state.backlog!.stories, action.story], { selectedId: action.story.id });
     case 'commitEpic': {
-      const stories = commitEpic(state.backlog.stories, action.id, state.initials);
-      return stories === state.backlog.stories ? state : withStories(state, stories);
+      const stories = commitEpic(state.backlog!.stories, action.id, state.initials);
+      return stories === state.backlog!.stories ? state : withStories(state, stories);
     }
     case 'move': {
-      const stories = moveStory(state.backlog.stories, action.id, action.epic, action.beforeId, state.initials);
-      return stories === state.backlog.stories ? state : withStories(state, stories, { selectedId: action.id });
+      const stories = moveStory(state.backlog!.stories, action.id, action.epic, action.beforeId, state.initials);
+      return stories === state.backlog!.stories ? state : withStories(state, stories, { selectedId: action.id });
     }
     case 'moveGroup': {
-      const stories = moveGroup(state.backlog.stories, action.group, action.beforeKey, state.initials);
-      return stories === state.backlog.stories ? state : withStories(state, stories);
+      const stories = moveGroup(state.backlog!.stories, action.group, action.beforeKey, state.initials);
+      return stories === state.backlog!.stories ? state : withStories(state, stories);
     }
     case 'renumberDisplayed': {
-      const stories = gatherFeatures(state.backlog.stories, state.initials);
-      return stories === state.backlog.stories ? state : withStories(state, stories);
+      const stories = gatherFeatures(state.backlog!.stories, state.initials);
+      return stories === state.backlog!.stories ? state : withStories(state, stories);
     }
     case 'delete': {
-      const stories = state.backlog.stories;
+      const stories = state.backlog!.stories;
       const i = stories.findIndex((s) => s.id === action.id);
       if (i < 0) return state;
       const rest = removeStory(stories, action.id, state.initials);
       if (rest === stories) return state; // a frozen story is not deleted
-      return withStories(state, rest, { selectedId: rest.length ? rest[Math.min(i, rest.length - 1)].id : null });
+      return withStories(state, rest, { selectedId: rest.length ? rest[Math.min(i, rest.length - 1)]!.id : null });
     }
     // Delete the ticked stories (action.ids) except frozen ones. The selected story moves to the nearest survivor.
     case 'deleteMany': {
-      const stories = state.backlog.stories;
+      const stories = state.backlog!.stories;
       const { stories: rest } = removeStories(stories, action.ids, state.initials);
       if (rest === stories) return state;
       const i = stories.findIndex((s) => s.id === state.selectedId);
@@ -101,14 +141,14 @@ export function reducer(state, action) {
     }
     // Link/unlink from the Graph tab. A link to a missing story, to itself, a repeat or one that closes a cycle is ignored.
     case 'addDependency': {
-      const { stories } = state.backlog;
+      const { stories } = state.backlog!;
       const from = stories.find((s) => s.id === action.id);
       const to = stories.find((s) => s.code === action.code);
       if (!from?.code || from.frozen || !to || from.dependsOn.includes(action.code) || wouldCycle(stories, from.code, action.code)) return state;
       return withStories(state, stories.map((s) => (s === from ? { ...s, dependsOn: [...s.dependsOn, action.code] } : s)));
     }
     case 'removeDependency': {
-      const { stories } = state.backlog;
+      const { stories } = state.backlog!;
       const from = stories.find((s) => s.id === action.id);
       if (from?.frozen || !from?.dependsOn.includes(action.code)) return state;
       const dependsOn = from.dependsOn.filter((c) => c !== action.code);
@@ -117,8 +157,8 @@ export function reducer(state, action) {
     // Apply one review suggestion or a whole split group. A failed apply (stale row, cycle) leaves the state alone;
     // the caller runs applySuggestions first to show the reason.
     case 'applySuggestions': {
-      const result = applySuggestions(state.backlog.stories, action.rows, state.backlog.headers, state.initials);
-      return result.error ? state : withStories(state, result.stories);
+      const result = applySuggestions(state.backlog!.stories, action.rows, state.backlog!.headers, state.initials);
+      return 'error' in result ? state : withStories(state, result.stories);
     }
     // Accept all: the stories acceptAll (viewer/shared/review/review.js) computed for a whole run, stored as one edit.
     case 'acceptSuggestions':
@@ -132,8 +172,8 @@ export function reducer(state, action) {
     // The backlog's initials changed (the server accepted them): every ID that is not frozen is recomputed with them.
     case 'setInitials': {
       if (action.initials === state.initials) return state;
-      const stories = renumber(state.backlog.stories, action.initials);
-      return stories === state.backlog.stories ? { ...state, initials: action.initials } : withStories(state, stories, { initials: action.initials });
+      const stories = renumber(state.backlog!.stories, action.initials);
+      return stories === state.backlog!.stories ? { ...state, initials: action.initials } : withStories(state, stories, { initials: action.initials });
     }
     case 'check': {
       const checked = new Set(state.checked);
@@ -147,7 +187,7 @@ export function reducer(state, action) {
       return { ...state, checked, lastChecked: null };
     }
     case 'bulk': {
-      const stories = state.backlog.stories.map((s) => ({ ...s }));
+      const stories = state.backlog!.stories.map((s) => ({ ...s }));
       applyBulk(stories, action.ids, action.patch);
       return withStories(state, commitEpics(stories, action.ids, state.initials));
     }
@@ -159,8 +199,8 @@ export function reducer(state, action) {
 // The whole editor state for one open backlog, plus the actions that change it and keep it on disk.
 export function useBacklog() {
   const [state, dispatch] = useReducer(reducer, initial);
-  const [status, setStatus] = useState({ kind: 'idle', detail: '' });
-  const [message, setMessage] = useState(null);
+  const [status, setStatus] = useState<StatusReport>({ kind: 'idle', detail: '' });
+  const [message, setMessage] = useState<string | null>(null);
   const [ready, setReady] = useState(false); // the first read of the backlog list (and the first backlog) is done
 
   const stateRef = useRef(state);
@@ -181,7 +221,7 @@ export function useBacklog() {
     }
 
     // keepSelection: stay on the same position in the story list (a reload), rather than start at the top.
-    async function loadFile(name, keepSelection = false) {
+    async function loadFile(name: string, keepSelection = false) {
       const { content: text, initials } = await store.readBacklog(name);
       autosave.loaded(text);
       const backlog = loadBacklog(text, { initials });
@@ -196,17 +236,19 @@ export function useBacklog() {
       autosave.setStatus('idle');
     }
 
-    const wrap = async (fn) => {
+    const wrap = async <T>(fn: () => Promise<T>): Promise<T | undefined> => {
       setMessage(null);
       try {
         return await fn();
       } catch (err) {
-        setMessage(err.message);
+        setMessage(messageOf(err));
         return undefined;
       }
     };
 
-    const edit = (id, change) => dispatch({ type: 'edit', id, change });
+    const addStory = (headers: readonly string[] = stateRef.current.backlog!.headers) => dispatch({ type: 'add', story: newStory(headers) });
+
+    const edit = (id: number, change: (draft: Story) => void) => dispatch({ type: 'edit', id, change });
 
     return {
       // Resolves true once everything typed so far is on disk, false if saving is failing.
@@ -228,7 +270,7 @@ export function useBacklog() {
           const text = await store.read(current);
           if (text !== autosave.lastText() && !autosave.isBusy()) await loadFile(current, true);
         } catch (err) {
-          setMessage(err.message);
+          setMessage(messageOf(err));
         }
       },
 
@@ -237,7 +279,7 @@ export function useBacklog() {
           const files = await refreshFiles();
           if (files.length) await loadFile(files[0], true);
         } catch (err) {
-          setMessage(err.message);
+          setMessage(messageOf(err));
         } finally {
           setReady(true);
         }
@@ -250,18 +292,18 @@ export function useBacklog() {
           const name = await store.create(NEW_BACKLOG_NAME); // the server writes the starting files
           await refreshFiles();
           const backlog = await loadFile(name);
-          actions.addStory(backlog.headers); // a new backlog starts with one blank story
+          addStory(backlog.headers); // a new backlog starts with one blank story
           return true;
         }),
 
-      selectFile: (name) =>
+      selectFile: (name: string) =>
         wrap(async () => {
           if (!(await autosave.leaveCurrentFile())) return;
           await loadFile(name);
         }),
 
       // Resolves true when the file was renamed.
-      renameFile: (wanted) =>
+      renameFile: (wanted: string) =>
         wrap(async () => {
           const { current } = stateRef.current;
           if (!current || wanted === current) return false;
@@ -274,12 +316,10 @@ export function useBacklog() {
 
       openFolder: () => wrap(() => store.openFolder()),
 
-      selectStory: (id) => dispatch({ type: 'select', id }),
+      selectStory: (id: number | null) => dispatch({ type: 'select', id }),
 
       // `headers` is passed when the backlog was loaded in the same tick, before state has re-rendered.
-      addStory(headers = stateRef.current.backlog.headers) {
-        dispatch({ type: 'add', story: newStory(headers) });
-      },
+      addStory,
 
       // Asks first. Resolves true when the story was deleted.
       async deleteSelected() {
@@ -299,8 +339,8 @@ export function useBacklog() {
       // Asks first. Deletes the stories in `ids` (the ticked rows on screen) that are not frozen; `hiddenCount` ticked stories
       // the search or filters hide are kept and named in the question. Returns { deleted, skipped } (skipped: frozen ones kept);
       // nothing is asked or deleted when all of them are frozen, and deleted is 0 when the user cancels.
-      async deleteChecked(ids, hiddenCount = 0) {
-        const { backlog } = stateRef.current;
+      async deleteChecked(ids: ReadonlySet<number>, hiddenCount = 0) {
+        const backlog = stateRef.current.backlog!;
         const { skipped } = removeStories(backlog.stories, ids, stateRef.current.initials);
         const deleted = [...ids].filter((id) => backlog.stories.some((s) => s.id === id)).length - skipped;
         if (deleted <= 0) return { deleted: 0, skipped };
@@ -313,37 +353,37 @@ export function useBacklog() {
       },
 
       // Select the neighbouring story in display order.
-      moveSelection(delta) {
+      moveSelection(delta: number) {
         const { backlog, selectedId } = stateRef.current;
         const stories = displayOrder(backlog?.stories ?? []);
-        const next = stories[stories.findIndex((s) => s.id === selectedId) + delta];
+        const next = stories[stories.findIndex((s) => s.id === selectedId) + delta] as Story | undefined;
         if (!next) return false;
         dispatch({ type: 'select', id: next.id });
         return true;
       },
 
       editStory: edit,
-      commitEpic: (id) => dispatch({ type: 'commitEpic', id }),
-      addDependency: (id, code) => dispatch({ type: 'addDependency', id, code }),
-      removeDependency: (id, code) => dispatch({ type: 'removeDependency', id, code }),
+      commitEpic: (id: number) => dispatch({ type: 'commitEpic', id }),
+      addDependency: (id: number, code: string) => dispatch({ type: 'addDependency', id, code }),
+      removeDependency: (id: number, code: string) => dispatch({ type: 'removeDependency', id, code }),
       // The three moves below resolve the old code -> new code of the stories whose ID changed, so the caller can
       // make their review suggestions follow (review.retarget).
-      moveStory(id, epic, beforeId) {
-        const { stories } = stateRef.current.backlog;
+      moveStory(id: number, epic: unknown, beforeId?: number | null) {
+        const { stories } = stateRef.current.backlog!;
         const recoded = recodedBetween(stories, moveStory(stories, id, epic, beforeId, stateRef.current.initials));
         dispatch({ type: 'move', id, epic, beforeId });
         return recoded;
       },
       // `group` is { epic } or { epic, feature }; beforeKey the epic or feature to land before (null = last).
-      moveGroup(group, beforeKey) {
-        const { stories } = stateRef.current.backlog;
+      moveGroup(group: GroupRef, beforeKey?: string | null) {
+        const { stories } = stateRef.current.backlog!;
         const recoded = recodedBetween(stories, moveGroup(stories, group, beforeKey, stateRef.current.initials));
         dispatch({ type: 'moveGroup', group, beforeKey });
         return recoded;
       },
       // Asks first. Resolves the recoded map, or null when nothing changes or the user cancels.
       async renumberDisplayed() {
-        const { stories } = stateRef.current.backlog;
+        const { stories } = stateRef.current.backlog!;
         const after = gatherFeatures(stories, stateRef.current.initials);
         if (after === stories) return null;
         const recoded = recodedBetween(stories, after);
@@ -355,20 +395,20 @@ export function useBacklog() {
         return recoded;
       },
 
-      replaceStories: (stories) => dispatch({ type: 'replaceStories', stories }),
+      replaceStories: (stories: Story[]) => dispatch({ type: 'replaceStories', stories }),
 
-      toggleChecked: (ids, on, anchor) => dispatch({ type: 'check', ids, on, anchor }),
-      checkAll: (on, ids) => dispatch({ type: 'checkAll', on, ids }),
+      toggleChecked: (ids: Iterable<number>, on: boolean, anchor: number | null) => dispatch({ type: 'check', ids, on, anchor }),
+      checkAll: (on: boolean, ids: Iterable<number>) => dispatch({ type: 'checkAll', on, ids }),
       // Edits the stories in `ids` (the ticked rows on screen). Resolves { skipped }: the frozen ones, which a bulk edit leaves.
-      applyBulkPatch(patch, ids) {
-        const skipped = stateRef.current.backlog.stories.filter((s) => ids.has(s.id) && s.frozen).length;
+      applyBulkPatch(patch: BulkPatch, ids: ReadonlySet<number>) {
+        const skipped = stateRef.current.backlog!.stories.filter((s) => ids.has(s.id) && s.frozen).length;
         dispatch({ type: 'bulk', patch, ids });
         return { skipped };
       },
 
       // Asks the server to change the backlog's initials, then renumbers the stories that are not frozen. Resolves
       // { ok: true } (also when nothing changed) or { error } with the server's refusal; nothing changes on error.
-      async setInitials(wanted) {
+      async setInitials(wanted: string): Promise<{ ok: true } | { error: string }> {
         const { current, initials } = stateRef.current;
         if (!current || wanted.trim().toUpperCase() === initials) return { ok: true };
         try {
@@ -376,22 +416,22 @@ export function useBacklog() {
           dispatch({ type: 'setInitials', initials: stored });
           return { ok: true };
         } catch (err) {
-          return { error: err.message };
+          return { error: messageOf(err) };
         }
       },
 
       // Resolves { ok: true } or { error } (the edit is not made on error).
-      applySuggestions(rows) {
-        const { backlog } = stateRef.current;
+      applySuggestions(rows: readonly ReviewRow[]): { ok: true } | { error: string } {
+        const backlog = stateRef.current.backlog!;
         const result = applySuggestions(backlog.stories, rows, backlog.headers, stateRef.current.initials);
-        if (result.error) return { error: result.error };
+        if ('error' in result) return { error: result.error };
         dispatch({ type: 'applySuggestions', rows });
         return { ok: true };
       },
 
       // Applies the eligible units in order as one edit. Returns { applied, skipped } (see acceptAll in viewer/shared/review/review.js).
-      acceptAll(units) {
-        const { backlog } = stateRef.current;
+      acceptAll(units: Parameters<typeof acceptAll>[1]) {
+        const backlog = stateRef.current.backlog!;
         const result = acceptAll(backlog.stories, units, backlog.headers, stateRef.current.initials);
         if (result.applied.length) dispatch({ type: 'acceptSuggestions', stories: result.stories });
         return { applied: result.applied, skipped: result.skipped };
@@ -403,3 +443,5 @@ export function useBacklog() {
 
   return { state, selected, status, message, ready, actions };
 }
+
+export type BacklogActions = ReturnType<typeof useBacklog>['actions'];

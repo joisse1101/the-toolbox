@@ -1,22 +1,24 @@
+import type { useSettings } from './useSettings.ts';
+import type { CopyCounts } from './useSettings.ts';
 import TabHeader from '../../../../shared/ui/TabHeader.tsx';
 import { Row } from '../../../../shared/ui/Layout.tsx';
 
 const SESSION_NOTE = 'Skill scripts and open Claude sessions use the new data folder only after they are started again.';
 
-function FolderList({ title, names }) {
+function FolderList({ title, names }: { title: string; names: string[] }) {
   if (!names.length) return null;
   return <p className="muted">{title}: {names.join(', ')}</p>;
 }
 
 // The line after a relocation that copied files; shown once, on the load that follows the switch.
-function copySummary(copy) {
+function copySummary(copy: CopyCounts) {
   const overwritten = copy.overwritten ? `, overwrote ${copy.overwritten}` : '';
   return `Copied ${copy.copied} file(s)${overwritten}, skipped ${copy.skipped}.`;
 }
 
 // The project name, the data folder and the config file. Always shown, even with no backlog, because an empty new
 // folder is exactly when it is needed. `settingsState` is the useSettings hook's result.
-export default function SettingsTab({ hidden, settingsState }) {
+export default function SettingsTab({ hidden, settingsState }: { hidden: boolean; settingsState: ReturnType<typeof useSettings> }) {
   const { settings, error, working, offer, initResult, copyResult, migrateResult, switched, actions } = settingsState;
 
   return (
@@ -73,7 +75,7 @@ export default function SettingsTab({ hidden, settingsState }) {
                 <code>{offer.dir}</code> already holds planner files. Overwrite replaces these files with the current data; other
                 files there are left as they are. Just switch copies nothing and shows the files already there.
               </p>
-              <ul id="overwriteList">{offer.exists.map((file) => <li key={file}><code>{file}</code></li>)}</ul>
+              <ul id="overwriteList">{(offer.exists ?? []).map((file) => <li key={file}><code>{file}</code></li>)}</ul>
               <Row>
                 <button type="button" id="overwriteBtn" className="offer-danger" disabled={working} onClick={() => actions.chooseRelocation('overwrite')}>Overwrite</button>
                 <button type="button" id="justSwitchBtn" disabled={working} onClick={() => actions.chooseRelocation('switch')}>Just switch</button>
@@ -98,7 +100,7 @@ export default function SettingsTab({ hidden, settingsState }) {
           )}
           {copyResult && <p className="muted" id="copyResult">{copySummary(copyResult)}</p>}
 
-          {settings.olderLayout?.length > 0 && (
+          {settings.olderLayout && settings.olderLayout.length > 0 && (
             <div id="migrateNotice" className="card">
               <p>
                 This data folder still holds the older layout ({settings.olderLayout.join(', ')}). The portal reads backlog folders only.

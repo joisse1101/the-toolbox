@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
+import type { Ask, ConfirmRequest } from '../hooks/useConfirm.ts';
 import { ConfirmContext } from '../hooks/useConfirm.ts';
 
 // The one confirmation dialog of the portal. `request` is { title, message, confirmLabel, danger } or null (closed).
 // `message` may hold blank lines, which become separate paragraphs. `onAnswer(true | false)` closes it.
 // Only a `danger` request gets the bold red final button; any other confirm button is the normal primary one.
-export function ConfirmDialog({ request, onAnswer }) {
-  const ref = useRef(null);
-  const cancelRef = useRef(null);
-  const opener = useRef(null);
+export function ConfirmDialog({ request, onAnswer }: { request: ConfirmRequest | null; onAnswer: (yes: boolean) => void }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const opener = useRef<Element | null>(null);
   const isOpen = !!request;
 
   // The dialog element only exists while open. showModal gives the backdrop and keeps Tab inside; Cancel takes focus
@@ -15,9 +17,9 @@ export function ConfirmDialog({ request, onAnswer }) {
   useEffect(() => {
     if (!isOpen) return undefined;
     opener.current = document.activeElement;
-    if (!ref.current.open) ref.current.showModal();
-    cancelRef.current.focus();
-    return () => opener.current?.focus();
+    if (!ref.current!.open) ref.current!.showModal();
+    cancelRef.current!.focus();
+    return () => (opener.current as HTMLElement | null)?.focus();
   }, [isOpen]);
 
   if (!request) return null;
@@ -39,17 +41,17 @@ export function ConfirmDialog({ request, onAnswer }) {
 
 // Wraps the app once. `useConfirm()` then gives `ask(request)` anywhere below it: a promise that resolves true when the
 // user confirms and false on Cancel or Escape, so `if (!(await ask({...}))) return` replaces the old blocking browser dialog.
-export function ConfirmProvider({ children }) {
-  const [request, setRequest] = useState(null);
-  const resolver = useRef(null);
+export function ConfirmProvider({ children }: { children: ReactNode }) {
+  const [request, setRequest] = useState<ConfirmRequest | null>(null);
+  const resolver = useRef<((yes: boolean) => void) | null>(null);
 
-  const ask = useCallback((next) => new Promise((resolve) => {
+  const ask = useCallback<Ask>((next) => new Promise<boolean>((resolve) => {
     resolver.current?.(false); // a second question answers the first one with No
     resolver.current = resolve;
     setRequest(next);
   }), []);
 
-  const answer = useCallback((yes) => {
+  const answer = useCallback((yes: boolean) => {
     const resolve = resolver.current;
     resolver.current = null;
     setRequest(null);

@@ -1,3 +1,5 @@
+import type { Story } from '../../../../../../shared/types.ts';
+import type { Cues, Edit, ListFields, SetField } from './formTypes.ts';
 import { POINTS, SPLIT_ABOVE, PRIORITIES } from '../../../../../../shared/backlog/model.ts';
 import Info from '../../../../shared/ui/Info.tsx';
 import guideline from '../../../../../../shared/guidelines/sprint-points-guideline.md?raw';
@@ -5,7 +7,7 @@ import { Row } from '../../../../shared/ui/Layout.tsx';
 import { Label } from '../../../../shared/ui/FormParts.tsx';
 
 // Sprint points (a radio group) and Priority.
-export default function EstimateSection({ story: s, frozen, cues, list, edit, setField }) {
+export default function EstimateSection({ story: s, frozen, cues, list, edit, setField }: { story: Story; frozen: boolean; cues: Cues; list: ListFields; edit: Edit; setField: SetField }) {
   const { noValue, optional } = cues;
   const priorityOptions = ['', ...PRIORITIES];
   if (s.priority && !priorityOptions.includes(s.priority)) priorityOptions.push(s.priority); // never silently change a loaded value

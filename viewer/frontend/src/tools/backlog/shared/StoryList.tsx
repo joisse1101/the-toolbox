@@ -1,7 +1,12 @@
 import { useState } from 'react';
+import type { DragEvent, KeyboardEvent } from 'react';
+import type { Story } from '../../../../../shared/types.ts';
+import type { EpicGroup } from '../../../../../shared/backlog/model.ts';
 import { groupByEpic, storyIssues, storyLabel } from '../../../../../shared/backlog/model.ts';
 import { openCount } from '../../../../../shared/backlog/story-text.ts';
+import type { Level } from '../../../shared/lib/collapse.ts';
 import { anyOpen, epicKey, featureKey } from '../../../shared/lib/collapse.ts';
+import type { GroupRef } from '../shell/useBacklog.ts';
 import { issueClass, rowTooltip } from './issues.ts';
 import StateMark from '../../../shared/ui/StateMark.tsx';
 import { Row } from '../../../shared/ui/Layout.tsx';
@@ -15,28 +20,54 @@ import { Row } from '../../../shared/ui/Layout.tsx';
 // stands for "before the next group". A feature can only land among the features of its own epic.
 // With `collapse` ({ closed, toggleKey, toggleLevel }, from useCollapsed) the folded groups live outside the list and the
 // panel offers buttons to fold every epic or every feature; without it the list keeps its own folds, forgotten on reload.
-export default function StoryList({ stories, problems, suggestionCounts = new Map(), selectedId, onSelect, onAdd, onMove, onMoveGroup, onRenumber, renumberDisabled, heading = 'Stories', checked, onToggle, collapse }) {
-  const [drag, setDrag] = useState(null);
-  const [drop, setDrop] = useState(null);
-  const [groupDrag, setGroupDrag] = useState(null);
-  const [groupDrop, setGroupDrop] = useState(null);
-  const [localClosed, setLocalClosed] = useState(() => new Set()); // collapsed accordion keys; everything starts open
+// Describes a row for the group drag: `head` is set on an epic or feature head, `...After` on the last visible row of that group.
+interface RowCtx {
+  epic: string;
+  head?: 'epic' | 'feature';
+  feature?: string;
+  epicAfter?: string | null;
+  featureAfter?: string | null;
+}
+
+interface StoryListProps {
+  stories: Story[];
+  problems: Map<number, string[]>;
+  suggestionCounts?: Map<string, number>;
+  selectedId: number | null;
+  onSelect: (id: number) => void;
+  onAdd?: () => void;
+  onMove?: (id: number, epic: string, beforeId: number | null) => void;
+  onMoveGroup?: (group: GroupRef, beforeKey: string | null) => void;
+  onRenumber?: () => void;
+  renumberDisabled?: boolean;
+  heading?: string;
+  checked?: ReadonlySet<number>;
+  onToggle?: (id: number) => void;
+  collapse?: { closed: ReadonlySet<string>; toggleKey: (key: string) => void; toggleLevel: (level: Level) => void };
+}
+
+export default function StoryList({ stories, problems, suggestionCounts = new Map(), selectedId, onSelect, onAdd, onMove, onMoveGroup, onRenumber, renumberDisabled, heading = 'Stories', checked, onToggle, collapse }: StoryListProps) {
+  const [drag, setDrag] = useState<number | null>(null);
+  const [drop, setDrop] = useState<{ epic: string; beforeId: number | null } | null>(null);
+  const [groupDrag, setGroupDrag] = useState<GroupRef | null>(null);
+  const [groupDrop, setGroupDrop] = useState<{ beforeKey: string | null } | null>(null);
+  const [localClosed, setLocalClosed] = useState<ReadonlySet<string>>(() => new Set()); // collapsed accordion keys; everything starts open
 
   const closed = collapse ? collapse.closed : localClosed;
-  const toggle = collapse ? collapse.toggleKey : (key) => setLocalClosed((prev) => {
+  const toggle = collapse ? collapse.toggleKey : (key: string) => setLocalClosed((prev) => {
     const next = new Set(prev);
     if (!next.delete(key)) next.add(key);
     return next;
   });
   const epicGroups = groupByEpic(stories);
-  const toggleKey = (e, key) => {
+  const toggleKey = (e: KeyboardEvent, key: string) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       toggle(key);
     }
   };
 
-  const over = (e, group, beforeId) => {
+  const over = (e: DragEvent<HTMLElement>, group: EpicGroup, beforeId: number | null) => {
     if (drag === null || !group.epic) return; // not preventing default = not a drop target
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
@@ -50,11 +81,11 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
   };
   // `ctx` describes the row: { epic, head: 'epic' | 'feature' | undefined, feature, epicAfter, featureAfter }; an
   // `...After` field is set on the last visible row of that group and names the group that follows (null = none).
-  const groupOver = (e, ctx) => {
+  const groupOver = (e: DragEvent<HTMLElement>, ctx: RowCtx) => {
     if (!groupDrag) return;
     const r = e.currentTarget.getBoundingClientRect();
     const upper = e.clientY < r.top + r.height / 2;
-    let target;
+    let target: string | null | undefined;
     if (groupDrag.feature === undefined) {
       if (ctx.head === 'epic' && upper) target = ctx.epic;
       else if (ctx.epicAfter !== undefined && !upper) target = ctx.epicAfter;
@@ -67,7 +98,7 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
     e.dataTransfer.dropEffect = 'move';
     if (groupDrop?.beforeKey !== target) setGroupDrop({ beforeKey: target });
   };
-  const groupMark = (ctx) => {
+  const groupMark = (ctx: RowCtx) => {
     if (!groupDrag || !groupDrop) return '';
     const key = groupDrop.beforeKey;
     if (groupDrag.feature === undefined) {
@@ -78,22 +109,22 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
     if (key !== null) return ctx.head === 'feature' && ctx.feature === key ? 'drop-before' : '';
     return ctx.epicAfter !== undefined ? 'drop-after' : '';
   };
-  const startGroupDrag = (e, group) => {
+  const startGroupDrag = (e: DragEvent<HTMLElement>, group: GroupRef) => {
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', group.feature === undefined ? group.epic : `${group.epic}\n${group.feature}`); // Firefox needs data to start a drag
     setGroupDrag(group);
   };
-  const dropHere = (e) => {
+  const dropHere = (e: DragEvent<HTMLElement>) => {
     if (groupDrag) {
       if (groupDrop) {
         e.preventDefault();
-        onMoveGroup(groupDrag, groupDrop.beforeKey);
+        onMoveGroup!(groupDrag, groupDrop.beforeKey);
       }
       return end();
     }
     if (drag === null || !drop) return end();
     e.preventDefault();
-    onMove(drag, drop.epic, drop.beforeId);
+    onMove!(drag, drop.epic, drop.beforeId);
     end();
   };
 
@@ -103,7 +134,7 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
         <div className="story-list-head">
           <h2>{heading}</h2>
           <div className="group-toggles">
-            {['epic', 'feature'].map((level) => (
+            {(['epic', 'feature'] as const).map((level) => (
               <button
                 key={level} type="button" id={`${level}TogglesBtn`} disabled={!epicGroups.length}
                 onClick={() => collapse.toggleLevel(level)}
@@ -112,11 +143,11 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
           </div>
         </div>
       ) : <h2>{heading}</h2>}
-      <ul id="storyList" className="story-list" onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) { setDrop(null); setGroupDrop(null); } }}>
+      <ul id="storyList" className="story-list" onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) { setDrop(null); setGroupDrop(null); } }}>
         {epicGroups.flatMap((group, gi, groups) => {
           const nextEpic = groups[gi + 1]?.epic ?? null;
           const epicClosed = closed.has(epicKey(group.epic));
-          const epicCtx = { epic: group.epic, head: 'epic', epicAfter: epicClosed ? nextEpic : undefined };
+          const epicCtx: RowCtx = { epic: group.epic, head: 'epic', epicAfter: epicClosed ? nextEpic : undefined };
           return [
           <li
             key={`epic:${group.epic}`} title={group.label}
@@ -133,7 +164,7 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
             const nextFeature = group.features[fi + 1]?.feature ?? null;
             const lastFeature = fi === group.features.length - 1;
             const featureClosed = closed.has(featureKey(group.epic, fg.feature));
-            const headCtx = { epic: group.epic, head: 'feature', feature: fg.feature, featureAfter: featureClosed ? nextFeature : undefined, epicAfter: featureClosed && lastFeature ? nextEpic : undefined };
+            const headCtx: RowCtx = { epic: group.epic, head: 'feature', feature: fg.feature, featureAfter: featureClosed ? nextFeature : undefined, epicAfter: featureClosed && lastFeature ? nextEpic : undefined };
             return [
             <li
               key={`feature:${group.epic}:${fg.feature}`} title={fg.label}
@@ -149,7 +180,7 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
             ...(featureClosed ? [] : fg.stories.map((s, i) => {
             const { errors, warnings } = storyIssues(s, problems.get(s.id));
             const next = fg.stories[i + 1];
-            const rowCtx = { epic: group.epic, featureAfter: next ? undefined : nextFeature, epicAfter: next || !lastFeature ? undefined : nextEpic };
+            const rowCtx: RowCtx = { epic: group.epic, featureAfter: next ? undefined : nextFeature, epicAfter: next || !lastFeature ? undefined : nextEpic };
             const marker = groupDrag ? groupMark(rowCtx) : drop?.epic === group.epic && drag !== null
               ? (drop.beforeId === s.id ? 'drop-before' : drop.beforeId === null && !next ? 'drop-after' : '')
               : '';
@@ -188,7 +219,7 @@ export default function StoryList({ stories, problems, suggestionCounts = new Ma
                   <span className="title">{storyLabel(s)}</span>
                 </button>
                 {!s.benched && <StateMark kind={issueClass(errors, warnings)} iconOnly />}
-                {suggestionCounts.get(s.code) > 0 && (
+                {(suggestionCounts.get(s.code) ?? 0) > 0 && (
                   <span className="suggestion-badge" title={`${suggestionCounts.get(s.code)} review suggestion(s)`} aria-label={`${suggestionCounts.get(s.code)} review suggestions`}>{suggestionCounts.get(s.code)}</span>
                 )}
                 {openCount(s.clarifications) > 0 && (

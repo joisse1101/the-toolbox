@@ -5,7 +5,7 @@ import './tools/backlog/backlog.css';
 import AppRoutes from './app/routes.tsx';
 import { ConfirmProvider } from './shared/ui/ConfirmDialog.tsx';
 
-createRoot(document.getElementById('root')).render(
+createRoot(document.getElementById('root')!).render(
   <BrowserRouter>
     <ConfirmProvider>
       <AppRoutes />

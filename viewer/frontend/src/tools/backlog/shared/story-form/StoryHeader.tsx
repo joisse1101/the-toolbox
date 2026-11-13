@@ -1,7 +1,11 @@
+import type { Story } from '../../../../../../shared/types.ts';
 import StateMark from '../../../../shared/ui/StateMark.tsx';
 
 // The ID line (with state mark, Frozen mark and Benched toggle), the move and delete buttons, and the frozen note.
-export default function StoryHeader({ story: s, cls, frozen, onBench, onMoveToProposed, onDelete }) {
+export default function StoryHeader({ story: s, cls, frozen, onBench, onMoveToProposed, onDelete }: {
+  story: Story; cls: string; frozen: boolean;
+  onBench?: (id: number, on: boolean) => void; onMoveToProposed?: (story: Story) => void; onDelete?: () => void;
+}) {
   return (
     <>
       <div className="story-header" id="storyHeader">

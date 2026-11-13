@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
-import { createFileStore } from '../../../../shared/api/files.ts';
+import type { Backlog, Proposal, Story } from '../../../../../../shared/types.ts';
+import { FileApiError, createFileStore, messageOf } from '../../../../shared/api/files.ts';
 import { COLUMNS, loadBacklog, newStory, proposalHeaders } from '../../../../../../shared/backlog/model.ts';
 import { nextPlaceholder, removeProposed, moveProposed } from '../../../../../../shared/backlog/proposals.ts';
 import { useAutosave } from '../../../../shared/hooks/useAutosave.ts';
+import type { StatusReport } from '../../../../shared/hooks/useAutosave.ts';
 import { useConfirm } from '../../../../shared/hooks/useConfirm.ts';
 
 const proposalsStore = createFileStore('proposals');
@@ -11,34 +13,53 @@ const proposalsStore = createFileStore('proposals');
 const store = {
   ...proposalsStore,
   // The server answers an empty file for a backlog without proposals; an empty text is the same as no file here.
-  async read(name) {
+  async read(name: string): Promise<string | null> {
     return (await proposalsStore.read(name)) || null;
   },
-  async write(name, text) {
+  async write(name: string, text: string) {
     try {
       await proposalsStore.write(name, text);
     } catch (err) {
-      if (err.code !== 'not-found') throw err;
+      if (!(err instanceof FileApiError) || err.code !== 'not-found') throw err;
       await proposalsStore.create(name, text);
     }
   },
 };
 
-const initial = {
-  current: null, // the backlog file name; the proposals file has the same name
-  backlog: null, // { headers, stories, hasBom }, same shape as a backlog so useAutosave can save it
+export interface ProposalsState {
+  current: string | null; // the backlog file name; the proposals file has the same name
+  backlog: Backlog | null; // same shape as a backlog so useAutosave can save it
+  selectedId: number | null;
+  edits: number; // bumped by every change; the auto-save runs when it changes
+}
+
+export type ProposalsAction =
+  | { type: 'loaded'; name: string; backlog: Backlog; keepSelection?: boolean }
+  | { type: 'cleared' }
+  | { type: 'select'; id: number | null }
+  | { type: 'edit'; id: number; change: (draft: Story) => void }
+  | { type: 'add'; story: Story; backlogStories?: readonly Story[] }
+  | { type: 'commitEpic'; id: number }
+  | { type: 'delete'; id: number }
+  | { type: 'deleteMany'; ids: ReadonlySet<number> }
+  | { type: 'move'; id: number; epic: unknown; beforeId?: number | null }
+  | { type: 'replaceStories'; stories: Proposal[] };
+
+const initial: ProposalsState = {
+  current: null,
+  backlog: null,
   selectedId: null,
-  edits: 0, // bumped by every change; the auto-save runs when it changes
+  edits: 0,
 };
 
-const emptyFile = (headers) => ({ headers: proposalHeaders(headers ?? COLUMNS), stories: [], hasBom: true });
+const emptyFile = (headers: readonly string[] | null | undefined): Backlog => ({ headers: proposalHeaders(headers ?? COLUMNS), stories: [], hasBom: true });
 
-function withStories(state, stories, extra = {}) {
-  return { ...state, backlog: { ...state.backlog, stories }, edits: state.edits + 1, ...extra };
+function withStories(state: ProposalsState, stories: Story[], extra: Partial<ProposalsState> = {}): ProposalsState {
+  return { ...state, backlog: { ...state.backlog!, stories }, edits: state.edits + 1, ...extra };
 }
 
 // Proposed stories keep their NEW-<n> IDs: nothing here renumbers (that is what accepting does, see proposals.js).
-export function reducer(state, action) {
+export function reducer(state: ProposalsState, action: ProposalsAction): ProposalsState {
   switch (action.type) {
     case 'loaded': {
       const stories = action.backlog.stories;
@@ -47,7 +68,7 @@ export function reducer(state, action) {
         ...state,
         current: action.name,
         backlog: action.backlog,
-        selectedId: stories.length ? stories[Math.min(Math.max(previousIndex, 0), stories.length - 1)].id : null,
+        selectedId: stories.length ? stories[Math.min(Math.max(previousIndex, 0), stories.length - 1)]!.id : null,
       };
     }
     case 'cleared':
@@ -55,7 +76,7 @@ export function reducer(state, action) {
     case 'select':
       return { ...state, selectedId: action.id };
     case 'edit': {
-      const stories = state.backlog.stories.map((s) => {
+      const stories = state.backlog!.stories.map((s) => {
         if (s.id !== action.id) return s;
         const draft = { ...s, criteria: s.criteria.map((c) => ({ ...c })) };
         action.change(draft);
@@ -65,32 +86,32 @@ export function reducer(state, action) {
     }
     // The new story gets a placeholder above every NEW-<n> the proposals and the backlog's Depends On still use.
     case 'add': {
-      const story = { ...action.story, code: nextPlaceholder(state.backlog.stories, action.backlogStories ?? []) };
-      return withStories(state, [...state.backlog.stories, story], { selectedId: story.id });
+      const story = { ...action.story, code: nextPlaceholder(state.backlog!.stories, action.backlogStories ?? []) };
+      return withStories(state, [...state.backlog!.stories, story], { selectedId: story.id });
     }
     // The Epic field was left: remember the committed epic. The ID does not depend on it.
     case 'commitEpic': {
-      const s = state.backlog.stories.find((x) => x.id === action.id);
+      const s = state.backlog!.stories.find((x) => x.id === action.id);
       if (!s || s.codedEpic === s.epic) return state;
-      return withStories(state, state.backlog.stories.map((x) => (x === s ? { ...s, codedEpic: s.epic } : x)));
+      return withStories(state, state.backlog!.stories.map((x) => (x === s ? { ...s, codedEpic: s.epic } : x)));
     }
     case 'delete': {
-      const stories = state.backlog.stories;
+      const stories = state.backlog!.stories;
       const i = stories.findIndex((s) => s.id === action.id);
       if (i < 0) return state;
       const rest = removeProposed(stories, action.id);
-      return withStories(state, rest, { selectedId: rest.length ? rest[Math.min(i, rest.length - 1)].id : null });
+      return withStories(state, rest, { selectedId: rest.length ? rest[Math.min(i, rest.length - 1)]!.id : null });
     }
     case 'deleteMany': {
-      const stories = state.backlog.stories;
+      const stories = state.backlog!.stories;
       const rest = stories.filter((s) => !action.ids.has(s.id));
       if (rest.length === stories.length) return state;
       const keep = rest.some((s) => s.id === state.selectedId);
       return withStories(state, rest, { selectedId: keep ? state.selectedId : (rest[0]?.id ?? null) });
     }
     case 'move': {
-      const stories = moveProposed(state.backlog.stories, action.id, action.epic, action.beforeId);
-      return stories === state.backlog.stories ? state : withStories(state, stories, { selectedId: action.id });
+      const stories = moveProposed(state.backlog!.stories, action.id, action.epic, action.beforeId);
+      return stories === state.backlog!.stories ? state : withStories(state, stories, { selectedId: action.id });
     }
     // The remaining proposed stories after an accept.
     case 'replaceStories': {
@@ -106,10 +127,10 @@ export function reducer(state, action) {
 // The proposed stories of the open backlog (`current`, a file name): loads proposals/<current>, edits them and keeps
 // them on disk. A missing file is an empty list; the first save creates it. `headers` are the backlog's, used for a
 // file that does not exist yet so unknown columns line up.
-export function useProposals(current, headers, initials) {
+export function useProposals(current: string | null | undefined, headers: readonly string[] | undefined, initials: string) {
   const [state, dispatch] = useReducer(reducer, initial);
-  const [status, setStatus] = useState({ kind: 'idle', detail: '' });
-  const [message, setMessage] = useState(null);
+  const [status, setStatus] = useState<StatusReport>({ kind: 'idle', detail: '' });
+  const [message, setMessage] = useState<string | null>(null);
 
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -128,13 +149,13 @@ export function useProposals(current, headers, initials) {
 
   const actions = useMemo(() => {
     // Returns the text read, or null when there is no file. A stale call (another backlog opened meanwhile) is dropped.
-    async function load(name, keepSelection) {
+    async function load(name: string, keepSelection: boolean) {
       const token = ++loadToken.current;
-      let text = null;
+      let text: string | null = null;
       try {
         text = await store.read(name);
       } catch (err) {
-        if (err.code !== 'not-found') throw err;
+        if (!(err instanceof FileApiError) || err.code !== 'not-found') throw err;
       }
       if (token !== loadToken.current) return;
       autosave.loaded(text);
@@ -148,7 +169,7 @@ export function useProposals(current, headers, initials) {
       settle: () => autosave.settle(),
 
       // Switch to the proposals of another backlog (or none). Edits still waiting for a save are saved first.
-      async open(name) {
+      async open(name: string | null) {
         try {
           if (stateRef.current.current && !(await autosave.settle())) {
             setMessage('Proposed-story edits could not be saved and were discarded.');
@@ -163,7 +184,7 @@ export function useProposals(current, headers, initials) {
           }
           await load(name, false);
         } catch (err) {
-          setMessage(err.message);
+          setMessage(messageOf(err));
         }
       },
 
@@ -172,29 +193,29 @@ export function useProposals(current, headers, initials) {
         const name = stateRef.current.current;
         if (!name) return;
         try {
-          let text = null;
+          let text: string | null = null;
           try {
             text = await store.read(name);
           } catch (err) {
-            if (err.code !== 'not-found') throw err;
+            if (!(err instanceof FileApiError) || err.code !== 'not-found') throw err;
           }
           if (text !== autosave.lastText() && !autosave.isBusy()) await load(name, true);
         } catch (err) {
-          setMessage(err.message);
+          setMessage(messageOf(err));
         }
       },
 
-      selectStory: (id) => dispatch({ type: 'select', id }),
+      selectStory: (id: number | null) => dispatch({ type: 'select', id }),
       // `backlogStories` are read so the new placeholder avoids numbers the backlog still names.
-      addStory: (backlogStories) =>
-        dispatch({ type: 'add', story: newStory(stateRef.current.backlog.headers), backlogStories }),
-      editStory: (id, change) => dispatch({ type: 'edit', id, change }),
-      commitEpic: (id) => dispatch({ type: 'commitEpic', id }),
-      moveStory: (id, epic, beforeId) => dispatch({ type: 'move', id, epic, beforeId }),
-      replaceStories: (stories) => dispatch({ type: 'replaceStories', stories }),
+      addStory: (backlogStories?: readonly Story[]) =>
+        dispatch({ type: 'add', story: newStory(stateRef.current.backlog!.headers), backlogStories }),
+      editStory: (id: number, change: (draft: Story) => void) => dispatch({ type: 'edit', id, change }),
+      commitEpic: (id: number) => dispatch({ type: 'commitEpic', id }),
+      moveStory: (id: number, epic: unknown, beforeId?: number | null) => dispatch({ type: 'move', id, epic, beforeId }),
+      replaceStories: (stories: Proposal[]) => dispatch({ type: 'replaceStories', stories }),
 
       // Asks first. `ids` is the set of ticked stories. Resolves true when they were deleted.
-      async deleteMany(ids) {
+      async deleteMany(ids: ReadonlySet<number>) {
         if (!ids.size) return false;
         const noun = ids.size === 1 ? 'story' : 'stories';
         const confirmed = await ask({ title: `Delete ${ids.size} proposed ${noun}?`, message: `${ids.size} proposed ${noun} will be removed from the proposals file.\n\nThis cannot be undone.`, confirmLabel: 'Delete', danger: true });

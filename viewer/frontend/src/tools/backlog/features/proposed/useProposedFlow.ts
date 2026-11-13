@@ -1,34 +1,52 @@
 import { useEffect, useState } from 'react';
+import type { BacklogFile, Story } from '../../../../../../shared/types.ts';
+import type { Ask } from '../../../../shared/hooks/useConfirm.ts';
+import type { BacklogActions } from '../../shell/useBacklog.ts';
+import type { useReview } from '../review/useReview.ts';
 import { acceptProposed, moveToProposed as moveStoryToProposed } from '../../../../../../shared/backlog/proposals.ts';
 import { openUnitsFor } from '../../../../../../shared/review/review.ts';
 import { useProposals } from './useProposals.ts';
 
 // Proposed stories for the open backlog (its proposals file; the tab is always there, the file may not be), and the
 // moves between the backlog and Proposed. `review` is the useReview result, used when a moved story has suggestions.
-export function useProposedFlow({ current, stories, backlog, initials, actions, review, ask, reveal }) {
+export interface ProposedNotice {
+  kind: 'error' | 'ok';
+  text: string;
+}
+
+export function useProposedFlow({ current, stories, backlog, initials, actions, review, ask, reveal }: {
+  current: string | null;
+  stories: Story[];
+  backlog: BacklogFile | null;
+  initials: string;
+  actions: BacklogActions;
+  review: ReturnType<typeof useReview>;
+  ask: Ask;
+  reveal: (epic: string, feature: string) => void;
+}) {
   const proposals = useProposals(current, backlog?.headers, initials);
-  const [proposedNotice, setProposedNotice] = useState(null);
+  const [proposedNotice, setProposedNotice] = useState<ProposedNotice | null>(null);
   useEffect(() => setProposedNotice(null), [current]);
 
   // Move proposed stories into the backlog. Nothing changes when acceptProposed refuses. The backlog is replaced
   // first and the proposals second, so a crash between the two saves leaves a duplicate rather than a lost story.
-  const accept = (ids) => {
-    const result = acceptProposed(stories, proposals.stories, ids, backlog.headers, initials);
-    if (result.error) return setProposedNotice({ kind: 'error', text: result.error });
+  const accept = (ids: ReadonlySet<number>) => {
+    const result = acceptProposed(stories, proposals.stories, ids, backlog!.headers, initials);
+    if ('error' in result) return setProposedNotice({ kind: 'error', text: result.error });
     actions.replaceStories(result.backlog);
     proposals.actions.replaceStories(result.proposals);
     result.accepted.forEach((story) => reveal(story.epic, story.feature));
     const names = result.accepted.map((s) => s.code).join(', ');
     setProposedNotice({ kind: 'ok', text: `Accepted ${result.accepted.length === 1 ? '1 story' : `${result.accepted.length} stories`} into the backlog: ${names}.` });
   };
-  const acceptSelected = (ids) => ids.size && accept(new Set(ids));
+  const acceptSelected = (ids: ReadonlySet<number>) => ids.size && accept(new Set(ids));
   const acceptAll = () => accept(new Set(proposals.stories.map((s) => s.id)));
 
   // Editor -> Proposed for the open story. Its open review suggestions are marked dismissed (after a confirm, only
   // when there are any). Order: backlog, proposals, review, like accept, so a crash leaves a duplicate, not a lost story.
-  const moveToProposed = async (story) => {
-    const result = moveStoryToProposed(stories, proposals.stories, story.id, backlog.headers, initials);
-    if (result.error) return review.notify(result.error);
+  const moveToProposed = async (story: Story) => {
+    const result = moveStoryToProposed(stories, proposals.stories, story.id, backlog!.headers, initials);
+    if ('error' in result) return review.notify(result.error);
     const units = openUnitsFor(review.rows, story.code);
     const message = `${story.code} has ${units.length} open review suggestion${units.length > 1 ? 's' : ''}. Moving it to Proposed marks ${units.length > 1 ? 'them' : 'it'} as dismissed.`;
     if (units.length && !(await ask({ title: `Move ${story.code} to Proposed?`, message, confirmLabel: 'Move to Proposed' }))) return;

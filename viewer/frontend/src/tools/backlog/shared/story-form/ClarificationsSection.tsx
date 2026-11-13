@@ -1,11 +1,13 @@
+import type { Clarification, Story } from '../../../../../../shared/types.ts';
+import type { Edit, ListFields } from './formTypes.ts';
 import { openCount, emptyClarification } from '../../../../../../shared/backlog/story-text.ts';
 import { CellWarning } from '../../../../shared/ui/FormParts.tsx';
 
 const CLARIFICATIONS_WARNING = 'The Clarifications cell does not follow "Q1: …" / "A1: …", so it is kept as it is';
 
-export default function ClarificationsSection({ story: s, frozen, edit, list }) {
+export default function ClarificationsSection({ story: s, frozen, edit, list }: { story: Story; frozen: boolean; edit: Edit; list: ListFields }) {
   // Editing the questions replaces the original cell text, as for the other cells.
-  const editClarifications = (change) => edit((d) => { change(d.clarifications); d.rawClarifications = null; });
+  const editClarifications = (change: (clarifications: Clarification[]) => void) => edit((d) => { change(d.clarifications); d.rawClarifications = null; });
   return (
     <fieldset>
       <legend>{`Clarifications${openCount(s.clarifications) ? ` (${openCount(s.clarifications)} open)` : ''}`}</legend>

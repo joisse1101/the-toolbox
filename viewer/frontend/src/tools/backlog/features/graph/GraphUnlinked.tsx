@@ -1,9 +1,21 @@
+import type { Story } from '../../../../../../shared/types.ts';
+import type { GraphLayout, groupStories } from './graph.ts';
 import StateMark from '../../../../shared/ui/StateMark.tsx';
 import { storyIssues, storyLabel as title } from '../../../../../../shared/backlog/model.ts';
 import { issueClass, rowTooltip } from '../../shared/issues.ts';
 
 // The stories or groups that no arrow touches, listed below the graph.
-export default function GraphUnlinked({ coarse, layout, grouping, groupLabel, problems, linkFrom, link, onToggleLink, onOpen }) {
+export default function GraphUnlinked({ coarse, layout, grouping, groupLabel, problems, linkFrom, link, onToggleLink, onOpen }: {
+  coarse: boolean;
+  layout: GraphLayout;
+  grouping: ReturnType<typeof groupStories> | null;
+  groupLabel: (id: number) => string;
+  problems: Map<number, string[]>;
+  linkFrom: number | null;
+  link: (from: number, to: number) => void;
+  onToggleLink: (id: number) => void;
+  onOpen: (id: number) => void;
+}) {
   if (layout.unlinked.length === 0) return null;
   if (coarse) {
     return (
@@ -11,7 +23,7 @@ export default function GraphUnlinked({ coarse, layout, grouping, groupLabel, pr
         <h3 className="dep-heading">No dependencies</h3>
         <ul>
           {layout.unlinked.map((item) => {
-            const g = grouping.groups.get(item.id);
+            const g = grouping!.groups.get(item.id)!;
             return <li key={item.id}>{groupLabel(item.id)} <span className="code">{g.storyIds.length} {g.storyIds.length === 1 ? 'story' : 'stories'}</span></li>;
           })}
         </ul>
@@ -22,7 +34,7 @@ export default function GraphUnlinked({ coarse, layout, grouping, groupLabel, pr
     <div className="graph-unlinked">
       <h3 className="dep-heading">No dependencies</h3>
       <ul>
-        {layout.unlinked.map((s) => {
+        {(layout.unlinked as Story[]).map((s) => { // a story level layout holds stories
           const { errors, warnings } = storyIssues(s, problems.get(s.id));
           return (
             <li key={s.id} className={issueClass(errors, warnings)}>

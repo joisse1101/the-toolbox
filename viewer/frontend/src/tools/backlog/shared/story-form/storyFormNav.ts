@@ -1,17 +1,20 @@
-const $ = (id) => document.getElementById(id);
+import type { KeyboardEvent } from 'react';
+import type { Story } from '../../../../../../shared/types.ts';
+
+const $ = (id: string) => document.getElementById(id)!;
 
 // Rows of focusable fields for arrow-key navigation: Where it fits, User story, points, each criterion, notes.
-function navRows(story) {
+function navRows(story: Story): HTMLElement[][] {
   return [
     ['epic', 'feature', 'title'].map($),
     ['asA', 'iWant', 'soThat'].map($),
-    [...$('pointsGroup').children],
+    [...$('pointsGroup').children] as HTMLElement[],
     ...story.criteria.map((_, i) => ['given', 'when', 'then'].map((k) => $(`criterion-${i}-${k}`))),
     [$('notes')],
   ];
 }
 
-function focusRow(row, col) {
+function focusRow(row: HTMLElement[], col: number) {
   if (row.length && row[0].parentElement === $('pointsGroup')) {
     (row.find((b) => b.getAttribute('aria-checked') === 'true') ?? row[0]).focus();
   } else {
@@ -21,9 +24,9 @@ function focusRow(row, col) {
 
 // Left/right move within a row of fields (text inputs only at the caret edge, so editing still works), up/down
 // move between rows. Sprint points: left/right step through the buttons, Alt+Right goes to Priority, Alt+Left back.
-export function onNavKeyDown(e, story) {
+export function onNavKeyDown(e: KeyboardEvent<HTMLElement>, story: Story) {
   if (e.nativeEvent.isComposing || (e.ctrlKey && !e.altKey) || e.metaKey || e.shiftKey || !e.key.startsWith('Arrow')) return;
-  const el = e.target;
+  const el = e.target as HTMLInputElement | HTMLTextAreaElement; // a field of the form: input, textarea or a points button
   const rows = navRows(story);
   const pointsRow = rows[2];
   const isPriority = el === $('priority');
@@ -59,7 +62,7 @@ export function onNavKeyDown(e, story) {
   if (e.altKey) return;
   const dir = e.key === 'ArrowUp' ? -1 : 1;
   if (el.tagName === 'TEXTAREA') {
-    const hasLineThatWay = dir < 0 ? el.value.slice(0, el.selectionStart).includes('\n') : el.value.slice(el.selectionEnd).includes('\n');
+    const hasLineThatWay = dir < 0 ? el.value.slice(0, el.selectionStart as number).includes('\n') : el.value.slice(el.selectionEnd as number).includes('\n');
     if (hasLineThatWay) return;
   }
   const target = rows[rowIdx + dir];

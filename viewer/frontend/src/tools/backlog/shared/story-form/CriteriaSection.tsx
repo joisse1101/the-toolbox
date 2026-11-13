@@ -1,28 +1,32 @@
 import { useState } from 'react';
+import type { ReactNode } from 'react';
+import type { Story } from '../../../../../../shared/types.ts';
+import type { ReviewUnit } from '../../../../../../shared/review/review.ts';
+import type { Cues, Edit } from './formTypes.ts';
 import { emptyCriterion, criteriaCellText } from '../../../../../../shared/backlog/model.ts';
 import { criterionNumberOf } from '../../../../../../shared/review/review.ts';
 import { Label, CellWarning } from '../../../../shared/ui/FormParts.tsx';
 import { needs, invalid } from './fieldCues.ts';
 
-const $ = (id) => document.getElementById(id);
+const $ = (id: string) => document.getElementById(id);
 
 const CRITERIA_WARNING = 'The User Acceptance Criteria cell does not follow "AC1: Given …, when …, then …", so it is kept as it is';
 
 // `units`: the open suggestions for the criteria; `listOf(units)` renders a list of them.
-export default function CriteriaSection({ story: s, frozen, cues, edit, units, listOf }) {
+export default function CriteriaSection({ story: s, frozen, cues, edit, units, listOf }: { story: Story; frozen: boolean; cues: Cues; edit: Edit; units: ReviewUnit[]; listOf: (units: ReviewUnit[]) => ReactNode }) {
   const { criterionMissing } = cues;
   // Drag a criterion by its handle onto another to move it there; the AC numbers follow the new order.
-  const [dragAc, setDragAc] = useState(null);
-  const [overAc, setOverAc] = useState(null);
+  const [dragAc, setDragAc] = useState<number | null>(null);
+  const [overAc, setOverAc] = useState<number | null>(null);
   const endAcDrag = () => { setDragAc(null); setOverAc(null); };
-  const moveCriterion = (from, to) => edit((d) => {
+  const moveCriterion = (from: number, to: number) => edit((d) => {
     d.criteria.splice(to, 0, d.criteria.splice(from, 1)[0]);
     d.rawCriteria = null;
   });
   const addCriterion = () => edit((d) => { d.criteria.push(emptyCriterion()); d.rawCriteria = null; });
 
   // A criterion's replace/remove suggestions sit under it; adds and ones naming a missing criterion stay below the list.
-  const unitsForCriterion = (n) => units.filter((u) => criterionNumberOf(u, s) === n);
+  const unitsForCriterion = (n: number) => units.filter((u) => criterionNumberOf(u, s) === n);
   const unitsBelowCriteria = units.filter((u) => !criterionNumberOf(u, s));
 
   return (
@@ -52,7 +56,7 @@ export default function CriteriaSection({ story: s, frozen, cues, edit, units, l
                 onDragStart={(e) => {
                   e.dataTransfer.effectAllowed = 'move';
                   e.dataTransfer.setData('text/plain', String(i)); // Firefox needs data to start a drag
-                  e.dataTransfer.setDragImage(e.currentTarget.parentElement, 0, 0);
+                  e.dataTransfer.setDragImage(e.currentTarget.parentElement!, 0, 0);
                   setDragAc(i);
                 }}
                 onDragEnd={endAcDrag}
@@ -60,7 +64,7 @@ export default function CriteriaSection({ story: s, frozen, cues, edit, units, l
                 ⠿
               </span>
               <div className="fields">
-                {[['given', 'Given'], ['when', 'When'], ['then', 'Then']].map(([key, label]) => (
+                {([['given', 'Given'], ['when', 'When'], ['then', 'Then']] as const).map(([key, label]) => (
                   <div key={key}>
                     <Label htmlFor={`criterion-${i}-${key}`} note={needs(criterionMissing(c, key))}>{label}</Label>
                     <input

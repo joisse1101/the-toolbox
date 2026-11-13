@@ -1,4 +1,6 @@
 // Sizes and path geometry of the dependency graph, shared by the canvas and the tab that lays it out.
+import type { GraphLayout, GraphNode } from './graph.ts';
+
 export const NODE_W = 192;
 export const NODE_H = 46;
 export const GAP_X = 96;
@@ -9,13 +11,13 @@ export const BAND_GAP = 28;
 export const MAX_TITLE = 20;
 export const MIN_LABEL_ZOOM = 0.5; // below this the weight labels on arrows are left out
 
-export const slot = (layer, row, top) => ({ x: BAND_PAD + layer * (NODE_W + GAP_X), y: top + LABEL_H + BAND_PAD + row * (NODE_H + GAP_Y) });
-export const edgeKey = (e) => `${e.from}>${e.to}`;
-export const clip = (text) => (text.length > MAX_TITLE ? `${text.slice(0, MAX_TITLE - 1)}…` : text);
+export const slot = (layer: number, row: number, top: number) => ({ x: BAND_PAD + layer * (NODE_W + GAP_X), y: top + LABEL_H + BAND_PAD + row * (NODE_H + GAP_Y) });
+export const edgeKey = (e: { from: number; to: number }) => `${e.from}>${e.to}`;
+export const clip = (text: string) => (text.length > MAX_TITLE ? `${text.slice(0, MAX_TITLE - 1)}…` : text);
 
 // Each cluster is a band: a label strip, then its rows. Returns the band tops, widths and heights, and the bounds of all.
-export function bandGeometry(layout) {
-  const bands = [];
+export function bandGeometry(layout: GraphLayout) {
+  const bands: Array<{ top: number; width: number; height: number }> = [];
   let top = 0;
   for (const cluster of layout.clusters) {
     const maxLayer = Math.max(0, ...layout.nodes.filter((n) => n.cluster === cluster.index).map((n) => n.layer));
@@ -29,7 +31,7 @@ export function bandGeometry(layout) {
 
 // From the dependent's left edge to the dependency's right edge, so arrows run right to left. A long arrow runs
 // straight through its lane in each column it skips and curves only in the gaps between columns, so it never meets a node.
-export function edgePath(from, to, via, top, back) {
+export function edgePath(from: GraphNode, to: GraphNode, via: Array<{ layer: number; row: number }>, top: number, back: boolean) {
   const sx = slot(from.layer, 0, top).x;
   const sy = slot(0, from.row, top).y + NODE_H / 2;
   const ex = slot(to.layer, 0, top).x + NODE_W;
@@ -38,7 +40,7 @@ export function edgePath(from, to, via, top, back) {
     const c = Math.max(40, Math.abs(sx - ex) / 2);
     return `M ${sx} ${sy} C ${sx - c} ${sy}, ${ex + c} ${ey}, ${ex} ${ey}`;
   }
-  const curve = (x1, y1, x2, y2) => `C ${x1 - GAP_X / 2} ${y1}, ${x2 + GAP_X / 2} ${y2}, ${x2} ${y2}`;
+  const curve = (x1: number, y1: number, x2: number, y2: number) => `C ${x1 - GAP_X / 2} ${y1}, ${x2 + GAP_X / 2} ${y2}, ${x2} ${y2}`;
   let d = `M ${sx} ${sy}`;
   let x = sx;
   let y = sy;

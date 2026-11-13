@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createFileStore } from '../../../../shared/api/files.ts';
+import type { LexiconSuggestionsFile, ReviewStatus } from '../../../../../../shared/types.ts';
+import { createFileStore, messageOf } from '../../../../shared/api/files.ts';
 import { composeSuggestions, emptySuggestions, parseSuggestions } from '../../../../../../shared/lexicon/lexicon-suggestions.ts';
 
 const store = createFileStore('lexicon-suggestions');
@@ -10,22 +11,25 @@ const RETRY_MAX_MS = 30000;
 // The suggested term renames and deletes for the open backlog (lexicon-suggestions/<same file name>), written by the
 // jois-story-propose skill. Loaded when the backlog opens and on Reload. Apply/Dismiss change a row's Status; the file is
 // rewritten shortly after and retried while it is locked (open in Excel), like the review suggestions.
-export function useLexiconSuggestions(current) {
+export function useLexiconSuggestions(current: string | null | undefined) {
   const [file, setFile] = useState(emptySuggestions);
-  const [message, setMessage] = useState(null);
-  const m = useRef({ file: emptySuggestions(), name: null, dirty: false, dirtyName: null, inFlight: null, timer: null, retry: null, delay: RETRY_START_MS }).current;
+  const [message, setMessage] = useState<string | null>(null);
+  const m = useRef<{
+    file: LexiconSuggestionsFile; name: string | null | undefined; dirty: boolean; dirtyName: string | null; inFlight: Promise<void> | null;
+    timer: ReturnType<typeof setTimeout> | undefined; retry: ReturnType<typeof setTimeout> | undefined; delay: number;
+  }>({ file: emptySuggestions(), name: null, dirty: false, dirtyName: null, inFlight: null, timer: undefined, retry: undefined, delay: RETRY_START_MS }).current;
 
-  const setAll = useCallback((next) => {
+  const setAll = useCallback((next: LexiconSuggestionsFile) => {
     m.file = next;
     setFile(next);
   }, [m]);
 
-  const flush = useCallback(async () => {
+  const flush = useCallback(async (): Promise<void> => {
     clearTimeout(m.timer);
     clearTimeout(m.retry);
     if (m.inFlight) return m.inFlight;
     if (!m.dirty) return undefined;
-    const name = m.dirtyName;
+    const name = m.dirtyName!;
     const text = composeSuggestions(m.file);
     m.dirty = false;
     m.inFlight = (async () => {
@@ -35,7 +39,7 @@ export function useLexiconSuggestions(current) {
         setMessage(null);
       } catch (err) {
         m.dirty = true;
-        setMessage(`${err.message} The status of lexicon suggestions is not saved yet; retrying.`);
+        setMessage(`${messageOf(err)} The status of lexicon suggestions is not saved yet; retrying.`);
         m.retry = setTimeout(flush, m.delay);
         m.delay = Math.min(m.delay * 2, RETRY_MAX_MS);
       } finally {
@@ -71,7 +75,7 @@ export function useLexiconSuggestions(current) {
     } catch (err) {
       if (m.name !== name) return;
       setAll(emptySuggestions());
-      setMessage(`Could not read the lexicon suggestions: ${err.message}`);
+      setMessage(`Could not read the lexicon suggestions: ${messageOf(err)}`);
     }
   }, [m, setAll]);
 
@@ -92,7 +96,7 @@ export function useLexiconSuggestions(current) {
   }, [current, flush, load, m, setAll]);
 
   // Mark the row at `index` applied or dismissed and save the file.
-  const decide = useCallback((index, status) => {
+  const decide = useCallback((index: number, status: ReviewStatus) => {
     if (!m.name) return;
     setAll({ ...m.file, rows: m.file.rows.map((r, i) => (i === index ? { ...r, status } : r)) });
     m.dirty = true;

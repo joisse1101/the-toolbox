@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { KeyboardEvent } from 'react';
 import { Link } from 'react-router';
 import { backlogProblems, gatherFeatures } from '../../../../shared/backlog/ids.ts';
 import { groupByEpic } from '../../../../shared/backlog/model.ts';
@@ -24,6 +25,8 @@ import LexiconTab from './features/lexicon/LexiconTab.tsx';
 import SettingsTab from './features/settings/SettingsTab.tsx';
 import { useSettings } from './features/settings/useSettings.ts';
 import { useProjects } from './shell/useProjects.ts';
+import type { GroupRef } from './shell/useBacklog.ts';
+import type { LexiconSuggestion } from '../../../../shared/types.ts';
 import useCollapsed from '../../shared/hooks/useCollapsed.ts';
 
 const STATUS_TEXT = { saved: 'Saved', saving: 'Saving…', failed: '✕ Save failed', idle: 'No file' };
@@ -49,13 +52,12 @@ export default function App() {
   const reveal = collapse.reveal;
   const selectedEpic = String(selected?.epic ?? '').trim();
   const selectedFeature = String(selected?.feature ?? '').trim();
-  const lastSelected = useRef(null);
+  const lastSelected = useRef<{ file: string | null; id: number; epic: string; feature: string } | null>(null);
   useEffect(() => {
     const now = selected ? { file: current, id: selected.id, epic: selectedEpic, feature: selectedFeature } : null;
     const before = lastSelected.current;
     lastSelected.current = now;
-    const sameStory = now && before && before.file === now.file && before.id === now.id;
-    if (sameStory && (before.epic !== now.epic || before.feature !== now.feature)) reveal(now.epic, now.feature);
+    if (now && before && before.file === now.file && before.id === now.id && (before.epic !== now.epic || before.feature !== now.feature)) reveal(now.epic, now.feature);
   }, [current, selected?.id, selectedEpic, selectedFeature, reveal]);
 
   // Review suggestions and Proposed stories for the open backlog (see the two flow hooks).
@@ -95,9 +97,9 @@ export default function App() {
   const showSettings = tab === 'settings' || !current; // with no backlog there is nothing else to show
 
   // Ask the Story form to focus a field once it has rendered (default: Epic).
-  const [focusRequest, setFocusRequest] = useState(null);
+  const [focusRequest, setFocusRequest] = useState<{ id: string | undefined } | null>(null);
   const [focusNameToken, setFocusNameToken] = useState(0);
-  const requestFocus = (id) => setFocusRequest({ id });
+  const requestFocus = (id?: string) => setFocusRequest({ id });
 
   // Re-read backlog, review and proposals from the CSVs. Unsaved local edits win (see refreshFromDisk).
   const refreshAll = useCallback(() => {
@@ -121,8 +123,8 @@ export default function App() {
   }, [refreshAll]);
 
   // Dragging a story or a group, and Renumber, renumber stories: their open review suggestions follow them.
-  const moveStory = (id, epic, beforeId) => review.retarget(actions.moveStory(id, epic, beforeId));
-  const moveGroup = (group, beforeKey) => review.retarget(actions.moveGroup(group, beforeKey));
+  const moveStory = (id: number, epic: unknown, beforeId?: number | null) => review.retarget(actions.moveStory(id, epic, beforeId));
+  const moveGroup = (group: GroupRef, beforeKey?: string | null) => review.retarget(actions.moveGroup(group, beforeKey));
   const renumberDisplayed = async () => {
     const recoded = await actions.renumberDisplayed();
     if (recoded) review.retarget(recoded);
@@ -139,7 +141,7 @@ export default function App() {
   };
 
   // Select the neighbouring story. The focused form field keeps focus (falling back to Epic).
-  const moveSelection = (delta) => {
+  const moveSelection = (delta: number) => {
     const focusedId = document.activeElement?.id;
     if (actions.moveSelection(delta)) requestFocus(focusedId);
   };
@@ -164,9 +166,9 @@ export default function App() {
   const activeTab = showSettings ? 'settings' : tab;
   const focusableTab = tabs.some((t) => t.tab === activeTab) ? activeTab : tabs[0].tab; // the one Tab stop
   // Left and Right move between tabs (wrapping), Home and End jump to the ends; selection follows focus.
-  const onTabKey = (e) => {
-    const from = tabs.findIndex((t) => t.tabId === e.target.id);
-    const step = { ArrowLeft: -1, ArrowRight: 1 }[e.key];
+  const onTabKey = (e: KeyboardEvent<HTMLDivElement>) => {
+    const from = tabs.findIndex((t) => t.tabId === (e.target as HTMLElement).id);
+    const step = ({ ArrowLeft: -1, ArrowRight: 1 } as Record<string, number | undefined>)[e.key];
     let to;
     if (from < 0) return;
     if (step) to = (from + step + tabs.length) % tabs.length;
@@ -175,10 +177,10 @@ export default function App() {
     else return;
     e.preventDefault();
     setTab(tabs[to].tab);
-    document.getElementById(tabs[to].tabId).focus();
+    document.getElementById(tabs[to].tabId)?.focus();
   };
 
-  const openInEditor = (id) => {
+  const openInEditor = (id: number) => {
     actions.selectStory(id);
     setTab('editor');
   };
@@ -252,12 +254,12 @@ export default function App() {
         <LexiconTab
           hidden={!current || tab !== 'lexicon'} lexicon={lexicon.lexicon} selected={lexicon.selected} error={lexicon.state.error} message={lexicon.message}
           suggestions={lexiconSuggestions.file} suggestionsMessage={lexiconSuggestions.message}
-          onApplySuggestion={(index, row, avoid) => {
+          onApplySuggestion={(index: number, row: LexiconSuggestion, avoid: string[]) => {
             const result = lexicon.actions.apply(row, avoid);
             if (result.ok) lexiconSuggestions.decide(index, 'applied');
             return result;
           }}
-          onDismissSuggestion={(index) => lexiconSuggestions.decide(index, 'dismissed')}
+          onDismissSuggestion={(index: number) => lexiconSuggestions.decide(index, 'dismissed')}
           onSelect={lexicon.actions.select} onSave={lexicon.actions.save} onRemove={lexicon.actions.remove} onClearError={lexicon.actions.clearError}
         />
 

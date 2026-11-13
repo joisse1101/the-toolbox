@@ -1,4 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { KeyboardEvent, PointerEvent } from 'react';
+import type { Story } from '../../../../../../shared/types.ts';
+import type { GraphEdge, GraphItem, GraphLayout, GraphLevel, GraphView, Point } from './graph.ts';
 import TabHeader from '../../../../shared/ui/TabHeader.tsx';
 import GraphToolbar from './GraphToolbar.tsx';
 import GraphDetail from './GraphDetail.tsx';
@@ -15,15 +18,26 @@ const SMALLEST_NODE_TEXT = 12; // px: the smallest text inside a node (--text-xs
 const MIN_NODE_TEXT = 11; // px: fitting never shrinks node text below this; a larger graph is panned instead
 const FIT_MIN_ZOOM = MIN_NODE_TEXT / SMALLEST_NODE_TEXT;
 
-export default function GraphTab({ stories, problems, current, hidden, onOpen, onAddDependency, onRemoveDependency }) {
-  const [level, setLevel] = useState('stories');
+// The pointer gesture in progress: dragging a link from a story's handle, or panning the background.
+type Gesture = { type: 'link'; id: number } | { type: 'pan'; last: Point; moved: number };
+
+export default function GraphTab({ stories, problems, current, hidden, onOpen, onAddDependency, onRemoveDependency }: {
+  stories: Story[];
+  problems: Map<number, string[]>;
+  current: string | null;
+  hidden: boolean;
+  onOpen: (id: number) => void;
+  onAddDependency: (id: number, code: string) => void;
+  onRemoveDependency: (id: number, code: string) => void;
+}) {
+  const [level, setLevel] = useState<GraphLevel>('stories');
   const coarse = level !== 'stories'; // Features and Epics: groups of stories, read-only
-  const grouping = useMemo(() => (coarse ? groupStories(stories, level) : null), [stories, level, coarse]);
-  const layout = useMemo(() => layoutGraph(grouping ? grouping.items : stories), [stories, grouping]);
-  const byId = useMemo(() => new Map(stories.map((s) => [s.id, s])), [stories]);
-  const nodeById = useMemo(() => new Map(layout.nodes.map((n) => [n.id, n])), [layout]);
+  const grouping = useMemo(() => (level !== 'stories' ? groupStories(stories, level) : null), [stories, level]);
+  const layout = useMemo<GraphLayout>(() => layoutGraph<GraphItem>(grouping ? grouping.items : stories), [stories, grouping]);
+  const byId = useMemo(() => new Map(stories.map((s) => [s.id, s] as const)), [stories]);
+  const nodeById = useMemo(() => new Map(layout.nodes.map((n) => [n.id, n] as const)), [layout]);
   const epicHue = useMemo(() => {
-    const hues = new Map();
+    const hues = new Map<string, number>();
     for (const s of stories) {
       const epic = s.epic.trim();
       if (epic && !hues.has(epic)) hues.set(epic, (hues.size * 137) % 360);
@@ -31,16 +45,16 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
     return hues;
   }, [stories]);
 
-  const [view, setCamera] = useState({ x: 0, y: 0, k: 1 });
-  const [selectedId, setSelectedId] = useState(null);
-  const [selectedEdge, setSelectedEdge] = useState(null);
-  const [linkFrom, setLinkFrom] = useState(null); // story id: Link mode, the next story chosen is its dependency
-  const [drag, setDrag] = useState(null); // { from: story id, point: graph coordinates } while a link is dragged
-  const [focus, setFocus] = useState(null); // Set of story ids kept prominent after "Show stories", else null
+  const [view, setCamera] = useState<GraphView>({ x: 0, y: 0, k: 1 });
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
+  const [linkFrom, setLinkFrom] = useState<number | null>(null); // story id: Link mode, the next story chosen is its dependency
+  const [drag, setDrag] = useState<{ from: number; point: Point } | null>(null); // from: story id, point: graph coordinates, while a link is dragged
+  const [focus, setFocus] = useState<Set<number> | null>(null); // story ids kept prominent after "Show stories", else null
   const [note, setNote] = useState('');
-  const panel = useRef(null);
-  const gesture = useRef(null);
-  const fittedFor = useRef(null);
+  const panel = useRef<HTMLDivElement>(null);
+  const gesture = useRef<Gesture | null>(null);
+  const fittedFor = useRef<string | null>(null);
 
   const hasNodes = layout.nodes.length > 0;
   const { bands, bounds } = useMemo(() => bandGeometry(layout), [layout]);
@@ -57,7 +71,7 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
   };
   const latestFit = useRef(fit);
   latestFit.current = fit;
-  const zoomBy = (factor, point) => {
+  const zoomBy = (factor: number, point?: Point) => {
     const size = panelSize();
     setCamera((v) => zoomAt(v, point ?? { x: size.width / 2, y: size.height / 2 }, factor));
   };
@@ -90,7 +104,7 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
   useEffect(() => {
     const el = panel.current;
     if (!el) return undefined;
-    const onWheel = (e) => {
+    const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       const r = el.getBoundingClientRect();
       if (e.ctrlKey) setCamera((v) => zoomAt(v, { x: e.clientX - r.left, y: e.clientY - r.top }, Math.exp(-e.deltaY * 0.003)));
@@ -101,11 +115,11 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
     return () => el.removeEventListener('wheel', onWheel);
   }, [hasNodes]);
 
-  const selected = nodeById.get(selectedId) ?? null;
+  const selected = (selectedId === null ? undefined : nodeById.get(selectedId)) ?? null;
   const edge = layout.edges.find((e) => edgeKey(e) === selectedEdge) ?? null;
   const related = useMemo(() => (selected ? relatedIds(layout.edges, selected.id) : null), [layout, selected]);
-  const lit = (id) => (focus ? focus.has(id) : !related || id === selected.id || related.has(id));
-  const litEdge = (e) => (focus || related ? lit(e.from) && lit(e.to) : true);
+  const lit = (id: number) => (focus ? focus.has(id) : !related || id === selected!.id || related.has(id));
+  const litEdge = (e: GraphEdge) => (focus || related ? lit(e.from) && lit(e.to) : true);
 
   const clearSelection = () => {
     setSelectedId(null);
@@ -114,26 +128,26 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
   };
 
   // Features and Epics levels: the group names, and the story links behind the selected group or arrow.
-  const groupLabel = (id) => {
-    const g = grouping.groups.get(id);
+  const groupLabel = (id: number) => {
+    const g = grouping!.groups.get(id)!;
     return level === 'features' ? `${g.epic} › ${g.name}` : g.name;
   };
-  const selectedGroup = coarse && selected ? grouping.groups.get(selected.id) : null;
-  const detailPairs = !coarse
+  const selectedGroup = coarse && selected ? grouping!.groups.get(selected.id) : null;
+  const detailPairs: Array<{ from: number; to: number }> | null | undefined = !coarse
     ? null
     : edge
-      ? grouping.pairs.get(edgeKey(edge))
+      ? grouping!.pairs.get(edgeKey(edge))
       : selectedGroup
-        ? [...grouping.pairs].filter(([k]) => k.split('>').includes(String(selectedGroup.id))).flatMap(([, pairs]) => pairs)
+        ? [...grouping!.pairs].filter(([k]) => k.split('>').includes(String(selectedGroup.id))).flatMap(([, pairs]) => pairs)
         : null;
-  const chooseLevel = (next) => {
+  const chooseLevel = (next: GraphLevel) => {
     setLevel(next);
     clearSelection();
     setLinkFrom(null);
     setNote('');
   };
   const showStories = () => {
-    const ids = edge ? detailPairs.flatMap((p) => [p.from, p.to]) : selectedGroup.storyIds;
+    const ids = edge ? detailPairs!.flatMap((p) => [p.from, p.to]) : selectedGroup!.storyIds;
     chooseLevel('stories');
     setFocus(new Set(ids));
   };
@@ -144,7 +158,7 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
   };
 
   // `fromId` comes to depend on `toId`.
-  const link = (fromId, toId) => {
+  const link = (fromId: number, toId: number) => {
     const from = byId.get(fromId);
     const to = byId.get(toId);
     setLinkFrom(null);
@@ -157,7 +171,7 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
     onAddDependency(from.id, to.code);
   };
 
-  const removeEdge = (e) => {
+  const removeEdge = (e: GraphEdge) => {
     if (coarse) return;
     const from = byId.get(e.from);
     const to = byId.get(e.to);
@@ -167,22 +181,22 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
     setNote('');
   };
 
-  const clickNode = (id) => {
+  const clickNode = (id: number) => {
     if (linkFrom !== null) return link(linkFrom, id);
     setSelectedEdge(null);
     setSelectedId((cur) => (cur === id ? null : id));
     setNote('');
   };
 
-  const panelPoint = (e) => {
-    const r = panel.current.getBoundingClientRect();
+  const panelPoint = (e: PointerEvent) => {
+    const r = panel.current!.getBoundingClientRect();
     return { x: e.clientX - r.left, y: e.clientY - r.top };
   };
 
-  const onPointerDown = (e) => {
+  const onPointerDown = (e: PointerEvent<SVGSVGElement>) => {
     if (e.button !== 0) return;
-    const handle = e.target.closest('[data-handle]');
-    const onItem = e.target.closest('[data-node], [data-edge]');
+    const handle = (e.target as Element).closest<SVGElement>('[data-handle]');
+    const onItem = (e.target as Element).closest('[data-node], [data-edge]');
     if (handle) {
       const id = Number(handle.dataset.handle);
       gesture.current = { type: 'link', id };
@@ -196,7 +210,7 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
-  const onPointerMove = (e) => {
+  const onPointerMove = (e: PointerEvent<SVGSVGElement>) => {
     const g = gesture.current;
     if (!g) return;
     if (g.type === 'pan') {
@@ -210,7 +224,7 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
     }
   };
 
-  const onPointerUp = (e) => {
+  const onPointerUp = (e: PointerEvent<SVGSVGElement>) => {
     const g = gesture.current;
     gesture.current = null;
     if (!g) return;
@@ -219,13 +233,13 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
       return;
     }
     setDrag(null);
-    const target = document.elementFromPoint(e.clientX, e.clientY)?.closest('[data-node]');
+    const target = document.elementFromPoint(e.clientX, e.clientY)?.closest<SVGElement>('[data-node]');
     if (target) link(g.id, Number(target.dataset.node));
   };
 
-  const onKeyDown = (e) => {
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.ctrlKey || e.altKey || e.metaKey) return;
-    const pan = { ArrowLeft: [KEY_PAN, 0], ArrowRight: [-KEY_PAN, 0], ArrowUp: [0, KEY_PAN], ArrowDown: [0, -KEY_PAN] }[e.key];
+    const pan = ({ ArrowLeft: [KEY_PAN, 0], ArrowRight: [-KEY_PAN, 0], ArrowUp: [0, KEY_PAN], ArrowDown: [0, -KEY_PAN] } as Record<string, [number, number]>)[e.key];
     if (pan) setCamera((v) => panBy(v, ...pan));
     else if (e.key === '+' || e.key === '=') zoomBy(ZOOM_STEP);
     else if (e.key === '-') zoomBy(1 / ZOOM_STEP);
@@ -238,7 +252,7 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
     e.preventDefault();
   };
 
-  const activate = (action) => (e) => {
+  const activate = (action: () => void) => (e: KeyboardEvent) => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
     e.preventDefault();
     e.stopPropagation();
@@ -251,7 +265,7 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
 
   const hint = coarse
     ? edge
-      ? `${groupLabel(edge.from)} depends on ${groupLabel(edge.to)}: ${detailPairs.length} story ${detailPairs.length === 1 ? 'link' : 'links'}.`
+      ? `${groupLabel(edge.from)} depends on ${groupLabel(edge.to)}: ${detailPairs!.length} story ${detailPairs!.length === 1 ? 'link' : 'links'}.`
       : selectedGroup
         ? `${groupLabel(selectedGroup.id)}: the ${level} it depends on and that depend on it are highlighted.`
         : hasNodes
@@ -270,13 +284,13 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
               : '';
 
   // Handlers the parts call: selecting an arrow, starting or cancelling a link, ending a gesture.
-  const pickEdge = (key, clearNote) => {
+  const pickEdge = (key: string, clearNote: boolean) => {
     setSelectedId(null);
     setSelectedEdge(selectedEdge === key ? null : key);
     if (clearNote) setNote('');
   };
-  const toggleLinkFromSelected = () => setLinkFrom(linkFrom === null ? selected.id : null);
-  const toggleLinkFrom = (id) => {
+  const toggleLinkFromSelected = () => setLinkFrom(linkFrom === null ? selected!.id : null);
+  const toggleLinkFrom = (id: number) => {
     clearSelection();
     setLinkFrom(linkFrom === id ? null : id);
   };
@@ -295,7 +309,7 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
         canRemove={Boolean(edge) && !coarse} onRemove={() => edge && removeEdge(edge)}
         canOpen={Boolean(selected)} onOpenInEditor={() => openStory && onOpen(openStory.id)} hint={hint}
       />
-      <GraphDetail detailPairs={detailPairs} byId={byId} onOpen={onOpen} onShowStories={showStories} />
+      <GraphDetail detailPairs={detailPairs ?? null} byId={byId} onOpen={onOpen} onShowStories={showStories} />
       {note && <p className="warning graph-note" role="alert">{note}</p>}
 
       <GraphCanvas
@@ -309,8 +323,8 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
 
       {coarse && layout.cyclic && (
         <ul className="muted graph-notes">
-          {grouping.mutual.map(([a, b]) => <li key={`${a}>${b}`}>{groupLabel(a)} and {groupLabel(b)} depend on each other.</li>)}
-          {grouping.mutual.length === 0 && <li>Some {level} depend on each other in a circle.</li>}
+          {grouping!.mutual.map(([a, b]) => <li key={`${a}>${b}`}>{groupLabel(a)} and {groupLabel(b)} depend on each other.</li>)}
+          {grouping!.mutual.length === 0 && <li>Some {level} depend on each other in a circle.</li>}
         </ul>
       )}
       {!coarse && (layout.cyclic || layout.unresolved.length > 0) && (

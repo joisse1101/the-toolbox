@@ -1,3 +1,8 @@
+import type { Story } from '../../../../../../shared/types.ts';
+import type { ReviewUnit } from '../../../../../../shared/review/review.ts';
+import type { GroupRef } from '../../shell/useBacklog.ts';
+import type { BacklogActions } from '../../shell/useBacklog.ts';
+import type { Level } from '../../../../shared/lib/collapse.ts';
 import TabHeader from '../../../../shared/ui/TabHeader.tsx';
 import EmptyState from '../../../../shared/ui/EmptyState.tsx';
 import ResizeHandle from '../../../../shared/ui/ResizeHandle.tsx';
@@ -9,6 +14,26 @@ import StoryForm from '../../shared/story-form/StoryForm.tsx';
 export default function EditorTab({
   hidden, stories, problems, suggestionCounts, selectedId, selected, selectedUnits, focusRequest, renumberDisabled, collapse, actions,
   onFocused, onAdd, onMove, onMoveGroup, onRenumber, onApplySuggestion, onDismissSuggestion, onMoveToProposed,
+}: {
+  hidden: boolean;
+  stories: Story[];
+  problems: Map<number, string[]>;
+  suggestionCounts: Map<string, number>;
+  selectedId: number | null;
+  selected: Story | null | undefined;
+  selectedUnits: ReviewUnit[];
+  focusRequest: { id: string | undefined } | null;
+  renumberDisabled: boolean;
+  collapse: { closed: ReadonlySet<string>; toggleKey: (key: string) => void; toggleLevel: (level: Level) => void };
+  actions: BacklogActions;
+  onFocused: () => void;
+  onAdd: () => void;
+  onMove: (id: number, epic: string, beforeId: number | null) => void;
+  onMoveGroup: (group: GroupRef, beforeKey: string | null) => void;
+  onRenumber: () => void;
+  onApplySuggestion: (unit: ReviewUnit) => void;
+  onDismissSuggestion: (unit: ReviewUnit) => void;
+  onMoveToProposed: (story: Story) => void;
 }) {
   const list = useListWidth('editor');
   return (

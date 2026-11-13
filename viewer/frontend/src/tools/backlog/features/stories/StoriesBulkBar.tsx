@@ -3,7 +3,11 @@ import { PRIORITIES } from '../../../../../../shared/backlog/model.ts';
 export const KEEP = 'keep'; // bulk Priority "No change" ('' is "None", which clears)
 
 // The bulk edit bar: the fields and buttons for the ticked rows on screen, or a hint when nothing is ticked.
-export default function StoriesBulkBar({ checkedCount, n, hiddenChecked, priority, epic, feature, note, isEmpty, onPriority, onEpic, onFeature, onApply, onDelete, onDeselectAll }) {
+export default function StoriesBulkBar({ checkedCount, n, hiddenChecked, priority, epic, feature, note, isEmpty, onPriority, onEpic, onFeature, onApply, onDelete, onDeselectAll }: {
+  checkedCount: number; n: number; hiddenChecked: number; priority: string; epic: string; feature: string; note: string; isEmpty: boolean;
+  onPriority: (value: string) => void; onEpic: (value: string) => void; onFeature: (value: string) => void;
+  onApply: () => void; onDelete: () => void; onDeselectAll: () => void;
+}) {
   return (
     <div id="bulkBar" className={checkedCount ? 'bulk-bar' : 'bulk-bar quiet'}>
       {checkedCount > 0 && (

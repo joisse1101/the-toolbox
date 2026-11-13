@@ -1,3 +1,6 @@
+import type { ChangeEvent } from 'react';
+import type { Story } from '../../../../../../shared/types.ts';
+import type { Cues, ListFields, SetField, SetStoryPart } from './formTypes.ts';
 import { storyCellText } from '../../../../../../shared/backlog/model.ts';
 import { Grid } from '../../../../shared/ui/Layout.tsx';
 import { Label, CellWarning } from '../../../../shared/ui/FormParts.tsx';
@@ -6,7 +9,10 @@ import { needs, invalid } from './fieldCues.ts';
 const STORY_WARNING = 'The User Story cell does not follow "As …, I want …, so that …", so it is kept as it is';
 
 // "Where it fits": Epic, Feature, Title.
-export function WhereItFitsSection({ story: s, frozen, cues, list, setField, onEpicInput, onCommitEpic }) {
+export function WhereItFitsSection({ story: s, frozen, cues, list, setField, onEpicInput, onCommitEpic }: {
+  story: Story; frozen: boolean; cues: Cues; list: ListFields; setField: SetField;
+  onEpicInput: (e: ChangeEvent<HTMLInputElement>) => void; onCommitEpic: (id: number) => void;
+}) {
   const { missing } = cues;
   return (
     <fieldset>
@@ -21,7 +27,7 @@ export function WhereItFitsSection({ story: s, frozen, cues, list, setField, onE
 }
 
 // "User story": As, I want, So that, and the cell text they are saved as.
-export function UserStorySection({ story: s, frozen, cues, list, setStoryPart }) {
+export function UserStorySection({ story: s, frozen, cues, list, setStoryPart }: { story: Story; frozen: boolean; cues: Cues; list: ListFields; setStoryPart: SetStoryPart }) {
   const { partMissing } = cues;
   return (
     <fieldset>

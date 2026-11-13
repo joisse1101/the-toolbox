@@ -15,10 +15,24 @@ const NAV_HINTS = [
   { label: `${ALT}+Right / Left (points)`, action: 'Go to Priority / back to points' },
 ];
 
+interface Shortcut {
+  code: string;
+  alt?: boolean;
+  ctrl?: boolean;
+  shift?: boolean;
+  label: string;
+  action: string;
+  run: () => void;
+  enabled: boolean;
+}
+
 // One table drives both the key handler and the helper popover. Story shortcuts act on the Editor tab only.
 // Returns the rows of the helper popover (shortcuts, then the field navigation hints).
-export function useShortcuts({ hasBacklog, hasSelected, inEditor, addStory, newBacklog, deleteSelected, moveSelection }) {
-  const shortcuts = [
+export function useShortcuts({ hasBacklog, hasSelected, inEditor, addStory, newBacklog, deleteSelected, moveSelection }: {
+  hasBacklog: boolean; hasSelected: boolean; inEditor: boolean;
+  addStory: () => void; newBacklog: () => void; deleteSelected: () => void; moveSelection: (step: number) => void;
+}) {
+  const shortcuts: Shortcut[] = [
     { code: 'KeyN', alt: true, label: `${ALT}+N`, action: 'Add story', run: addStory, enabled: hasBacklog && inEditor },
     { code: 'KeyN', alt: true, shift: true, label: `${ALT}+Shift+N`, action: 'New backlog', run: newBacklog, enabled: true },
     { code: 'KeyD', alt: true, label: `${ALT}+D`, action: 'Delete selected story', run: deleteSelected, enabled: hasSelected && inEditor },
@@ -29,7 +43,7 @@ export function useShortcuts({ hasBacklog, hasSelected, inEditor, addStory, newB
   const latest = useRef(shortcuts);
   latest.current = shortcuts;
   useEffect(() => {
-    const onKey = (e) => {
+    const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.isComposing || ignoresKey(e)) return;
       const hit = latest.current.find((k) => k.code === e.code && !!k.alt === e.altKey && !!k.ctrl === e.ctrlKey && !!k.shift === e.shiftKey);
       if (!hit || !hit.enabled) return;

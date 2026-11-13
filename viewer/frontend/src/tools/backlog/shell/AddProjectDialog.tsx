@@ -1,13 +1,15 @@
 import { useEffect, useRef } from 'react';
+import type { FormEvent } from 'react';
+import type { useProjects } from './useProjects.ts';
 
 const NAME_HINT = 'Optional';
 
 // Add Project: link a code base (folder dialog, optional name, offer to create .plans) or create a new project from a name.
 // `projects` is the useProjects hook's result. A refusal is shown inside the dialog, and nothing changes until it succeeds.
-export default function AddProjectDialog({ projects }) {
+export default function AddProjectDialog({ projects }: { projects: ReturnType<typeof useProjects> }) {
   const { dialog, error, working, actions } = projects;
-  const ref = useRef(null);
-  const opener = useRef(null);
+  const ref = useRef<HTMLDialogElement>(null);
+  const opener = useRef<Element | null>(null);
   const isOpen = !!dialog;
 
   // The dialog element only exists while open; showModal gives the backdrop, moves focus in and keeps Tab inside.
@@ -15,14 +17,14 @@ export default function AddProjectDialog({ projects }) {
   useEffect(() => {
     if (!isOpen) return undefined;
     opener.current = document.activeElement;
-    if (!ref.current.open) ref.current.showModal();
-    return () => opener.current?.focus();
+    if (!ref.current?.open) ref.current?.showModal();
+    return () => (opener.current as HTMLElement | null)?.focus();
   }, [isOpen]);
 
   if (!dialog) return null;
 
   const isLink = dialog.mode === 'link';
-  const submitNew = (e) => {
+  const submitNew = (e: FormEvent) => {
     e.preventDefault();
     if (dialog.name.trim() && !working) actions.createProject();
   };

@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { addProject, pickProjectFolder } from '../../../shared/api/files.ts';
+import type { useSettings } from '../features/settings/useSettings.ts';
+import { addProject, messageOf, pickProjectFolder } from '../../../shared/api/files.ts';
 
 const SETTLE_FAILED = 'The latest changes could not be saved yet, so the project was not changed.';
 
@@ -8,29 +9,35 @@ const SETTLE_FAILED = 'The latest changes could not be saved yet, so the project
 // project list (`settings.projects`, `settings.activeProject`) and the switch that saves the active path and reloads.
 // dialog: null when closed, else { mode: 'link' | 'new', name, offer } where `offer` is { codeBase } while the folder has
 // no .plans and the user has to accept or decline creating it.
-export function useProjects(settleAll, settingsState) {
+export interface ProjectDialog {
+  mode: 'link' | 'new';
+  name: string;
+  offer: { codeBase: string } | null;
+}
+
+export function useProjects(settleAll: () => Promise<boolean>, settingsState: ReturnType<typeof useSettings>) {
   const { settings, actions } = settingsState;
-  const [dialog, setDialog] = useState(null);
-  const [error, setError] = useState(null); // shown in the dialog while it is open, else under the bar
+  const [dialog, setDialog] = useState<ProjectDialog | null>(null);
+  const [error, setError] = useState<string | null>(null); // shown in the dialog while it is open, else under the bar
   const [working, setWorking] = useState(false);
 
   const projects = settings?.projects ?? [];
   const activeProject = settings?.activeProject ?? -1;
 
-  const run = async (action) => {
+  const run = async (action: () => Promise<unknown> | unknown) => {
     setError(null);
     setWorking(true);
     try {
       await action();
     } catch (err) {
-      setError(err.message);
+      setError(messageOf(err));
     } finally {
       setWorking(false);
     }
   };
 
   // Choosing a saved project. A missing folder and the active project do nothing.
-  const choose = (index) => {
+  const choose = (index: number) => {
     const project = projects[index];
     if (!project || !project.exists || index === activeProject) return undefined;
     return run(() => actions.switchProject(project));
@@ -46,19 +53,19 @@ export function useProjects(settleAll, settingsState) {
     setDialog(null);
   };
 
-  const setMode = (mode) => {
+  const setMode = (mode: ProjectDialog['mode']) => {
     setError(null);
-    setDialog((d) => ({ ...d, mode, offer: null }));
+    setDialog((d) => ({ ...d!, mode, offer: null }));
   };
 
-  const setName = (name) => setDialog((d) => ({ ...d, name }));
+  const setName = (name: string) => setDialog((d) => ({ ...d!, name }));
 
   // The server adds and switches in one call, so pending saves are settled first. Reloads when the active project changed.
-  const submit = async (body) => {
+  const submit = async (body: Parameters<typeof addProject>[0]) => {
     if (!(await settleAll())) throw new Error(SETTLE_FAILED);
     const result = await addProject(body);
     if (result.needsInit) {
-      setDialog((d) => ({ ...d, offer: { codeBase: body.codeBase } }));
+      setDialog((d) => ({ ...d!, offer: { codeBase: body.codeBase! } }));
       return;
     }
     if (result.switched) {
@@ -73,24 +80,24 @@ export function useProjects(settleAll, settingsState) {
     run(async () => {
       const picked = await pickProjectFolder();
       if (picked.cancelled) return;
-      const name = dialog.name.trim();
-      await submit(name ? { codeBase: picked.dir, name } : { codeBase: picked.dir });
+      const name = dialog!.name.trim();
+      await submit(name ? { codeBase: picked.dir!, name } : { codeBase: picked.dir! });
     });
 
   // The user's answer to the offer to create .plans.
   const acceptOffer = () =>
     run(() => {
-      const name = dialog.name.trim();
-      const { codeBase } = dialog.offer;
+      const name = dialog!.name.trim();
+      const { codeBase } = dialog!.offer!;
       return submit(name ? { codeBase, name, init: true } : { codeBase, init: true });
     });
 
   const declineOffer = () => {
     setError(null);
-    setDialog((d) => ({ ...d, offer: null }));
+    setDialog((d) => ({ ...d!, offer: null }));
   };
 
-  const createProject = () => run(() => submit({ newName: dialog.name.trim() }));
+  const createProject = () => run(() => submit({ newName: dialog!.name.trim() }));
 
   return {
     projects, activeProject, dialog, error, working,

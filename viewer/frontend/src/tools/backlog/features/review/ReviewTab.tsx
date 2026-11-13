@@ -1,4 +1,6 @@
 import { useMemo } from 'react';
+import type { ReviewUnit } from '../../../../../../shared/review/review.ts';
+import type { ReviewRow, Story } from '../../../../../../shared/types.ts';
 import { reviewOverview, unitStoryCode } from '../../../../../../shared/review/review.ts';
 import { Suggestion } from '../../shared/Suggestions.tsx';
 import { storyLabel } from '../../../../../../shared/backlog/model.ts';
@@ -8,7 +10,18 @@ import { useConfirm } from '../../../../shared/hooks/useConfirm.ts';
 import { Row } from '../../../../shared/ui/Layout.tsx';
 
 // Every suggestion of the review in one place: open ones grouped by Area, out-of-date ones (Dismiss only) last.
-export default function ReviewTab({ rows, stories, hidden, onOpen, onApply, onDismiss, onAcceptAll, onClear }) {
+interface ReviewTabProps {
+  rows: ReviewRow[];
+  stories: Story[];
+  hidden: boolean;
+  onOpen: (id: number) => void;
+  onApply: (unit: ReviewUnit) => void;
+  onDismiss: (unit: ReviewUnit) => void;
+  onAcceptAll: (units: ReviewUnit[]) => unknown;
+  onClear: () => void;
+}
+
+export default function ReviewTab({ rows, stories, hidden, onOpen, onApply, onDismiss, onAcceptAll, onClear }: ReviewTabProps) {
   const ask = useConfirm();
   const { sections, outOfDate, openCount } = useMemo(() => reviewOverview(rows, stories), [rows, stories]);
   const byCode = useMemo(() => new Map(stories.filter((s) => s.code).map((s) => [s.code, s])), [stories]);
@@ -20,8 +33,9 @@ export default function ReviewTab({ rows, stories, hidden, onOpen, onApply, onDi
     if (await ask({ title: `Clear all ${rows.length} ${noun}?`, message, confirmLabel: 'Clear all', danger: true })) onClear();
   };
 
-  const heading = (unit) => {
-    const story = byCode.get(unitStoryCode(unit));
+  const heading = (unit: ReviewUnit) => {
+    const code = unitStoryCode(unit);
+    const story = code ? byCode.get(code) : undefined;
     return (
       <div className="suggestion-story">
         {story
@@ -30,7 +44,7 @@ export default function ReviewTab({ rows, stories, hidden, onOpen, onApply, onDi
       </div>
     );
   };
-  const entry = (unit) => (
+  const entry = (unit: ReviewUnit) => (
     <Suggestion key={unit.key} unit={unit} stories={stories} heading={heading(unit)} onApply={onApply} onDismiss={onDismiss} />
   );
 

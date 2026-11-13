@@ -1,9 +1,17 @@
-const LEVELS = [['stories', 'Stories'], ['features', 'Features'], ['epics', 'Epics']];
+import type { ReactNode } from 'react';
+import type { GraphLevel } from './graph.ts';
+
+const LEVELS = [['stories', 'Stories'], ['features', 'Features'], ['epics', 'Epics']] as const;
 
 // The strip above the graph: detail level, zoom, the Link / Remove / Open actions, the hint line and the legend.
 export default function GraphToolbar({
   level, onChooseLevel, hasNodes, coarse, zoomPercent, onZoomOut, onZoomIn, onFit,
   linking, canLink, onToggleLink, canRemove, onRemove, canOpen, onOpenInEditor, hint,
+}: {
+  level: GraphLevel; onChooseLevel: (level: GraphLevel) => void; hasNodes: boolean; coarse: boolean; zoomPercent: number;
+  onZoomOut: () => void; onZoomIn: () => void; onFit: () => void;
+  linking: boolean; canLink: boolean; onToggleLink: () => void; canRemove: boolean; onRemove: () => void;
+  canOpen: boolean; onOpenInEditor: () => void; hint: ReactNode;
 }) {
   return (
     <>

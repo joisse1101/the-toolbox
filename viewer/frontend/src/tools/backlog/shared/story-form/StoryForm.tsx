@@ -1,4 +1,8 @@
 import { useEffect } from 'react';
+import type { ChangeEvent } from 'react';
+import type { Story } from '../../../../../../shared/types.ts';
+import type { ReviewUnit } from '../../../../../../shared/review/review.ts';
+import type { Edit, ListFields, SetField, SetStoryPart, StoryPart } from './formTypes.ts';
 import { storyIssues } from '../../../../../../shared/backlog/model.ts';
 import { issueClass } from '../issues.ts';
 import SuggestionList from '../Suggestions.tsx';
@@ -11,28 +15,46 @@ import CriteriaSection from './CriteriaSection.tsx';
 import DependenciesSection from './DependenciesSection.tsx';
 import ClarificationsSection from './ClarificationsSection.tsx';
 
-const $ = (id) => document.getElementById(id);
+const $ = (id: string) => document.getElementById(id);
 
-const distinct = (values) => [...new Set(values.map((v) => v.trim()).filter(Boolean))];
+const distinct = (values: string[]) => [...new Set(values.map((v) => v.trim()).filter(Boolean))];
 
 // `focusRequest` = { id } or null: focus the element with that id (default: Epic) once rendered, then call onFocused.
-// `suggestions`: the open review units for this story ({ key, group, rows }); see review.js. Ungrouped ones sit next to
+// `suggestions`: the open review units for this story ({ key, group, rows }); see review.ts. Ungrouped ones sit next to
 // their field, split groups in their own section.
-export default function StoryForm({ story: s, stories, problems, suggestions = [], focusRequest, onFocused, onEdit, onCommitEpic, onOpen, onApplySuggestion, onDismissSuggestion, onMoveToProposed, onDelete, onBench }) {
+// The proposed tab passes no suggestions, so it needs no suggestion handlers.
+const noop = () => {};
+
+export default function StoryForm({ story: s, stories, problems, suggestions = [], focusRequest, onFocused, onEdit, onCommitEpic, onOpen, onApplySuggestion = noop, onDismissSuggestion = noop, onMoveToProposed, onDelete, onBench }: {
+  story: Story;
+  stories: Story[];
+  problems: Map<number, string[]>;
+  suggestions?: ReviewUnit[];
+  focusRequest: { id: string | undefined } | null;
+  onFocused: () => void;
+  onEdit: (id: number, change: (draft: Story) => void) => void;
+  onCommitEpic: (id: number) => void;
+  onOpen: (id: number) => void;
+  onApplySuggestion?: (unit: ReviewUnit) => void;
+  onDismissSuggestion?: (unit: ReviewUnit) => void;
+  onMoveToProposed?: (story: Story) => void;
+  onDelete?: () => void;
+  onBench?: (id: number, on: boolean) => void;
+}) {
   useEffect(() => {
     if (!focusRequest) return;
-    ($(focusRequest.id) ?? $('epic'))?.focus();
+    ($(focusRequest.id ?? 'epic') ?? $('epic'))?.focus();
     onFocused();
   }, [focusRequest, onFocused]);
 
   const frozen = !!s.frozen; // every field is read-only; the reducer refuses an edit too
-  const edit = (change) => onEdit(s.id, change);
-  const setField = (key) => (e) => {
+  const edit: Edit = (change) => onEdit(s.id, change);
+  const setField: SetField = (key) => (e) => {
     const value = e.target.value;
     edit((d) => { d[key] = value; });
   };
   // Editing any of As / I want / So that replaces the original cell text.
-  const setStoryPart = (key) => (e) => {
+  const setStoryPart: SetStoryPart = (key: StoryPart) => (e) => {
     const value = e.target.value;
     edit((d) => { d[key] = value; d.rawUserStory = null; });
   };
@@ -40,20 +62,20 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
   const { errors, warnings } = storyIssues(s, problems.get(s.id));
 
   // The Epic is committed (and the ID follows it) when the field is left, or a suggestion is picked.
-  const onEpicInput = (e) => {
+  const onEpicInput = (e: ChangeEvent<HTMLInputElement>) => {
     setField('epic')(e);
-    if (e.nativeEvent.inputType === 'insertReplacementText') onCommitEpic(s.id);
+    if ((e.nativeEvent as InputEvent).inputType === 'insertReplacementText') onCommitEpic(s.id);
   };
   // A benched story is parked, so it shows no red or yellow highlights.
   const cls = s.benched ? '' : issueClass(errors, warnings);
   // A missing field gets a red (required) or yellow (optional) border instead of a banner.
   const cues = fieldCues(s);
-  const forField = (...fields) => suggestions.filter((u) => !u.group && fields.includes(u.rows[0].field));
+  const forField = (...fields: string[]) => suggestions.filter((u) => !u.group && fields.includes(u.rows[0]!.field));
   const groups = suggestions.filter((u) => u.group);
-  const listOf = (units) => (
+  const listOf = (units: ReviewUnit[]) => (
     <SuggestionList units={units} stories={stories} onApply={onApplySuggestion} onDismiss={onDismissSuggestion} />
   );
-  const list = (...fields) => listOf(forField(...fields));
+  const list: ListFields = (...fields) => listOf(forField(...fields));
 
   // Suggestions come from the open backlog: Feature is narrowed by Epic. Title has none.
   const sameEpic = stories.filter((o) => o.epic === s.epic);

@@ -1,15 +1,18 @@
 import { useState } from 'react';
+import type { ChangeEvent } from 'react';
+import type { Story } from '../../../../../../shared/types.ts';
+import type { Edit, ListFields } from './formTypes.ts';
 import { storyLabel } from '../../../../../../shared/backlog/model.ts';
 import { dependencyChoices, dependentsOf } from '../../../../../../shared/backlog/ids.ts';
 
 // "Depends on" (IDs, with a picker) and "Required by".
-export default function DependenciesSection({ story: s, stories, frozen, edit, list, onOpen }) {
+export default function DependenciesSection({ story: s, stories, frozen, edit, list, onOpen }: { story: Story; stories: Story[]; frozen: boolean; edit: Edit; list: ListFields; onOpen: (id: number) => void }) {
   const [depInput, setDepInput] = useState('');
   // Dependencies are stored as IDs. The picker offers the stories that can still be linked without a cycle.
   const choices = dependencyChoices(stories, s);
   const byCode = new Map(stories.filter((o) => o.code).map((o) => [o.code, o]));
   const requiredBy = dependentsOf(stories, s.code);
-  const pickDependency = (e) => {
+  const pickDependency = (e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.trim();
     if (!choices.some((o) => o.code === value)) return setDepInput(e.target.value);
     setDepInput('');

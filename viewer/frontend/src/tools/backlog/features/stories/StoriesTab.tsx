@@ -1,25 +1,35 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { BulkPatch } from '../../shell/useBacklog.ts';
+import type { Story } from '../../../../../../shared/types.ts';
 import { fitWidths, makeRoom } from '../../../../shared/lib/panel-size.ts';
 import { displayOrder } from '../../../../../../shared/backlog/model.ts';
 import { matchesQuery } from '../../../../../../shared/backlog/story-search.ts';
 import { filterOptions, filterStories, sortStories, visibleChecked } from './story-table.ts';
+import type { Filter, FilterKey, SortDir } from './story-table.ts';
 import TabHeader from '../../../../shared/ui/TabHeader.tsx';
 import EmptyState from '../../../../shared/ui/EmptyState.tsx';
 import StoriesBulkBar, { KEEP } from './StoriesBulkBar.tsx';
 import StoriesFilters from './StoriesFilters.tsx';
 import StoriesTable from './StoriesTable.tsx';
+import type { Column } from './storiesColumns.ts';
 import {
   COLUMNS, SIZED, FIXED_TOTAL, CHECK_WIDTH, COLUMN_LIMITS, COLUMN_DEFAULTS, SHRINK_ORDER, fittedWidth,
 } from './storiesColumns.ts';
 import { useConfirm } from '../../../../shared/hooks/useConfirm.ts';
 import usePanelSizes from '../../../../shared/hooks/usePanelSizes.ts';
 
-const distinct = (stories, key) => [...new Set(stories.map((o) => o[key].trim()).filter(Boolean))];
+const distinct = (stories: readonly Story[], key: 'epic' | 'feature') => [...new Set(stories.map((o) => o[key].trim()).filter(Boolean))];
 
-const NO_FILTER = { priority: '', epic: '', feature: '' };
+const NO_FILTER: Filter = { priority: '', epic: '', feature: '' };
 
 // Every story in one table, with ticks and a bulk edit bar. The table itself is read-only.
-export default function StoriesTab({ stories, headers, problems, checked, lastChecked, hidden, onOpen, onCheck, onCheckAll, onApplyBulk, onDeleteChecked }) {
+export default function StoriesTab({ stories, headers, problems, checked, lastChecked, hidden, onOpen, onCheck, onCheckAll, onApplyBulk, onDeleteChecked }: {
+  stories: Story[]; headers: readonly string[]; problems: ReadonlyMap<number, string[]>; checked: ReadonlySet<number>; lastChecked: number | null; hidden: boolean;
+  onOpen: (id: number) => void; onCheck: (ids: number[], on: boolean, anchor: number | null) => void;
+  onCheckAll: (on: boolean, ids: Iterable<number>) => void;
+  onApplyBulk: (patch: BulkPatch, ids: ReadonlySet<number>) => { skipped: number };
+  onDeleteChecked: (ids: ReadonlySet<number>, hiddenCount?: number) => Promise<{ deleted: number; skipped: number }>;
+}) {
   const ask = useConfirm();
   const [priority, setPriority] = useState(KEEP);
   const [epic, setEpic] = useState('');
@@ -27,10 +37,10 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
   const [note, setNote] = useState('');
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState(NO_FILTER);
-  const [sort, setSort] = useState(null); // { key, dir } or null = backlog order
-  const selectAll = useRef(null);
-  const table = useRef(null);
-  const wrap = useRef(null);
+  const [sort, setSort] = useState<{ key: string; dir: SortDir } | null>(null); // { key, dir } or null = backlog order
+  const selectAll = useRef<HTMLInputElement>(null);
+  const table = useRef<HTMLTableElement>(null);
+  const wrap = useRef<HTMLDivElement>(null);
   const [available, setAvailable] = useState(Infinity); // width the columns can share; unknown (or the tab hidden) = no limit
   const columns = usePanelSizes('planner.colWidth', COLUMN_DEFAULTS, COLUMN_LIMITS);
   // Stored widths scaled down when they do not fit the container, so the table does not scroll sideways (unless even the
@@ -42,13 +52,13 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
   }, [columns.widths, available]);
   // The Title column takes the width the others leave, so the table fills its container with no empty column.
   const spare = Number.isFinite(available) ? Math.max(0, available - SIZED.reduce((sum, c) => sum + shown[c.key], 0)) : 0;
-  const widthOf = ({ key, fixed }) => fixed ?? shown[key] + (key === 'title' ? spare : 0);
+  const widthOf = ({ key, fixed }: Column) => fixed ?? shown[key]! + (key === 'title' ? spare : 0);
 
   useEffect(() => {
-    const measure = () => setAvailable(wrap.current.clientWidth ? wrap.current.clientWidth - CHECK_WIDTH - FIXED_TOTAL : Infinity);
+    const measure = () => setAvailable(wrap.current!.clientWidth ? wrap.current!.clientWidth - CHECK_WIDTH - FIXED_TOTAL : Infinity);
     measure();
     const observer = new ResizeObserver(measure);
-    observer.observe(wrap.current);
+    observer.observe(wrap.current!);
     return () => observer.disconnect();
   }, []);
 
@@ -71,7 +81,7 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
   const shownChecked = n;
 
   useEffect(() => {
-    selectAll.current.indeterminate = shownChecked > 0 && shownChecked < rows.length;
+    selectAll.current!.indeterminate = shownChecked > 0 && shownChecked < rows.length;
   }, [shownChecked, rows.length]);
 
   const patch = {
@@ -83,26 +93,26 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
 
   // Double-click a column handle: the column gets the width of its widest text (up to the column maximum).
   // A column grows only into the room the others leave; the others keep the widths shown, so nothing else moves.
-  const resize = (key, width) => {
+  const resize = (key: string, width: number) => {
     const others = SIZED.reduce((sum, c) => (c.key === key ? sum : sum + shown[c.key]), 0);
     columns.setWidths({ ...shown, [key]: Math.min(width, available - others) });
   };
   const commitAll = () => columns.commit(SIZED.map((c) => c.key));
-  const fit = (key) => {
-    const wanted = Math.min(fittedWidth(table.current, COLUMNS.findIndex((c) => c.key === key) + 1), COLUMN_LIMITS.max);
+  const fit = (key: string) => {
+    const wanted = Math.min(fittedWidth(table.current!, COLUMNS.findIndex((c) => c.key === key) + 1), COLUMN_LIMITS.max);
     columns.setWidths(makeRoom(shown, key, wanted, available, COLUMN_LIMITS.min, SHRINK_ORDER));
     commitAll();
   };
 
   // Click a header: ascending, then descending, then back to backlog order.
-  const toggleSort = (key) => setSort((cur) => (cur?.key !== key ? { key, dir: 'asc' } : cur.dir === 'asc' ? { key, dir: 'desc' } : null));
+  const toggleSort = (key: string) => setSort((cur) => (cur?.key !== key ? { key, dir: 'asc' } : cur.dir === 'asc' ? { key, dir: 'desc' } : null));
   const clearSearch = () => {
     setQuery('');
     setFilter(NO_FILTER);
   };
-  const setFilterKey = (key, value) => setFilter((cur) => ({ ...cur, [key]: value }));
+  const setFilterKey = (key: FilterKey, value: string) => setFilter((cur) => ({ ...cur, [key]: value }));
 
-  const tick = (id, on, shift) => {
+  const tick = (id: number, on: boolean, shift: boolean) => {
     const ids = rows.map((r) => r.id);
     let range = [id];
     if (shift && lastChecked !== null && ids.includes(lastChecked)) {

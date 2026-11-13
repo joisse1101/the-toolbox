@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import type { Story } from '../../../../../../shared/types.ts';
+import type { ProposedNotice } from './useProposedFlow.ts';
 import { backlogProblems } from '../../../../../../shared/backlog/ids.ts';
 import StoryList from '../../shared/StoryList.tsx';
 import StoryForm from '../../shared/story-form/StoryForm.tsx';
@@ -12,24 +14,42 @@ import useListWidth from '../../../../shared/hooks/useListWidth.ts';
 // Editor tab has the same ones.
 // `proposed` / `backlogStories`: the two story lists. Depends On choices and Epic / Feature suggestions offer both.
 // `notice`: { kind: 'error' | 'ok', text } or null, the result of the last accept.
+interface ProposedTabProps {
+  hidden: boolean;
+  proposed: Story[];
+  backlogStories: Story[];
+  selected: Story | null;
+  selectedId: number | null;
+  notice: ProposedNotice | null;
+  onSelect: (id: number) => void;
+  onAdd: () => void;
+  onDelete: (ids: ReadonlySet<number>) => unknown;
+  onEdit: (id: number, change: (draft: Story) => void) => void;
+  onCommitEpic: (id: number) => void;
+  onMove: (id: number, epic: string, beforeId: number | null) => void;
+  onOpenBacklogStory: (id: number) => void;
+  onAccept: (ids: ReadonlySet<number>) => unknown;
+  onAcceptAll: () => unknown;
+}
+
 export default function ProposedTab({
   hidden, proposed, backlogStories, selected, selectedId, notice,
   onSelect, onAdd, onDelete, onEdit, onCommitEpic, onMove, onOpenBacklogStory, onAccept, onAcceptAll,
-}) {
+}: ProposedTabProps) {
   // Ticked stories for Accept selected. Ids that are gone (accepted, deleted) drop out.
-  const [ticked, setTicked] = useState(() => new Set());
+  const [ticked, setTicked] = useState<ReadonlySet<number>>(() => new Set());
   useEffect(() => {
     setTicked((prev) => {
       const next = new Set([...prev].filter((id) => proposed.some((s) => s.id === id)));
       return next.size === prev.size ? prev : next;
     });
   }, [proposed]);
-  const toggle = (id) => setTicked((prev) => {
+  const toggle = (id: number) => setTicked((prev) => {
     const next = new Set(prev);
     if (!next.delete(id)) next.add(id);
     return next;
   });
-  const [focusRequest, setFocusRequest] = useState(null);
+  const [focusRequest, setFocusRequest] = useState<{ id: string } | null>(null);
   const list = useListWidth('proposed');
   const all = useMemo(() => [...backlogStories, ...proposed], [backlogStories, proposed]);
   // Warnings are computed over both lists so a link to a backlog story is not "missing"; only proposed stories are shown.
@@ -41,14 +61,14 @@ export default function ProposedTab({
   // A benched story is parked and cannot be accepted: Accept is disabled with the reason until it is un-benched.
   const benchedTicked = proposed.filter((s) => ticked.has(s.id) && s.benched).length;
   const benchedAny = proposed.filter((s) => s.benched).length;
-  const benchedReason = (n) => `${n} benched stor${n > 1 ? 'ies' : 'y'}: un-bench ${n > 1 ? 'them' : 'it'} first.`;
+  const benchedReason = (n: number) => `${n} benched stor${n > 1 ? 'ies' : 'y'}: un-bench ${n > 1 ? 'them' : 'it'} first.`;
 
   const add = () => {
     onAdd();
     setFocusRequest({ id: 'epic' });
   };
   // A Depends On link may name a backlog story: open it in the Editor tab.
-  const open = (id) => (proposed.some((s) => s.id === id) ? onSelect(id) : onOpenBacklogStory(id));
+  const open = (id: number) => (proposed.some((s) => s.id === id) ? onSelect(id) : onOpenBacklogStory(id));
 
   return (
     <div id="proposedView" role="tabpanel" aria-labelledby="tabProposed" hidden={hidden}>

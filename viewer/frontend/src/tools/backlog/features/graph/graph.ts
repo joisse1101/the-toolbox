@@ -2,6 +2,63 @@
 // A story depends on the stories in `dependsOn` (by ID). In the layout a story sits in a layer to the right of every
 // story it depends on, so edges (drawn from the dependent to its dependency) all point left.
 
+import type { Story } from '../../../../../../shared/types.ts';
+
+// What the layout reads of a story.
+export type GraphItem = Pick<Story, 'id' | 'code' | 'dependsOn'>;
+export interface GraphNode {
+  id: number;
+  code: string;
+  layer: number;
+  row: number;
+  cluster: number;
+}
+export interface GraphEdge {
+  from: number;
+  to: number;
+  back: boolean;
+  via: Array<{ layer: number; row: number }>;
+}
+export interface GraphCluster {
+  index: number;
+  size: number;
+  rows: number;
+}
+export interface GraphLayout<S extends GraphItem = GraphItem> {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+  clusters: GraphCluster[];
+  unlinked: S[];
+  unresolved: Array<{ from: number; code: string }>;
+  cyclic: boolean;
+}
+export type GraphLevel = 'stories' | 'features' | 'epics';
+export interface GraphView {
+  x: number;
+  y: number;
+  k: number;
+}
+export interface Point {
+  x: number;
+  y: number;
+}
+export interface Size {
+  width: number;
+  height: number;
+}
+// A feature or epic group, laid out like a story.
+export interface StoryGroup {
+  id: number;
+  key: string;
+  name: string;
+  epic: string;
+  storyIds: number[];
+  internal: number;
+  dependsOn: Set<string>;
+}
+
+type Key = number | string;
+
 export const MIN_ZOOM = 0.2;
 export const MAX_ZOOM = 3;
 
@@ -13,13 +70,13 @@ export const MAX_ZOOM = 3;
 //   unlinked   stories with no resolvable link, or no ID, in file order
 //   unresolved { from, code } for Depends On entries no story has
 //   cyclic     true when the links contain a cycle (a self-reference counts)
-export function layoutGraph(stories) {
-  const byCode = new Map();
+export function layoutGraph<S extends GraphItem>(stories: S[]): GraphLayout<S> {
+  const byCode = new Map<string, S>();
   for (const s of stories) if (s.code && !byCode.has(s.code)) byCode.set(s.code, s);
-  const order = new Map(stories.map((s, i) => [s.id, i]));
+  const order = new Map<number, number>(stories.map((s, i) => [s.id, i]));
 
-  const deps = new Map(); // story id -> ids it depends on
-  const unresolved = [];
+  const deps = new Map<number, number[]>(); // story id -> ids it depends on
+  const unresolved: Array<{ from: number; code: string }> = [];
   let cyclic = false;
   for (const s of stories) {
     if (!s.code) continue;
@@ -29,22 +86,22 @@ export function layoutGraph(stories) {
       else if (target.id === s.id) cyclic = true;
       else {
         if (!deps.has(s.id)) deps.set(s.id, []);
-        if (!deps.get(s.id).includes(target.id)) deps.get(s.id).push(target.id);
+        if (!deps.get(s.id)!.includes(target.id)) deps.get(s.id)!.push(target.id);
       }
     }
   }
 
-  const linked = new Set();
+  const linked = new Set<number>();
   for (const [from, tos] of deps) {
     linked.add(from);
     for (const to of tos) linked.add(to);
   }
 
   // Layer = 1 + the deepest dependency. An edge into a story still being visited closes a cycle and is ignored here.
-  const layer = new Map();
-  const visiting = new Set();
-  const place = (id) => {
-    if (layer.has(id)) return layer.get(id);
+  const layer = new Map<number, number>();
+  const visiting = new Set<number>();
+  const place = (id: number): number => {
+    if (layer.has(id)) return layer.get(id)!;
     visiting.add(id);
     let l = 0;
     for (const to of deps.get(id) ?? []) {
@@ -59,32 +116,32 @@ export function layoutGraph(stories) {
   for (const s of members) place(s.id);
 
   // Clusters: stories joined by any link (a cycle's back edge included), largest first, ties by file order.
-  const parent = new Map(members.map((s) => [s.id, s.id]));
-  const find = (id) => {
-    while (parent.get(id) !== id) id = parent.get(id);
+  const parent = new Map<number, number>(members.map((s) => [s.id, s.id]));
+  const find = (id: number): number => {
+    while (parent.get(id) !== id) id = parent.get(id)!;
     return id;
   };
   for (const [from, tos] of deps) for (const to of tos) parent.set(find(from), find(to));
-  const groups = new Map();
+  const groups = new Map<number, S[]>();
   for (const s of members) {
     const root = find(s.id);
     if (!groups.has(root)) groups.set(root, []);
-    groups.get(root).push(s);
+    groups.get(root)!.push(s);
   }
-  const clusterList = [...groups.values()].sort((a, b) => b.length - a.length || order.get(a[0].id) - order.get(b[0].id));
+  const clusterList = [...groups.values()].sort((a, b) => b.length - a.length || order.get(a[0]!.id)! - order.get(b[0]!.id)!);
 
-  const edges = [];
+  const edges: GraphEdge[] = [];
   for (const [from, tos] of deps) {
-    for (const to of tos) edges.push({ from, to, back: layer.get(to) >= layer.get(from), via: [] });
+    for (const to of tos) edges.push({ from, to, back: layer.get(to)! >= layer.get(from)!, via: [] });
   }
 
-  const nodes = [];
-  const clusters = [];
+  const nodes: GraphNode[] = [];
+  const clusters: GraphCluster[] = [];
   clusterList.forEach((group, index) => {
     const { row, height, chains } = arrangeCluster(group, edges, layer);
     clusters.push({ index, size: group.length, rows: height });
-    for (const s of group) nodes.push({ id: s.id, code: s.code, layer: layer.get(s.id), row: row.get(s.id), cluster: index });
-    for (const [edge, chain] of chains) edge.via = chain.map((w) => ({ layer: w.layer, row: row.get(w.key) }));
+    for (const s of group) nodes.push({ id: s.id, code: s.code, layer: layer.get(s.id)!, row: row.get(s.id)!, cluster: index });
+    for (const [edge, chain] of chains) edge.via = chain.map((w) => ({ layer: w.layer, row: row.get(w.key)! }));
   });
   return { nodes, edges, clusters, unlinked: stories.filter((s) => !linked.has(s.id)), unresolved, cyclic };
 }
@@ -97,26 +154,26 @@ const SWEEPS = 4;
 //   row     item key (story id or waypoint key) -> row
 //   height  number of rows
 //   chains  edge -> its waypoints [{ key, layer }], from the dependent towards the dependency
-function arrangeCluster(group, edges, layer) {
+function arrangeCluster(group: GraphItem[], edges: GraphEdge[], layer: Map<number, number>) {
   const inCluster = new Set(group.map((s) => s.id));
-  const layers = [];
-  const addTo = (l, key) => (layers[l] ??= []).push(key);
-  for (const s of group) addTo(layer.get(s.id), s.id);
+  const layers: Key[][] = [];
+  const addTo = (l: number, key: Key) => (layers[l] ??= []).push(key);
+  for (const s of group) addTo(layer.get(s.id)!, s.id);
 
-  const left = new Map(); // item -> items it depends on, one layer to the left
-  const right = new Map();
-  const connect = (dependent, dependency) => {
+  const left = new Map<Key, Key[]>(); // item -> items it depends on, one layer to the left
+  const right = new Map<Key, Key[]>();
+  const connect = (dependent: Key, dependency: Key) => {
     if (!left.has(dependent)) left.set(dependent, []);
     if (!right.has(dependency)) right.set(dependency, []);
-    left.get(dependent).push(dependency);
-    right.get(dependency).push(dependent);
+    left.get(dependent)!.push(dependency);
+    right.get(dependency)!.push(dependent);
   };
-  const chains = new Map();
+  const chains = new Map<GraphEdge, Array<{ key: string; layer: number }>>();
   for (const edge of edges) {
     if (!inCluster.has(edge.from) || edge.back) continue;
-    const chain = [];
-    let previous = edge.from;
-    for (let l = layer.get(edge.from) - 1; l > layer.get(edge.to); l--) {
+    const chain: Array<{ key: string; layer: number }> = [];
+    let previous: Key = edge.from;
+    for (let l = layer.get(edge.from)! - 1; l > layer.get(edge.to)!; l--) {
       const key = `${edge.from}>${edge.to}@${l}`;
       addTo(l, key);
       chain.push({ key, layer: l });
@@ -127,20 +184,20 @@ function arrangeCluster(group, edges, layer) {
     chains.set(edge, chain);
   }
 
-  const row = new Map();
-  const setRows = (l) => layers[l].forEach((key, i) => row.set(key, i));
+  const row = new Map<Key, number>();
+  const setRows = (l: number) => layers[l].forEach((key, i) => row.set(key, i));
   layers.forEach((_, l) => setRows(l));
-  const sweep = (l, neighbours) => {
+  const sweep = (l: number, neighbours: Map<Key, Key[]>) => {
     const means = layers[l].map((key) => {
       const ns = neighbours.get(key);
-      return ns ? ns.reduce((sum, n) => sum + row.get(n), 0) / ns.length : null;
+      return ns ? ns.reduce<number>((sum, n) => sum + row.get(n)!, 0) / ns.length : null;
     });
     const sorted = layers[l]
       .map((key, i) => ({ key, i, mean: means[i] }))
       .filter((x) => x.mean !== null)
-      .sort((a, b) => a.mean - b.mean || a.i - b.i);
+      .sort((a, b) => a.mean! - b.mean! || a.i - b.i);
     let next = 0;
-    layers[l] = layers[l].map((key, i) => (means[i] === null ? key : sorted[next++].key));
+    layers[l] = layers[l].map((key, i) => (means[i] === null ? key : sorted[next++]!.key));
     setRows(l);
   };
   for (let round = 0; round < SWEEPS; round++) {
@@ -159,30 +216,30 @@ const KEY_SEP = '\u0001';
 //   groups  id -> { id, key, name, epic, storyIds, internal (links inside the group) }
 //   pairs   `${from}>${to}` group ids -> the story links { from, to } (story ids) behind that group edge
 //   mutual  [a, b] group ids that depend on each other
-export function groupStories(stories, level) {
-  const trim = (v) => String(v ?? '').trim();
-  const keyOf = (s) => {
+export function groupStories(stories: Story[], level: 'features' | 'epics') {
+  const trim = (v: unknown) => String(v ?? '').trim();
+  const keyOf = (s: Story) => {
     const epic = trim(s.epic);
     if (!s.code || !epic) return null;
     if (level === 'epics') return epic;
     return trim(s.feature) ? `${epic}${KEY_SEP}${trim(s.feature)}` : null;
   };
 
-  const groups = new Map(); // key -> group
-  const groupOf = new Map(); // story id -> group
+  const groups = new Map<string, StoryGroup>(); // key -> group
+  const groupOf = new Map<number, StoryGroup>(); // story id -> group
   for (const s of stories) {
     const key = keyOf(s);
     if (key === null) continue;
     if (!groups.has(key)) {
       groups.set(key, { id: groups.size + 1, key, name: trim(level === 'epics' ? s.epic : s.feature), epic: trim(s.epic), storyIds: [], internal: 0, dependsOn: new Set() });
     }
-    groups.get(key).storyIds.push(s.id);
-    groupOf.set(s.id, groups.get(key));
+    groups.get(key)!.storyIds.push(s.id);
+    groupOf.set(s.id, groups.get(key)!);
   }
 
-  const byCode = new Map();
+  const byCode = new Map<string, Story>();
   for (const s of stories) if (s.code && !byCode.has(s.code)) byCode.set(s.code, s);
-  const pairs = new Map();
+  const pairs = new Map<string, Array<{ from: number; to: number }>>();
   for (const s of stories) {
     const from = groupOf.get(s.id);
     if (!from) continue;
@@ -197,13 +254,13 @@ export function groupStories(stories, level) {
       from.dependsOn.add(to.key);
       const edge = `${from.id}>${to.id}`;
       if (!pairs.has(edge)) pairs.set(edge, []);
-      pairs.get(edge).push({ from: s.id, to: target.id });
+      pairs.get(edge)!.push({ from: s.id, to: target.id });
     }
   }
 
-  const mutual = [];
+  const mutual: Array<[number, number]> = [];
   for (const edge of pairs.keys()) {
-    const [a, b] = edge.split('>').map(Number);
+    const [a, b] = edge.split('>').map(Number) as [number, number];
     if (a < b && pairs.has(`${b}>${a}`)) mutual.push([a, b]);
   }
   const list = [...groups.values()];
@@ -216,12 +273,12 @@ export function groupStories(stories, level) {
 }
 
 // Ids of everything `id` depends on and everything that depends on it, directly or indirectly (not `id` itself).
-export function relatedIds(edges, id) {
-  const walk = (next) => {
-    const seen = new Set();
+export function relatedIds(edges: readonly GraphEdge[], id: number) {
+  const walk = (next: (x: number) => number[]) => {
+    const seen = new Set<number>();
     const stack = [id];
     while (stack.length) {
-      for (const n of next(stack.pop())) if (n !== id && !seen.has(n)) { seen.add(n); stack.push(n); }
+      for (const n of next(stack.pop()!)) if (n !== id && !seen.has(n)) { seen.add(n); stack.push(n); }
     }
     return seen;
   };
@@ -231,27 +288,27 @@ export function relatedIds(edges, id) {
 }
 
 // View = { x, y, k }: a graph point (gx, gy) is shown at (x + gx * k, y + gy * k) in the panel.
-export const clampZoom = (k) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, k));
+export const clampZoom = (k: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, k));
 
 // Scale and centre `bounds` ({ width, height }) in `size`. Never magnifies beyond 1:1, and never goes below `minZoom`
 // (the zoom that keeps the smallest node text readable): a graph too large for that is shown from its top left corner,
 // with the rest reachable by panning.
-export function fitView(bounds, size, padding = 24, minZoom = MIN_ZOOM) {
+export function fitView(bounds: Size, size: Size, padding = 24, minZoom = MIN_ZOOM): GraphView {
   if (!bounds.width || !bounds.height || !size.width || !size.height) return { x: 0, y: 0, k: 1 };
   const wanted = Math.min(1, (size.width - 2 * padding) / bounds.width, (size.height - 2 * padding) / bounds.height);
   const k = Math.min(MAX_ZOOM, Math.max(minZoom, wanted));
-  const place = (room, extent) => (extent * k > room - 2 * padding ? padding : (room - extent * k) / 2);
+  const place = (room: number, extent: number) => (extent * k > room - 2 * padding ? padding : (room - extent * k) / 2);
   return { k, x: place(size.width, bounds.width), y: place(size.height, bounds.height) };
 }
 
 // Multiply the zoom by `factor`, keeping the graph point under `point` (panel coordinates) where it is.
-export function zoomAt(view, point, factor) {
+export function zoomAt(view: GraphView, point: Point, factor: number): GraphView {
   const k = clampZoom(view.k * factor);
   const r = k / view.k;
   return { k, x: point.x - (point.x - view.x) * r, y: point.y - (point.y - view.y) * r };
 }
 
-export const panBy = (view, dx, dy) => ({ ...view, x: view.x + dx, y: view.y + dy });
+export const panBy = (view: GraphView, dx: number, dy: number): GraphView => ({ ...view, x: view.x + dx, y: view.y + dy });
 
 // Panel coordinates -> graph coordinates.
-export const toGraphPoint = (view, point) => ({ x: (point.x - view.x) / view.k, y: (point.y - view.y) / view.k });
+export const toGraphPoint = (view: GraphView, point: Point): Point => ({ x: (point.x - view.x) / view.k, y: (point.y - view.y) / view.k });

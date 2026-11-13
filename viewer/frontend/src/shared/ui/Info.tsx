@@ -1,15 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 
 // Popover (guideline and shortcuts): hover/focus shows (CSS), click pins, Escape or an outside click closes.
-export default function Info({ id, buttonId, buttonClass = '', label, icon, popoverId, popoverClass = '', children }) {
+export default function Info({ id, buttonId, buttonClass = '', label, icon, popoverId, popoverClass = '', children }: {
+  id?: string; buttonId?: string; buttonClass?: string; label: string; icon?: ReactNode; popoverId: string; popoverClass?: string; children?: ReactNode;
+}) {
   const [pinned, setPinned] = useState(false);
-  const root = useRef(null);
+  const root = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
-    const onClick = (e) => {
-      if (!root.current?.contains(e.target)) setPinned(false);
+    const onClick = (e: MouseEvent) => {
+      if (!root.current?.contains(e.target as Node)) setPinned(false);
     };
-    const onKey = (e) => {
+    const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setPinned(false);
     };
     document.addEventListener('click', onClick);

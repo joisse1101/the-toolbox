@@ -1,12 +1,12 @@
 // Width rules for the resizable panels and table columns: pure, so the portal's hook and the tests share them.
 
 // A width kept between min and max, as a whole number of pixels.
-export function clampWidth(value, min, max) {
+export function clampWidth(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, Math.round(value)));
 }
 
 // The width a stored string stands for: the nearest allowed width when it is a number, `fallback` when it is not.
-export function parseStoredWidth(raw, { min, max, fallback }) {
+export function parseStoredWidth<F>(raw: unknown, { min, max, fallback }: { min: number; max: number; fallback: F }): number | F {
   if (typeof raw !== 'string' || raw.trim() === '') return fallback;
   const value = Number(raw);
   return Number.isFinite(value) ? clampWidth(value, min, max) : fallback;
@@ -15,7 +15,7 @@ export function parseStoredWidth(raw, { min, max, fallback }) {
 // Widths that fit in `available` pixels: when their sum is too wide, each loses the same share of its room above `min`
 // (so none goes below `min`, and a wide one gives up more than a narrow one). Returns the widths unchanged when they fit,
 // and all `min` when even those do not.
-export function fitWidths(widths, available, min) {
+export function fitWidths(widths: number[], available: number, min: number): number[] {
   const sum = widths.reduce((total, w) => total + w, 0);
   const excess = sum - available;
   if (excess <= 0) return widths;
@@ -26,8 +26,8 @@ export function fitWidths(widths, available, min) {
 
 // `widths` ({ key: width }) with column `key` set to `wanted`, taking the room it needs from the other columns: they shrink
 // to `min`, one after the other in the order of `order` (keys), until the widths fit in `available` pixels or no room is left.
-export function makeRoom(widths, key, wanted, available, min, order) {
-  const next = { ...widths };
+export function makeRoom(widths: Record<string, number>, key: string, wanted: number, available: number, min: number, order: readonly string[]): Record<string, number> {
+  const next: Record<string, number> = { ...widths };
   const others = Object.entries(widths).reduce((sum, [k, w]) => (k === key ? sum : sum + w), 0);
   let deficit = wanted - (available - others);
   for (const k of order) {

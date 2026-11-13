@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createFileStore } from '../../../../shared/api/files.ts';
+import type { ReviewRow, ReviewStatus } from '../../../../../../shared/types.ts';
+import { createFileStore, messageOf } from '../../../../shared/api/files.ts';
 import { parseReview, serializeReview, retargetRows } from '../../../../../../shared/review/review.ts';
 
 const store = createFileStore('review');
@@ -10,29 +11,32 @@ const RETRY_MAX_MS = 30000;
 // The review suggestions for the open backlog (reviews/<same file name>). Rows are loaded when the backlog opens
 // and on tab focus. Apply/Dismiss change a row's Status; the file is rewritten shortly after, and retried when it is
 // locked (open in Excel). A failed review write never undoes the backlog edit.
-export function useReview(current) {
-  const [rows, setRows] = useState([]);
+export function useReview(current: string | null | undefined) {
+  const [rows, setRows] = useState<ReviewRow[]>([]);
   const [exists, setExists] = useState(false); // the backlog has a review file (even one with no open rows)
   // The backlog whose first read is done. `loaded` compares it with `current` during render, because a plain flag would
   // still be true for one render after `current` changes, before the effect clears it, and a reload on /backlog/review
   // would then fall back to Editor before the review file is read.
-  const [loadedFor, setLoadedFor] = useState(undefined);
+  const [loadedFor, setLoadedFor] = useState<string | null | undefined>(undefined);
   const loaded = loadedFor === current;
-  const [message, setMessage] = useState(null); // problem with the review file itself
-  const [notice, setNotice] = useState(null); // why the last Apply did nothing
-  const m = useRef({ rows: [], name: null, dirty: false, dirtyName: null, inFlight: null, timer: null, retry: null, delay: RETRY_START_MS }).current;
+  const [message, setMessage] = useState<string | null>(null); // problem with the review file itself
+  const [notice, setNotice] = useState<string | null>(null); // why the last Apply did nothing
+  const m = useRef<{
+    rows: ReviewRow[]; name: string | null | undefined; dirty: boolean; dirtyName: string | null; inFlight: Promise<void> | null;
+    timer: ReturnType<typeof setTimeout> | undefined; retry: ReturnType<typeof setTimeout> | undefined; delay: number;
+  }>({ rows: [], name: null, dirty: false, dirtyName: null, inFlight: null, timer: undefined, retry: undefined, delay: RETRY_START_MS }).current;
 
-  const setAll = useCallback((next) => {
+  const setAll = useCallback((next: ReviewRow[]) => {
     m.rows = next;
     setRows(next);
   }, [m]);
 
-  const flush = useCallback(async () => {
+  const flush = useCallback(async (): Promise<void> => {
     clearTimeout(m.timer);
     clearTimeout(m.retry);
     if (m.inFlight) return m.inFlight;
     if (!m.dirty) return undefined;
-    const name = m.dirtyName;
+    const name = m.dirtyName!;
     const text = serializeReview(m.rows);
     m.dirty = false;
     m.inFlight = (async () => {
@@ -42,7 +46,7 @@ export function useReview(current) {
         setMessage(null);
       } catch (err) {
         m.dirty = true;
-        setMessage(`${err.message} The Apply/Dismiss status of review suggestions is not saved yet; retrying.`);
+        setMessage(`${messageOf(err)} The Apply/Dismiss status of review suggestions is not saved yet; retrying.`);
         m.retry = setTimeout(flush, m.delay);
         m.delay = Math.min(m.delay * 2, RETRY_MAX_MS);
       } finally {
@@ -87,7 +91,7 @@ export function useReview(current) {
       if (m.name !== name) return;
       setAll([]);
       setExists(false);
-      setMessage(`Could not read the review suggestions: ${err.message}`);
+      setMessage(`Could not read the review suggestions: ${messageOf(err)}`);
     }
   }, [m, setAll]);
 
@@ -111,7 +115,7 @@ export function useReview(current) {
   }, [current, flush, load, m, setAll]);
 
   // Mark rows (by index) applied or dismissed and save the file.
-  const decide = useCallback((indexes, status) => {
+  const decide = useCallback((indexes: Iterable<number>, status: ReviewStatus) => {
     if (!m.name) return;
     const set = new Set(indexes);
     setAll(m.rows.map((r, i) => (set.has(i) ? { ...r, status } : r)));
@@ -136,7 +140,7 @@ export function useReview(current) {
   }, [m, setAll, flush]);
 
   // Stories were renumbered (recoded: old code -> new code): open rows follow their story and the file is saved.
-  const retarget = useCallback((recoded) => {
+  const retarget = useCallback((recoded: ReadonlyMap<string, string>) => {
     if (!m.name) return;
     const next = retargetRows(m.rows, recoded);
     if (next === m.rows) return;

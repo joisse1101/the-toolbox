@@ -1,8 +1,12 @@
+import type { KeyboardEvent, PointerEvent, RefObject } from 'react';
+import type { Story } from '../../../../../../shared/types.ts';
+import type { GraphEdge, GraphLayout, GraphLevel, GraphNode, GraphView, Point, groupStories } from './graph.ts';
 import EmptyState from '../../../../shared/ui/EmptyState.tsx';
 import { storyIssues, storyLabel as title } from '../../../../../../shared/backlog/model.ts';
 import { issueClass, rowTooltip } from '../../shared/issues.ts';
 import { stateWord } from '../../../../shared/ui/StateMark.tsx';
 import { NODE_W, NODE_H, BAND_PAD, MIN_LABEL_ZOOM, slot, edgeKey, clip, edgePath } from './graphGeometry.ts';
+import type { bandGeometry } from './graphGeometry.ts';
 
 // The graph surface: cluster bands, arrows, nodes and the rubber band of a link being dragged. Everything it shows
 // and every gesture it receives comes from GraphTab through props.
@@ -10,8 +14,39 @@ export default function GraphCanvas({
   panelRef, hasNodes, stories, level, coarse, grouping, layout, bands, view, byId, nodeById, epicHue, problems,
   selected, selectedEdge, linkFrom, drag, dragNode, lit, litEdge, groupLabel, activate,
   clickNode, onPickEdge, onOpen, onKeyDown, onPointerDown, onPointerMove, onPointerUp, onPointerCancel,
+}: {
+  panelRef: RefObject<HTMLDivElement | null>;
+  hasNodes: boolean;
+  stories: Story[];
+  level: GraphLevel;
+  coarse: boolean;
+  grouping: ReturnType<typeof groupStories> | null;
+  layout: GraphLayout;
+  bands: ReturnType<typeof bandGeometry>['bands'];
+  view: GraphView;
+  byId: Map<number, Story>;
+  nodeById: Map<number, GraphNode>;
+  epicHue: Map<string, number>;
+  problems: Map<number, string[]>;
+  selected: GraphNode | null;
+  selectedEdge: string | null;
+  linkFrom: number | null;
+  drag: { from: number; point: Point } | null;
+  dragNode: GraphNode | null | undefined;
+  lit: (id: number) => boolean;
+  litEdge: (e: GraphEdge) => boolean;
+  groupLabel: (id: number) => string;
+  activate: (action: () => void) => (e: KeyboardEvent) => void;
+  clickNode: (id: number) => void;
+  onPickEdge: (key: string, clearNote: boolean) => void;
+  onOpen: (id: number) => void;
+  onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void;
+  onPointerDown: (e: PointerEvent<SVGSVGElement>) => void;
+  onPointerMove: (e: PointerEvent<SVGSVGElement>) => void;
+  onPointerUp: (e: PointerEvent<SVGSVGElement>) => void;
+  onPointerCancel: () => void;
 }) {
-  const pos = (node) => slot(node.layer, node.row, bands[node.cluster].top);
+  const pos = (node: GraphNode) => slot(node.layer, node.row, bands[node.cluster].top);
 
   if (!hasNodes) {
     return (
@@ -47,13 +82,13 @@ export default function GraphCanvas({
             </g>
           ))}
           {layout.edges.map((e) => {
-            const from = nodeById.get(e.from);
-            const to = nodeById.get(e.to);
+            const from = nodeById.get(e.from)!;
+            const to = nodeById.get(e.to)!;
             const d = edgePath(from, to, e.via, bands[from.cluster].top, e.back);
             const on = selectedEdge === edgeKey(e);
             const marker = e.back ? 'back' : on ? 'hi' : '';
             const cls = ['graph-edge', e.back ? 'back' : '', on ? 'selected' : '', litEdge(e) ? '' : 'dim'].filter(Boolean).join(' ');
-            const weight = coarse ? grouping.pairs.get(edgeKey(e)).length : 0;
+            const weight = coarse ? grouping!.pairs.get(edgeKey(e))!.length : 0;
             const mid = {
               x: (slot(from.layer, 0, 0).x + slot(to.layer, 0, 0).x + NODE_W) / 2,
               y: (slot(0, from.row, bands[from.cluster].top).y + slot(0, to.row, bands[from.cluster].top).y + NODE_H) / 2 - 5,
@@ -70,7 +105,7 @@ export default function GraphCanvas({
             );
           })}
           {coarse && layout.nodes.map((n) => {
-            const g = grouping.groups.get(n.id);
+            const g = grouping!.groups.get(n.id)!;
             const { x, y } = pos(n);
             const hue = epicHue.get(g.epic);
             const counts = `${g.storyIds.length} ${g.storyIds.length === 1 ? 'story' : 'stories'}${g.internal ? ` · ${g.internal} internal` : ''}`;
@@ -91,7 +126,7 @@ export default function GraphCanvas({
             );
           })}
           {!coarse && layout.nodes.map((n) => {
-            const s = byId.get(n.id);
+            const s = byId.get(n.id)!;
             const { x, y } = pos(n);
             const { errors, warnings } = storyIssues(s, problems.get(s.id));
             const hue = epicHue.get(s.epic.trim());
@@ -116,13 +151,13 @@ export default function GraphCanvas({
           })}
           {/* Keyboard stops for the edges come after every node in the DOM, so Tab visits nodes first; the drawn lines above stay under the nodes. */}
           {layout.edges.map((e) => {
-            const from = nodeById.get(e.from);
-            const to = nodeById.get(e.to);
+            const from = nodeById.get(e.from)!;
+            const to = nodeById.get(e.to)!;
             const key = edgeKey(e);
             const on = selectedEdge === key;
             const label = coarse
               ? `${groupLabel(e.from)} depends on ${groupLabel(e.to)}`
-              : `${byId.get(e.from).code} depends on ${byId.get(e.to).code}`;
+              : `${byId.get(e.from)!.code} depends on ${byId.get(e.to)!.code}`;
             return (
               <g
                 key={key} className="graph-edge-key" data-edge-key={key} tabIndex={0} role="button" aria-label={label} aria-pressed={on}

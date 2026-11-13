@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import type { ChangeEvent, KeyboardEvent } from 'react';
+import type { useProjects } from './useProjects.ts';
 import AddProjectDialog from './AddProjectDialog.tsx';
 import { Row } from '../../../shared/ui/Layout.tsx';
 
@@ -6,9 +8,23 @@ const ADD_PROJECT = 'add-project';
 
 // Project dropdown, Backlog dropdown, rename, Initials, New, Open folder and Refresh, plus the message banners.
 // `projects` is the useProjects hook's result; the Add Project dialog is shown from here.
-export default function FileBar({ files, current, initials = '', message, olderLayout = [], focusNameToken, projects, onSelect, onRename, onSetInitials, onNew, onOpenFolder, onRefresh }) {
+export default function FileBar({ files, current, initials = '', message, olderLayout = [], focusNameToken, projects, onSelect, onRename, onSetInitials, onNew, onOpenFolder, onRefresh }: {
+  files: string[];
+  current: string | null;
+  initials?: string;
+  message: string | null;
+  olderLayout?: string[];
+  focusNameToken: number;
+  projects: ReturnType<typeof useProjects>;
+  onSelect: (name: string) => unknown;
+  onRename: (wanted: string) => Promise<unknown>;
+  onSetInitials: (wanted: string) => Promise<{ ok: true } | { error: string }>;
+  onNew: () => unknown;
+  onOpenFolder: () => unknown;
+  onRefresh: () => unknown;
+}) {
   const [draft, setDraft] = useState(current ?? '');
-  const nameRef = useRef(null);
+  const nameRef = useRef<HTMLInputElement>(null);
   const cancelled = useRef(false);
   const [initialsDraft, setInitialsDraft] = useState(initials);
   const [initialsError, setInitialsError] = useState('');
@@ -49,14 +65,14 @@ export default function FileBar({ files, current, initials = '', message, olderL
       return setInitialsDraft(initials);
     }
     const result = await onSetInitials(initialsDraft);
-    if (result.error) {
+    if ('error' in result) {
       setInitialsError(result.error);
       return setInitialsDraft(initials);
     }
     setInitialsError('');
   };
 
-  const onProjectChange = (e) => {
+  const onProjectChange = (e: ChangeEvent<HTMLSelectElement>) => {
     if (e.target.value === ADD_PROJECT) return projects.actions.openDialog();
     return projects.actions.choose(Number(e.target.value));
   };
@@ -86,11 +102,11 @@ export default function FileBar({ files, current, initials = '', message, olderL
             value={draft} disabled={!current}
             onChange={(e) => setDraft(e.target.value)}
             onBlur={commit}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') e.target.blur();
+            onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+              if (e.key === 'Enter') e.currentTarget.blur();
               if (e.key === 'Escape') {
                 cancelled.current = true;
-                e.target.blur();
+                e.currentTarget.blur();
               }
             }}
           />
@@ -104,11 +120,11 @@ export default function FileBar({ files, current, initials = '', message, olderL
             title="Starts the ID of every story in this backlog, for example B1-IAM-0003. Frozen stories keep the initials they have."
             onChange={(e) => setInitialsDraft(e.target.value)}
             onBlur={commitInitials}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') e.target.blur();
+            onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+              if (e.key === 'Enter') e.currentTarget.blur();
               if (e.key === 'Escape') {
                 initialsCancelled.current = true;
-                e.target.blur();
+                e.currentTarget.blur();
               }
             }}
           />
