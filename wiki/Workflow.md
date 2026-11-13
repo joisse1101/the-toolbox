@@ -18,7 +18,7 @@ The repo is ESM (`"type": "module"` in `viewer/package.json`). `viewer/backend/s
 
 Adding a tool takes four steps:
 
-1. Create `viewer/frontend/<tool-name>/index.html` (a `#root` div and a script that loads the tool's `main.jsx`, like `viewer/frontend/backlog-portal/index.html`) and `viewer/frontend/src/<tool-name>/main.jsx`, which imports `viewer/frontend/src/shared/style.css` (by relative path). Import `viewer/frontend/src/shared/files.js` and any pure logic from `viewer/shared/`. Add the page to `build.rollupOptions.input` in `viewer/frontend/vite.config.mjs`.
+1. Create `viewer/frontend/<tool-name>/index.html` (a `#root` div and a script that loads the tool's `main.jsx`, like `viewer/frontend/backlog-portal/index.html`) and `viewer/frontend/src/<tool-name>/main.jsx`, which imports `viewer/frontend/src/shared/style.css` (by relative path). Import `viewer/frontend/src/shared/api/files.js` and any pure logic from `viewer/shared/`. Add the page to `build.rollupOptions.input` in `viewer/frontend/vite.config.mjs`.
 2. Register a new kind of file in `KIND_FILES` in `viewer/shared/storage/backlog-paths.cjs`, with its name and its fixed path inside a backlog folder. The server's `STORES` is built from those kinds, so only registered kinds are reachable.
 3. In the tool, use `createFileStore('<kind>')` for `list`, `read`, `create`, `write`, `rename` and `openFolder`, one file per backlog.
 4. Add a link to the tool in `viewer/frontend/src/main.jsx`, then run `npm run build`.
