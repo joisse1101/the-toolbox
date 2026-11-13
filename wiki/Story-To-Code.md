@@ -12,7 +12,7 @@ Start Claude in the code base folder, because the skills look for the data folde
 2. **Propose** the agreed stories with `/jois-story:propose`. It writes them to `<backlog>/user-stories/proposals.csv`.
 3. **Accept** them in the portal's Proposed tab, which moves them into `<backlog>/user-stories.csv`. See [User Flows](viewer/User-Flows.md).
 4. **Review** the backlog with `jois-story-review` when you want a wider check. Apply or dismiss its suggestions in the portal's Review tab.
-5. **Plan** a slice with `jois-story-plan`. It asks the design questions the stories leave open, writes the slice folder, freezes the stories it covers, checks the slice with verify and then asks whether to commit the plan files (`UC-<slice>.md`, `tasks.md` and `source.json`) with "Yes, commit" or "Not now". It skips the question when the folder is not a git repository or git ignores the files. See [Story Skills](planner/Story-Skills.md#committing-the-plan-files).
+5. **Plan** a slice with `jois-story-plan`. It asks the design questions the stories leave open, writes the slice folder, freezes the stories it covers, checks the slice with verify and then asks whether to commit the plan files (`UC-<slice>.md`, `tasks.md` and `source.json`) with "Yes, commit" or "Not now". It skips the question when the folder is not a git repository or git ignores the files. See [Story Skills](viewer/Story-Skills.md#committing-the-plan-files).
 6. **Verify** the slice with `/jois-story:verify` if you changed it or its stories since it was planned. It reports what would break the build and fixes the slice only after you approve.
 7. **Build** it with `/jois-code:apply slice <backlog>/<slice>`, or give a shorter form such as the slice name and the command asks when it is unsure. Agents carry out the tasks one group at a time, and each finished group is committed on your branch. Before the tests the command reviews the code, fixes what the review finds for at most two rounds, and writes `review.md` into the slice folder. See [Task Agent](toolkit/Task-Agent.md).
 8. **Validate** it with `/jois-code:validate slice <backlog>/<slice>`. Agents test each acceptance criterion against the running code and write `validation.md` into the slice folder. The slice is validated only when every claim is met.
@@ -23,7 +23,7 @@ Archive refuses a slice that is stale, has an unticked task, a `TBC` decision or
 
 ## What each stage leaves behind
 
-The slice folder lives in the data folder. Plan offers to commit `UC-<slice>.md`, `tasks.md` and `source.json`, apply stages `tasks.md` with each group's commit only when git tracks it, and no command stages `review.md`, `validation.md` or `validation.partial.md`: they are working files that archive copies into `ARCHIVED.md` and then removes. When archive is done the folder is a **reduced slice**, holding `ARCHIVED.md` and `source.json` only. The file table is in [Data Folder](planner/architecture/Data-Folder.md).
+The slice folder lives in the data folder. Plan offers to commit `UC-<slice>.md`, `tasks.md` and `source.json`, apply stages `tasks.md` with each group's commit only when git tracks it, and no command stages `review.md`, `validation.md` or `validation.partial.md`: they are working files that archive copies into `ARCHIVED.md` and then removes. When archive is done the folder is a **reduced slice**, holding `ARCHIVED.md` and `source.json` only. The file table is in [Data Folder](viewer/architecture/Data-Folder.md).
 
 | Stage | Writes | Committed |
 | --- | --- | --- |

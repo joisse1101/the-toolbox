@@ -1,6 +1,6 @@
 # Files under the data folder
 
-This page lists every file the story skills, the `jois-code` commands and the planner portal write under `<data folder>/<backlog>/`, who writes each one and how long it lives. Read it to decide what belongs in git before any skill runs. The same table is kept as data in `planner/logic/skill-support/plans-files.mjs`, and a test fails when the two differ.
+This page lists every file the story skills, the `jois-code` commands and the planner portal write under `<data folder>/<backlog>/`, who writes each one and how long it lives. Read it to decide what belongs in git before any skill runs. The same table is kept as data in `viewer/shared/skill-support/plans-files.mjs`, and a test fails when the two differ.
 
 ## The table
 
