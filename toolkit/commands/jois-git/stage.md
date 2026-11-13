@@ -64,7 +64,6 @@ Clear a messy working tree in clean single-concern commits, each confirmed by th
      - The proposed message, as `type(scope): subject`.
        - The type is feat, fix, refactor, perf, style, docs, test, build, ci, chore or revert.
        - The subject is lowercase and imperative, with no trailing period.
-       - The session's `Co-Authored-By` line comes last.
      - The list of concerns still waiting.
      - The skipped files.
    - Name a common confirmation word that differs from the word in your previous prompt.
