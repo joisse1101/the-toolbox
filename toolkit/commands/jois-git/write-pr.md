@@ -97,7 +97,6 @@ Turn the commits on this branch into one or more PRs.
      - Tests lists the test files the group adds or changes, and their names.
      - Fill Author Verification and How to Test This PR as the Author Verification section says.
      - Never state a result no source records.
-   - End with the PR attribution line the session gives, if any.
 7. **Present and stop.**
    - Show the groups with their commits.
    - For each PR show:
