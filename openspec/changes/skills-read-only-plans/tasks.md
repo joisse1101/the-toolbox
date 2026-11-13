@@ -23,7 +23,7 @@
 
 ## 4. Whole-change test run
 
-- [ ] 4.1 Run every test suite the project names and fix any failure this change caused. Verify: `cd planner; npm test`, `node --test <abs>/toolkit/tests/story/*.test.mjs`, `cd toolkit; python check_toolkit.py; python -m pytest` (through the toolkit's `.venv`) and `python scripts/check_docs.py` each exit 0.
+- [x] 4.1 Run every test suite the project names and fix any failure this change caused. Verify: `cd planner; npm test`, `node --test <abs>/toolkit/tests/story/*.test.mjs`, `cd toolkit; python check_toolkit.py; python -m pytest` (through the toolkit's `.venv`) and `python scripts/check_docs.py` each exit 0.
 
 ## Workflow follow-up
 
