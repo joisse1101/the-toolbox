@@ -83,6 +83,17 @@ Use the verify skill. It reads the slice `<backlog>/slices/<slice>/` and the sto
 
 The skill needs `jois-story-plan` installed, because it uses that skill's scripts.
 
+## Archive a slice
+
+Use `/jois-code:archive slice <backlog>/<slice>` after the slice is built and validated. It writes the slice into the wiki, records the result in `ARCHIVED.md` and then offers to remove the slice's working files, so the folder ends up as a reduced slice: `ARCHIVED.md` and `source.json`. Everything the folder held is then in the wiki and in `ARCHIVED.md`, and nothing in `.plans/` repeats it.
+
+1. Approve the page map and each page or diff, as the command shows them.
+2. When the review left open lines (known, not fixed or not fixed by design) or validation could not test a claim, choose "Add to the wiki" to put them in a `### Known limits` section of the slice's block, or "Keep only in ARCHIVED.md". The question is skipped when there is nothing to carry.
+3. Read the list of working files the command shows, each marked `tracked` or `untracked`, and choose "Delete them" or "Keep them". An untracked file has no copy in git, so deleting it is permanent. A tracked file can be restored from git. A file that is not a working file, such as `notes.md`, is named and kept.
+4. Reply with the confirmation word to make the one commit. It holds the wiki pages, `ARCHIVED.md`, `source.json` and the deletions of tracked working files, and skips any file your `.gitignore` ignores.
+
+Running archive on a reduced slice only says when it was archived and writes nothing, and validate says the same and tests nothing. After "Keep them", a later run offers the delete again.
+
 ## Change the data folder or code base
 
 Use the Settings tab. It reads and writes the config file, `planner/planner.config.yaml` (or the file `PLANNER_CONFIG` names), and copies backlog files between folders.

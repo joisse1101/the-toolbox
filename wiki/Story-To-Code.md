@@ -16,23 +16,23 @@ Start Claude in the code base folder, because the skills look for the data folde
 6. **Verify** the slice with `/jois-story:verify` if you changed it or its stories since it was planned. It reports what would break the build and fixes the slice only after you approve.
 7. **Build** it with `/jois-code:apply slice <backlog>/<slice>`, or give a shorter form such as the slice name and the command asks when it is unsure. Agents carry out the tasks one group at a time, and each finished group is committed on your branch. Before the tests the command reviews the code, fixes what the review finds for at most two rounds, and writes `review.md` into the slice folder. See [Task Agent](toolkit/Task-Agent.md).
 8. **Validate** it with `/jois-code:validate slice <backlog>/<slice>`. Agents test each acceptance criterion against the running code and write `validation.md` into the slice folder. The slice is validated only when every claim is met.
-9. **Archive** it with `/jois-code:archive slice <backlog>/<slice>`, or with a slice name, a backlog name or nothing, in which case it asks which slice. It writes the slice into the wiki, one folder per topic with an overview, a reference and a design page, and marks the slice with `ARCHIVED.md`. It shows every page before it writes and stops at the commit rule's confirmation word. See [Command Details](toolkit/Command-Details.md).
-10. **Open the PR** with `/jois-git:write-pr`. The wiki commit of the archive travels in the same PR as the code. The PR's Author Verification list comes from the slice's `validation.md` and `review.md`, so it holds the results even in a new chat.
+9. **Archive** it with `/jois-code:archive slice <backlog>/<slice>`, or with a slice name, a backlog name or nothing, in which case it asks which slice. It writes the slice into the wiki, one folder per topic with an overview, a reference and a design page, and records the slice in `ARCHIVED.md` with a validation and review summary. It shows every page before it writes, then asks whether to delete the slice's working files (`UC-<slice>.md`, `tasks.md`, `review.md`, `validation.md`, `validation.partial.md`), warning you when any is untracked because that delete is permanent. It then stops at the commit rule's confirmation word for one commit of the wiki pages, `ARCHIVED.md`, `source.json` and the deleted tracked files. See [Command Details](toolkit/Command-Details.md).
+10. **Open the PR** with `/jois-git:write-pr`. The wiki commit of the archive travels in the same PR as the code. The PR's Author Verification list comes from the slice's `validation.md` and `review.md`, or from the tables of `ARCHIVED.md` once archive has removed them, so it holds the results even in a new chat.
 
 Archive refuses a slice that is stale, has an unticked task, a `TBC` decision or an open question, or whose validation is not current. So when archive stops, it names the stage to go back to, and you never have to guess whether the wiki matches the code.
 
 ## What each stage leaves behind
 
-The slice folder lives in the data folder, which this flow does not commit: apply ticks `tasks.md` there, and validate, apply and archive write their result files there, but no command stages them. The code and the wiki are committed on your branch.
+The slice folder lives in the data folder. Plan offers to commit `UC-<slice>.md`, `tasks.md` and `source.json`, apply stages `tasks.md` with each group's commit only when git tracks it, and no command stages `review.md`, `validation.md` or `validation.partial.md`: they are working files that archive copies into `ARCHIVED.md` and then removes. When archive is done the folder is a **reduced slice**, holding `ARCHIVED.md` and `source.json` only. The file table is in [Data Folder](planner/architecture/Data-Folder.md).
 
 | Stage | Writes | Committed |
 | --- | --- | --- |
 | Propose | `<backlog>/user-stories/proposals.csv` | no |
 | Accept (portal) | `<backlog>/user-stories.csv` | no |
-| Plan | `<backlog>/slices/<slice>/` (`UC-<slice>.md`, `tasks.md`, `source.json`) | no |
-| Build | the code, ticks in `tasks.md`, `review.md` | the code, one commit per group |
+| Plan | `<backlog>/slices/<slice>/` (`UC-<slice>.md`, `tasks.md`, `source.json`) | only when you answer "Yes, commit" |
+| Build | the code, ticks in `tasks.md`, `review.md` | the code, one commit per group, with a tracked `tasks.md` |
 | Validate | `validation.md`, or `validation.partial.md` for one story | no |
-| Archive | `wiki/<topic>/` pages, `ARCHIVED.md` | the wiki pages, after your confirmation word |
+| Archive | `wiki/<topic>/` pages, `ARCHIVED.md`, the deletion of the working files | one commit, after your confirmation word: the wiki pages, `ARCHIVED.md`, `source.json` and the deleted tracked files |
 
 ## Which command is next
 
@@ -46,6 +46,7 @@ Every command can be run again, and it picks up where it stopped. When you come 
 | `validation.md` with a `Tested commit:` older than the code | `/jois-code:validate slice <backlog>/<slice>` |
 | `Validated: yes` at the current code, and no `ARCHIVED.md` written since the latest code commit | `/jois-code:archive slice <backlog>/<slice>` |
 | `ARCHIVED.md` written since the latest code commit, and its wiki commit made | `/jois-git:write-pr` |
+| Only `ARCHIVED.md` and `source.json` (a reduced slice) | `/jois-git:write-pr`; archive and validate say the slice is archived and do nothing |
 
 A `validation.partial.md` alone never counts as validated, because it tested one story only. An `ARCHIVED.md` from an earlier commit records an earlier archive, so after new code the slice is archived again, and the rerun replaces its block in the wiki in place.
 

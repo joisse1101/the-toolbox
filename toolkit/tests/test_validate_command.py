@@ -183,3 +183,11 @@ def test_result_files_are_working_files_that_archive_removes_and_nobody_stages()
     assert "plans-files.md" in files_section
     assert "Never stage a result file." in _step(8, 9)
     assert "The slice folder is not tracked by git here" not in text
+
+
+def test_a_slice_reduced_by_archive_is_reported_archived_and_nothing_is_tested():
+    step = _step(2, 3)
+    assert "`**/<backlog>/slices/<slice>/source.json`, so a slice that archive reduced to its record is found too" in step
+    assert "If the folder holds `ARCHIVED.md` and no `tasks.md`, the slice has been reduced by archive" in step
+    assert "say the slice is archived on the date `ARCHIVED.md` names and its tasks are gone, test nothing and stop" in step
+    assert step.index("reduced by archive") < step.index("Otherwise read `tasks.md`")
