@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { groupByEpic } from '../../shared/backlog/model.ts';
-import { allKeys, anyOpen, epicKey, featureKey, levelKeys, parseClosed, pruneClosed, reveal, serializeClosed, toggleLevel } from '../../frontend/src/shared/lib/collapse.js';
+import { allKeys, anyOpen, epicKey, featureKey, levelKeys, parseClosed, pruneClosed, reveal, serializeClosed, toggleLevel } from '../../frontend/src/shared/lib/collapse.ts';
 
 const story = (epic, feature) => ({ epic, feature });
 const groups = groupByEpic([

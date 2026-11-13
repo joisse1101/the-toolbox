@@ -17,7 +17,7 @@ const dev = args.has('--dev');
 const port = Number(process.env.PORT) || 3000;
 const VITE_PORT = 5173;
 const viteBin = path.join(ROOT, 'node_modules', 'vite', 'bin', 'vite.js');
-const viteConfig = path.join(ROOT, 'frontend', 'vite.config.mjs');
+const viteConfig = path.join(ROOT, 'frontend', 'vite.config.ts');
 
 if (!fs.existsSync(viteBin)) {
   console.error('Dependencies are not installed. Run `npm install` first.');

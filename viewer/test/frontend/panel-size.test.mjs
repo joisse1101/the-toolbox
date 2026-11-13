@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { clampWidth, fitWidths, makeRoom, parseStoredWidth } from '../../frontend/src/shared/lib/panel-size.js';
+import { clampWidth, fitWidths, makeRoom, parseStoredWidth } from '../../frontend/src/shared/lib/panel-size.ts';
 
 const limits = { min: 180, max: 600, fallback: 260 };
 

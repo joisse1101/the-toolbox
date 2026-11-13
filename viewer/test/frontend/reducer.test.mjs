@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { reducer } from '../../frontend/src/tools/backlog/shell/useBacklog.js';
+import { reducer } from '../../frontend/src/tools/backlog/shell/useBacklog.ts';
 import { loadBacklog, applyBulk } from '../../shared/backlog/model.ts';
 import { moveToProposed } from '../../shared/backlog/proposals.ts';
 
@@ -164,7 +164,7 @@ test('replaceStories: stores the list, marks it edited, keeps the selection when
   assert.equal(reducer(state, { type: 'replaceStories', stories: [] }).selectedId, null);
 });
 
-import { reducer as proposalsReducer } from '../../frontend/src/tools/backlog/features/proposed/useProposals.js';
+import { reducer as proposalsReducer } from '../../frontend/src/tools/backlog/features/proposed/useProposals.ts';
 
 const PROPOSALS = 'ID,Epic,Feature,Title,Depends On\r\nNEW-2,Billing,Invoices,A,\r\nNEW-5,Reports,Exports,B,NEW-2\r\n';
 

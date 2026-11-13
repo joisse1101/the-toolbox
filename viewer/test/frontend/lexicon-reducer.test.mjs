@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { reducer } from '../../frontend/src/tools/backlog/features/lexicon/useLexicon.js';
+import { reducer } from '../../frontend/src/tools/backlog/features/lexicon/useLexicon.ts';
 import { parseLexicon } from '../../shared/lexicon/lexicon.ts';
 
 const FILE = ['Term,Part of,Definition', 'Dataset,,A table.', 'Dataset attribute,Dataset,A column.', 'User,,A person.', ''].join('\r\n');

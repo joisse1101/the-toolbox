@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { groupStories, layoutGraph } from '../../frontend/src/tools/backlog/features/graph/graph.js';
+import { groupStories, layoutGraph } from '../../frontend/src/tools/backlog/features/graph/graph.ts';
 
 let n = 0;
 const story = (epic, feature, code, dependsOn = []) => ({ id: ++n, epic, feature, code, dependsOn });
