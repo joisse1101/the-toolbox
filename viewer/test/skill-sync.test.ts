@@ -14,13 +14,13 @@ const GENERATED = ['lib', 'references'];
 
 const temp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'skill-sync-'));
 
-function runSync(skillsDir, outDir) {
+function runSync(skillsDir: string, outDir: string) {
   const run = spawnSync(process.execPath, [SCRIPT, '--skills-dir', skillsDir, '--out', outDir], { encoding: 'utf8' });
   assert.equal(run.status, 0, run.stderr);
   return run.stdout;
 }
 
-function filesUnder(dir) {
+function filesUnder(dir: string) {
   if (!fs.existsSync(dir)) return [];
   return fs.readdirSync(dir, { recursive: true, withFileTypes: true })
     .filter((e) => e.isFile())
@@ -29,11 +29,11 @@ function filesUnder(dir) {
 }
 
 // A Windows checkout with core.autocrlf turns a committed LF file into CRLF, so lines are compared, not bytes.
-const readLf = (file) => fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
+const readLf = (file: string) => fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
 
 // What differs between a committed skill folder and the generated one: files named `skill/path`, with why.
-function drift(committedDir, generatedDir) {
-  const problems = [];
+function drift(committedDir: string, generatedDir: string) {
+  const problems: string[] = [];
   for (const skill of Object.keys(SKILLS)) {
     if (!fs.existsSync(path.join(committedDir, skill))) continue;
     for (const part of GENERATED) {
@@ -129,7 +129,7 @@ test('a copy has its source line ending throughout: CRLF sources give CRLF copie
   const root = fs.mkdtempSync(path.join(scratch, 'skill-sync-eol-'));
   try {
     // Two copies of the viewer folders the script reads: one as LF, one as CRLF.
-    const outputs = {};
+    const outputs: Record<string, string> = {};
     for (const eol of ['lf', 'crlf']) {
       const viewer = path.join(root, eol, 'viewer');
       for (const dir of ['scripts', 'shared']) fs.cpSync(path.join(VIEWER, dir), path.join(viewer, dir), { recursive: true });

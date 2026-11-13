@@ -3,15 +3,14 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createRequire } from 'node:module';
 
-const { PLANS_DIR } = createRequire(import.meta.url)('../../shared/storage/backlog-paths.ts');
+import { PLANS_DIR } from '../../shared/storage/backlog-paths.ts';
 const { loadConfig, saveConfig, configPath, DEFAULT_CONFIG_PATH, DEFAULT_DATA_DIR } = await import('../../backend/storage/project-config.ts');
 
 function tmp() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'project-config-'));
 }
-function write(dir, text) {
+function write(dir: string, text: string) {
   const file = path.join(dir, 'viewer.config.yaml');
   fs.writeFileSync(file, text);
   return file;
@@ -77,7 +76,7 @@ test('an empty dataDir fails naming the key', () => {
 
 test('malformed YAML fails naming the file', () => {
   const file = write(tmp(), 'projectName: [unclosed\n  : : x\n');
-  assert.throws(() => loadConfig({ file }), (err) => err.message.includes(file));
+  assert.throws(() => loadConfig({ file }), (err: Error) => err.message.includes(file));
 });
 
 test('code base present: the data directory is <codeBase>/.plans', () => {
@@ -96,7 +95,7 @@ test('relative code base is resolved against the config file folder', () => {
 });
 
 test('both folder keys fail naming both', () => {
-  assert.throws(() => loadConfig({ file: write(tmp(), 'codeBase: a\ndataDir: b\n') }), (err) => /codeBase/.test(err.message) && /dataDir/.test(err.message));
+  assert.throws(() => loadConfig({ file: write(tmp(), 'codeBase: a\ndataDir: b\n') }), (err: Error) => /codeBase/.test(err.message) && /dataDir/.test(err.message));
 });
 
 test('an empty or non-text codeBase fails naming the key', () => {

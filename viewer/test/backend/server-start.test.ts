@@ -7,14 +7,14 @@ import { spawnSync } from 'node:child_process';
 import net from 'node:net';
 import { fileURLToPath } from 'node:url';
 
-const freePort = () => new Promise((resolve) => {
-  const s = net.createServer().listen(0, '127.0.0.1', () => { const { port } = s.address(); s.close(() => resolve(port)); });
+const freePort = () => new Promise<number>((resolve) => {
+  const s = net.createServer().listen(0, '127.0.0.1', () => { const { port } = s.address() as net.AddressInfo; s.close(() => resolve(port)); });
 });
 
 const server = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'backend', 'server.ts');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'server-start-test-'));
 
-async function run(configText) {
+async function run(configText: string) {
   const port = String(await freePort());
   const config = path.join(tmp, `config-${Math.random().toString(36).slice(2)}.yaml`);
   fs.writeFileSync(config, configText);
@@ -47,7 +47,7 @@ test('a valid config prints the project name and the data folder', async () => {
   const child = spawn(process.execPath, [server], { env: { ...process.env, VIEWER_CONFIG: config, PORT: String(await freePort()) }, stdio: ['ignore', 'pipe', 'pipe'] });
   let out = '';
   try {
-    await new Promise((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error(`no startup output: ${out}`)), 15000);
       child.stdout.on('data', (c) => {
         out += c;

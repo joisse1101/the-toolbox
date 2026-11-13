@@ -12,7 +12,7 @@ const CSV = [
 ].join('\n');
 
 const { stories } = loadBacklog(CSV, { initials: 'B1' });
-const titles = (list) => list.map((s) => s.title);
+const titles = (list: Array<{ title: string }>) => list.map((s) => s.title);
 
 test('a blank filter keeps every story', () => {
   assert.equal(filterStories(stories, {}).length, 4);

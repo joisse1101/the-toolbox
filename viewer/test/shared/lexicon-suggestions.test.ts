@@ -4,6 +4,10 @@ import { parseLexicon, findTerm, saveTerm } from '../../shared/lexicon/lexicon.t
 import {
   applySuggestion, composeSuggestions, emptySuggestions, impactOf, openRows, parseSuggestions, staleReason, validateItems,
 } from '../../shared/lexicon/lexicon-suggestions.ts';
+import type { Lexicon, LexiconSuggestion } from '../../shared/types.ts';
+
+type Saved = { ok: true; lexicon: Lexicon };
+type Loose = Partial<LexiconSuggestion>; // the tests pass the fields a case needs, not a whole row
 
 const LEXICON = parseLexicon(
   'Term,Part of,Definition,Avoid,Notes\r\n' +
@@ -45,7 +49,7 @@ test('validateItems adds the old name to Avoid by default, and not with avoidOld
 
 test('validateItems rejects each bad item and names it', () => {
   const file = parseSuggestions('Term,Action,New name,Add to Avoid,Reason,Status\r\nDataset,delete,,,Unused,open\r\n');
-  const bad = (item, pattern) => {
+  const bad = (item: unknown, pattern: string) => {
     const r = validateItems(LEXICON, file, [rename(), item]);
     assert.equal(r.ok, false);
     assert.match(r.errors.join('\n'), new RegExp(`^item 2: .*${pattern}`));
@@ -88,15 +92,15 @@ test('impactOf lists children, wording that uses the name, and Avoid holders', (
 });
 
 test('impactOf matches whole words only', () => {
-  assert.ok(!impactOf(LEXICON, 'Role', 'delete').mentionedBy.includes('Enrolled user'));
+  assert.ok(!(impactOf(LEXICON, 'Role', 'delete') as { mentionedBy: string[] }).mentionedBy.includes('Enrolled user'));
 });
 
 test('staleReason: term gone, name taken, fine', () => {
-  const row = { term: 'Role', action: 'rename', newName: 'Privilege', avoid: [], status: 'open' };
+  const row = { term: 'Role', action: 'rename', newName: 'Privilege', avoid: [], status: 'open' } as Loose as LexiconSuggestion;
   assert.equal(staleReason(LEXICON, row), null);
   assert.equal(staleReason(LEXICON, { ...row, term: 'Gone' }), 'term no longer exists');
-  const taken = saveTerm(LEXICON, { name: 'privilege', definition: 'x', avoid: [], notes: '', partOf: '' }).lexicon;
-  assert.match(staleReason(taken, row), /another term/);
+  const taken = (saveTerm(LEXICON, { name: 'privilege', definition: 'x', avoid: [], notes: '', partOf: '' }) as Saved).lexicon;
+  assert.match(staleReason(taken, row)!, /another term/);
   assert.equal(staleReason(taken, { ...row, action: 'delete' }), null);
 });
 
@@ -104,35 +108,35 @@ test('applySuggestion: a rename accepts the Avoid word that names the term befor
   const withChild = parseLexicon('Term,Part of,Definition,Avoid\r\nRole,,A set.,\r\nAdmin role,Role,Can do all.,\r\n');
   // the same word is refused when patched while the term still exists
   assert.equal(saveTerm(withChild, { ...findTerm(withChild, 'Role'), avoid: ['Role'] }).ok, false);
-  const row = { term: 'Role', action: 'rename', newName: 'Privilege', avoid: ['Role'], status: 'open' };
-  const r = applySuggestion(withChild, row);
+  const row = { term: 'Role', action: 'rename', newName: 'Privilege', avoid: ['Role'], status: 'open' } as Loose as LexiconSuggestion;
+  const r = applySuggestion(withChild, row) as Saved & { errors?: string[] };
   assert.equal(r.ok, true, r.errors?.join());
   assert.deepEqual(r.lexicon.terms.map((t) => [t.name, t.partOf]), [['Privilege', ''], ['Admin role', 'Privilege']]);
-  assert.deepEqual(findTerm(r.lexicon, 'Privilege').avoid, ['Role']);
-  assert.equal(findTerm(withChild, 'Role').name, 'Role', 'the input is unchanged');
+  assert.deepEqual(findTerm(r.lexicon, 'Privilege')!.avoid, ['Role']);
+  assert.equal(findTerm(withChild, 'Role')!.name, 'Role', 'the input is unchanged');
 });
 
 test('applySuggestion with some Avoid words unchecked', () => {
-  const row = { term: 'Role', action: 'rename', newName: 'Privilege', avoid: ['Role', 'job'], status: 'open' };
-  const r = applySuggestion(LEXICON, row, { avoid: ['job'] });
-  assert.deepEqual(findTerm(r.lexicon, 'Privilege').avoid, ['hat', 'job']);
+  const row = { term: 'Role', action: 'rename', newName: 'Privilege', avoid: ['Role', 'job'], status: 'open' } as Loose as LexiconSuggestion;
+  const r = applySuggestion(LEXICON, row, { avoid: ['job'] }) as Saved;
+  assert.deepEqual(findTerm(r.lexicon, 'Privilege')!.avoid, ['hat', 'job']);
 });
 
 test('applySuggestion: a delete is refused while the term has children, and works without', () => {
-  const refused = applySuggestion(LEXICON, { term: 'Dataset', action: 'delete', newName: '', avoid: [], status: 'open' });
+  const refused = applySuggestion(LEXICON, { term: 'Dataset', action: 'delete', newName: '', avoid: [], status: 'open' } as Loose as LexiconSuggestion);
   assert.equal(refused.ok, false);
   assert.match(refused.errors[0], /"Dataset attribute" is part of it/);
-  const done = applySuggestion(LEXICON, { term: 'Enrolled user', action: 'delete', newName: '', avoid: [], status: 'open' });
+  const done = applySuggestion(LEXICON, { term: 'Enrolled user', action: 'delete', newName: '', avoid: [], status: 'open' } as Loose as LexiconSuggestion);
   assert.equal(done.ok, true);
   assert.equal(findTerm(done.lexicon, 'Enrolled user'), null);
-  assert.equal(applySuggestion(LEXICON, { term: 'Gone', action: 'delete', avoid: [], status: 'open' }).ok, false);
+  assert.equal(applySuggestion(LEXICON, { term: 'Gone', action: 'delete', avoid: [], status: 'open' } as Loose as LexiconSuggestion).ok, false);
 });
 
 test('an old problem in the lexicon does not block applying an unrelated suggestion', () => {
   const broken = parseLexicon('Term,Part of,Definition,Avoid\r\nRole,,A set.,\r\nOrphan,Nowhere,Lost.,\r\nTemp,,Gone soon.,\r\n');
-  const r = applySuggestion(broken, { term: 'Temp', action: 'delete', avoid: [], status: 'open' });
+  const r = applySuggestion(broken, { term: 'Temp', action: 'delete', avoid: [], status: 'open' } as Loose as LexiconSuggestion);
   assert.equal(r.ok, true);
-  const renamed = applySuggestion(broken, { term: 'Role', action: 'rename', newName: 'Privilege', avoid: ['Role'], status: 'open' });
+  const renamed = applySuggestion(broken, { term: 'Role', action: 'rename', newName: 'Privilege', avoid: ['Role'], status: 'open' } as Loose as LexiconSuggestion);
   assert.equal(renamed.ok, true);
 });
 
@@ -146,7 +150,7 @@ test('validateItems builds an edit with the old and new value of each named fiel
 });
 
 test('validateItems rejects a bad edit and names the item', () => {
-  const bad = (item) => validateItems(LEXICON, emptySuggestions(), [item]).errors?.[0];
+  const bad = (item: unknown) => (validateItems(LEXICON, emptySuggestions(), [item]) as { errors?: string[] }).errors?.[0] as string;
   assert.match(bad(editItem()), /^item 1: an edit must name at least one of/);
   assert.match(bad(editItem({ definition: 'A set of privileges.' })), /^item 1: "definition" is already that value/);
   assert.match(bad(editItem({ avoid: ['hat'] })), /"avoid" is already that list/);
@@ -164,12 +168,12 @@ test('an edit and a rename of one term may both be open, a second edit may not',
   const first = validateItems(LEXICON, file, [rename(), editItem({ notes: 'n' })]);
   assert.equal(first.ok, true);
   file.rows = first.rows;
-  assert.match(validateItems(LEXICON, file, [editItem({ notes: 'm' })]).errors[0], /an open edit of "Role" already exists/);
+  assert.match((validateItems(LEXICON, file, [editItem({ notes: 'm' })]) as { errors: string[] }).errors[0], /an open edit of "Role" already exists/);
 });
 
 test('an edit round trips through the file, and a bad Edit cell is skipped but kept', () => {
   const file = emptySuggestions();
-  file.rows = validateItems(LEXICON, file, [editItem({ avoid: ['cap'] })]).rows;
+  file.rows = (validateItems(LEXICON, file, [editItem({ avoid: ['cap'] })]) as { rows: LexiconSuggestion[] }).rows;
   const back = parseSuggestions(composeSuggestions(file));
   assert.deepEqual(back.rows[0].edit, { avoid: { from: ['hat'], to: ['cap'] } });
   assert.equal(openRows(back).length, 1);
@@ -180,30 +184,30 @@ test('an edit round trips through the file, and a bad Edit cell is skipped but k
 
 test('staleReason: an edit is stale once a field it names differs from the old value', () => {
   const file = emptySuggestions();
-  file.rows = validateItems(LEXICON, file, [editItem({ avoid: ['hat', 'cap'] })]).rows;
+  file.rows = (validateItems(LEXICON, file, [editItem({ avoid: ['hat', 'cap'] })]) as { rows: LexiconSuggestion[] }).rows;
   const row = file.rows[0];
   assert.equal(staleReason(LEXICON, row), null);
-  const changed = saveTerm(LEXICON, { ...findTerm(LEXICON, 'Role'), avoid: ['hat', 'bowler'] }, { replaces: 'Role' }).lexicon;
-  assert.match(staleReason(changed, row), /^Avoid of "Role" changed after this was suggested/);
-  const other = saveTerm(LEXICON, { ...findTerm(LEXICON, 'Role'), notes: 'x' }, { replaces: 'Role' }).lexicon;
+  const changed = (saveTerm(LEXICON, { ...findTerm(LEXICON, 'Role'), avoid: ['hat', 'bowler'] }, { replaces: 'Role' }) as Saved).lexicon;
+  assert.match(staleReason(changed, row)!, /^Avoid of "Role" changed after this was suggested/);
+  const other = (saveTerm(LEXICON, { ...findTerm(LEXICON, 'Role'), notes: 'x' }, { replaces: 'Role' }) as Saved).lexicon;
   assert.equal(staleReason(other, row), null, 'a field the edit does not name may change');
   assert.equal(staleReason(parseLexicon('Term,Definition\r\nX,y\r\n'), row), 'term no longer exists');
 });
 
 test('applySuggestion applies an edit to the named fields only', () => {
   const file = emptySuggestions();
-  file.rows = validateItems(LEXICON, file, [editItem({ avoid: ['cap'], partOf: 'Dataset' })]).rows;
+  file.rows = (validateItems(LEXICON, file, [editItem({ avoid: ['cap'], partOf: 'Dataset' })]) as { rows: LexiconSuggestion[] }).rows;
   const r = applySuggestion(LEXICON, file.rows[0]);
   assert.equal(r.ok, true);
-  const role = findTerm(r.lexicon, 'Role');
+  const role = findTerm(r.lexicon, 'Role')!;
   assert.deepEqual([role.avoid, role.partOf, role.definition], [['cap'], 'Dataset', 'A set of privileges.']);
   assert.equal(r.lexicon.terms.indexOf(role), 0);
 });
 
 test('applySuggestion refuses an edit a rule broke since it was suggested', () => {
   const file = emptySuggestions();
-  file.rows = validateItems(LEXICON, file, [editItem({ avoid: ['hat', 'sheet'] })]).rows;
-  const later = saveTerm(LEXICON, { name: 'Sheet', definition: 'x' }).lexicon;
+  file.rows = (validateItems(LEXICON, file, [editItem({ avoid: ['hat', 'sheet'] })]) as { rows: LexiconSuggestion[] }).rows;
+  const later = (saveTerm(LEXICON, { name: 'Sheet', definition: 'x' }) as Saved).lexicon;
   const r = applySuggestion(later, file.rows[0]);
   assert.equal(r.ok, false);
   assert.match(r.errors[0], /"Role" avoids "sheet", which is a defined term/);

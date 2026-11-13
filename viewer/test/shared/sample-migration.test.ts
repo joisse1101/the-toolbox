@@ -2,22 +2,20 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { createRequire } from 'node:module';
-import { tempData, SAMPLE, PLAN_FIXTURES } from '../helpers/backlog-tree.mjs';
+import { tempData, SAMPLE, PLAN_FIXTURES } from '../helpers/backlog-tree.ts';
 
-const require = createRequire(import.meta.url);
 const { migrateOlderLayout } = await import('../../backend/storage/project-folders.ts');
-const { listBacklogs, detectOlderLayout } = require('../../shared/storage/backlog-paths.ts');
+import { listBacklogs, detectOlderLayout } from '../../shared/storage/backlog-paths.ts';
 
 // The older layout built in a temp folder from the committed sample: one file per backlog in each kind's folder.
 function olderLayoutFromSample() {
   const root = tempData('sample-older-');
-  const put = (rel, text) => {
+  const put = (rel: string, text: string | Buffer) => {
     const target = path.join(root, rel);
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(target, text);
   };
-  const read = (rel) => fs.readFileSync(path.join(rel === 'user-stories.csv' ? path.join(SAMPLE, 'sample') : PLAN_FIXTURES, rel));
+  const read = (rel: string) => fs.readFileSync(path.join(rel === 'user-stories.csv' ? path.join(SAMPLE, 'sample') : PLAN_FIXTURES, rel));
   put('backlogs/sample.csv', read('user-stories.csv'));
   put('lexicons/sample.csv', 'Term,Part of,Definition,Avoid,Notes\nAccount,,A person who signs in,,\n');
   for (const f of ['context-map.json', 'context-map.md']) put(`diagrams/sample/${f}`, read(f));
@@ -30,7 +28,7 @@ test('the sample migrates from a copy of the older layout to the sample data lay
   assert.deepEqual(detectOlderLayout(root), ['backlogs', 'lexicons', 'diagrams']);
   assert.deepEqual(listBacklogs(root), []);
 
-  const result = migrateOlderLayout(root);
+  const result = migrateOlderLayout(root) as { failed: unknown[]; skipped: unknown[] };
 
   assert.deepEqual(result.failed, []);
   assert.deepEqual(result.skipped, []);

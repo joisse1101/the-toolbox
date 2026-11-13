@@ -1,8 +1,8 @@
+import type { AddressInfo } from 'node:net';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 // Static serving and the page-address fallback. Mock data only: a temp dist folder built here under .scratch/,
@@ -17,10 +17,10 @@ fs.writeFileSync(path.join(dist, 'assets', 'app.js'), 'console.log(1);');
 process.env.VIEWER_DIST_DIR = dist;
 const { server, staticTarget } = await import('../../backend/server.ts');
 
-let origin;
+let origin: string;
 test.before(async () => {
-  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-  origin = `http://127.0.0.1:${server.address().port}`;
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });
 test.after(() => {
   server.close();
@@ -63,7 +63,7 @@ test('an existing built file is served with its type', async () => {
   const res = await fetch(`${origin}/assets/app.js`);
   assert.equal(res.status, 200);
   assert.equal(await res.text(), 'console.log(1);');
-  assert.match(res.headers.get('content-type'), /javascript/);
+  assert.match(res.headers.get('content-type')!, /javascript/);
 });
 
 test('a path that climbs out of dist is not served', async () => {

@@ -1,3 +1,4 @@
+import type { AddressInfo } from 'node:net';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -5,8 +6,7 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createRequire } from 'node:module';
-import { tempConfig } from '../helpers/temp-config.mjs';
+import { tempConfig } from '../helpers/temp-config.ts';
 
 // Mock data only: temp folders holding a copy of the sample backlog. The config is a temp copy, never the real one.
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -30,18 +30,19 @@ setFolderDialog(async () => {
   throw new Error('the real folder dialog must not open in a test');
 });
 
+type Entry = { dataDir: string; label: string; exists: boolean; synthetic?: boolean };
 const HEADERS = { 'X-Requested-With': 'the-toolbox', 'Content-Type': 'application/json' };
-let origin;
+let origin: string;
 test.before(async () => {
-  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-  origin = `http://127.0.0.1:${server.address().port}`;
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });
 test.after(() => server.close());
 
-const call = (method, url, body) => fetch(`${origin}${url}`, { method, headers: HEADERS, body: body === undefined ? undefined : JSON.stringify(body) });
+const call = (method: string, url: string, body?: unknown) => fetch(`${origin}${url}`, { method, headers: HEADERS, body: body === undefined ? undefined : JSON.stringify(body) });
 const listed = async () => (await (await fetch(`${origin}/api/backlog/files`)).json()).files;
-const save = (body) => call('PUT', '/api/project', body);
-const tree = (dir) => fs.readdirSync(dir, { recursive: true }).sort();
+const save = (body: unknown) => call('PUT', '/api/project', body);
+const tree = (dir: string) => fs.readdirSync(dir, { recursive: true }).sort();
 const switchBack = async () => assert.equal((await save({ dataDir: dirA })).status, 200);
 
 test('read settings: the reply holds the project name, the data directory and the config file path', async () => {
@@ -49,7 +50,7 @@ test('read settings: the reply holds the project name, the data directory and th
   const { projects, activeProject, ...rest } = body;
   assert.deepEqual(rest, { projectName: 'Alpha', dataDir: dirA, configPath: path.resolve(configFile), olderLayout: [] });
   assert.equal(activeProject, 0);
-  assert.deepEqual(projects.map((p) => [p.dataDir, p.exists]), [[dirA, true]], 'the saved projects are added to the reply');
+  assert.deepEqual(projects.map((p: Entry) => [p.dataDir, p.exists]), [[dirA, true]], 'the saved projects are added to the reply');
 });
 
 test('switch while idle: the next list, read and write are answered from the new directory', async () => {
@@ -108,7 +109,7 @@ test('refused directories: the config is unchanged and no folder is created', as
     ['a file', SAMPLE],
   ];
   for (const [label, dir] of cases) {
-    for (const [method, url, body] of [['PUT', '/api/project', { dataDir: dir }], ['POST', '/api/project/init', { dir }], ['POST', '/api/project/copy', { dir }]]) {
+    for (const [method, url, body] of [['PUT', '/api/project', { dataDir: dir }], ['POST', '/api/project/init', { dir }], ['POST', '/api/project/copy', { dir }]] as [string, string, object][]) {
       const res = await call(method, url, body);
       assert.equal(res.status, 400, `${label}: ${url}`);
       assert.equal((await res.json()).code, 'refused', label);
@@ -139,11 +140,11 @@ test('check, init and copy, then save and switch', async () => {
   const copied = await copy.json();
   assert.ok(copied.copied.includes('one/user-stories.csv'));
   assert.equal(copied.skipped.length, 0, 'the backups folder is left out without being listed');
-  assert.equal(copied.copied.some((f) => f.startsWith('backups')), false);
+  assert.equal(copied.copied.some((f: string) => f.startsWith('backups')), false);
   assert.equal(fs.existsSync(path.join(target, 'backups')), false);
   const again = await (await call('POST', '/api/project/copy', { dir: target })).json();
   assert.deepEqual(again.copied, []);
-  assert.ok(again.skipped.some((f) => f.file === 'one/user-stories.csv' && f.reason === 'exists'));
+  assert.ok(again.skipped.some((f: { file: string; reason: string }) => f.file === 'one/user-stories.csv' && f.reason === 'exists'));
   assert.equal((await call('POST', '/api/project/copy', { dir: dirA })).status, 400, 'the target is the source');
 
   const empty = path.join(tmp, 'empty-data');
@@ -216,8 +217,8 @@ test('remote client: a request whose Host is not this machine is refused on the 
 
 test('folder picker: a chosen folder is returned, started in the served folder, and nothing is saved or switched', async () => {
   const before = fs.readFileSync(configFile, 'utf8');
-  const starts = [];
-  setFolderDialog(async (start) => {
+  const starts: unknown[] = [];
+  setFolderDialog(async (start?: string) => {
     starts.push(start);
     return dirB;
   });
@@ -333,7 +334,7 @@ test('code base: check, init, copy, then save and switch live; the config holds 
   assert.equal(fs.existsSync(path.join(dirA, 'one', 'user-stories.csv')), true, 'the source keeps its files');
   const again = await (await call('POST', '/api/project/copy', { codeBase })).json();
   assert.deepEqual(again.copied, []);
-  assert.ok(again.skipped.some((f) => f.file === 'one/user-stories.csv' && f.reason === 'exists'));
+  assert.ok(again.skipped.some((f: { file: string; reason: string }) => f.file === 'one/user-stories.csv' && f.reason === 'exists'));
   assert.equal((await (await call('POST', '/api/project/check', { codeBase })).json()).status, 'has-planner-files');
 
   const res = await save({ codeBase });

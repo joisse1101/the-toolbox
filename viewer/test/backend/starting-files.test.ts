@@ -1,6 +1,5 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createRequire } from 'node:module';
 import { startingFiles } from '../../backend/storage/starting-files.ts';
 import { parseCsv } from '../../shared/backlog/csv.ts';
 import { COLUMNS, BENCHED_COLUMN, loadBacklog } from '../../shared/backlog/model.ts';
@@ -8,10 +7,9 @@ import { parseReview, REVIEW_COLUMNS } from '../../shared/review/review.ts';
 import { parseLexicon, COLUMNS as LEXICON_COLUMNS } from '../../shared/lexicon/lexicon.ts';
 import { parseSuggestions, COLUMNS as SUGGESTION_COLUMNS } from '../../shared/lexicon/lexicon-suggestions.ts';
 
-const require = createRequire(import.meta.url);
-const { KINDS } = require('../../shared/storage/backlog-paths.ts');
+import { KINDS } from '../../shared/storage/backlog-paths.ts';
 
-const textOf = (kind) => startingFiles().find((f) => f.kind === kind).text;
+const textOf = (kind: string) => startingFiles().find((f) => f.kind === kind)!.text;
 
 test('startingFiles returns one entry for each kind of file, in the order of KINDS', () => {
   assert.deepEqual(startingFiles().map((f) => f.kind), KINDS);

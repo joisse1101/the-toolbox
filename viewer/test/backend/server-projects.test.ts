@@ -1,3 +1,4 @@
+import type { AddressInfo } from 'node:net';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -5,8 +6,7 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createRequire } from 'node:module';
-import { tempConfig } from '../helpers/temp-config.mjs';
+import { tempConfig } from '../helpers/temp-config.ts';
 
 // Mock data only: temp folders holding a copy of the sample backlog, a temp config and a temp parent folder for new
 // projects. Nothing here touches the real viewer/data or the real config.
@@ -24,21 +24,22 @@ process.env.VIEWER_CONFIG = configFile;
 const { server, setNewProjectParent, setCopyOptions } = await import('../../backend/server.ts');
 setNewProjectParent(parent);
 
+type Entry = { dataDir: string; label: string; exists: boolean; synthetic?: boolean };
 const HEADERS = { 'X-Requested-With': 'the-toolbox', 'Content-Type': 'application/json' };
-let origin;
+let origin: string;
 test.before(async () => {
-  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-  origin = `http://127.0.0.1:${server.address().port}`;
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });
 test.after(() => server.close());
 
-const call = (method, url, body) => fetch(`${origin}${url}`, { method, headers: HEADERS, body: body === undefined ? undefined : JSON.stringify(body) });
-const post = (url, body) => call('POST', url, body);
+const call = (method: string, url: string, body: unknown) => fetch(`${origin}${url}`, { method, headers: HEADERS, body: body === undefined ? undefined : JSON.stringify(body) });
+const post = (url: string, body: unknown) => call('POST', url, body);
 const settings = async () => (await fetch(`${origin}/api/project`)).json();
 const listed = async () => (await (await fetch(`${origin}/api/backlog/files`)).json()).files;
 const config = () => fs.readFileSync(configFile, 'utf8');
 // Every file under `dir` with its content, to prove a folder is unchanged.
-const snapshot = (dir) => Object.fromEntries(fs.readdirSync(dir, { recursive: true }).sort()
+const snapshot = (dir: string) => Object.fromEntries((fs.readdirSync(dir, { recursive: true }) as string[]).sort()
   .filter((f) => fs.statSync(path.join(dir, f)).isFile()).map((f) => [f.split(path.sep).join('/'), fs.readFileSync(path.join(dir, f), 'utf8')]));
 // Back to the starting config (no list, dirA served).
 async function reset() {
@@ -47,7 +48,7 @@ async function reset() {
   assert.equal((await call('PUT', '/api/project', { dataDir: dirA })).status, 200);
   fs.writeFileSync(configFile, ORIGINAL);
 }
-const codeBaseWithPlans = (name, backlog = 'iam') => {
+const codeBaseWithPlans = (name: string, backlog = 'iam') => {
   const dir = path.join(tmp, name);
   fs.mkdirSync(path.join(dir, '.plans', backlog), { recursive: true });
   fs.copyFileSync(SAMPLE, path.join(dir, '.plans', backlog, 'user-stories.csv'));
@@ -73,9 +74,9 @@ test('read: saved projects come with an exists flag, a missing folder is flagged
   fs.mkdirSync(other);
   fs.writeFileSync(configFile, `${ORIGINAL}projects:\n  - dataDir: ${JSON.stringify(dirA)}\n    name: Home\n  - dataDir: ${JSON.stringify(other)}\n  - dataDir: ${JSON.stringify(missing)}\n    name: Lost\n`);
   const body = await settings();
-  assert.deepEqual(body.projects.map((p) => [p.label, p.exists]), [['Home', true], ['other', true], ['Lost', false]]);
+  assert.deepEqual(body.projects.map((p: Entry) => [p.label, p.exists]), [['Home', true], ['other', true], ['Lost', false]]);
   assert.equal(body.activeProject, 0);
-  assert.ok(!body.projects.some((p) => p.synthetic));
+  assert.ok(!body.projects.some((p: Entry) => p.synthetic));
   await reset();
 });
 
@@ -90,7 +91,7 @@ test('add: a code base whose .plans holds planner files is added and switched to
   assert.equal(body.added, true);
   assert.equal(body.switched, true);
   assert.deepEqual(await listed(), ['iam']);
-  assert.deepEqual(body.projects.map((p) => p.label), ['a', 'Payments'], 'the active path was written first');
+  assert.deepEqual(body.projects.map((p: Entry) => p.label), ['a', 'Payments'], 'the active path was written first');
   assert.equal(body.activeProject, 1);
   assert.equal(body.codeBase, fs.realpathSync.native(cb));
   assert.match(config(), /# kept comment/, 'the comment is kept');
@@ -175,7 +176,7 @@ test('add: a new project creates <parent>/<name> with the starting files, a data
   const dir = path.join(fs.realpathSync.native(tmp), 'projects', 'Billing');
   assert.equal(body.added, true);
   assert.equal(body.dataDir, dir);
-  assert.deepEqual(body.projects.map((p) => p.label), ['a', 'Billing']);
+  assert.deepEqual(body.projects.map((p: Entry) => p.label), ['a', 'Billing']);
   assert.equal(body.projects[1].codeBase, null);
   assert.equal(body.activeProject, 1);
   assert.deepEqual(fs.readdirSync(dir), ['new-backlog']);
@@ -235,8 +236,8 @@ test('add: the header, the loopback Host and the busy rule apply as on the other
 
 // ---------- 3.3 relocating the active project ----------
 
-const relocate = (body) => post('/api/project/relocate-apply', body);
-const plan = async (body) => (await post('/api/project/relocate-plan', body)).json();
+const relocate = (body: unknown) => post('/api/project/relocate-apply', body);
+const plan = async (body: unknown) => (await post('/api/project/relocate-plan', body)).json();
 
 test('relocate plan: read-only, says whether a choice is needed, and lists the files an overwrite would replace', async () => {
   await reset();
@@ -282,7 +283,7 @@ test('relocate: an empty target is copied into without a prompt, the entry chang
   assert.equal(body.relocated, true);
   assert.deepEqual(body.copy.copied, ['one/user-stories.csv']);
   assert.equal(body.dataDir, fs.realpathSync.native(target));
-  assert.deepEqual(body.projects.map((p) => p.label), ['moved', 'Payments'], 'the entry changed path; no third entry');
+  assert.deepEqual(body.projects.map((p: Entry) => p.label), ['moved', 'Payments'], 'the entry changed path; no third entry');
   assert.equal(body.projects.length, 2);
   assert.deepEqual(await listed(), ['one']);
   assert.deepEqual(snapshot(target), oldTree);
@@ -313,7 +314,7 @@ test('relocate: a missing target is created, and a code base target gets .plans 
   assert.deepEqual(snapshot(dirA), oldTree);
 });
 
-function targetWithFiles(name) {
+function targetWithFiles(name: string) {
   const dir = path.join(tmp, name);
   fs.mkdirSync(path.join(dir, 'one'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'one', 'user-stories.csv'), 'THEIRS');
@@ -409,7 +410,7 @@ test('relocate: a copy that does not read back the same leaves the config and th
   const target = path.join(tmp, 'readback');
   const before = config();
   const oldTree = snapshot(dirA);
-  setCopyOptions({ readFile: (p) => (String(p).startsWith(path.resolve(target)) || String(p).includes('readback') ? Buffer.from('different') : fs.readFileSync(p)) });
+  setCopyOptions({ readFile: (p: string) => (String(p).startsWith(path.resolve(target)) || String(p).includes('readback') ? Buffer.from('different') : fs.readFileSync(p)) });
   const res = await relocate({ dir: target });
   assert.equal(res.status, 500);
   const body = await res.json();

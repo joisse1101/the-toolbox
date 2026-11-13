@@ -4,7 +4,11 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createRequire } from 'node:module';
+
+import type { CopyResult } from '../../backend/storage/project-folders.ts';
+type Refused = { refused: string };
+type Checked = { status: string; reason: string; dir: string };
+type Inited = { refused: string; created: string[]; existing: string[]; createdDataDir: boolean };
 
 const pc = await import('../../backend/storage/project-config.ts');
 const { initFolders, copyData, migrateOlderLayout, checkFolder, confineDir, confineCodeBase, checkCodeBase, initCodeBase, copyToCodeBase, planCopy, planCopyToCodeBase, saveConfig, loadConfig, ROOT } = pc;
@@ -12,7 +16,7 @@ const { initFolders, copyData, migrateOlderLayout, checkFolder, confineDir, conf
 function tmp() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'project-folders-'));
 }
-function put(dir, rel, text = 'x') {
+function put(dir: string, rel: string, text = 'x') {
   const p = path.join(dir, rel);
   fs.mkdirSync(path.dirname(p), { recursive: true });
   fs.writeFileSync(p, text);
@@ -31,7 +35,7 @@ test.after(() => fs.rmSync(SCRATCH, { recursive: true, force: true }));
 const loadStartingFiles = async () => (await import('../../backend/storage/starting-files.ts')).startingFiles();
 const KIND_PATHS = { backlog: 'user-stories.csv', review: 'user-stories/review.csv', proposals: 'user-stories/proposals.csv', lexicon: 'lexicon.csv', 'lexicon-suggestions': 'lexicon/lexicon-suggestions.csv' };
 
-async function assertStartingFiles(backlogDir) {
+async function assertStartingFiles(backlogDir: string) {
   for (const { kind, text } of await loadStartingFiles()) {
     assert.equal(fs.readFileSync(path.join(backlogDir, KIND_PATHS[kind]), 'utf8'), text, `${kind} holds its starting header`);
   }
@@ -99,7 +103,7 @@ function source() {
 test('copy into an empty target copies everything and leaves the source unchanged', () => {
   const s = source();
   const t = path.join(tmp(), 'new');
-  const r = copyData(s, t);
+  const r = copyData(s, t) as CopyResult;
   assert.deepEqual(r.copied.sort(), ['backlogs/iam.csv', 'diagrams/iam/slice/UC-slice.md', 'reviews/iam.csv']);
   assert.deepEqual(r.skipped, []);
   assert.equal(r.stopped, undefined);
@@ -114,7 +118,7 @@ test('copy leaves out any backups folder, at any depth, without listing it as sk
   put(s, 'iam/Backups/x.csv', 'old');
   put(s, 'iam/user-stories.csv', 'kept');
   const t = path.join(tmp(), 'new');
-  const r = copyData(s, t);
+  const r = copyData(s, t) as CopyResult;
   assert.deepEqual(r.copied.sort(), ['backlogs/iam.csv', 'diagrams/iam/slice/UC-slice.md', 'iam/user-stories.csv', 'reviews/iam.csv']);
   assert.deepEqual(r.skipped, []);
   assert.equal(fs.existsSync(path.join(t, 'backups')), false);
@@ -126,7 +130,7 @@ test('copy keeps a file that already exists in the target and lists it as skippe
   const s = source();
   const t = tmp();
   put(t, 'backlogs/iam.csv', 'mine');
-  const r = copyData(s, t);
+  const r = copyData(s, t) as CopyResult;
   assert.deepEqual(r.skipped, [{ file: 'backlogs/iam.csv', reason: 'exists' }]);
   assert.equal(r.copied.length, 2);
   assert.equal(fs.readFileSync(path.join(t, 'backlogs', 'iam.csv'), 'utf8'), 'mine');
@@ -134,13 +138,13 @@ test('copy keeps a file that already exists in the target and lists it as skippe
 
 test('copy refuses the same folder, a folder inside it and a folder that contains it', () => {
   const s = source();
-  assert.match(copyData(s, s).refused, /inside|current/);
-  assert.ok(copyData(s, path.join(s, 'sub')).refused);
+  assert.match((copyData(s, s) as Refused).refused, /inside|current/);
+  assert.ok((copyData(s, path.join(s, 'sub')) as Refused).refused);
   assert.equal(fs.existsSync(path.join(s, 'sub')), false);
   const parent = tmp();
   const child = path.join(parent, 'child');
   put(child, 'backlogs/a.csv');
-  assert.match(copyData(child, parent).refused, /contains/);
+  assert.match((copyData(child, parent) as Refused).refused, /contains/);
 });
 
 test('copy skips a link in the source', (t) => {
@@ -150,10 +154,10 @@ test('copy skips a link in the source', (t) => {
   try {
     fs.symlinkSync(outside, path.join(s, 'linked'), 'junction');
   } catch (err) {
-    return t.skip(`cannot create a junction here: ${err.code}`);
+    return t.skip(`cannot create a junction here: ${(err as NodeJS.ErrnoException).code}`);
   }
   const target = tmp();
-  const r = copyData(s, target);
+  const r = copyData(s, target) as CopyResult;
   assert.deepEqual(r.skipped, [{ file: 'linked', reason: 'link' }]);
   assert.equal(fs.existsSync(path.join(target, 'linked')), false);
   fs.unlinkSync(path.join(s, 'linked')); // removes the junction only
@@ -163,16 +167,16 @@ test('copy skips a link in the source', (t) => {
 test('copy stops naming a file it cannot read, and a second run resumes', () => {
   const s = source();
   const t = tmp();
-  const locked = (from, to, flags) => {
+  const locked = (from: string, to: string, flags?: number) => {
     if (from.endsWith('iam.csv') && from.includes('reviews')) throw Object.assign(new Error('EBUSY: file is locked'), { code: 'EBUSY' });
     return fs.copyFileSync(from, to, flags);
   };
-  const first = copyData(s, t, { copyFile: locked });
-  assert.equal(first.stopped.file, 'reviews/iam.csv');
-  assert.match(first.stopped.message, /locked/);
+  const first = copyData(s, t, { copyFile: locked }) as CopyResult;
+  assert.equal(first.stopped!.file, 'reviews/iam.csv');
+  assert.match(first.stopped!.message, /locked/);
   assert.deepEqual(first.copied, ['backlogs/iam.csv', 'diagrams/iam/slice/UC-slice.md']);
   assert.equal(fs.existsSync(path.join(t, 'reviews', 'iam.csv')), false);
-  const second = copyData(s, t);
+  const second = copyData(s, t) as CopyResult;
   assert.equal(second.stopped, undefined);
   assert.equal(second.skipped.length, 2);
   assert.deepEqual(second.copied, ['reviews/iam.csv']);
@@ -180,7 +184,7 @@ test('copy stops naming a file it cannot read, and a second run resumes', () => 
 
 // ---- copy plan, overwrite and read-back (mock trees in temp folders)
 
-const listing = (dir) => fs.readdirSync(dir, { recursive: true }).map((n) => n.split(path.sep).join('/')).sort();
+const listing = (dir: string) => (fs.readdirSync(dir, { recursive: true }) as string[]).map((n) => n.split(path.sep).join('/')).sort();
 
 test('plan on an empty target lists no clash and creates nothing, not even a missing target', () => {
   const s = source();
@@ -213,16 +217,16 @@ test('plan ignores a backups folder like the copy does', () => {
 
 test('plan refuses the same folder, a folder inside it, a folder that contains it and a file', () => {
   const s = source();
-  assert.match(planCopy(s, s).refused, /inside|current/);
-  assert.ok(planCopy(s, path.join(s, 'sub')).refused);
+  assert.match((planCopy(s, s) as Refused).refused, /inside|current/);
+  assert.ok((planCopy(s, path.join(s, 'sub')) as Refused).refused);
   assert.equal(fs.existsSync(path.join(s, 'sub')), false);
   const parent = tmp();
   const child = path.join(parent, 'child');
   put(child, 'backlogs/a.csv');
-  assert.match(planCopy(child, parent).refused, /contains/);
+  assert.match((planCopy(child, parent) as Refused).refused, /contains/);
   const file = path.join(tmp(), 'f.txt');
   fs.writeFileSync(file, 'x');
-  assert.match(planCopy(s, file).refused, /file/);
+  assert.match((planCopy(s, file) as Refused).refused, /file/);
 });
 
 test('plan for a code base looks in .plans, creates nothing and refuses a missing code base', () => {
@@ -233,14 +237,14 @@ test('plan for a code base looks in .plans, creates nothing and refuses a missin
   assert.equal(fs.existsSync(path.join(cb, '.plans')), false);
   put(cb, '.plans/iam/user-stories.csv', 'mine');
   assert.deepEqual(planCopyToCodeBase(s, cb), { exists: ['iam/user-stories.csv'] });
-  assert.match(planCopyToCodeBase(s, path.join(tmp(), 'nope')).refused, /does not exist/);
+  assert.match((planCopyToCodeBase(s, path.join(tmp(), 'nope')) as Refused).refused, /does not exist/);
 });
 
 test('copy by default still skips a clash and reports an empty overwritten list', () => {
   const s = source();
   const t = tmp();
   put(t, 'backlogs/iam.csv', 'mine');
-  const r = copyData(s, t);
+  const r = copyData(s, t) as CopyResult;
   assert.deepEqual(r.overwritten, []);
   assert.deepEqual(r.failed, []);
   assert.deepEqual(r.skipped, [{ file: 'backlogs/iam.csv', reason: 'exists' }]);
@@ -253,7 +257,7 @@ test('overwrite replaces the clash, leaves an extra target file alone and leaves
   put(t, 'backlogs/iam.csv', 'mine');
   put(t, 'extra/keep.txt', 'extra');
   const srcBefore = listing(s);
-  const r = copyData(s, t, { overwrite: true });
+  const r = copyData(s, t, { overwrite: true }) as CopyResult;
   assert.deepEqual(r.overwritten, ['backlogs/iam.csv']);
   assert.deepEqual(r.copied.sort(), ['diagrams/iam/slice/UC-slice.md', 'reviews/iam.csv']);
   assert.deepEqual(r.skipped, []);
@@ -271,7 +275,7 @@ test('overwrite through a code base replaces only the clash in .plans', () => {
   const cb = tmp();
   put(cb, '.plans/iam/user-stories.csv', 'mine');
   put(cb, '.plans/iam/own.csv', 'own');
-  const r = copyToCodeBase(s, cb, { overwrite: true });
+  const r = copyToCodeBase(s, cb, { overwrite: true }) as CopyResult;
   assert.deepEqual(r.overwritten, ['iam/user-stories.csv']);
   assert.deepEqual(r.copied, ['iam/lexicon.csv']);
   assert.equal(fs.readFileSync(path.join(cb, '.plans', 'iam', 'user-stories.csv'), 'utf8'), 'theirs');
@@ -283,11 +287,11 @@ test('read-back reports a copy that differs, removes a bad new copy and keeps a 
   const s = source();
   const t = tmp();
   put(t, 'backlogs/iam.csv', 'mine');
-  const wrong = (from, to, flags) => {
+  const wrong = (from: string, to: string, flags?: number) => {
     fs.copyFileSync(from, to, flags);
     if (from.endsWith('iam.csv')) fs.writeFileSync(to, 'garbled');
   };
-  const r = copyData(s, t, { overwrite: true, copyFile: wrong });
+  const r = copyData(s, t, { overwrite: true, copyFile: wrong }) as CopyResult;
   assert.deepEqual(r.failed.map((f) => f.file).sort(), ['backlogs/iam.csv', 'reviews/iam.csv']);
   assert.ok(r.failed.every((f) => /read back/.test(f.message)));
   assert.deepEqual(r.overwritten, []);
@@ -299,11 +303,11 @@ test('read-back reports a copy that differs, removes a bad new copy and keeps a 
 test('read-back reports a file that cannot be read back', () => {
   const s = source();
   const t = tmp();
-  const readFile = (p) => {
+  const readFile = (p: string) => {
     if (p.includes(path.basename(t)) && p.endsWith('iam.csv')) throw new Error('EBUSY: locked');
     return fs.readFileSync(p);
   };
-  const r = copyData(s, t, { readFile });
+  const r = copyData(s, t, { readFile }) as CopyResult;
   assert.equal(r.failed.length, 2);
   assert.match(r.failed[0].message, /could not be read back/);
 });
@@ -326,12 +330,12 @@ function older() {
   put(d, 'backlogs/pay.csv', 'pay');
   return d;
 }
-const snapshot = (dir, names) => Object.fromEntries(names.map((n) => [n, fs.readFileSync(path.join(dir, n), 'utf8')]));
+const snapshot = (dir: string, names: string[]) => Object.fromEntries(names.map((n) => [n, fs.readFileSync(path.join(dir, n), 'utf8')]));
 
 test('migrate copies each backlog into its folder and leaves the older files unchanged', () => {
   const d = older();
-  const before = fs.readdirSync(d, { recursive: true }).sort();
-  const r = migrateOlderLayout(d);
+  const before = (fs.readdirSync(d, { recursive: true }) as string[]).sort();
+  const r = migrateOlderLayout(d) as CopyResult;
   assert.deepEqual(r.failed, []);
   assert.deepEqual(r.skipped, []);
   assert.deepEqual(r.copied.sort(), [
@@ -341,7 +345,7 @@ test('migrate copies each backlog into its folder and leaves the older files unc
   ]);
   assert.deepEqual(snapshot(d, ['iam/user-stories.csv', 'iam/user-stories/review.csv.decided', 'iam/slices/UC-login/UC-login.md', 'iam/repo.json']),
     { 'iam/user-stories.csv': 'backlog', 'iam/user-stories/review.csv.decided': 'decided', 'iam/slices/UC-login/UC-login.md': 'doc', 'iam/repo.json': '{"path":"x"}' });
-  assert.deepEqual(fs.readdirSync(d, { recursive: true }).filter((n) => before.includes(n)).sort(), before, 'every older path is still there');
+  assert.deepEqual((fs.readdirSync(d, { recursive: true }) as string[]).filter((n) => before.includes(n)).sort(), before, 'every older path is still there');
   assert.equal(fs.readFileSync(path.join(d, 'backlogs', 'iam.csv'), 'utf8'), 'backlog');
   assert.deepEqual(checkFolder(d).status, 'has-planner-files');
 });
@@ -351,7 +355,7 @@ test('migrate lists a file with no backlog as skipped and creates nothing for it
   put(d, 'reviews/ghost.csv', 'g');
   put(d, 'diagrams/ghost/UC-x/UC-x.md', 'g');
   put(d, 'proposals/notes.txt', 'n');
-  const r = migrateOlderLayout(d);
+  const r = migrateOlderLayout(d) as CopyResult;
   assert.deepEqual(r.skipped.map((s) => s.file).sort(), ['diagrams/ghost/UC-x/UC-x.md', 'proposals/notes.txt', 'reviews/ghost.csv']);
   assert.ok(r.skipped.every((s) => s.reason));
   assert.equal(fs.existsSync(path.join(d, 'ghost')), false);
@@ -361,11 +365,11 @@ test('migrate lists a file with no backlog as skipped and creates nothing for it
 test('migrate keeps a file that already exists, lists it as skipped, and copies the rest of the backlog', () => {
   const d = older();
   put(d, 'iam/user-stories.csv', 'mine');
-  const r = migrateOlderLayout(d);
+  const r = migrateOlderLayout(d) as CopyResult;
   assert.deepEqual(r.skipped, [{ file: 'iam/user-stories.csv', reason: 'exists' }]);
   assert.equal(fs.readFileSync(path.join(d, 'iam', 'user-stories.csv'), 'utf8'), 'mine');
   assert.ok(r.copied.includes('iam/user-stories/review.csv'));
-  const again = migrateOlderLayout(d);
+  const again = migrateOlderLayout(d) as CopyResult;
   assert.deepEqual(again.copied, [], 'a second run copies nothing');
   assert.deepEqual(again.failed, []);
 });
@@ -375,7 +379,7 @@ test('migrate leaves out a backups folder at any depth without listing it', () =
   put(d, 'backups/iam.csv/2026-01-01_000000/backlogs/iam.csv', 'old');
   put(d, 'diagrams/iam/Backups/x.md', 'old');
   put(d, 'diagrams/iam/UC-login/backups/y.md', 'old');
-  const r = migrateOlderLayout(d);
+  const r = migrateOlderLayout(d) as CopyResult;
   assert.equal(r.copied.some((f) => /backups/i.test(f)), false);
   assert.equal(r.skipped.some((s) => /backups/i.test(s.file)), false);
   assert.equal(fs.existsSync(path.join(d, 'iam', 'slices', 'UC-login', 'backups')), false);
@@ -384,11 +388,11 @@ test('migrate leaves out a backups folder at any depth without listing it', () =
 
 test('migrate reports a copy that does not read back the same as failed, removes that copy and keeps the older file', () => {
   const d = older();
-  const corrupt = (from, to, flags) => {
+  const corrupt = (from: string, to: string, flags?: number) => {
     fs.copyFileSync(from, to, flags);
     if (from.includes('reviews') && from.endsWith('iam.csv')) fs.writeFileSync(to, 'garbled');
   };
-  const r = migrateOlderLayout(d, { copyFile: corrupt });
+  const r = migrateOlderLayout(d, { copyFile: corrupt }) as CopyResult;
   assert.equal(r.failed.length, 1);
   assert.equal(r.failed[0].file, 'reviews/iam.csv');
   assert.match(r.failed[0].message, /read back/);
@@ -396,24 +400,24 @@ test('migrate reports a copy that does not read back the same as failed, removes
   assert.equal(fs.existsSync(path.join(d, 'iam', 'user-stories', 'review.csv')), false, 'the bad copy is removed so a rerun can retry');
   assert.equal(fs.readFileSync(path.join(d, 'reviews', 'iam.csv'), 'utf8'), 'review');
   assert.ok(r.copied.includes('iam/user-stories.csv'), 'the other files are still copied');
-  const retry = migrateOlderLayout(d);
+  const retry = migrateOlderLayout(d) as CopyResult;
   assert.deepEqual(retry.copied, ['iam/user-stories/review.csv']);
 });
 
 test('migrate reports a file it cannot copy as failed and keeps going', () => {
   const d = older();
-  const locked = (from, to, flags) => {
+  const locked = (from: string, to: string, flags?: number) => {
     if (from.includes('lexicons')) throw Object.assign(new Error('EBUSY: file is locked'), { code: 'EBUSY' });
     return fs.copyFileSync(from, to, flags);
   };
-  const r = migrateOlderLayout(d, { copyFile: locked });
+  const r = migrateOlderLayout(d, { copyFile: locked }) as CopyResult;
   assert.deepEqual(r.failed.map((f) => f.file), ['lexicons/iam.csv']);
   assert.match(r.failed[0].message, /locked/);
   assert.ok(r.copied.includes('pay/user-stories.csv'));
 });
 
 test('migrate refuses a data folder that does not exist', () => {
-  assert.ok(migrateOlderLayout(path.join(tmp(), 'nope')).refused);
+  assert.ok((migrateOlderLayout(path.join(tmp(), 'nope')) as Refused).refused);
 });
 
 // ---- folder check and confinement (3.3)
@@ -436,14 +440,14 @@ test('check: missing, empty, older-layout, has-planner-files', () => {
 });
 
 test('check refuses a relative path, a drive root and a system folder with a reason', () => {
-  const rel = checkFolder('..\\elsewhere');
+  const rel = checkFolder('..\\elsewhere') as Checked;
   assert.equal(rel.status, 'refused');
   assert.match(rel.reason, /absolute/);
-  const root = checkFolder(path.parse(os.tmpdir()).root);
+  const root = checkFolder(path.parse(os.tmpdir()).root) as Checked;
   assert.equal(root.status, 'refused');
   assert.match(root.reason, /root/);
   const sys = process.platform === 'win32' ? process.env.SystemRoot : '/etc';
-  const r = checkFolder(sys);
+  const r = checkFolder(sys) as Checked;
   assert.equal(r.status, 'refused');
   assert.match(r.reason, /system/);
 });
@@ -457,7 +461,7 @@ test('check refuses the home folder itself but not a folder inside a temp home',
 test('check refuses a file and folders in the repository except viewer/data', () => {
   const dir = tmp();
   put(dir, 'a.txt');
-  assert.match(checkFolder(path.join(dir, 'a.txt')).reason, /file/);
+  assert.match((checkFolder(path.join(dir, 'a.txt')) as Checked).reason, /file/);
   assert.equal(checkFolder(path.join(ROOT, 'viewer', 'shared')).status, 'refused');
   assert.equal(checkFolder(path.join(ROOT, 'viewer', 'test', 'sample-data')).status, 'refused');
   assert.equal(confineDir(path.join(ROOT, 'viewer', 'data')).ok, true);
@@ -470,10 +474,10 @@ test('check refuses a junction that leads into viewer/shared', (t) => {
   try {
     fs.symlinkSync(path.join(ROOT, 'viewer', 'shared'), link, 'junction');
   } catch (err) {
-    return t.skip(`cannot create a junction here: ${err.code}`);
+    return t.skip(`cannot create a junction here: ${(err as NodeJS.ErrnoException).code}`);
   }
   try {
-    const r = checkFolder(link);
+    const r = checkFolder(link) as Checked;
     assert.equal(r.status, 'refused');
     assert.match(r.reason, /repository/);
     assert.equal(checkFolder(path.join(link, 'newfolder')).status, 'refused');
@@ -532,7 +536,7 @@ test('code base: a missing folder is refused and not created', () => {
 test('code base: a path that is a file is refused', () => {
   const dir = tmp();
   put(dir, 'a.txt');
-  assert.match(confineCodeBase(path.join(dir, 'a.txt')).reason, /file/);
+  assert.match((confineCodeBase(path.join(dir, 'a.txt')) as { reason: string }).reason, /file/);
 });
 
 test('code base: a file named .plans is refused and said so', () => {
@@ -556,7 +560,7 @@ test('code base: an existing folder with and without .plans is accepted', () => 
 test('code base check: missing .plans, empty .plans, has-planner-files, refused', () => {
   const cb = tmp();
   assert.equal(checkCodeBase(cb).status, 'missing');
-  assert.equal(checkCodeBase(cb).dir, path.join(fs.realpathSync.native(cb), '.plans'));
+  assert.equal((checkCodeBase(cb) as Checked).dir, path.join(fs.realpathSync.native(cb), '.plans'));
   fs.mkdirSync(path.join(cb, '.plans'));
   assert.equal(checkCodeBase(cb).status, 'empty');
   put(cb, '.plans/iam/user-stories.csv');
@@ -568,7 +572,7 @@ test('code base check: missing .plans, empty .plans, has-planner-files, refused'
 test('code base init creates .plans and .plans/new-backlog with its starting files, and nothing else', async () => {
   const cb = tmp();
   put(cb, 'src/app.js', 'code');
-  const r = await initCodeBase(cb);
+  const r = (await initCodeBase(cb)) as Inited;
   assert.deepEqual(r.created, ['.plans', 'new-backlog']);
   assert.deepEqual(r.existing, []);
   assert.equal(r.createdDataDir, true);
@@ -582,7 +586,7 @@ test('code base init creates .plans and .plans/new-backlog with its starting fil
 test('code base init twice creates nothing the second time and lists .plans and its backlog as existing', async () => {
   const cb = tmp();
   await initCodeBase(cb);
-  const r = await initCodeBase(cb);
+  const r = (await initCodeBase(cb)) as Inited;
   assert.deepEqual(r.created, []);
   assert.deepEqual(r.existing, ['.plans', 'new-backlog']);
   assert.equal(r.createdDataDir, false);
@@ -592,7 +596,7 @@ test('code base init twice creates nothing the second time and lists .plans and 
 test('code base init on a .plans that holds a backlog creates nothing', async () => {
   const cb = tmp();
   put(cb, '.plans/iam/user-stories.csv', 'keep');
-  const r = await initCodeBase(cb);
+  const r = (await initCodeBase(cb)) as Inited;
   assert.deepEqual(r.created, []);
   assert.deepEqual(r.existing, ['.plans', 'iam']);
   assert.deepEqual(fs.readdirSync(path.join(cb, '.plans')), ['iam']);
@@ -601,7 +605,7 @@ test('code base init on a .plans that holds a backlog creates nothing', async ()
 
 test('code base init refuses a missing code base and creates nothing', async () => {
   const missing = path.join(tmp(), 'nope');
-  const r = await initCodeBase(missing);
+  const r = (await initCodeBase(missing)) as Inited;
   assert.match(r.refused, /does not exist/);
   assert.equal(fs.existsSync(missing), false);
 });
@@ -609,7 +613,7 @@ test('code base init refuses a missing code base and creates nothing', async () 
 test('code base init refuses a .plans that is a file', async () => {
   const cb = tmp();
   put(cb, '.plans', 'x');
-  assert.match((await initCodeBase(cb)).refused, /file/);
+  assert.match(((await initCodeBase(cb)) as Refused).refused, /file/);
   assert.equal(fs.readFileSync(path.join(cb, '.plans'), 'utf8'), 'x');
 });
 
@@ -619,12 +623,12 @@ test('code base copy skips an existing file, copies the rest and leaves the sour
   put(s, 'iam/lexicon.csv', 'lex');
   const cb = tmp();
   put(cb, '.plans/iam/user-stories.csv', 'mine');
-  const r = copyToCodeBase(s, cb);
+  const r = copyToCodeBase(s, cb) as CopyResult;
   assert.deepEqual(r.skipped, [{ file: 'iam/user-stories.csv', reason: 'exists' }]);
   assert.deepEqual(r.copied, ['iam/lexicon.csv']);
   assert.equal(fs.readFileSync(path.join(cb, '.plans', 'iam', 'user-stories.csv'), 'utf8'), 'mine');
   assert.equal(fs.readFileSync(path.join(cb, '.plans', 'iam', 'lexicon.csv'), 'utf8'), 'lex');
-  assert.deepEqual(fs.readdirSync(s, { recursive: true }).map((n) => n.split(path.sep).join('/')).sort(), ['iam', 'iam/lexicon.csv', 'iam/user-stories.csv']);
+  assert.deepEqual((fs.readdirSync(s, { recursive: true }) as string[]).map((n) => n.split(path.sep).join('/')).sort(), ['iam', 'iam/lexicon.csv', 'iam/user-stories.csv']);
   assert.equal(fs.readFileSync(path.join(s, 'iam', 'user-stories.csv'), 'utf8'), 'theirs');
 });
 
@@ -632,16 +636,16 @@ test('code base copy creates .plans when missing and refuses a missing code base
   const s = tmp();
   put(s, 'iam/user-stories.csv', 'x');
   const cb = tmp();
-  assert.deepEqual(copyToCodeBase(s, cb).copied, ['iam/user-stories.csv']);
+  assert.deepEqual((copyToCodeBase(s, cb) as CopyResult).copied, ['iam/user-stories.csv']);
   assert.ok(fs.existsSync(path.join(cb, '.plans', 'iam', 'user-stories.csv')));
   const missing = path.join(tmp(), 'nope');
-  assert.match(copyToCodeBase(s, missing).refused, /does not exist/);
+  assert.match((copyToCodeBase(s, missing) as Refused).refused, /does not exist/);
   assert.equal(fs.existsSync(missing), false);
 });
 
 // ---- saving (3.4)
 
-function cfg(text) {
+function cfg(text: string) {
   const dir = tmp();
   const file = path.join(dir, 'viewer.config.yaml');
   fs.writeFileSync(file, text);

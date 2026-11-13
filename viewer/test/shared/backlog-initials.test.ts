@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createRequire } from 'node:module';
 
-const require = createRequire(import.meta.url);
-const bi = require('../../shared/storage/backlog-initials.ts');
+import * as bi from '../../shared/storage/backlog-initials.ts';
 
-const sib = (name, initials, frozenCodes = []) => ({ name, initials, frozenCodes });
+type HttpErr = Error & { status?: number; code?: string }; // what the storage helpers throw
+
+const sib = (name: string, initials: string, frozenCodes: string[] = []) => ({ name, initials, frozenCodes });
 
 test('validateInitials uppercases and accepts 1 to 6 letters or digits starting with a letter', () => {
   assert.equal(bi.validateInitials('ops'), 'OPS');
@@ -19,7 +19,7 @@ test('validateInitials uppercases and accepts 1 to 6 letters or digits starting 
 
 test('validateInitials rejects a bad value with a message that says what is valid', () => {
   for (const bad of ['1A', 'A-B', '', '   ', 'ABCDEFG', 'A B', 'é1', undefined, 5]) {
-    assert.throws(() => bi.validateInitials(bad), (e) => e.status === 400 && /1 to 6 letters or digits/.test(e.message) && /start with a letter/.test(e.message) && /no hyphen/.test(e.message), String(bad));
+    assert.throws(() => bi.validateInitials(bad), (e: HttpErr) => e.status === 400 && /1 to 6 letters or digits/.test(e.message) && /start with a letter/.test(e.message) && /no hyphen/.test(e.message), String(bad));
   }
 });
 

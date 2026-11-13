@@ -1,10 +1,10 @@
+import type { AddressInfo } from 'node:net';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createRequire } from 'node:module';
-import { tempConfig } from '../helpers/temp-config.mjs';
+import { tempConfig } from '../helpers/temp-config.ts';
 import { startingFiles } from '../../backend/storage/starting-files.ts';
 import { backlogFile } from '../../shared/storage/backlog-paths.ts';
 
@@ -18,19 +18,19 @@ process.env.VIEWER_CONFIG = tempConfig(root);
 const { server } = await import('../../backend/server.ts');
 
 const HEADERS = { 'X-Requested-With': 'the-toolbox', 'Content-Type': 'application/json' };
-let origin;
+let origin: string;
 test.before(async () => {
-  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-  origin = `http://127.0.0.1:${server.address().port}`;
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });
 test.after(() => {
   server.close();
   fs.rmSync(root, { recursive: true });
 });
 
-const create = (name) => fetch(`${origin}/api/backlog/files`, { method: 'POST', headers: HEADERS, body: JSON.stringify({ name }) });
-const fileOf = (backlog, kind) => backlogFile(root, backlog, kind);
-const snapshot = (dir) => Object.fromEntries(
+const create = (name: string) => fetch(`${origin}/api/backlog/files`, { method: 'POST', headers: HEADERS, body: JSON.stringify({ name }) });
+const fileOf = (backlog: string, kind: string) => backlogFile(root, backlog, kind);
+const snapshot = (dir: string) => Object.fromEntries(
   fs.readdirSync(dir, { recursive: true, withFileTypes: true })
     .filter((e) => e.isFile())
     .map((e) => { const f = path.join(e.parentPath, e.name); return [path.relative(dir, f), fs.readFileSync(f, 'utf8')]; }),

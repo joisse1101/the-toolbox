@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ignoresKey, isTextEntry } from '../../frontend/src/tools/backlog/shell/shortcuts.ts';
 
-const key = (target, mods = {}) => ({ target, ctrlKey: false, altKey: false, metaKey: false, ...mods });
+// A partial keyboard event: the code under test reads only these fields.
+const key = (target: unknown, mods: Partial<KeyboardEvent> = {}) => ({ target, ctrlKey: false, altKey: false, metaKey: false, ...mods }) as unknown as KeyboardEvent;
 
 test('a plain key typed in an input, textarea or select is ignored', () => {
   for (const tagName of ['INPUT', 'TEXTAREA', 'SELECT']) assert.equal(ignoresKey(key({ tagName })), true, tagName);
@@ -25,5 +26,5 @@ test('a plain key outside a field is not ignored', () => {
 
 test('a missing target is not a text field', () => {
   assert.equal(isTextEntry(null), false);
-  assert.equal(isTextEntry(undefined), false);
+  assert.equal(isTextEntry(undefined as unknown as null), false);
 });

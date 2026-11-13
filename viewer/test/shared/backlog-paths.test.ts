@@ -3,11 +3,12 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createRequire } from 'node:module';
 
-const require = createRequire(import.meta.url);
-const bp = require('../../shared/storage/backlog-paths.ts');
-const { validateBacklogName } =require('../../shared/storage/file-name.ts');
+import * as bp from '../../shared/storage/backlog-paths.ts';
+import * as fileName from '../../shared/storage/file-name.ts';
+import { validateBacklogName } from '../../shared/storage/file-name.ts';
+
+type HttpErr = Error & { status?: number; code?: string }; // what the storage helpers throw
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'backlog-paths-'));
 const D = path.join(os.tmpdir(), 'data');
@@ -37,7 +38,7 @@ test('a name with a trailing .csv is the same backlog', () => {
 
 test('an unknown kind is refused as unknown-store, including slices and logs', () => {
   for (const kind of ['slices', 'logs', 'repo', '', undefined, '__proto__', 'constructor']) {
-    assert.throws(() => bp.backlogFile(D, 'iam', kind), (e) => e.status === 404 && e.code === 'unknown-store');
+    assert.throws(() => bp.backlogFile(D, 'iam', kind as never), (e: HttpErr) => e.status === 404 && e.code === 'unknown-store');
   }
 });
 
@@ -46,16 +47,16 @@ test('unsafe names are rejected by every path builder', () => {
     'a\x00b', 'a\nb', '', '   ', '.csv', ' .csv', 'name.', 'name. ', 'con', 'NUL', 'com1', 'lpt9', 'con.txt', 'logs', 'LOGS', 'Logs.csv',
     'x'.repeat(117), null, undefined, 5, {}];
   for (const name of bad) {
-    assert.throws(() => validateBacklogName(name), (e) => e.status === 400, `validate ${JSON.stringify(name)}`);
-    assert.throws(() => bp.backlogDir(D, name), (e) => e.status === 400);
-    assert.throws(() => bp.backlogFile(D, name, 'backlog'), (e) => e.status === 400);
-    assert.throws(() => bp.slicesDir(D, name), (e) => e.status === 400);
-    assert.throws(() => bp.contextMapFiles(D, name), (e) => e.status === 400);
+    assert.throws(() => validateBacklogName(name), (e: HttpErr) => e.status === 400, `validate ${JSON.stringify(name)}`);
+    assert.throws(() => bp.backlogDir(D, name), (e: HttpErr) => e.status === 400);
+    assert.throws(() => bp.backlogFile(D, name, 'backlog'), (e: HttpErr) => e.status === 400);
+    assert.throws(() => bp.slicesDir(D, name), (e: HttpErr) => e.status === 400);
+    assert.throws(() => bp.contextMapFiles(D, name), (e: HttpErr) => e.status === 400);
   }
 });
 
 test('the reserved name logs has its own code', () => {
-  assert.throws(() => validateBacklogName('logs'), (e) => e.code === 'reserved-name');
+  assert.throws(() => validateBacklogName('logs'), (e: HttpErr) => e.code === 'reserved-name');
 });
 
 test('a built path never leaves the data folder', () => {
@@ -68,7 +69,7 @@ test('a built path never leaves the data folder', () => {
 });
 
 test('validateName (the older file rule) is gone: the backlog name rule is the only one', () => {
-  assert.equal(require('../../shared/storage/file-name.ts').validateName, undefined);
+  assert.equal((fileName as Record<string, unknown>).validateName, undefined);
 });
 
 test('listBacklogs lists subfolders holding user-stories.csv, sorted, and not logs or loose files', () => {

@@ -4,8 +4,8 @@ import path from 'node:path';
 import { PLANS_FILES, gitignoreBlock } from '../../shared/skill-support/plans-files.ts';
 
 // "One table lists every file under the data folder" and "A gitignore block is printed from the table".
-const lifecycleOf = (rowPath) => PLANS_FILES.find((row) => row.path === rowPath)?.lifecycle;
-const pathsWith = (lifecycle) => PLANS_FILES.filter((row) => row.lifecycle.join(', ') === lifecycle).map((row) => row.path);
+const lifecycleOf = (rowPath: string) => PLANS_FILES.find((row) => row.path === rowPath)?.lifecycle;
+const pathsWith = (lifecycle: string) => PLANS_FILES.filter((row) => row.lifecycle.join(', ') === lifecycle).map((row) => row.path);
 
 const EXPECTED_PLANS_BLOCK = `# planner data: committed files only (printed by jois-story-plan/print-gitignore.mjs)
 !.plans/
@@ -55,7 +55,7 @@ test('the block for .plans equals the block of the design', () => {
 });
 
 test('no line ignores a folder without its /*', () => {
-  const lines = gitignoreBlock({ dataDir: path.join(root, '.plans'), root }).split('\n').filter((l) => l && !l.startsWith('#'));
+  const lines = (gitignoreBlock({ dataDir: path.join(root, '.plans'), root }) as string).split('\n').filter((l) => l && !l.startsWith('#'));
   const ignores = lines.filter((l) => !l.startsWith('!'));
   assert.ok(ignores.length > 0);
   for (const line of ignores) assert.match(line, /\/\*$/, `${line} must ignore contents (/*), not a folder`);
@@ -68,9 +68,9 @@ test('no line ignores a folder without its /*', () => {
 
 test('a data folder elsewhere inside the project uses that path', () => {
   const block = gitignoreBlock({ dataDir: path.join(root, 'docs', 'plans'), root });
-  assert.match(block, /^!docs\/plans\/$/m);
-  assert.match(block, /^docs\/plans\/\*\/slices\/\*\/\*$/m);
-  assert.doesNotMatch(block, /\.plans/);
+  assert.match(block!, /^!docs\/plans\/$/m);
+  assert.match(block!, /^docs\/plans\/\*\/slices\/\*\/\*$/m);
+  assert.doesNotMatch(block!, /\.plans/);
 });
 
 test('a data folder outside the project, or the project itself, yields no block', () => {

@@ -6,7 +6,7 @@ import {
   groupByEpic, displayOrder, applyBulk,
 } from '../../shared/backlog/model.ts';
 
-const load = (text, options = {}) => loadBacklog(text, { initials: 'B1', ...options });
+const load = (text: string, options: { placeholderIds?: boolean } = {}) => loadBacklog(text, { initials: 'B1', ...options });
 
 const SAMPLE =
   '﻿Jira Key,Title,Sprint points,Epic,User Story,Feature,User Acceptance Criteria,Priority,Notes\r\n' +
@@ -168,7 +168,7 @@ test('loaded story with empty criteria cell shows one blank criterion and saves 
   assert.equal(serializeBacklog(b), text);
 });
 
-const withEpic = (epic, id) => Object.assign(newStory(COLUMNS), { epic, id });
+const withEpic = (epic: string, id: number) => Object.assign(newStory(COLUMNS), { epic, id });
 
 test('groupByEpic and displayOrder group by first occurrence without reordering the input', () => {
   const stories = [withEpic('Billing', 1), withEpic('Onboarding', 2), withEpic('Billing', 3), withEpic('  ', 4), withEpic('', 5)];
@@ -181,7 +181,7 @@ test('groupByEpic and displayOrder group by first occurrence without reordering 
 });
 
 test('groupByEpic splits each epic by feature and displayOrder follows epic then feature', () => {
-  const s = (id, epic, feature) => Object.assign(withEpic(epic, id), { feature });
+  const s = (id: number, epic: string, feature: string) => Object.assign(withEpic(epic, id), { feature });
   const stories = [s(1, 'Billing', 'Invoices'), s(2, 'Billing', 'Refunds'), s(3, 'Billing', 'Invoices'), s(4, 'Billing', ' '), s(5, 'Onboarding', '')];
   const groups = groupByEpic(stories);
   assert.deepEqual(groups.map((g) => [g.label, g.features.map((f) => [f.label, f.stories.map((x) => x.id)])]), [

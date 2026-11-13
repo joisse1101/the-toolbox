@@ -2,14 +2,13 @@ import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { createRequire } from 'node:module';
 
 const { loadConfig, saveConfig, DEFAULT_DATA_DIR } = await import('../../backend/storage/project-config.ts');
 
 // Temp folders live under the project's .scratch/ (git-ignored) and are removed afterwards.
 const SCRATCH = path.resolve(import.meta.dirname, '..', '..', '..', '.scratch', 'project-config-projects');
 fs.mkdirSync(SCRATCH, { recursive: true });
-const made = [];
+const made: string[] = [];
 after(() => { for (const d of made) fs.rmSync(d, { recursive: true }); });
 
 function tmp() {
@@ -17,19 +16,19 @@ function tmp() {
   made.push(dir);
   return dir;
 }
-function write(dir, text) {
+function write(dir: string, text: string) {
   const file = path.join(dir, 'viewer.config.yaml');
   fs.writeFileSync(file, text);
   return file;
 }
-function folder(dir, name) {
+function folder(dir: string, name: string) {
   const p = path.join(dir, name);
   fs.mkdirSync(p, { recursive: true });
   return p;
 }
 // The scratch folder lies inside the repository, which confineDir refuses, so the repository root is moved elsewhere.
 const confine = { root: path.join(path.parse(SCRATCH).root, 'no-such-repo-root') };
-const q = (p) => `'${p}'`;
+const q = (p: string) => `'${p}'`;
 
 // Invalid config fails at load
 
@@ -45,22 +44,22 @@ test('an entry that is not an object fails naming projects and its position', ()
 });
 
 test('an entry with an unknown key fails naming the key and position', () => {
-  assert.throws(() => loadConfig({ file: write(tmp(), 'projects:\n  - dataDir: a\n    path: b\n') }), (e) => /entry 0/.test(e.message) && /path/.test(e.message));
+  assert.throws(() => loadConfig({ file: write(tmp(), 'projects:\n  - dataDir: a\n    path: b\n') }), (e: Error) => /entry 0/.test(e.message) && /path/.test(e.message));
 });
 
 test('an entry with both or neither folder key fails naming projects and position', () => {
-  assert.throws(() => loadConfig({ file: write(tmp(), 'projects:\n  - dataDir: a\n  - codeBase: b\n    dataDir: c\n') }), (e) => /"projects" entry 1/.test(e.message) && /codeBase/.test(e.message) && /dataDir/.test(e.message));
+  assert.throws(() => loadConfig({ file: write(tmp(), 'projects:\n  - dataDir: a\n  - codeBase: b\n    dataDir: c\n') }), (e: Error) => /"projects" entry 1/.test(e.message) && /codeBase/.test(e.message) && /dataDir/.test(e.message));
   assert.throws(() => loadConfig({ file: write(tmp(), 'projects:\n  - name: x\n') }), /"projects" entry 0/);
 });
 
 test('an entry with an empty or non-text path fails naming projects and position', () => {
-  assert.throws(() => loadConfig({ file: write(tmp(), "projects:\n  - dataDir: ''\n") }), (e) => /entry 0/.test(e.message) && /dataDir/.test(e.message));
-  assert.throws(() => loadConfig({ file: write(tmp(), "projects:\n  - codeBase: '  '\n") }), (e) => /entry 0/.test(e.message) && /codeBase/.test(e.message));
+  assert.throws(() => loadConfig({ file: write(tmp(), "projects:\n  - dataDir: ''\n") }), (e: Error) => /entry 0/.test(e.message) && /dataDir/.test(e.message));
+  assert.throws(() => loadConfig({ file: write(tmp(), "projects:\n  - codeBase: '  '\n") }), (e: Error) => /entry 0/.test(e.message) && /codeBase/.test(e.message));
   assert.throws(() => loadConfig({ file: write(tmp(), 'projects:\n  - dataDir: 5\n') }), /entry 0/);
 });
 
 test('an entry name that is not text fails naming projects and position', () => {
-  assert.throws(() => loadConfig({ file: write(tmp(), 'projects:\n  - dataDir: a\n    name: 4\n') }), (e) => /entry 0/.test(e.message) && /name/.test(e.message));
+  assert.throws(() => loadConfig({ file: write(tmp(), 'projects:\n  - dataDir: a\n    name: 4\n') }), (e: Error) => /entry 0/.test(e.message) && /name/.test(e.message));
 });
 
 test('a valid list loads, with an empty list too', () => {

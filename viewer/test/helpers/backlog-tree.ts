@@ -4,17 +4,15 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
-const require = createRequire(import.meta.url);
-const bp = require('../../shared/storage/backlog-paths.ts');
+import * as bp from '../../shared/storage/backlog-paths.ts';
 
 // A new empty data folder (the tests use no other).
 export const tempData = (prefix = 'backlog-tree-') => fs.mkdtempSync(path.join(os.tmpdir(), prefix));
 
 // Writes one file of a backlog (kind: backlog, review, proposals, lexicon, lexicon-suggestions) and returns its path.
-export function putFile(dataDir, name, kind, text) {
+export function putFile(dataDir: string, name: string, kind: string, text: string) {
   const target = bp.backlogFile(dataDir, name, kind);
   fs.mkdirSync(path.dirname(target), { recursive: true });
   fs.writeFileSync(target, text);
@@ -22,10 +20,10 @@ export function putFile(dataDir, name, kind, text) {
 }
 
 // The path of a file of a backlog (nothing is created).
-export const pathOf = (dataDir, name, kind) => bp.backlogFile(dataDir, name, kind);
-export const decidedPath = (dataDir, name) => bp.reviewDecidedFile(dataDir, name);
-export const slicesPath = (dataDir, name) => bp.slicesDir(dataDir, name);
-export const backlogPath = (dataDir, name) => bp.backlogDir(dataDir, name);
+export const pathOf = (dataDir: string, name: string, kind: string) => bp.backlogFile(dataDir, name, kind);
+export const decidedPath = (dataDir: string, name: string) => bp.reviewDecidedFile(dataDir, name);
+export const slicesPath = (dataDir: string, name: string) => bp.slicesDir(dataDir, name);
+export const backlogPath = (dataDir: string, name: string) => bp.backlogDir(dataDir, name);
 
 // The committed sample data (`test/sample-data/`) is in the one-folder-per-backlog layout. This is the one place that reads it:
 // it copies the parts a test asks for into a temp data folder and returns that folder, so no test writes into the sample.

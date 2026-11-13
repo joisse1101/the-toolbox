@@ -3,12 +3,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createRequire } from 'node:module';
 import { startingFiles } from '../../backend/storage/starting-files.ts';
 
-const require = createRequire(import.meta.url);
 const { writeBacklogFiles } = await import('../../backend/storage/backlog-files.ts');
-const { backlogFile, listBacklogs, KINDS } = require('../../shared/storage/backlog-paths.ts');
+import { backlogFile, listBacklogs, KINDS } from '../../shared/storage/backlog-paths.ts';
 
 // Temp folders go under the project's .scratch/, never the system temp folder.
 const scratch = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '.scratch');
@@ -17,7 +15,7 @@ const root = fs.mkdtempSync(path.join(scratch, 'backlog-files-'));
 after(() => fs.rmSync(root, { recursive: true }));
 
 const newDataDir = () => fs.mkdtempSync(path.join(root, 'data-'));
-const read = (dataDir, name, kind) => fs.readFileSync(backlogFile(dataDir, name, kind), 'utf8');
+const read = (dataDir: string, name: string, kind: string) => fs.readFileSync(backlogFile(dataDir, name, kind), 'utf8');
 
 test('writes every starting file by its kind and returns the name', async () => {
   const dataDir = newDataDir();
@@ -68,9 +66,9 @@ test('leaves a backlog it did not make alone when a later create fails', async (
   const dataDir = newDataDir();
   await writeBacklogFiles(dataDir, 'kept', startingFiles());
 
-  await assert.rejects(writeBacklogFiles(dataDir, 'broken', [{ kind: 'nope', text: '' }]), { code: 'unknown-store' });
+  await assert.rejects(writeBacklogFiles(dataDir, 'broken', [{ kind: 'nope' as never, text: '' }]), { code: 'unknown-store' });
 
   assert.deepEqual(listBacklogs(dataDir), ['kept']);
   assert.equal(fs.readdirSync(path.join(dataDir, 'kept')).length > 0, true);
-  assert.equal(KINDS.every((kind) => fs.existsSync(backlogFile(dataDir, 'kept', kind))), true);
+  assert.equal(KINDS.every((kind: string) => fs.existsSync(backlogFile(dataDir, 'kept', kind))), true);
 });

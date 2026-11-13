@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadBacklog } from '../../shared/backlog/model.ts';
 import { matchesQuery, findStories, searchReply, SEARCH_CAP } from '../../shared/backlog/story-search.ts';
+import type { Story } from '../../shared/types.ts';
 
 const CSV = [
   'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes,Legacy Ref',
@@ -12,7 +13,7 @@ const CSV = [
 const open = () => loadBacklog(CSV, { initials: 'B1' });
 const [first, second] = open().stories;
 const headers = open().headers;
-const hit = (story, q) => matchesQuery(story, q, headers);
+const hit = (story: Story, q: string) => matchesQuery(story, q, headers);
 
 test('a word in a field the table does not show matches', () => {
   assert.equal(hit(first, 'invoice'), true); // criteria

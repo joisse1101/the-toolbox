@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import type { LexiconState } from '../../frontend/src/tools/backlog/features/lexicon/useLexicon.ts';
 import { reducer } from '../../frontend/src/tools/backlog/features/lexicon/useLexicon.ts';
 import { parseLexicon } from '../../shared/lexicon/lexicon.ts';
 
@@ -9,7 +10,7 @@ const opened = (text = FILE) => reducer(
   { current: null, backlog: null, selected: null, error: null, edits: 0 },
   { type: 'loaded', name: 'IAM.csv', lexicon: parseLexicon(text) },
 );
-const names = (state) => state.backlog.terms.map((t) => t.name);
+const names = (state: LexiconState) => state.backlog!.terms.map((t) => t.name);
 
 test('loaded selects the first term and is not an edit', () => {
   const state = opened();
@@ -36,23 +37,23 @@ test('a refused save keeps the lexicon, reports why and is not an edit', () => {
   const next = reducer(state, { type: 'save', term: { name: 'user', definition: 'x' } });
   assert.equal(next.backlog, state.backlog);
   assert.equal(next.edits, 0);
-  assert.match(next.error[0], /already exists/);
+  assert.match(next.error![0], /already exists/);
   assert.equal(reducer(next, { type: 'select', name: 'User' }).error, null);
 });
 
 test('rename updates the children and keeps the order', () => {
   const state = opened();
-  const dataset = state.backlog.terms[0];
+  const dataset = state.backlog!.terms[0];
   const next = reducer(state, { type: 'save', term: { ...dataset, name: 'Data set' }, replaces: 'Dataset' });
   assert.equal(next.selected, 'Data set');
-  assert.equal(next.backlog.terms[1].partOf, 'Data set');
+  assert.equal(next.backlog!.terms[1].partOf, 'Data set');
   assert.deepEqual(names(next), ['Data set', 'Dataset attribute', 'User']);
 });
 
 test('delete is refused while a term is part of it; deleting a leaf selects its neighbour', () => {
   const state = opened();
   const refused = reducer(state, { type: 'delete', name: 'Dataset' });
-  assert.match(refused.error[0], /"Dataset attribute" is part of it/);
+  assert.match(refused.error![0], /"Dataset attribute" is part of it/);
   assert.equal(refused.edits, 0);
   const removed = reducer(state, { type: 'delete', name: 'Dataset attribute' });
   assert.deepEqual(names(removed), ['Dataset', 'User']);
@@ -60,7 +61,7 @@ test('delete is refused while a term is part of it; deleting a leaf selects its 
   assert.equal(removed.edits, 1);
   const last = reducer(reducer(removed, { type: 'delete', name: 'User' }), { type: 'delete', name: 'Dataset' });
   assert.equal(last.selected, null);
-  assert.deepEqual(last.backlog.terms, []);
+  assert.deepEqual(last.backlog!.terms, []);
 });
 
 test('cleared forgets the lexicon', () => {

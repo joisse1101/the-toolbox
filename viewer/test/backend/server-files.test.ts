@@ -1,11 +1,11 @@
+import type { AddressInfo } from 'node:net';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
-import { createRequire } from 'node:module';
-import { tempConfig } from '../helpers/temp-config.mjs';
+import { tempConfig } from '../helpers/temp-config.ts';
 
 // The file API on backlog folders. Mock data only: a temp data folder built here in the one-folder-per-backlog layout.
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'server-files-test-'));
@@ -13,16 +13,16 @@ process.env.VIEWER_CONFIG = tempConfig(root);
 const { server } = await import('../../backend/server.ts');
 
 const HEADERS = { 'X-Requested-With': 'the-toolbox', 'Content-Type': 'application/json' };
-let origin;
+let origin: string;
 test.before(async () => {
-  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
-  origin = `http://127.0.0.1:${server.address().port}`;
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });
 test.after(() => server.close());
 
-const call = (method, url, body) => fetch(`${origin}${url}`, { method, headers: HEADERS, body: body === undefined ? undefined : JSON.stringify(body) });
+const call = (method: string, url: string, body?: unknown) => fetch(`${origin}${url}`, { method, headers: HEADERS, body: body === undefined ? undefined : JSON.stringify(body) });
 const listed = async (kind = 'backlog') => (await (await fetch(`${origin}/api/${kind}/files`)).json()).files;
-const put = (dir, file, text) => {
+const put = (dir: string, file: string, text: string) => {
   fs.mkdirSync(path.dirname(path.join(root, dir, file)), { recursive: true });
   fs.writeFileSync(path.join(root, dir, file), text);
 };
@@ -196,10 +196,10 @@ test('a request whose Host is not this machine is refused', async () => {
 
 // ---------- initials (backlog.json) ----------
 
-const initialsFile = (name) => path.join(root, name, 'backlog.json');
-const savedInitials = (name) => JSON.parse(fs.readFileSync(initialsFile(name), 'utf8')).initials;
-const openedInitials = async (name) => (await (await fetch(`${origin}/api/backlog/files/${name}`)).json()).initials;
-const frozenStory = (code) => `ID,Epic,Title,Frozen\r\n${code},IAM,A story,Yes\r\n`;
+const initialsFile = (name: string) => path.join(root, name, 'backlog.json');
+const savedInitials = (name: string) => JSON.parse(fs.readFileSync(initialsFile(name), 'utf8')).initials;
+const openedInitials = async (name: string) => (await (await fetch(`${origin}/api/backlog/files/${name}`)).json()).initials;
+const frozenStory = (code: string) => `ID,Epic,Title,Frozen\r\n${code},IAM,A story,Yes\r\n`;
 
 test('create writes backlog.json with initials no other backlog uses; rename keeps them', async () => {
   put('init-old', 'user-stories.csv', 'ID\r\n');

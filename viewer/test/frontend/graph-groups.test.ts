@@ -1,11 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import type { Story } from '../../shared/types.ts';
 import { groupStories, layoutGraph } from '../../frontend/src/tools/backlog/features/graph/graph.ts';
 
 let n = 0;
-const story = (epic, feature, code, dependsOn = []) => ({ id: ++n, epic, feature, code, dependsOn });
-const named = (g) => [...g.groups.values()].map((x) => `${x.epic}/${x.name}`);
-const idOf = (g, epic, name) => [...g.groups.values()].find((x) => x.epic === epic && x.name === name).id;
+// A partial story: the grouping code reads only these fields.
+const story = (epic: string, feature: string, code: string, dependsOn: string[] = []) => ({ id: ++n, epic, feature, code, dependsOn }) as Story;
+type Grouped = ReturnType<typeof groupStories>;
+const named = (g: Grouped) => [...g.groups.values()].map((x) => `${x.epic}/${x.name}`);
+const idOf = (g: Grouped, epic: string, name: string) => [...g.groups.values()].find((x) => x.epic === epic && x.name === name)!.id;
 
 test('groups: a feature name in two epics is two groups', () => {
   const g = groupStories([story('Billing', 'Setup', 'B-1'), story('Auth', 'Setup', 'A-1')], 'features');
@@ -18,15 +21,15 @@ test('groups: one edge per pair of groups, with the story links behind it', () =
   const g = groupStories([a1, a2, b1, b2], 'features');
   const login = idOf(g, 'E', 'Login'), session = idOf(g, 'E', 'Session');
   assert.deepEqual([...g.pairs.keys()], [`${session}>${login}`]);
-  assert.equal(g.pairs.get(`${session}>${login}`).length, 3);
-  assert.deepEqual(g.items.find((x) => x.id === session).dependsOn, [g.groups.get(login).key]);
+  assert.equal(g.pairs.get(`${session}>${login}`)!.length, 3);
+  assert.deepEqual(g.items.find((x) => x.id === session)!.dependsOn, [g.groups.get(login)!.key]);
   assert.deepEqual(g.mutual, []);
 });
 
 test('groups: links inside a group are counted, not drawn', () => {
   const a = story('E', 'Login', 'E-1'), b = story('E', 'Login', 'E-2', ['E-1']);
   const g = groupStories([a, b], 'features');
-  assert.equal(g.groups.get(1).internal, 1);
+  assert.equal(g.groups.get(1)!.internal, 1);
   assert.equal(g.pairs.size, 0);
   assert.equal(layoutGraph(g.items).unlinked.length, 1);
 });
@@ -40,7 +43,7 @@ test('groups: a repeated Depends On entry counts once', () => {
 test('groups: stories without ID, Epic or Feature are left out', () => {
   const g = groupStories([story('E', 'F', ''), story('', 'F', 'X-1'), story('E', '', 'E-3'), story(' E ', ' F ', 'E-4')], 'features');
   assert.deepEqual(named(g), ['E/F']);
-  assert.equal(g.groups.get(1).storyIds.length, 1);
+  assert.equal(g.groups.get(1)!.storyIds.length, 1);
 });
 
 test('groups: a dependency on a left-out story is ignored', () => {
@@ -53,8 +56,8 @@ test('groups: the epics level ignores the feature', () => {
   const g = groupStories([a, b, c], 'epics');
   assert.deepEqual(named(g), ['Auth/Auth', 'Billing/Billing']);
   assert.equal(g.pairs.size, 1);
-  assert.equal(g.groups.get(2).internal, 1);
-  assert.equal(g.groups.get(2).storyIds.length, 2);
+  assert.equal(g.groups.get(2)!.internal, 1);
+  assert.equal(g.groups.get(2)!.storyIds.length, 2);
 });
 
 test('groups: two features that depend on each other are a mutual pair, not a story cycle', () => {

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-export function tempConfig(dataDir, projectName = 'Test') {
+export function tempConfig(dataDir: string, projectName = 'Test') {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'viewer-config-'));
   const file = path.join(dir, 'viewer.config.yaml');
   // JSON strings are valid double-quoted YAML, so a Windows path keeps its backslashes.

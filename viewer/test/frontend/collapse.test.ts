@@ -1,13 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import type { Story } from '../../shared/types.ts';
 import { groupByEpic } from '../../shared/backlog/model.ts';
 import { allKeys, anyOpen, epicKey, featureKey, levelKeys, parseClosed, pruneClosed, reveal, serializeClosed, toggleLevel } from '../../frontend/src/shared/lib/collapse.ts';
 
-const story = (epic, feature) => ({ epic, feature });
+// A partial story: the grouping code reads only these two fields.
+const story = (epic: string, feature: string) => ({ epic, feature }) as Story;
 const groups = groupByEpic([
   story('Billing', 'Pay'), story('Billing', 'Refund'), story('Onboarding', 'Signup'), story('', ''),
 ]);
-const set = (...keys) => new Set(keys);
+const set = (...keys: string[]) => new Set(keys);
 
 test('keys name groups by epic and feature, blank included', () => {
   assert.deepEqual(levelKeys(groups, 'epic'), ['e:Billing', 'e:Onboarding', 'e:']);

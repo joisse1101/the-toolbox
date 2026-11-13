@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseCsv } from '../../shared/backlog/csv.ts';
 import { loadBacklog, serializeBacklog, newStory, storyIssues, COLUMNS } from '../../shared/backlog/model.ts';
+import type { Story } from '../../shared/types.ts';
 import {
   epicPrefix, renumber, moveStory, moveGroup, gatherFeatures, recodedBetween, commitEpic, commitEpics, removeStory, removeStories, freezeStories, dependentsOf, wouldCycle, dependencyChoices, backlogProblems,
 } from '../../shared/backlog/ids.ts';
@@ -9,9 +10,9 @@ import {
 const I = 'B1'; // the backlog initials of most tests
 let n = 0;
 // A committed story, as if loaded.
-const st = (epic, extra = {}) => Object.assign(newStory(COLUMNS), { id: ++n, epic, codedEpic: epic, ...extra });
-const codes = (stories) => stories.map((s) => s.code);
-const rn = (stories) => renumber(stories, I);
+const st = (epic: string, extra: Partial<Story> = {}) => Object.assign(newStory(COLUMNS), { id: ++n, epic, codedEpic: epic, ...extra });
+const codes = (stories: Story[]) => stories.map((s) => s.code);
+const rn = (stories: Story[]) => renumber(stories, I);
 
 test('epicPrefix: initials, ignoring & and punctuation', () => {
   assert.equal(epicPrefix('Identity & Access Management'), 'IAM');
@@ -29,6 +30,7 @@ test('renumber: every code starts with the backlog initials, then the epic prefi
 });
 
 test('renumber: needs the initials of the backlog', () => {
+  // @ts-expect-error the test passes no initials on purpose
   assert.throws(() => renumber([st('Billing')]), /initials/);
   assert.throws(() => renumber([st('Billing')], '  '), /initials/);
 });
@@ -70,7 +72,7 @@ test('renumber: ambiguous old codes and unknown entries are left alone and recor
   assert.deepEqual(codes(out), ['B1-B-0001', 'B1-B-0002', 'B1-O-0001']);
   assert.deepEqual(out[2].dependsOn, ['B1-B-0001', 'ZZ-0009']);
   assert.deepEqual(out[2].ambiguous, ['B1-B-0001']);
-  const problems = backlogProblems(out).get(z.id);
+  const problems = backlogProblems(out).get(z.id)!;
   assert.equal(problems.length, 2);
   assert.match(problems.join('|'), /ZZ-0009, which does not exist/);
   assert.match(problems.join('|'), /B1-B-0001, which more than one/);
@@ -103,8 +105,8 @@ test('moveStory keeps links pointing at the same stories', () => {
   const [a, b, c] = rn([st('Billing'), st('Billing'), st('Billing')]);
   const dependent = st('Other', { dependsOn: [b.code] });
   const out = moveStory([a, b, c, dependent], c.id, 'Billing', a.id, I);
-  assert.equal(out.find((s) => s.id === b.id).code, 'B1-B-0003');
-  assert.deepEqual(out.at(-1).dependsOn, ['B1-B-0003']);
+  assert.equal(out.find((s) => s.id === b.id)!.code, 'B1-B-0003');
+  assert.deepEqual(out.at(-1)!.dependsOn, ['B1-B-0003']);
 });
 
 test('moveStory to another epic: at a position, at the end, and in an empty target', () => {
@@ -112,16 +114,16 @@ test('moveStory to another epic: at a position, at the end, and in an empty targ
   const [b1, b2, , o2] = stories;
   const dep = st('Other', { dependsOn: [b2.code] });
   const mid = moveStory([...stories, dep], b2.id, 'Onboarding', o2.id, I);
-  const moved = mid.find((s) => s.id === b2.id);
+  const moved = mid.find((s) => s.id === b2.id)!;
   assert.equal(moved.epic, 'Onboarding');
   assert.equal(moved.code, 'B1-O-0002');
   assert.deepEqual(codes(mid.filter((s) => s.epic === 'Onboarding')), ['B1-O-0001', 'B1-O-0002', 'B1-O-0003']);
-  assert.deepEqual(mid.at(-1).dependsOn, ['B1-O-0002']);
+  assert.deepEqual(mid.at(-1)!.dependsOn, ['B1-O-0002']);
   const end = moveStory(stories, b1.id, 'Onboarding', null, I);
-  assert.equal(end.find((s) => s.id === b1.id).code, 'B1-O-0003');
-  assert.equal(end.find((s) => s.id === b2.id).code, 'B1-B-0001');
+  assert.equal(end.find((s) => s.id === b1.id)!.code, 'B1-O-0003');
+  assert.equal(end.find((s) => s.id === b2.id)!.code, 'B1-B-0001');
   const fresh = moveStory(stories, b1.id, 'Brand New', null, I);
-  assert.equal(fresh.find((s) => s.id === b1.id).code, 'B1-BN-0001');
+  assert.equal(fresh.find((s) => s.id === b1.id)!.code, 'B1-BN-0001');
 });
 
 test('commitEpic: typing alone changes nothing; committing moves to the bottom of the epic', () => {
@@ -162,7 +164,7 @@ test('removeStories: removes several, cleans links and renumbers once', () => {
 });
 
 // A frozen story with its code, as if loaded.
-const fz = (epic, code, extra = {}) => st(epic, { code, frozen: true, ...extra });
+const fz = (epic: string, code: string, extra: Partial<Story> = {}) => st(epic, { code, frozen: true, ...extra });
 const IAM = 'Identity & Access Management';
 
 test('removeStories: a frozen story is kept and counted', () => {
@@ -200,9 +202,9 @@ test('backlogProblems: self, dangling, cycle', () => {
   const [a, b] = rn([st('Billing'), st('Billing')]);
   const cyc = [{ ...a, dependsOn: [b.code] }, { ...b, dependsOn: [a.code, b.code, 'X-1'] }];
   const p = backlogProblems(cyc);
-  assert.match(p.get(a.id).join('|'), /cycle/);
-  assert.match(p.get(b.id).join('|'), /itself/);
-  assert.match(p.get(b.id).join('|'), /X-1/);
+  assert.match(p.get(a.id)!.join('|'), /cycle/);
+  assert.match(p.get(b.id)!.join('|'), /itself/);
+  assert.match(p.get(b.id)!.join('|'), /X-1/);
   assert.equal(backlogProblems([a, b]).size, 0);
 });
 
@@ -364,7 +366,7 @@ test('guards: other stories can still be dragged past a frozen one', () => {
   const c = st(IAM);
   const out = moveStory(rn([b, a, c]), c.id, IAM, b.id, I);
   assert.deepEqual(out.map((s) => s.id), [c.id, b.id, a.id]);
-  assert.equal(out.find((s) => s.id === a.id).code, 'B1-IAM-0002');
+  assert.equal(out.find((s) => s.id === a.id)!.code, 'B1-IAM-0002');
   assert.equal(new Set(codes(out)).size, 3);
 });
 
@@ -401,8 +403,8 @@ test('freezeStories: a story with no ID is skipped and the array stays the same 
   assert.deepEqual(res.skipped, [noCode]);
 });
 
-const ft = (epic, feature, extra = {}) => st(epic, { feature, ...extra });
-const features = (stories) => stories.map((s) => s.feature);
+const ft = (epic: string, feature: string, extra: Partial<Story> = {}) => st(epic, { feature, ...extra });
+const features = (stories: Story[]) => stories.map((s) => s.feature);
 
 test('moveGroup feature: block moves inside its epic, other epics keep their rows', () => {
   const stories = rn([ft('Billing', 'Pay'), ft('Onboarding', 'Intro'), ft('Billing', 'Refund'), ft('Billing', 'Pay'), ft('Billing', 'Invoice')]);
@@ -441,7 +443,7 @@ test('moveGroup: a frozen story keeps its ID, shared prefixes swap, links follow
   const frozen = freezeStories(stories, new Set([stories[1].id])).stories; // B1-B-0002 in Refund
   const out = moveGroup(frozen, { epic: 'Billing', feature: 'Refund' }, 'Pay', I);
   assert.deepEqual(features(out), ['Refund', 'Refund', 'Pay']);
-  assert.equal(out.find((s) => s.id === frozen[1].id).code, 'B1-B-0002');
+  assert.equal(out.find((s) => s.id === frozen[1].id)!.code, 'B1-B-0002');
   assert.deepEqual(codes(out), ['B1-B-0002', 'B1-B-0001', 'B1-B-0003']); // the frozen story keeps B1-B-0002
 
   const dd = rn([st('Data Delivery'), st('Digital Dashboards')]);

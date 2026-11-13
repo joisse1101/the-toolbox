@@ -1,12 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import type { GraphItem, GraphLayout } from '../../frontend/src/tools/backlog/features/graph/graph.ts';
 import { layoutGraph, relatedIds, fitView, zoomAt, panBy, toGraphPoint, MIN_ZOOM, MAX_ZOOM } from '../../frontend/src/tools/backlog/features/graph/graph.ts';
 
 let n = 0;
-const story = (code, dependsOn = []) => ({ id: ++n, code, dependsOn });
-const layerOf = (g, s) => g.nodes.find((x) => x.id === s.id).layer;
-const rowOf = (g, s) => g.nodes.find((x) => x.id === s.id).row;
-const ids = (list) => list.map((s) => s.id);
+const story = (code: string, dependsOn: string[] = []): GraphItem => ({ id: ++n, code, dependsOn });
+const layerOf = (g: GraphLayout, s: GraphItem) => g.nodes.find((x) => x.id === s.id)!.layer;
+const rowOf = (g: GraphLayout, s: GraphItem) => g.nodes.find((x) => x.id === s.id)!.row;
+const ids = (list: GraphItem[]) => list.map((s) => s.id);
 
 test('layout: a chain puts each story right of its dependency', () => {
   const a = story('A-1'), b = story('A-2', ['A-1']), c = story('A-3', ['A-2']);
@@ -43,18 +44,18 @@ test('clusters: unrelated chains are separate, largest first', () => {
   const a = story('A-1'), b = story('A-2', ['A-1']), c = story('A-3', ['A-2']);
   const g = layoutGraph([p, q, a, b, c]);
   assert.deepEqual(g.clusters, [{ index: 0, size: 3, rows: 1 }, { index: 1, size: 2, rows: 1 }]);
-  const clusterOf = (s) => g.nodes.find((x) => x.id === s.id).cluster;
+  const clusterOf = (s: GraphItem) => g.nodes.find((x) => x.id === s.id)!.cluster;
   assert.deepEqual([a, b, c].map(clusterOf), [0, 0, 0]);
   assert.deepEqual([p, q].map(clusterOf), [1, 1]);
 });
 
 test('clusters: ties keep the order of the first story; sizes order 5, 3, 2', () => {
-  const chain = (prefix, n) => Array.from({ length: n }, (_, i) => story(`${prefix}-${i + 1}`, i ? [`${prefix}-${i}`] : []));
+  const chain = (prefix: string, n: number) => Array.from({ length: n }, (_, i) => story(`${prefix}-${i + 1}`, i ? [`${prefix}-${i}`] : []));
   const two = chain('B', 2), five = chain('C', 5), three = chain('D', 3), alsoTwo = chain('E', 2);
   const g = layoutGraph([...two, ...alsoTwo, ...three, ...five]);
   assert.deepEqual(g.clusters.map((c) => c.size), [5, 3, 2, 2]);
-  assert.equal(g.nodes.find((x) => x.id === two[0].id).cluster, 2);
-  assert.equal(g.nodes.find((x) => x.id === alsoTwo[0].id).cluster, 3);
+  assert.equal(g.nodes.find((x) => x.id === two[0].id)!.cluster, 2);
+  assert.equal(g.nodes.find((x) => x.id === alsoTwo[0].id)!.cluster, 3);
 });
 
 test('clusters: a link joins two clusters and removing it splits them', () => {
@@ -67,8 +68,8 @@ test('clusters: a link joins two clusters and removing it splits them', () => {
 test('routing: an edge skipping a layer gets a lane that no node uses', () => {
   const a = story('A-1'), b = story('A-2', ['A-1']), c = story('A-3', ['A-2', 'A-1']);
   const g = layoutGraph([a, b, c]);
-  const long = g.edges.find((e) => e.from === c.id && e.to === a.id);
-  const short = g.edges.find((e) => e.from === c.id && e.to === b.id);
+  const long = g.edges.find((e) => e.from === c.id && e.to === a.id)!;
+  const short = g.edges.find((e) => e.from === c.id && e.to === b.id)!;
   assert.deepEqual(short.via, []);
   assert.equal(long.via.length, 1);
   assert.equal(long.via[0].layer, 1);

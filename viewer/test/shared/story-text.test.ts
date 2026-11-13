@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { composeStory, parseStory, roleIsBlank, composeCriteria, parseCriteria } from '../../shared/backlog/story-text.ts';
+import type { Clarification, Criterion } from '../../shared/types.ts';
 
 test('story round trip', () => {
   const f = { asA: 'a team lead', iWant: 'to export a backlog', soThat: 'I can share it' };
@@ -20,7 +21,7 @@ test('story: "As an" is read and written as typed', () => {
 test('a role that is empty or only an article is blank', () => {
   for (const role of ['', '  ', 'a', 'An', ' an ', undefined]) assert.equal(roleIsBlank(role), true, String(role));
   for (const role of ['a user', 'an approver', 'admin', 'another user']) assert.equal(roleIsBlank(role), false, role);
-  assert.equal(roleIsBlank(parseStory('As a , I want x, so that y').asA), true);
+  assert.equal(roleIsBlank((parseStory('As a , I want x, so that y') as { asA: string }).asA), true);
 });
 
 test('story: missing commas tolerated, case-insensitive', () => {
@@ -46,7 +47,7 @@ test('criteria round trip with several lines', () => {
 });
 
 test('criteria: AC label ignored, renumbered, case-insensitive, CRLF', () => {
-  const r = parseCriteria('AC7: given a, WHEN b, Then c\r\nGiven d when e then f');
+  const r = parseCriteria('AC7: given a, WHEN b, Then c\r\nGiven d when e then f') as { criteria: Criterion[] };
   assert.deepEqual(r.criteria, [
     { given: 'a', when: 'b', then: 'c' },
     { given: 'd', when: 'e', then: 'f' },
@@ -72,7 +73,7 @@ test('clarifications round trip with an open pair', () => {
 
 test('clarifications: multi-line answers run until the next question', () => {
   const text = 'Q1: Why?\nA1: first line\nsecond line\n\nthird\nQ2: Next?\nA2: yes';
-  const { pairs } = parseClarifications(text);
+  const { pairs } = parseClarifications(text) as { pairs: Clarification[] };
   assert.equal(pairs[0].a, 'first line\nsecond line\n\nthird');
   assert.equal(pairs[1].q, 'Next?');
   assert.equal(composeClarifications(pairs), text);
@@ -81,7 +82,7 @@ test('clarifications: multi-line answers run until the next question', () => {
 test('clarifications: empty, missing answer line and renumbering', () => {
   assert.deepEqual(parseClarifications(''), { ok: true, pairs: [] });
   assert.equal(composeClarifications([]), '');
-  assert.deepEqual(parseClarifications('Q1: Alone?').pairs, [{ q: 'Alone?', a: '' }]);
+  assert.deepEqual((parseClarifications('Q1: Alone?') as { pairs: Clarification[] }).pairs, [{ q: 'Alone?', a: '' }]);
   const text = composeClarifications([{ q: 'one', a: '' }, { q: '', a: '' }, { q: 'two', a: 'b' }]);
   assert.equal(text, 'Q1: one\nA1:\nQ2: two\nA2: b');
 });

@@ -3,6 +3,10 @@ import assert from 'node:assert/strict';
 import {
   parseLexicon, composeLexicon, lexiconProblems, saveTerm, renameTerm, deleteTerm, applyTermItems, emptyLexicon,
 } from '../../shared/lexicon/lexicon.ts';
+import type { Lexicon } from '../../shared/types.ts';
+
+type Saved = { ok: true; lexicon: Lexicon };
+type Refused = { ok: false; errors: string[] };
 
 const CANONICAL = [
   'Term,Part of,Definition,Avoid,Notes',
@@ -13,7 +17,7 @@ const CANONICAL = [
 ].join('\r\n');
 const BOM = '﻿';
 
-const names = (lex) => lex.terms.map((t) => t.name);
+const names = (lex: Lexicon) => lex.terms.map((t) => t.name);
 const sample = () => parseLexicon(CANONICAL);
 
 test('parse reads the columns of each row', () => {
@@ -48,7 +52,7 @@ test('headers are matched ignoring case, in any order', () => {
 test('an unknown column and its cells survive an edit; missing known columns are added', () => {
   const lex = parseLexicon('Term,Owner,Definition\r\nUser,Ana,A person.\r\nRole,Bo,A set of permissions.\r\n');
   assert.deepEqual(lex.headers, ['Term', 'Owner', 'Definition', 'Part of', 'Avoid', 'Notes']);
-  const r = saveTerm(lex, { ...lex.terms[0], definition: 'A person with a login.' }, { replaces: 'User' });
+  const r = saveTerm(lex, { ...lex.terms[0], definition: 'A person with a login.' }, { replaces: 'User' }) as Saved;
   assert.equal(
     composeLexicon(r.lexicon),
     'Term,Owner,Definition,Part of,Avoid,Notes\r\nUser,Ana,A person with a login.,,,\r\nRole,Bo,A set of permissions.,,,\r\n',
@@ -89,7 +93,7 @@ test('Part of must name an existing term, not itself, no cycle', () => {
   assert.equal(missing.ok, false);
   assert.match(missing.errors[0], /"Dataset", which is not a term/);
 
-  const self = saveTerm(sample(), { name: 'Role', definition: 'd', partOf: 'role' });
+  const self = saveTerm(sample(), { name: 'Role', definition: 'd', partOf: 'role' }) as Refused;
   assert.match(self.errors[0], /part of itself/);
 
   const cycle = saveTerm(sample(), { ...sample().terms[0], partOf: 'Dataset attribute' }, { replaces: 'Dataset' });
@@ -131,14 +135,14 @@ test('rename updates the Part of of children and nothing else', () => {
 
 test('editing a term keeps its position and its other cells', () => {
   const lex = parseLexicon('Term,Owner,Definition\r\nA,x,a\r\nB,y,b\r\n');
-  const r = saveTerm(lex, { ...lex.terms[0], definition: 'changed' }, { replaces: 'A' });
+  const r = saveTerm(lex, { ...lex.terms[0], definition: 'changed' }, { replaces: 'A' }) as Saved;
   assert.deepEqual(r.lexicon.terms.map((t) => [t.name, t.cells[1], t.definition]), [['A', 'x', 'changed'], ['B', 'y', 'b']]);
 });
 
 test('an old problem in a hand-written file does not block an unrelated save', () => {
   const lex = parseLexicon('Term,Part of,Definition\r\nA,Missing,a\r\n');
   assert.equal(lexiconProblems(lex).length, 1);
-  const r = saveTerm(lex, { name: 'B', definition: 'b' });
+  const r = saveTerm(lex, { name: 'B', definition: 'b' }) as Saved;
   assert.equal(r.ok, true);
 });
 
@@ -204,14 +208,14 @@ test('applyTermItems applies the term rules to the whole result', () => {
   const r = applyTermItems(sample(), [{ term: 'Client', definition: 'x', avoid: ['user'] }]);
   assert.equal(r.ok, false);
   assert.match(r.errors[0], /^item 1: "Client" avoids "user"/);
-  const sibling = applyTermItems(sample(), [{ term: 'Member', definition: 'x' }]);
+  const sibling = applyTermItems(sample(), [{ term: 'Member', definition: 'x' }]) as Refused;
   assert.match(sibling.errors[0], /^"User" avoids "member"/, 'a problem in an untouched term has no item number');
 });
 
 test('applyTermItems rejects bad shapes', () => {
   assert.equal(applyTermItems(sample(), {}).ok, false);
-  assert.match(applyTermItems(sample(), [null]).errors[0], /item 1: must be an object/);
-  assert.match(applyTermItems(sample(), [{ definition: 'x' }]).errors[0], /needs a "term"/);
-  assert.match(applyTermItems(sample(), [{ term: 'A', definition: 1 }]).errors[0], /"definition" must be text/);
-  assert.match(applyTermItems(sample(), [{ term: 'A', definition: 'x', avoid: 'a' }]).errors[0], /"avoid" must be a list/);
+  assert.match((applyTermItems(sample(), [null]) as { errors: string[] }).errors[0], /item 1: must be an object/);
+  assert.match((applyTermItems(sample(), [{ definition: 'x' }]) as { errors: string[] }).errors[0], /needs a "term"/);
+  assert.match((applyTermItems(sample(), [{ term: 'A', definition: 1 }]) as { errors: string[] }).errors[0], /"definition" must be text/);
+  assert.match((applyTermItems(sample(), [{ term: 'A', definition: 'x', avoid: 'a' }]) as { errors: string[] }).errors[0], /"avoid" must be a list/);
 });

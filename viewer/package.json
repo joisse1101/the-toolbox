@@ -6,8 +6,8 @@
     "dev": "vite --config frontend/vite.config.ts",
     "build": "vite build --config frontend/vite.config.ts",
     "start": "node scripts/start.ts --build",
-    "test": "node --test --import ./test/setup.mjs test/*.test.mjs test/*/*.test.mjs",
-    "typecheck": "tsc -p tsconfig.node.json && tsc -p frontend/tsconfig.json"
+    "test": "node --test --import ./test/setup.ts \"test/**/*.test.ts\"",
+    "typecheck": "tsc -p tsconfig.node.json && tsc -p frontend/tsconfig.json && tsc -p test/frontend/tsconfig.json"
   },
   "dependencies": {
     "react": "^19.3.1",
