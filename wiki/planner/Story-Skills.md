@@ -75,6 +75,10 @@ A slice that is built and validated is folded into the wiki by `/jois-code:archi
 
 After the slice is written and read back, the skill runs `jois-story-verify` on it, corrects the problems that belong to the slice through the plan writer (up to 2 rounds, without a second question, because your yes covers this slice), and lists everything else, such as a story finding, a `TBC` decision or an open question, for you to decide. The skill reports slices as stale when their stories changed, and redraws only when you ask. It writes the slice, the map and one more thing: the `Frozen` flag, described below. For a change to a story or a term it offers `jois-story-propose`, and it needs its own packages, installed by `npm ci` in the skill folder.
 
+### Printing the .gitignore block
+
+`print-gitignore.mjs` in the plan skill's folder prints the `.gitignore` block that keeps only the committed planner files in git, for the data folder it resolves like the other scripts. It writes nothing, and says no block is needed when the data folder is outside the project. Each skill's `init-plans.mjs` prints the same block after its "Created" line. The user reviews the block and adds it to `.gitignore` themselves. The block is built from the file table in [Data Folder](architecture/Data-Folder.md#lifecycle-of-each-file).
+
 ### Freezing the stories of a slice
 
 The plan skill's one write into the backlog is the `Frozen` column. After the slice is written, read back with a match and verified with no critical finding open, the skill runs `write-freeze.mjs`, which marks the stories the slice covers as frozen and changes no other cell. A frozen story is read-only in the portal, keeps its ID for good, and cannot be deleted. If the slice write fails, the read-back does not match or a critical finding of verify is still open, no story is frozen, and the skill says which one blocks it. A `TBC` decision or an open question is a warning and does not block the freeze.
