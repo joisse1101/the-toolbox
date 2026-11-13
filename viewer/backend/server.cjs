@@ -692,10 +692,10 @@ async function handleStoreApi(req, res, segments) {
 
 // ---------- static files ----------
 
-// Which kind of request a path is: `api` (under /api/), `file` (the last segment has an extension: a built file, or a 404)
+// Which kind of request a path is: `api` (/api or under /api/, never the app page), `file` (the last segment has an extension: a built file, or a 404)
 // or `app` (a page address: the app's index.html, so a reload on any tab works).
 function staticTarget(pathname) {
-  if (pathname.startsWith('/api/')) return 'api';
+  if (pathname === '/api' || pathname.startsWith('/api/')) return 'api';
   const last = pathname.slice(pathname.lastIndexOf('/') + 1);
   return path.extname(last) ? 'file' : 'app';
 }

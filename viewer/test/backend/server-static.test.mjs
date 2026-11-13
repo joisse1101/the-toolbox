@@ -29,6 +29,7 @@ test.after(() => {
 
 test('staticTarget: api under /api/, file with an extension in the last segment, app otherwise', () => {
   assert.equal(staticTarget('/api/nothing'), 'api');
+  assert.equal(staticTarget('/api'), 'api', 'the bare API root is not a page address');
   assert.equal(staticTarget('/assets/app.js'), 'file');
   assert.equal(staticTarget('/index.html'), 'file');
   assert.equal(staticTarget('/'), 'app');
