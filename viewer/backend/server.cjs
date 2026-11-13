@@ -26,7 +26,8 @@ const {
 
 const HOST = '127.0.0.1';
 const PORT = Number(process.env.PORT) || 3000;
-const DIST_DIR = path.join(__dirname, '..', 'frontend', 'dist'); // built by `npm run build`
+// Built by `npm run build`. VIEWER_DIST_DIR points the server at another folder (the static-file test uses a temp one).
+const DIST_DIR = process.env.VIEWER_DIST_DIR ? path.resolve(process.env.VIEWER_DIST_DIR) : path.join(__dirname, '..', 'frontend', 'dist');
 const MAX_BODY = 10 * 1024 * 1024;
 
 // Allow-list of the kinds of file the API reaches: `backlog`, `review`, `proposals`, `lexicon` and `lexicon-suggestions`.
@@ -691,6 +692,14 @@ async function handleStoreApi(req, res, segments) {
 
 // ---------- static files ----------
 
+// Which kind of request a path is: `api` (under /api/), `file` (the last segment has an extension: a built file, or a 404)
+// or `app` (a page address: the app's index.html, so a reload on any tab works).
+function staticTarget(pathname) {
+  if (pathname.startsWith('/api/')) return 'api';
+  const last = pathname.slice(pathname.lastIndexOf('/') + 1);
+  return path.extname(last) ? 'file' : 'app';
+}
+
 async function handleStatic(req, res, pathname) {
   if (req.method !== 'GET' && req.method !== 'HEAD') throw new HttpError(405, 'Method not allowed');
   let rel;
@@ -699,18 +708,15 @@ async function handleStatic(req, res, pathname) {
   } catch {
     throw new HttpError(404, 'Not found');
   }
-  if (rel.endsWith('/')) rel += 'index.html';
   if (!fs.existsSync(DIST_DIR)) throw new HttpError(503, 'The app has not been built yet. Run `npm run build`, then reload.');
-  const full = path.resolve(DIST_DIR, '.' + rel);
+  const kind = staticTarget(rel);
+  if (kind === 'api') throw new HttpError(404, 'Not found');
+  const full = kind === 'app' ? path.join(DIST_DIR, 'index.html') : path.resolve(DIST_DIR, '.' + rel);
   if (full !== DIST_DIR && !full.startsWith(DIST_DIR + path.sep)) throw new HttpError(404, 'Not found');
   let target = full;
   try {
     const st = await fs.promises.stat(target);
-    if (st.isDirectory()) {
-      // Redirect so relative URLs on the page resolve against the folder.
-      res.writeHead(301, { Location: pathname + '/' });
-      return res.end();
-    }
+    if (st.isDirectory()) throw new Error('directory');
   } catch {
     throw new HttpError(404, 'Not found');
   }
@@ -753,4 +759,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { server, setFolderDialog, setNewProjectParent, setCopyOptions };
+module.exports = { server, staticTarget, setFolderDialog, setNewProjectParent, setCopyOptions };
