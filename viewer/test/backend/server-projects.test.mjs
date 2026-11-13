@@ -21,7 +21,7 @@ const configFile = tempConfig(dirA, 'Alpha');
 const ORIGINAL = `# kept comment\n${fs.readFileSync(configFile, 'utf8')}`;
 fs.writeFileSync(configFile, ORIGINAL);
 process.env.VIEWER_CONFIG = configFile;
-const { server, setNewProjectParent, setCopyOptions } = createRequire(import.meta.url)('../../backend/server.cjs');
+const { server, setNewProjectParent, setCopyOptions } = await import('../../backend/server.ts');
 setNewProjectParent(parent);
 
 const HEADERS = { 'X-Requested-With': 'the-toolbox', 'Content-Type': 'application/json' };

@@ -25,7 +25,7 @@ async function call(method, url, { json, text } = {}) {
   try {
     res = await fetch(url, { method, headers, body, cache: 'no-store' });
   } catch {
-    throw new FileApiError('Cannot reach the local server. Is `node server.cjs` still running?', 0, 'network');
+    throw new FileApiError('Cannot reach the local server. Is `node backend/server.ts` still running?', 0, 'network');
   }
   let data = {};
   try {

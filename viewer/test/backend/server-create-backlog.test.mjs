@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { tempConfig } from '../helpers/temp-config.mjs';
-import { startingFiles } from '../../backend/storage/starting-files.js';
+import { startingFiles } from '../../backend/storage/starting-files.ts';
 import { backlogFile } from '../../shared/storage/backlog-paths.ts';
 
 // The New button's create route. Mock data only: the committed sample data copied to a temp folder under .scratch/.
@@ -15,7 +15,7 @@ fs.mkdirSync(scratch, { recursive: true });
 const root = fs.mkdtempSync(path.join(scratch, 'server-create-backlog-'));
 fs.cpSync(path.join(here, '..', 'sample-data'), root, { recursive: true });
 process.env.VIEWER_CONFIG = tempConfig(root);
-const { server } = createRequire(import.meta.url)('../../backend/server.cjs');
+const { server } = await import('../../backend/server.ts');
 
 const HEADERS = { 'X-Requested-With': 'the-toolbox', 'Content-Type': 'application/json' };
 let origin;

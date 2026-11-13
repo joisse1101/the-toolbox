@@ -6,7 +6,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 
 const { PLANS_DIR } = createRequire(import.meta.url)('../../shared/storage/backlog-paths.ts');
-const { loadConfig, saveConfig, configPath, DEFAULT_CONFIG_PATH, DEFAULT_DATA_DIR } = createRequire(import.meta.url)('../../backend/storage/project-config.cjs');
+const { loadConfig, saveConfig, configPath, DEFAULT_CONFIG_PATH, DEFAULT_DATA_DIR } = await import('../../backend/storage/project-config.ts');
 
 function tmp() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'project-config-'));

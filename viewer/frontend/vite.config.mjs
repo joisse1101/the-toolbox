@@ -2,8 +2,8 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { resolve } from 'node:path';
 
-// One page: the app (index.html) routes to each tool. `node viewer/backend/server.cjs` serves the built dist/ and the file API;
-// during `npm run dev` the API is proxied to a running `node server.cjs`.
+// One page: the app (index.html) routes to each tool. `node viewer/backend/server.ts` serves the built dist/ and the file API;
+// during `npm run dev` the API is proxied to a running `node backend/server.ts`.
 export default defineConfig({
   root: import.meta.dirname,
   plugins: [react()],

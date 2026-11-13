@@ -1,55 +1,71 @@
-'use strict';
 // Folder work for the project config: init, copy, the folder check and the rules that confine a folder named by the
 // browser. Pure Node, no HTTP. Nothing here overwrites, modifies or deletes an existing file or folder
 // unless the caller asks copyData to overwrite (the one removal is a half-written copy of a file this call created itself).
 
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
-const { writeBacklogFiles } = require('./backlog-files.cjs');
-const { KIND_FILES, PLANS_DIR, listBacklogs, detectOlderLayout, validateBacklogName } = require('../../shared/storage/backlog-paths.ts');
+import { writeBacklogFiles } from './backlog-files.ts';
+import { codeOf, messageOf } from './errors.ts';
+import { startingFiles } from './starting-files.ts';
+import { KIND_FILES, PLANS_DIR, listBacklogs, detectOlderLayout, validateBacklogName } from '../../shared/storage/backlog-paths.ts';
 
-const ROOT = path.resolve(__dirname, '..', '..', '..');
+// What the confine functions take: the repository root, the environment and the home folder (tests set them).
+type ConfineOptions = { root?: string; env?: NodeJS.ProcessEnv; home?: string };
+type Confined = { ok: true; dir: string } | { ok: false; reason: string };
+type CopyFile = (from: string, to: string, mode?: number) => void;
+type ReadFile = (file: string) => Buffer;
+type CopyOptions = { overwrite?: boolean; copyFile?: CopyFile; readFile?: ReadFile };
+type Refused = { refused: string };
+export type CopyResult = {
+  copied: string[];
+  overwritten: string[];
+  skipped: { file: string; reason: string }[];
+  failed: { file: string; message: string }[];
+  stopped?: { file: string; message: string };
+};
 
-function inside(parent, child) {
+export const ROOT = path.resolve(import.meta.dirname, '..', '..', '..');
+
+export function inside(parent: string, child: string): boolean {
   const rel = path.relative(parent, child);
   return rel === '' || (!rel.startsWith('..') && !path.isAbsolute(rel));
 }
 
 // The real path of `p` with links followed; for a folder that does not exist yet, the real path of its nearest
 // existing parent plus the missing names.
-function realResolve(p) {
+export function realResolve(p: string): string {
   const abs = path.resolve(p);
-  const rest = [];
+  const rest: string[] = [];
   let cur = abs;
   for (;;) {
     try {
       return path.join(fs.realpathSync.native(cur), ...rest.reverse());
     } catch (err) {
       const up = path.dirname(cur);
-      if (up === cur || (err.code !== 'ENOENT' && err.code !== 'ENOTDIR')) return abs;
+      if (up === cur || (codeOf(err) !== 'ENOENT' && codeOf(err) !== 'ENOTDIR')) return abs;
       rest.push(path.basename(cur));
       cur = up;
     }
   }
 }
 
-function systemFolders(env = process.env) {
+function systemFolders(env: NodeJS.ProcessEnv = process.env): string[] {
   const list = process.platform === 'win32'
     ? [env.SystemRoot, env.ProgramFiles, env['ProgramFiles(x86)'], env.ProgramData]
     : ['/', '/etc', '/usr', '/bin', '/var', '/sys', '/proc'];
-  return list.filter(Boolean).map((p) => realResolve(p));
+  return list.filter((p): p is string => Boolean(p)).map((p) => realResolve(p));
 }
 
 // Decides whether the browser may name `dir` as a data folder. Returns { ok: true, dir (real path) } or
 // { ok: false, reason }. Absolute paths only; links are resolved before any check.
-function confineDir(dir, options = {}) {
+export function confineDir(dir: unknown, options: ConfineOptions = {}): Confined {
   return confinePath(dir, options, { noun: 'data folder', allowViewerData: true });
 }
 
 // The shared rules; `noun` is the word the reasons use, `allowViewerData` the one repository exception.
-function confinePath(dir, { root = ROOT, env = process.env, home = os.homedir() }, { noun, allowViewerData }) {
+function confinePath(dir: unknown, { root = ROOT, env = process.env, home = os.homedir() }: ConfineOptions, { noun, allowViewerData }: { noun: string; allowViewerData: boolean }): Confined {
   if (typeof dir !== 'string' || !dir.trim()) return { ok: false, reason: 'The folder must not be empty.' };
   if (!path.isAbsolute(dir.trim())) return { ok: false, reason: 'The folder must be an absolute path.' };
   const real = realResolve(dir.trim());
@@ -67,7 +83,7 @@ function confinePath(dir, { root = ROOT, env = process.env, home = os.homedir() 
   try {
     if (!fs.statSync(real).isDirectory()) return { ok: false, reason: 'That path is a file, not a folder.' };
   } catch (err) {
-    if (err.code !== 'ENOENT' && err.code !== 'ENOTDIR') return { ok: false, reason: `Cannot read that path (${err.message}).` };
+    if (codeOf(err) !== 'ENOENT' && codeOf(err) !== 'ENOTDIR') return { ok: false, reason: `Cannot read that path (${messageOf(err)}).` };
   }
   return { ok: true, dir: real };
 }
@@ -75,7 +91,7 @@ function confinePath(dir, { root = ROOT, env = process.env, home = os.homedir() 
 // Decides whether the browser may name `dir` as a code base. Same rules as confineDir with no viewer/data exception,
 // and the folder must exist (it is never created) and must not hold a file named `.plans`. Returns
 // { ok: true, dir (real path of the code base), plansDir } or { ok: false, reason }.
-function confineCodeBase(dir, options = {}) {
+export function confineCodeBase(dir: unknown, options: ConfineOptions = {}): { ok: true; dir: string; plansDir: string } | { ok: false; reason: string } {
   const c = confinePath(dir, options, { noun: 'code base', allowViewerData: false });
   if (!c.ok) return c;
   if (!isDir(c.dir)) return { ok: false, reason: 'The code base folder does not exist.' };
@@ -83,12 +99,12 @@ function confineCodeBase(dir, options = {}) {
   try {
     if (!fs.statSync(plansDir).isDirectory()) return { ok: false, reason: `The code base holds a file named ${PLANS_DIR}, not a folder.` };
   } catch (err) {
-    if (err.code !== 'ENOENT' && err.code !== 'ENOTDIR') return { ok: false, reason: `Cannot read ${PLANS_DIR} (${err.message}).` };
+    if (codeOf(err) !== 'ENOENT' && codeOf(err) !== 'ENOTDIR') return { ok: false, reason: `Cannot read ${PLANS_DIR} (${messageOf(err)}).` };
   }
   return { ok: true, dir: c.dir, plansDir };
 }
 
-function isDir(p) {
+function isDir(p: string): boolean {
   try {
     return fs.statSync(p).isDirectory();
   } catch {
@@ -98,13 +114,13 @@ function isDir(p) {
 
 // One of: { status: 'refused', reason }, 'has-planner-files' (a backlog folder: a subfolder with user-stories.csv),
 // 'older-layout' (no backlog folder, but a folder of the older layout, to migrate), 'empty', 'missing'.
-function checkFolder(dir, options) {
+export function checkFolder(dir: unknown, options?: ConfineOptions) {
   const c = confineDir(dir, options);
   if (!c.ok) return { status: 'refused', reason: c.reason };
   return classify(c.dir);
 }
 
-function classify(dir) {
+function classify(dir: string) {
   if (!isDir(dir)) return { status: 'missing', dir };
   if (listBacklogs(dir).length) return { status: 'has-planner-files', dir };
   if (detectOlderLayout(dir).length) return { status: 'older-layout', dir };
@@ -113,7 +129,7 @@ function classify(dir) {
 
 // The same check for a code base: the answer is about `<codeBase>/.plans` (`missing` when it is not there yet), with
 // `codeBase` and `dir` (the .plans folder) in the reply. A refused code base answers { status: 'refused', reason }.
-function checkCodeBase(codeBase, options) {
+export function checkCodeBase(codeBase: unknown, options?: ConfineOptions) {
   const c = confineCodeBase(codeBase, options);
   if (!c.ok) return { status: 'refused', reason: c.reason };
   return { ...classify(c.plansDir), codeBase: c.dir };
@@ -121,7 +137,7 @@ function checkCodeBase(codeBase, options) {
 
 // Init for a code base: creates `<codeBase>/.plans` and nothing else; the code base itself must exist. Returns the
 // initFolders reply (created / existing lists) or { refused }.
-async function initCodeBase(codeBase, options) {
+export async function initCodeBase(codeBase: unknown, options?: ConfineOptions) {
   const c = confineCodeBase(codeBase, options);
   if (!c.ok) return { refused: c.reason };
   return initFolders(c.plansDir);
@@ -129,7 +145,7 @@ async function initCodeBase(codeBase, options) {
 
 // Copy for a code base: copyData from `source` into `<codeBase>/.plans` (overwrites only with the `overwrite` option,
 // source untouched). Returns the copyData reply or { refused }.
-function copyToCodeBase(source, codeBase, { confine, ...copyOptions } = {}) {
+export function copyToCodeBase(source: string, codeBase: unknown, { confine, ...copyOptions }: CopyOptions & { confine?: ConfineOptions } = {}) {
   const c = confineCodeBase(codeBase, confine);
   if (!c.ok) return { refused: c.reason };
   return copyData(source, c.plansDir, copyOptions);
@@ -140,9 +156,9 @@ const FIRST_BACKLOG = 'new-backlog';
 // Creates the data folder if missing, and a first backlog named `new-backlog` (with its starting files) only when the
 // folder holds no backlog. Never touches anything that exists, so a second run creates nothing. Returns
 // { dir, createdDataDir, created, existing, createdBacklog }: each of the data folder and the backlog folders is listed as
-// created or as existing; `createdBacklog` is the name of the backlog this call made, or null. Async because the starting
-// files are an ES module, loaded with a dynamic import.
-async function initFolders(dir) {
+// created or as existing; `createdBacklog` is the name of the backlog this call made, or null. Async because writing the
+// starting files is.
+export async function initFolders(dir: string) {
   const abs = path.resolve(dir);
   const createdDataDir = !fs.existsSync(abs);
   fs.mkdirSync(abs, { recursive: true });
@@ -151,7 +167,6 @@ async function initFolders(dir) {
   if (existingBacklogs.length) {
     return { dir: abs, createdDataDir, created: createdDataDir ? [name] : [], existing: createdDataDir ? existingBacklogs : [name, ...existingBacklogs], createdBacklog: null };
   }
-  const { startingFiles } = await import('./starting-files.js');
   const made = await writeBacklogFiles(abs, FIRST_BACKLOG, startingFiles());
   return {
     dir: abs,
@@ -164,7 +179,7 @@ async function initFolders(dir) {
 
 // The checks and the walk that copyData and planCopy share, so links, `backups/` and the containment refusals live in
 // one place. Returns { src, dst } (real paths) or { refused }.
-function resolvePair(source, target) {
+function resolvePair(source: string, target: string): Refused | { src: string; dst: string; refused?: undefined } {
   const src = realResolve(source);
   const dst = realResolve(target);
   if (!isDir(src)) return { refused: 'The current data folder does not exist.' };
@@ -177,8 +192,9 @@ function resolvePair(source, target) {
 // Walks `src` in name order and calls visit(kind, rel, shown) for each folder ('dir', including the root as ''), link
 // ('link') and regular file ('file'); a `backups/` folder at any depth is left out, not visited. A truthy return from
 // visit stops the walk and is returned.
-function walkSource(src, visit) {
-  const walk = (rel) => {
+type Visit = (kind: 'dir' | 'link' | 'file', rel: string, shown: string) => unknown;
+function walkSource(src: string, visit: Visit): unknown {
+  const walk = (rel: string): unknown => {
     const stop = visit('dir', rel, rel.split(path.sep).join('/'));
     if (stop) return stop;
     for (const name of fs.readdirSync(path.join(src, rel)).sort()) {
@@ -198,10 +214,10 @@ function walkSource(src, visit) {
 // Read-only: the files of `source` that copyData would find already in `target`, as `exists` (paths relative with `/`).
 // Creates nothing, not even a missing target (which has no clashes). Returns { exists } or { refused }, with the same
 // refusals as copyData.
-function planCopy(source, target) {
+export function planCopy(source: string, target: string): Refused | { exists: string[] } {
   const pair = resolvePair(source, target);
-  if (pair.refused) return { refused: pair.refused };
-  const exists = [];
+  if (pair.refused !== undefined) return { refused: pair.refused };
+  const exists: string[] = [];
   walkSource(pair.src, (kind, rel, shown) => {
     if (kind !== 'file') return null;
     try {
@@ -214,7 +230,7 @@ function planCopy(source, target) {
 }
 
 // The same plan for a code base: the target is `<codeBase>/.plans`. Returns { exists } or { refused }.
-function planCopyToCodeBase(source, codeBase, { confine } = {}) {
+export function planCopyToCodeBase(source: string, codeBase: unknown, { confine }: { confine?: ConfineOptions } = {}) {
   const c = confineCodeBase(codeBase, confine);
   if (!c.ok) return { refused: c.reason };
   return planCopy(source, c.plansDir);
@@ -228,23 +244,23 @@ function planCopyToCodeBase(source, codeBase, { confine } = {}) {
 // file it replaced is gone). Returns { copied, overwritten, skipped: [{file, reason}], failed } plus
 // `stopped: {file, message}` when a file could not be read or written (the files already copied stay; run again to
 // continue), or { refused }. `copyFile` and `readFile` are only for tests.
-function copyData(source, target, { overwrite = false, copyFile = fs.copyFileSync, readFile = fs.readFileSync } = {}) {
+export function copyData(source: string, target: string, { overwrite = false, copyFile = fs.copyFileSync, readFile = fs.readFileSync }: CopyOptions = {}): Refused | CopyResult {
   const pair = resolvePair(source, target);
-  if (pair.refused) return { refused: pair.refused };
+  if (pair.refused !== undefined) return { refused: pair.refused };
   const { src, dst } = pair;
   fs.mkdirSync(dst, { recursive: true });
-  const copied = [];
-  const overwritten = [];
-  const skipped = [];
-  const failed = [];
-  let stopped = null;
+  const copied: string[] = [];
+  const overwritten: string[] = [];
+  const skipped: { file: string; reason: string }[] = [];
+  const failed: { file: string; message: string }[] = [];
+  let stopped: { file: string; message: string } | null = null;
 
-  const readsBack = (from, to) => {
+  const readsBack = (from: string, to: string): string | null => {
     try {
       if (Buffer.compare(readFile(from), readFile(to)) === 0) return null;
       return 'the copy does not read back the same as the original';
     } catch (err) {
-      return `the copy could not be read back: ${err.message}`;
+      return `the copy could not be read back: ${messageOf(err)}`;
     }
   };
 
@@ -253,16 +269,16 @@ function copyData(source, target, { overwrite = false, copyFile = fs.copyFileSyn
     if (kind === 'link') { skipped.push({ file: shown, reason: 'link' }); return null; }
     const from = path.join(src, rel);
     const to = path.join(dst, rel);
-    let present = null; // lstat of an existing target file
+    let present: fs.Stats | null = null; // lstat of an existing target file
     try { present = fs.lstatSync(to); } catch { /* not there */ }
     if (present && !overwrite) { skipped.push({ file: shown, reason: 'exists' }); return null; }
     if (present && present.isSymbolicLink()) { skipped.push({ file: shown, reason: 'link' }); return null; }
     try {
       copyFile(from, to, present ? 0 : fs.constants.COPYFILE_EXCL);
     } catch (err) {
-      if (err.code === 'EEXIST') { skipped.push({ file: shown, reason: 'exists' }); return null; }
+      if (codeOf(err) === 'EEXIST') { skipped.push({ file: shown, reason: 'exists' }); return null; }
       if (!present) { try { fs.unlinkSync(to); } catch { /* not created */ } }
-      stopped = { file: shown, message: err.message };
+      stopped = { file: shown, message: messageOf(err) };
       return stopped;
     }
     const bad = readsBack(from, to);
@@ -272,13 +288,13 @@ function copyData(source, target, { overwrite = false, copyFile = fs.copyFileSyn
     } else (present ? overwritten : copied).push(shown);
     return null;
   });
-  const reply = { copied, overwritten, skipped, failed };
+  const reply: CopyResult = { copied, overwritten, skipped, failed };
   return stopped ? { ...reply, stopped } : reply;
 }
 
 // The files of the older layout that belong to a backlog, as [older path, path in the backlog folder] pairs (both relative).
-function olderFilesOf(name) {
-  const inFolder = (kind) => KIND_FILES[kind].join('/');
+function olderFilesOf(name: string): [string, string][] {
+  const inFolder = (kind: keyof typeof KIND_FILES) => KIND_FILES[kind].join('/');
   return [
     [`backlogs/${name}.csv`, inFolder('backlog')],
     [`reviews/${name}.csv`, inFolder('review')],
@@ -293,7 +309,7 @@ function olderFilesOf(name) {
 const BACKLOG_LEVEL_DIAGRAM_FILES = ['repo.json', 'context-map.json', 'context-map.md'];
 
 // The regular files under `dir` (relative paths with `/`), skipping any `backups/` folder; links are reported apart.
-function filesUnder(dir, rel = '', out = { files: [], links: [] }) {
+function filesUnder(dir: string, rel = '', out: { files: string[]; links: string[] } = { files: [], links: [] }) {
   for (const name of fs.readdirSync(path.join(dir, rel)).sort()) {
     const r = rel ? `${rel}/${name}` : name;
     const st = fs.lstatSync(path.join(dir, r));
@@ -310,30 +326,30 @@ function filesUnder(dir, rel = '', out = { files: [], links: [] }) {
 // `backups/` folder without listing it. Each copied file is read back and compared with its source.
 // Returns { copied: [new path], skipped: [{file, reason}], failed: [{file, message}] } (paths relative to `dataDir`),
 // or { refused }. `copyFile` and `readFile` are only for tests.
-function migrateOlderLayout(dataDir, { copyFile = fs.copyFileSync, readFile = fs.readFileSync } = {}) {
+export function migrateOlderLayout(dataDir: string, { copyFile = fs.copyFileSync, readFile = fs.readFileSync }: Omit<CopyOptions, 'overwrite'> = {}): Refused | Pick<CopyResult, 'copied' | 'skipped' | 'failed'> {
   const dir = realResolve(dataDir);
   if (!isDir(dir)) return { refused: 'The data folder does not exist.' };
-  const copied = [];
-  const skipped = [];
-  const failed = [];
-  const claimed = new Set(); // older paths that went to a backlog; every other file of the older folders is reported
+  const copied: string[] = [];
+  const skipped: { file: string; reason: string }[] = [];
+  const failed: { file: string; message: string }[] = [];
+  const claimed = new Set<string>(); // older paths that went to a backlog; every other file of the older folders is reported
 
-  const copyOne = (from, to) => {
+  const copyOne = (from: string, to: string) => {
     const target = path.join(dir, to);
     try {
       fs.mkdirSync(path.dirname(target), { recursive: true });
       copyFile(path.join(dir, from), target, fs.constants.COPYFILE_EXCL);
     } catch (err) {
-      if (err.code === 'EEXIST') return skipped.push({ file: to, reason: 'exists' });
+      if (codeOf(err) === 'EEXIST') return skipped.push({ file: to, reason: 'exists' });
       try { fs.unlinkSync(target); } catch { /* not created */ }
-      return failed.push({ file: from, message: err.message });
+      return failed.push({ file: from, message: messageOf(err) });
     }
     let same = false;
     let message = 'the copy does not read back the same as the original';
     try {
       same = Buffer.compare(readFile(path.join(dir, from)), readFile(target)) === 0;
     } catch (err) {
-      message = `the copy could not be read back: ${err.message}`;
+      message = `the copy could not be read back: ${messageOf(err)}`;
     }
     if (same) return copied.push(to);
     fs.unlinkSync(target); // the copy this call just made
@@ -344,11 +360,11 @@ function migrateOlderLayout(dataDir, { copyFile = fs.copyFileSync, readFile = fs
   const names = isDir(backlogsDir) ? fs.readdirSync(backlogsDir).sort() : [];
   for (const entry of names) {
     if (!entry.toLowerCase().endsWith('.csv') || !fs.lstatSync(path.join(backlogsDir, entry)).isFile()) continue;
-    let name;
+    let name: string;
     try {
       name = validateBacklogName(entry);
     } catch (err) {
-      skipped.push({ file: `backlogs/${entry}`, reason: err.message });
+      skipped.push({ file: `backlogs/${entry}`, reason: messageOf(err) });
       claimed.add(`backlogs/${entry}`);
       continue;
     }
@@ -381,8 +397,3 @@ function migrateOlderLayout(dataDir, { copyFile = fs.copyFileSync, readFile = fs
   }
   return { copied, skipped, failed };
 }
-
-module.exports = {
-  ROOT, inside, realResolve, confineDir, confineCodeBase, checkFolder, checkCodeBase, initFolders, initCodeBase,
-  copyData, copyToCodeBase, planCopy, planCopyToCodeBase, migrateOlderLayout,
-};

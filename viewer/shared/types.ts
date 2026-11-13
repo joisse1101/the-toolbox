@@ -115,7 +115,7 @@ export interface LexiconSuggestionsFile {
   skipped: number;
 }
 
-// ---------- project config (backend/storage/project-config.cjs) ----------
+// ---------- project config (backend/storage/project-config.ts) ----------
 
 // A saved project of the list: paths are absolute, and a code base's data folder is `<codeBase>/.plans`.
 export interface SavedProject {
@@ -137,7 +137,7 @@ export interface ProjectConfig {
 
 // ---------- API ----------
 
-// The body of an error reply (backend/server.cjs).
+// The body of an error reply (backend/server.ts).
 export interface ApiError {
   error: string;
   code?: string;

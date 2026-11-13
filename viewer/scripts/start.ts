@@ -8,6 +8,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
+import type { ChildProcess } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -23,7 +24,7 @@ if (!fs.existsSync(viteBin)) {
   process.exit(1);
 }
 
-function newestMtime(dir) {
+function newestMtime(dir: string): number {
   let newest = 0;
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     if (entry.name === 'dist') continue; // the build output is not a source
@@ -46,8 +47,8 @@ if (!dev && (args.has('--build') || needsBuild())) {
   if (build.status !== 0) process.exit(build.status ?? 1);
 }
 
-const children = [];
-const run = (label, script, scriptArgs) => {
+const children: ChildProcess[] = [];
+const run = (label: string, script: string, scriptArgs: string[]) => {
   const child = spawn(process.execPath, [script, ...scriptArgs], { cwd: ROOT, stdio: 'inherit' });
   child.on('exit', (code) => {
     console.log(`${label} stopped${code ? ` (exit ${code})` : ''}.`);
@@ -66,7 +67,7 @@ function stop(code = 0) {
 process.on('SIGINT', () => stop());
 process.on('SIGTERM', () => stop());
 
-run('The server', path.join(ROOT, 'backend', 'server.cjs'), []);
+run('The server', path.join(ROOT, 'backend', 'server.ts'), []);
 if (dev) run('The Vite dev server', viteBin, ['--config', viteConfig, '--port', String(VITE_PORT), '--strictPort']);
 
 if (!args.has('--no-open')) {

@@ -11,7 +11,7 @@ const freePort = () => new Promise((resolve) => {
   const s = net.createServer().listen(0, '127.0.0.1', () => { const { port } = s.address(); s.close(() => resolve(port)); });
 });
 
-const server = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'backend', 'server.cjs');
+const server = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'backend', 'server.ts');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'server-start-test-'));
 
 async function run(configText) {

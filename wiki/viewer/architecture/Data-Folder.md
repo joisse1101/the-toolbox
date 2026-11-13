@@ -23,7 +23,7 @@ Slices, the context map and `backlog.json` are not kinds, so the portal's file A
 
 ## Lifecycle of each file
 
-Each file under a backlog folder has one lifecycle: `committed` (belongs in git), `local` (stays on the machine, ignored), `user decides` (untracked until the user commits it) or `removed by archive` (`/jois-code:archive` deletes it once `ARCHIVED.md` holds its summary). The table that gives each path, its writer and its lifecycle is [the plans-files guideline](../../../viewer/shared/guidelines/plans-files.md). The same rows are data in `viewer/shared/skill-support/plans-files.mjs`, and `viewer/test/shared/plans-files-guideline.test.mjs` fails when the two differ.
+Each file under a backlog folder has one lifecycle: `committed` (belongs in git), `local` (stays on the machine, ignored), `user decides` (untracked until the user commits it) or `removed by archive` (`/jois-code:archive` deletes it once `ARCHIVED.md` holds its summary). The table that gives each path, its writer and its lifecycle is [the plans-files guideline](../../../viewer/shared/guidelines/plans-files.md). The same rows are data in `viewer/shared/skill-support/plans-files.ts`, and `viewer/test/shared/plans-files-guideline.test.mjs` fails when the two differ.
 
 In short, the backlog's CSVs, `backlog.json`, the context map, `ARCHIVED.md` and `source.json` are committed. The proposals, review files and lexicon suggestions are local. A slice's `UC-<slice>.md` and `tasks.md` are the user's to decide, and its `review.md`, `validation.md` and `validation.partial.md` are local. Archive removes all of those working files.
 
@@ -37,7 +37,7 @@ A backlog the server creates gets `backlog.json` at once, and a rename moves the
 
 The initials of one backlog must not clash with a sibling, meaning another backlog in the same data folder. A sibling clashes when it uses the same initials, ignoring case, or when one of its frozen story IDs starts with them and a hyphen. The second case is why initials that a sibling retired are still refused: its frozen IDs keep them. The check cannot see backlogs in another data folder, so two data folders can reuse the same initials.
 
-The server writes the file atomically, to a temporary file first and then a rename, so a failed write never leaves half a file. The functions are in `viewer/shared/storage/backlog-initials.cjs`.
+The server writes the file atomically, to a temporary file first and then a rename, so a failed write never leaves half a file. The functions are in `viewer/shared/storage/backlog-initials.ts`.
 
 ## The older layout
 
@@ -45,11 +45,11 @@ The older layout had `backlogs/`, `reviews/`, `proposals/`, `lexicons/`, `lexico
 
 ## Storage modules
 
-- `viewer/shared/storage/file-name.cjs` has `validateBacklogName`, the one set of backlog-name rules. A trailing `.csv` is dropped. Separators, invalid Windows characters and the reserved name `logs` are refused.
-- `viewer/shared/storage/backlog-paths.cjs` is the one place that builds the path of a backlog's file from its name and a kind. It has `backlogDir`, `backlogFile`, `reviewDecidedFile`, `slicesDir` and `contextMapFiles`, plus `listBacklogs` and `detectOlderLayout`. `KIND_FILES` registers the kinds, and `PLANS_DIR` names `.plans`.
-- `viewer/backend/storage/paths.cjs` holds `DATA_DIR`, the folder named by `dataDir` in the project config as read at load, for short-lived scripts. `getDataDir()` and `setDataDir()` are what the server uses, so a switch takes effect at once. `legacyDataHint` says how to move data an earlier layout left in `data/` or `user-stories/`.
-- `viewer/backend/storage/project-config.cjs` reads, validates and saves `viewer/viewer.config.yaml`, or the file `VIEWER_CONFIG` names. `loadConfig` returns `projects` (resolved, with `.plans` applied, and a synthetic entry when the active path is not listed or there is no list) and `activeProject` (its index, matched by resolved path). `addProject` appends an entry, and the first add writes the active path into the list. `replaceActive` gives the active entry the new path without a second entry. Both keep the file's comments.
-- `viewer/backend/storage/project-folders.cjs` holds the folder checks, `initFolders`, `planCopy` and `planCopyToCodeBase` (read-only: the files an overwrite would replace), `copyData` and `migrateOlderLayout` that the Settings tab uses. Init creates only the data folder. Copy skips any `backups/` folder and never overwrites unless the `overwrite` option is set, and then it replaces only files present in both places. It reads each copied or overwritten file back and reports `copied`, `overwritten`, `skipped` and `failed`, plus `stopped` when a file could not be written.
+- `viewer/shared/storage/file-name.ts` has `validateBacklogName`, the one set of backlog-name rules. A trailing `.csv` is dropped. Separators, invalid Windows characters and the reserved name `logs` are refused.
+- `viewer/shared/storage/backlog-paths.ts` is the one place that builds the path of a backlog's file from its name and a kind. It has `backlogDir`, `backlogFile`, `reviewDecidedFile`, `slicesDir` and `contextMapFiles`, plus `listBacklogs` and `detectOlderLayout`. `KIND_FILES` registers the kinds, and `PLANS_DIR` names `.plans`.
+- `viewer/backend/storage/paths.ts` holds `DATA_DIR`, the folder named by `dataDir` in the project config as read at load, for short-lived scripts. `getDataDir()` and `setDataDir()` are what the server uses, so a switch takes effect at once. `legacyDataHint` says how to move data an earlier layout left in `data/` or `user-stories/`.
+- `viewer/backend/storage/project-config.ts` reads, validates and saves `viewer/viewer.config.yaml`, or the file `VIEWER_CONFIG` names. `loadConfig` returns `projects` (resolved, with `.plans` applied, and a synthetic entry when the active path is not listed or there is no list) and `activeProject` (its index, matched by resolved path). `addProject` appends an entry, and the first add writes the active path into the list. `replaceActive` gives the active entry the new path without a second entry. Both keep the file's comments.
+- `viewer/backend/storage/project-folders.ts` holds the folder checks, `initFolders`, `planCopy` and `planCopyToCodeBase` (read-only: the files an overwrite would replace), `copyData` and `migrateOlderLayout` that the Settings tab uses. Init creates only the data folder. Copy skips any `backups/` folder and never overwrites unless the `overwrite` option is set, and then it replaces only files present in both places. It reads each copied or overwritten file back and reports `copied`, `overwritten`, `skipped` and `failed`, plus `stopped` when a file could not be written.
 
 ## The project config
 

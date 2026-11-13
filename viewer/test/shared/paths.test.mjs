@@ -6,7 +6,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { spawnSync } from 'node:child_process';
 
-const { legacyDataHint, DATA_DIR } = createRequire(import.meta.url)('../../backend/storage/paths.cjs');
+const { legacyDataHint, DATA_DIR } = await import('../../backend/storage/paths.ts');
 
 // Guard: `npm test` loads test/setup.mjs, which points VIEWER_CONFIG at the committed test config, whose dataDir is the
 // sample data. Without it a test that forgets to isolate itself would read the real viewer/data/.
@@ -44,8 +44,8 @@ test('legacyDataHint: a user-stories folder beside no backlogs folder is renamed
   assert.equal(legacyDataHint({ root, dataDir, custom: true }), null);
 });
 
-const PATHS = path.resolve(import.meta.dirname, '../../backend/storage/paths.cjs');
-const run = (env) => spawnSync(process.execPath, ['-e', 'console.log(require(process.argv[1]).DATA_DIR)', PATHS], {
+const PATHS = path.resolve(import.meta.dirname, '../../backend/storage/paths.ts');
+const run = (env) => spawnSync(process.execPath, ['-e', "import(require('node:url').pathToFileURL(process.argv[1]).href).then((m) => console.log(m.DATA_DIR))", PATHS], {
   encoding: 'utf8', env: { ...process.env, VIEWER_CONFIG: '', PLANNER_DATA_DIR: '', TLT_DATA_DIR: '', ...env },
 });
 
@@ -63,8 +63,8 @@ test('a set PLANNER_DATA_DIR or TLT_DATA_DIR is ignored, with no warning; the co
   assert.equal(out.stderr, '');
 });
 
-test('setDataDir changes getDataDir but not DATA_DIR', () => {
-  const paths = createRequire(import.meta.url)('../../backend/storage/paths.cjs');
+test('setDataDir changes getDataDir but not DATA_DIR', async () => {
+  const paths = await import('../../backend/storage/paths.ts');
   const before = paths.getDataDir();
   try {
     paths.setDataDir(path.join(os.tmpdir(), 'elsewhere'));

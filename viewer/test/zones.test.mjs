@@ -95,17 +95,17 @@ test('the zone rules cover the layout: shared, backend, frontend, skills and too
 
 test('the rules reject what they are for', () => {
   const imports = (from, to) => allowed(from).some((f) => starts(to, f));
-  assert.equal(imports('viewer/shared/backlog/ids.ts', 'viewer/backend/storage/paths.cjs'), false);
+  assert.equal(imports('viewer/shared/backlog/ids.ts', 'viewer/backend/storage/paths.ts'), false);
   assert.equal(imports('viewer/shared/backlog/ids.ts', 'viewer/frontend/src/shared/lib/word-diff.js'), false);
-  assert.equal(imports('viewer/backend/server.cjs', 'viewer/frontend/src/shared/lib/word-diff.js'), false);
-  assert.equal(imports('viewer/frontend/src/main.jsx', 'viewer/backend/storage/paths.cjs'), false);
-  assert.equal(imports('viewer/backend/server.cjs', 'viewer/shared/backlog/model.ts'), true);
+  assert.equal(imports('viewer/backend/server.ts', 'viewer/frontend/src/shared/lib/word-diff.js'), false);
+  assert.equal(imports('viewer/frontend/src/main.jsx', 'viewer/backend/storage/paths.ts'), false);
+  assert.equal(imports('viewer/backend/server.ts', 'viewer/shared/backlog/model.ts'), true);
   assert.equal(imports('viewer/frontend/src/tools/backlog/BacklogTool.jsx', 'viewer/shared/guidelines/product-backlog.md'), true);
   assert.equal(imports('toolkit/skills/jois-story-plan/diagrams/checks.js', 'viewer/shared/backlog/model.js'), false);
   assert.equal(imports('toolkit/skills/jois-story-review/read-backlog.mjs', 'viewer/shared/backlog/model.js'), false);
   assert.equal(imports('toolkit/skills/jois-story-review/lib/backlog/model.js', 'viewer/shared/backlog/ids.js'), false);
   assert.equal(imports('toolkit/skills/jois-story-review/write-review.mjs', 'viewer/shared/guidelines/product-backlog.md'), false);
-  assert.equal(imports('toolkit/skills/jois-story-review/write-review.mjs', 'viewer/backend/server.cjs'), false);
+  assert.equal(imports('toolkit/skills/jois-story-review/write-review.mjs', 'viewer/backend/server.ts'), false);
   assert.equal(imports('toolkit/skills/jois-story-propose/write-proposal.mjs', 'viewer/shared/backlog/model.js'), false);
   assert.equal(imports('viewer/frontend/src/main.jsx', 'toolkit/skills/jois-story-review/write-review.mjs'), false);
 });

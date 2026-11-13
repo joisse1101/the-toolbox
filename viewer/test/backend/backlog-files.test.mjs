@@ -4,10 +4,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
-import { startingFiles } from '../../backend/storage/starting-files.js';
+import { startingFiles } from '../../backend/storage/starting-files.ts';
 
 const require = createRequire(import.meta.url);
-const { writeBacklogFiles } = require('../../backend/storage/backlog-files.cjs');
+const { writeBacklogFiles } = await import('../../backend/storage/backlog-files.ts');
 const { backlogFile, listBacklogs, KINDS } = require('../../shared/storage/backlog-paths.ts');
 
 // Temp folders go under the project's .scratch/, never the system temp folder.

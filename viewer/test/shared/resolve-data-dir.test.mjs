@@ -30,7 +30,7 @@ function withVariable(value, fn) {
   }
 }
 
-test('the .plans name matches PLANS_DIR of backlog-paths.cjs', () => {
+test('the .plans name matches PLANS_DIR of backlog-paths.ts', () => {
   const { PLANS_DIR: planner } = createRequire(import.meta.url)('../../shared/storage/backlog-paths.ts');
   assert.equal(PLANS_DIR, planner);
 });
@@ -99,7 +99,7 @@ test('dataDirOrThrow returns the .plans folder when it exists', () => {
 });
 
 test('a fresh code base after init: .plans is found with no yaml present, and its backlog is listed', async () => {
-  const { initCodeBase } = createRequire(import.meta.url)('../../backend/storage/project-config.cjs');
+  const { initCodeBase } = await import('../../backend/storage/project-config.ts');
   const { listBacklogs } = createRequire(import.meta.url)('../../shared/storage/backlog-paths.ts');
   const codeBase = temp();
   assert.deepEqual((await initCodeBase(codeBase)).created, ['.plans', 'new-backlog']);

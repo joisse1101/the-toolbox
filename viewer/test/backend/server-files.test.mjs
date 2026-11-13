@@ -10,7 +10,7 @@ import { tempConfig } from '../helpers/temp-config.mjs';
 // The file API on backlog folders. Mock data only: a temp data folder built here in the one-folder-per-backlog layout.
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'server-files-test-'));
 process.env.VIEWER_CONFIG = tempConfig(root);
-const { server } = createRequire(import.meta.url)('../../backend/server.cjs');
+const { server } = await import('../../backend/server.ts');
 
 const HEADERS = { 'X-Requested-With': 'the-toolbox', 'Content-Type': 'application/json' };
 let origin;

@@ -1,50 +1,61 @@
-'use strict';
 // Local server for the team-lead tools: the built app from dist/ plus a CSV file API
-// restricted to the five kinds of file of a backlog folder (backlog-paths.cjs). Node built-ins only.
+// restricted to the five kinds of file of a backlog folder (shared/storage/backlog-paths.ts). Node built-ins only.
 
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const { spawn } = require('child_process');
-const { HttpError, validateBacklogName } = require('../shared/storage/file-name.ts');
-const { writeBacklogFiles } = require('./storage/backlog-files.cjs');
-const { validateInitials, readInitials, writeInitials, findConflict, defaultInitials } = require('../shared/storage/backlog-initials.ts');
-const { PLANS_DIR, KINDS, BACKLOG_FILE, backlogDir, backlogFile, listBacklogs, detectOlderLayout } =require('../shared/storage/backlog-paths.ts');
-// The config is read when paths.cjs loads. Run as the server, a bad config ends the process with the message that names the key.
-let paths;
+import http from 'node:http';
+import fs from 'node:fs';
+import path from 'node:path';
+import { spawn } from 'node:child_process';
+import { HttpError, validateBacklogName } from '../shared/storage/file-name.ts';
+import { writeBacklogFiles } from './storage/backlog-files.ts';
+import { startingFiles } from './storage/starting-files.ts';
+import { codeOf, messageOf } from './storage/errors.ts';
+import { validateInitials, readInitials, writeInitials, findConflict, defaultInitials } from '../shared/storage/backlog-initials.ts';
+import { PLANS_DIR, KINDS, BACKLOG_FILE, backlogDir, backlogFile, listBacklogs, detectOlderLayout } from '../shared/storage/backlog-paths.ts';
+import { loadBacklog } from '../shared/backlog/model.ts';
+import {
+  ROOT, loadConfig, saveConfig, configPath, confineDir, confineCodeBase, checkFolder, checkCodeBase, initFolders, initCodeBase, copyData, copyToCodeBase, planCopy, migrateOlderLayout,
+} from './storage/project-config.ts';
+import type { ConfigChanges } from './storage/project-config.ts';
+import type { BacklogKind, ApiError } from '../shared/types.ts';
+
+// The config is read when paths.ts loads. Run as the server, a bad config ends the process with the message that names the key.
+let paths: typeof import('./storage/paths.ts');
 try {
-  paths = require('./storage/paths.cjs');
+  paths = await import('./storage/paths.ts');
 } catch (err) {
-  if (require.main !== module) throw err;
-  console.error(`Cannot start: ${err.message}`);
+  if (!import.meta.main) throw err;
+  console.error(`Cannot start: ${messageOf(err)}`);
   process.exit(1);
 }
 const { getDataDir, setDataDir, legacyDataHint } = paths;
-const {
-  ROOT, loadConfig, saveConfig, configPath, confineDir, confineCodeBase, checkFolder, checkCodeBase, initFolders, initCodeBase, copyData, copyToCodeBase, planCopy, migrateOlderLayout,
-} = require('./storage/project-config.cjs');
+
+// A JSON request body. Each handler checks the fields it reads; a body that is not an object fails there, as before.
+type Body = Record<string, unknown>;
+// An error reply: the status and code of an HttpError, and for a failed copy the copy's result.
+type ReplyError = HttpError & { detail?: object };
+type FolderDialog = (startDir: string) => Promise<string | null>;
 
 const HOST = '127.0.0.1';
 const PORT = Number(process.env.PORT) || 3000;
 // Built by `npm run build`. VIEWER_DIST_DIR points the server at another folder (the static-file test uses a temp one).
-const DIST_DIR = process.env.VIEWER_DIST_DIR ? path.resolve(process.env.VIEWER_DIST_DIR) : path.join(__dirname, '..', 'frontend', 'dist');
+const DIST_DIR = process.env.VIEWER_DIST_DIR ? path.resolve(process.env.VIEWER_DIST_DIR) : path.join(import.meta.dirname, '..', 'frontend', 'dist');
 const MAX_BODY = 10 * 1024 * 1024;
 
 // Allow-list of the kinds of file the API reaches: `backlog`, `review`, `proposals`, `lexicon` and `lexicon-suggestions`.
-// A request names a backlog, and backlog-paths.cjs maps (backlog, kind) to the fixed file in the backlog's folder.
+// A request names a backlog, and shared/storage/backlog-paths.ts maps (backlog, kind) to the fixed file in the backlog's folder.
 // `slices` and `logs` are not kinds, so the API cannot reach them.
-const STORES = new Set(KINDS);
+const STORES = new Set<string>(KINDS);
 
 // Number of requests that write (file save, create, rename, init, copy) and have not finished.
 // A switch of data folder is refused while it is not zero.
 let busy = 0;
 
 // Points the server at `dir`. Synchronous, so no request sees a half-switched server.
-function switchTo(dir) {
+function switchTo(dir: string): void {
   setDataDir(dir);
 }
 
-const MIME = {
+const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
@@ -57,15 +68,15 @@ const MIME = {
 
 // ---------- helpers ----------
 
-function send(res, status, body, type = 'application/json; charset=utf-8') {
-  const data = type.startsWith('application/json') ? JSON.stringify(body) : body;
+function send(res: http.ServerResponse, status: number, body: unknown, type = 'application/json; charset=utf-8'): void {
+  const data = type.startsWith('application/json') ? JSON.stringify(body) : (body as string); // a non-JSON reply is text
   res.writeHead(status, { 'Content-Type': type, 'Cache-Control': 'no-store' });
   res.end(data);
 }
 
-function readBody(req) {
+function readBody(req: http.IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
-    const chunks = [];
+    const chunks: Buffer[] = [];
     let size = 0;
     req.on('data', (c) => {
       size += c.length;
@@ -81,34 +92,35 @@ function readBody(req) {
   });
 }
 
-async function readJson(req) {
+async function readJson(req: http.IncomingMessage): Promise<Body> {
   const text = await readBody(req);
   if (!text) return {};
   try {
-    return JSON.parse(text);
+    return JSON.parse(text) as Body; // see Body
   } catch {
     throw new HttpError(400, 'Body must be JSON');
   }
 }
 
-function mapFsError(err, name) {
+function mapFsError(err: unknown, name: string): ReplyError {
   if (err instanceof HttpError) return err;
-  if (err.code === 'ENOENT') return new HttpError(404, `${name} was not found`, 'not-found');
-  if (['EBUSY', 'EPERM', 'EACCES'].includes(err.code)) {
+  const code = codeOf(err);
+  if (code === 'ENOENT') return new HttpError(404, `${name} was not found`, 'not-found');
+  if (code && ['EBUSY', 'EPERM', 'EACCES'].includes(code)) {
     return new HttpError(423, `${name} is locked or not writable (is it open in Excel?)`, 'locked');
   }
-  if (err.code === 'EEXIST') return new HttpError(409, `${name} already exists`, 'exists');
-  return new HttpError(500, err.message || 'Server error');
+  if (code === 'EEXIST') return new HttpError(409, `${name} already exists`, 'exists');
+  return new HttpError(500, messageOf(err) || 'Server error');
 }
 
 // ---------- file operations ----------
 
 // The backlogs that have a file of `kind` (every backlog for kind `backlog`), by folder name, sorted.
-async function listFiles(dataDir, kind) {
+async function listFiles(dataDir: string, kind: string): Promise<string[]> {
   return listBacklogs(dataDir).filter((name) => kind === 'backlog' || fs.existsSync(backlogFile(dataDir, name, kind)));
 }
 
-async function writeNew(file, content) {
+async function writeNew(file: string, content: string): Promise<void> {
   const fh = await fs.promises.open(file, 'wx');
   try {
     await fh.writeFile(content, 'utf8');
@@ -117,15 +129,13 @@ async function writeNew(file, content) {
   }
 }
 
-// The other backlogs of the data folder as { name, initials, frozenCodes } for the initials checks. The model is an ES
-// module, so it loads with a dynamic import. A sibling whose file cannot be read counts as holding no frozen IDs.
-async function siblingsOf(dataDir, name) {
-  const { loadBacklog } = await import('../shared/backlog/model.ts');
+// The other backlogs of the data folder as { name, initials, frozenCodes } for the initials checks. A sibling whose file cannot be read counts as holding no frozen IDs.
+function siblingsOf(dataDir: string, name: string) {
   return listBacklogs(dataDir)
     .filter((other) => other !== name)
     .map((other) => {
       const initials = readInitials(dataDir, other);
-      let frozenCodes = [];
+      let frozenCodes: string[] = [];
       try {
         const text = fs.readFileSync(backlogFile(dataDir, other, 'backlog'), 'utf8');
         const { stories } = loadBacklog(text, { initials: initials || 'B0' });
@@ -136,20 +146,18 @@ async function siblingsOf(dataDir, name) {
 }
 
 // The backlog's initials: the saved ones, or (first open of a backlog without backlog.json) the default, which is then saved.
-async function openInitials(dataDir, name) {
+function openInitials(dataDir: string, name: string): string {
   const saved = readInitials(dataDir, name);
   if (saved) return saved;
-  return writeInitials(dataDir, name, defaultInitials(await siblingsOf(dataDir, name)));
+  return writeInitials(dataDir, name, defaultInitials(siblingsOf(dataDir, name)));
 }
 
 // Creates a backlog: its folder holding the five starting files (header only) and backlog.json with the default initials.
-// A taken name gets the next free number. Returns the name used. The starting files are an ES module, so they load with a
-// dynamic import. When backlog.json cannot be written the folder is removed, so no partial backlog is left.
-async function createBacklog(dataDir, requested) {
-  const { startingFiles } = await import('./storage/starting-files.js');
+// A taken name gets the next free number. Returns the name used. When backlog.json cannot be written the folder is removed, so no partial backlog is left.
+async function createBacklog(dataDir: string, requested: unknown): Promise<string> {
   const name = await writeBacklogFiles(dataDir, requested, startingFiles());
   try {
-    writeInitials(dataDir, name, defaultInitials(await siblingsOf(dataDir, name)));
+    writeInitials(dataDir, name, defaultInitials(siblingsOf(dataDir, name)));
   } catch (err) {
     await fs.promises.rm(backlogDir(dataDir, name), { recursive: true, force: true });
     throw err;
@@ -159,17 +167,17 @@ async function createBacklog(dataDir, requested) {
 
 // Changes a backlog's initials: validated, refused when a sibling clashes (the message names it), written atomically.
 // The backlog's own current value is not a clash. Returns the stored initials.
-async function updateInitials(dataDir, name, value) {
+function updateInitials(dataDir: string, name: string, value: unknown): string {
   if (!fs.existsSync(backlogFile(dataDir, name, 'backlog'))) throw new HttpError(404, `${name} was not found`, 'not-found');
   const initials = validateInitials(value);
   if (initials === readInitials(dataDir, name)) return initials;
-  const clash = findConflict(initials, await siblingsOf(dataDir, name));
+  const clash = findConflict(initials, siblingsOf(dataDir, name));
   if (clash) throw new HttpError(409, `The initials ${initials} are already used by the backlog "${clash.name}".`, 'initials-taken');
   return writeInitials(dataDir, name, initials);
 }
 
 // Creates the file of another kind in an existing backlog; it never overwrites.
-async function createKindFile(dataDir, name, kind, content) {
+async function createKindFile(dataDir: string, name: unknown, kind: string, content: string): Promise<string> {
   const backlog = validateBacklogName(name);
   if (!fs.existsSync(backlogFile(dataDir, backlog, 'backlog'))) {
     throw new HttpError(404, `${backlog} was not found`, 'not-found');
@@ -181,7 +189,7 @@ async function createKindFile(dataDir, name, kind, content) {
 }
 
 // Renames a backlog by renaming its folder, so every file and slice moves with it.
-async function renameBacklog(dataDir, from, toRaw) {
+async function renameBacklog(dataDir: string, from: unknown, toRaw: unknown): Promise<string> {
   const fromName = validateBacklogName(from);
   const toName = validateBacklogName(toRaw);
   const src = backlogDir(dataDir, fromName);
@@ -196,7 +204,7 @@ async function renameBacklog(dataDir, from, toRaw) {
   return toName;
 }
 
-function openFolder(folder) {
+function openFolder(folder: string): void {
   // Isolated so an `open` / `xdg-open` branch is trivial later. Arguments are an array: no shell.
   const child = spawn('explorer.exe', [folder], { detached: true, stdio: 'ignore' });
   child.on('error', () => {});
@@ -219,7 +227,7 @@ const PICK_SCRIPT = [
 
 // Resolves to the chosen folder, or null when the dialog is closed without a choice; rejects when it cannot open.
 // One replaceable function (see setFolderDialog) so tests never open a real window.
-let folderDialog = function windowsFolderDialog(startDir) {
+let folderDialog: FolderDialog = function windowsFolderDialog(startDir) {
   return new Promise((resolve, reject) => {
     if (process.platform !== 'win32') {
       reject(new Error('The folder dialog is only available on Windows.'));
@@ -229,8 +237,8 @@ let folderDialog = function windowsFolderDialog(startDir) {
     const child = spawn('powershell.exe', args, { env: { ...process.env, PLANNER_PICK_START: startDir }, stdio: ['ignore', 'pipe', 'pipe'] });
     let out = '';
     let err = '';
-    child.stdout.setEncoding('utf8').on('data', (d) => { out += d; });
-    child.stderr.setEncoding('utf8').on('data', (d) => { err += d; });
+    child.stdout.setEncoding('utf8').on('data', (d: string) => { out += d; });
+    child.stderr.setEncoding('utf8').on('data', (d: string) => { err += d; });
     child.on('error', (e) => reject(new Error(`Could not open the folder dialog: ${e.message}`)));
     child.on('close', (code) => {
       if (code !== 0) reject(new Error(`Could not open the folder dialog: ${err.trim() || `PowerShell exited with ${code}`}`));
@@ -239,13 +247,13 @@ let folderDialog = function windowsFolderDialog(startDir) {
   });
 };
 
-function setFolderDialog(fn) {
+export function setFolderDialog(fn: FolderDialog): void {
   folderDialog = fn;
 }
 
 // ---------- project settings ----------
 
-function requireHeader(req) {
+function requireHeader(req: http.IncomingMessage): void {
   if (req.headers['x-requested-with'] !== 'the-toolbox') {
     throw new HttpError(403, 'Missing X-Requested-With header', 'forbidden');
   }
@@ -255,7 +263,7 @@ function settingsReply() {
   const config = loadConfig({ file: configPath() });
   const dataDir = getDataDir();
   // `olderLayout`: the folders of the earlier layout still in the data folder; only detected, never read as data.
-  const reply = { projectName: config.projectName, dataDir, configPath: config.configPath, olderLayout: detectOlderLayout(dataDir) };
+  const reply: Record<string, unknown> = { projectName: config.projectName, dataDir, configPath: config.configPath, olderLayout: detectOlderLayout(dataDir) };
   // `codeBase` appears only when the config names one; dataDir is then its `.plans` folder.
   if (config.codeBase) reply.codeBase = config.codeBase;
   // `projects`: the saved projects (the active path is listed too when the config has no list), each with `label` (its name,
@@ -272,7 +280,7 @@ function settingsReply() {
   return reply;
 }
 
-function isFolder(p) {
+function isFolder(p: string): boolean {
   try {
     return fs.statSync(p).isDirectory();
   } catch {
@@ -281,41 +289,42 @@ function isFolder(p) {
 }
 
 // Two data folders are the same when their resolved paths match (ignoring case on Windows).
-function sameFolder(a, b) {
+function sameFolder(a: string, b: string): boolean {
   const x = path.resolve(a);
   const y = path.resolve(b);
   return process.platform === 'win32' ? x.toLowerCase() === y.toLowerCase() : x === y;
 }
 
 // Folder names and project names are compared ignoring case, because Windows folders ignore case.
-function sameName(a, b) {
+function sameName(a: string, b: string): boolean {
   return a.toLowerCase() === b.toLowerCase();
 }
 
 // The folder that holds the folders of new projects: viewer/data. Tests point it at a temp folder (setNewProjectParent).
 let newProjectParent = path.join(ROOT, 'viewer', 'data');
-function setNewProjectParent(dir) {
+export function setNewProjectParent(dir: string): void {
   newProjectParent = dir;
 }
 
 // Options passed to every copy a relocation makes (`copyFile` / `readFile`); only tests set them (setCopyOptions).
-let copyOptions = {};
-function setCopyOptions(options) {
+type CopyOptions = { copyFile?: (from: string, to: string, mode?: number) => void; readFile?: (file: string) => Buffer };
+let copyOptions: CopyOptions = {};
+export function setCopyOptions(options?: CopyOptions): void {
   copyOptions = options || {};
 }
 
 // A switch or relocation is refused while a write runs. `others` is how many running requests are not the caller's own.
-function refuseWhenBusy(others = 0) {
+function refuseWhenBusy(others = 0): void {
   if (busy > others) throw new HttpError(409, 'A save is running. Try again in a moment.', 'busy');
 }
 
 // Saves a switch of the active project and points the served folder at it. No await: no request starts in between.
-function saveAndSwitch(changes) {
+function saveAndSwitch(changes: ConfigChanges) {
   let saved;
   try {
     saved = saveConfig(changes, { file: configPath() });
   } catch (err) {
-    throw new HttpError(400, err.message, 'refused');
+    throw new HttpError(400, messageOf(err), 'refused');
   }
   switchTo(saved.dataDir);
   return saved;
@@ -323,11 +332,11 @@ function saveAndSwitch(changes) {
 
 // POST /api/project/add: { codeBase, name?, init? } links a code base, { newName } creates viewer/data/<newName>.
 // A project already in the list is switched to, not added twice. Replies the settings plus `added` and `switched`.
-async function addProject(body) {
+async function addProject(body: Body) {
   refuseWhenBusy();
   const config = loadConfig({ file: configPath() });
-  const known = (dir) => config.projects.findIndex((p) => !p.synthetic && sameFolder(p.dataDir, dir));
-  const nameTaken = (name) => config.projects.some((p) => (p.name && sameName(p.name, name)));
+  const known = (dir: string) => config.projects.findIndex((p) => !p.synthetic && sameFolder(p.dataDir, dir));
+  const nameTaken = (name: string) => config.projects.some((p) => (p.name && sameName(p.name, name)));
   busy++;
   try {
     if (body.newName !== undefined) {
@@ -343,7 +352,7 @@ async function addProject(body) {
       try {
         init = await initFolders(target);
       } catch (err) {
-        throw new HttpError(500, err.message, 'init-failed');
+        throw new HttpError(500, messageOf(err), 'init-failed');
       }
       refuseWhenBusy(1);
       saveAndSwitch({ dataDir: target, addProject: { dataDir: target, name } });
@@ -368,16 +377,16 @@ async function addProject(body) {
     }
     if (name.trim() && nameTaken(name.trim())) throw new HttpError(409, `A project named "${name.trim()}" already exists.`, 'exists');
     const status = checkCodeBase(c.dir).status;
-    let init = null;
+    let init: Awaited<ReturnType<typeof initCodeBase>> | null = null;
     if (status === 'missing' || status === 'empty') {
       // No planner files there: nothing changes until the user agrees to create them (`init: true`).
       if (body.init !== true) return { ...settingsReply(), added: false, switched: false, needsInit: true, status };
       try {
         init = await initCodeBase(c.dir);
       } catch (err) {
-        throw new HttpError(500, err.message, 'init-failed');
+        throw new HttpError(500, messageOf(err), 'init-failed');
       }
-      if (init.refused) throw new HttpError(400, init.refused, 'refused');
+      if ('refused' in init) throw new HttpError(400, init.refused, 'refused');
     }
     refuseWhenBusy(1);
     saveAndSwitch({ codeBase: c.dir, addProject: { codeBase: c.dir, name } });
@@ -388,8 +397,9 @@ async function addProject(body) {
 }
 
 // The target of a relocation named by the browser: { dir (the data folder), status } from the folder check.
-function relocationTarget(body) {
-  let t;
+type Target = { codeBase?: string; dir: string; status: string };
+function relocationTarget(body: Body): Target {
+  let t: Target;
   if (body.codeBase !== undefined) {
     const c = confinedCodeBase(body.codeBase);
     t = { codeBase: c.dir, dir: c.plansDir, status: checkCodeBase(c.dir).status };
@@ -406,34 +416,34 @@ function relocationTarget(body) {
 
 // What a relocation to this target needs: `copy` (empty or missing: copies without a prompt), `choose` (it holds a backlog
 // folder: overwrite, switch or cancel) or `switch` (only the older layout: switch, then the migration can run).
-const RELOCATION_ACTION = { missing: 'copy', empty: 'copy', 'has-planner-files': 'choose', 'older-layout': 'switch' };
+const RELOCATION_ACTION: Record<string, string> = { missing: 'copy', empty: 'copy', 'has-planner-files': 'choose', 'older-layout': 'switch' };
 
 // POST /api/project/relocate-plan: read-only. Replies { status, dir, action, needsChoice, exists } (`exists`: the files an overwrite would replace).
-function planRelocation(body) {
+function planRelocation(body: Body) {
   const t = relocationTarget(body);
   const plan = planCopy(getDataDir(), t.dir);
-  if (plan.refused) throw new HttpError(400, plan.refused, 'refused');
+  if ('refused' in plan) throw new HttpError(400, plan.refused, 'refused');
   const action = RELOCATION_ACTION[t.status];
   return { status: t.status, dir: t.dir, action, needsChoice: action === 'choose', exists: action === 'choose' ? plan.exists : [] };
 }
 
 // POST /api/project/relocate-apply: { dir | codeBase, choice? } with choice `overwrite`, `switch` or `cancel`. In order: plan, copy,
 // read-back (inside copyData), then the config save. The config is left alone when any step fails; the old folder is never touched.
-function applyRelocation(body) {
+function applyRelocation(body: Body) {
   refuseWhenBusy();
   const t = relocationTarget(body);
   const choice = body.choice;
-  if (choice !== undefined && !['overwrite', 'switch', 'cancel'].includes(choice)) {
+  if (choice !== undefined && !['overwrite', 'switch', 'cancel'].includes(choice as string)) {
     throw new HttpError(400, 'The choice must be overwrite, switch or cancel.', 'refused');
   }
   if (choice === 'cancel') return { ...settingsReply(), relocated: false, cancelled: true };
   const plan = planCopy(getDataDir(), t.dir);
-  if (plan.refused) throw new HttpError(400, plan.refused, 'refused');
+  if ('refused' in plan) throw new HttpError(400, plan.refused, 'refused');
   const action = RELOCATION_ACTION[t.status];
   if (action === 'choose' && choice === undefined) {
     throw new HttpError(409, 'The folder already holds planner files: choose overwrite, switch or cancel.', 'choice-needed');
   }
-  let result = null;
+  let result: ReturnType<typeof copyData> | null = null;
   if (action === 'copy' || (action === 'choose' && choice === 'overwrite')) {
     busy++;
     try {
@@ -444,14 +454,14 @@ function applyRelocation(body) {
     } finally {
       busy--;
     }
-    if (result.refused) throw new HttpError(400, result.refused, 'refused');
+    if ('refused' in result) throw new HttpError(400, result.refused, 'refused');
     if (result.stopped) {
-      const e = new HttpError(500, `Copy stopped at ${result.stopped.file}: ${result.stopped.message}`, 'copy-stopped');
+      const e: ReplyError = new HttpError(500, `Copy stopped at ${result.stopped.file}: ${result.stopped.message}`, 'copy-stopped');
       e.detail = result;
       throw e;
     }
     if (result.failed.length) {
-      const e = new HttpError(500, `Copy failed for ${result.failed.map((f) => f.file).join(', ')}: ${result.failed[0].message}`, 'copy-failed');
+      const e: ReplyError = new HttpError(500, `Copy failed for ${result.failed.map((f) => f.file).join(', ')}: ${result.failed[0]!.message}`, 'copy-failed');
       e.detail = result;
       throw e;
     }
@@ -461,14 +471,14 @@ function applyRelocation(body) {
 }
 
 // A code base named by the browser: refused with 400 unless confineCodeBase accepts it. Returns { dir, plansDir }.
-function confinedCodeBase(codeBase) {
+function confinedCodeBase(codeBase: unknown) {
   const c = confineCodeBase(codeBase);
   if (!c.ok) throw new HttpError(400, c.reason, 'refused');
   return c;
 }
 
 // A folder named by the browser: refused with 400 unless confineDir accepts it. Returns the real path.
-function confined(dir) {
+function confined(dir: unknown): string {
   const c = confineDir(dir);
   if (!c.ok) throw new HttpError(400, c.reason, 'refused');
   return c.dir;
@@ -479,7 +489,7 @@ function confined(dir) {
 // /api/project/add (link a code base or create a new project), /api/project/relocate-plan (read-only) and
 // /api/project/relocate-apply (copy, read back, then save the new path of the active project).
 // They reach the config file and the folders init and the copy create, nothing else.
-async function handleProject(req, res, segments) {
+async function handleProject(req: http.IncomingMessage, res: http.ServerResponse, segments: string[]): Promise<void> {
   const [, , sub, ...rest] = segments;
   if (rest.length) throw new HttpError(404, 'Not found', 'not-found');
 
@@ -488,13 +498,13 @@ async function handleProject(req, res, segments) {
       try {
         return send(res, 200, settingsReply());
       } catch (err) {
-        throw new HttpError(500, err.message, 'config-invalid');
+        throw new HttpError(500, messageOf(err), 'config-invalid');
       }
     }
     if (req.method === 'PUT') {
       requireHeader(req);
       const body = await readJson(req);
-      const changes = {};
+      const changes: ConfigChanges = {};
       if (body.projectName !== undefined) changes.projectName = body.projectName;
       if (body.dataDir !== undefined) changes.dataDir = body.dataDir;
       // From here to the switch there is no await: no request can start between the check and the switch.
@@ -516,7 +526,7 @@ async function handleProject(req, res, segments) {
       try {
         saved = saveConfig(changes, { file: configPath() });
       } catch (err) {
-        throw new HttpError(400, err.message, 'refused');
+        throw new HttpError(400, messageOf(err), 'refused');
       }
       if (switches) switchTo(saved.dataDir);
       return send(res, 200, { ...settingsReply(), switched: switches });
@@ -524,7 +534,7 @@ async function handleProject(req, res, segments) {
     throw new HttpError(405, 'Method not allowed');
   }
 
-  if (!['check', 'init', 'copy', 'pick', 'migrate', 'add', 'relocate-plan', 'relocate-apply'].includes(sub)) throw new HttpError(404, 'Not found', 'not-found');
+  if (!['check', 'init', 'copy', 'pick', 'migrate', 'add', 'relocate-plan', 'relocate-apply'].includes(sub as string)) throw new HttpError(404, 'Not found', 'not-found'); // sub is set here
   if (req.method !== 'POST') throw new HttpError(405, 'Method not allowed');
   requireHeader(req);
 
@@ -537,7 +547,7 @@ async function handleProject(req, res, segments) {
     busy++;
     try {
       const result = migrateOlderLayout(getDataDir());
-      if (result.refused) throw new HttpError(400, result.refused, 'refused');
+      if ('refused' in result) throw new HttpError(400, result.refused, 'refused');
       return send(res, 200, result);
     } finally {
       busy--;
@@ -550,7 +560,7 @@ async function handleProject(req, res, segments) {
     try {
       dir = await folderDialog(getDataDir());
     } catch (err) {
-      throw new HttpError(500, err.message, 'picker-unavailable');
+      throw new HttpError(500, messageOf(err), 'picker-unavailable');
     }
     return send(res, 200, dir ? { dir } : { cancelled: true });
   }
@@ -569,11 +579,11 @@ async function handleProject(req, res, segments) {
         try {
           return send(res, 200, await initCodeBase(c.dir));
         } catch (err) {
-          throw new HttpError(500, err.message, 'init-failed');
+          throw new HttpError(500, messageOf(err), 'init-failed');
         }
       }
       const result = copyToCodeBase(getDataDir(), c.dir);
-      if (result.refused) throw new HttpError(400, result.refused, 'refused');
+      if ('refused' in result) throw new HttpError(400, result.refused, 'refused');
       if (result.stopped) {
         return send(res, 500, { error: `Copy stopped at ${result.stopped.file}: ${result.stopped.message}`, code: 'copy-stopped', ...result });
       }
@@ -584,11 +594,11 @@ async function handleProject(req, res, segments) {
       try {
         return send(res, 200, await initFolders(dir));
       } catch (err) {
-        throw new HttpError(500, err.message, 'init-failed');
+        throw new HttpError(500, messageOf(err), 'init-failed');
       }
     }
     const result = copyData(getDataDir(), dir);
-    if (result.refused) throw new HttpError(400, result.refused, 'refused');
+    if ('refused' in result) throw new HttpError(400, result.refused, 'refused');
     if (result.stopped) {
       return send(res, 500, { error: `Copy stopped at ${result.stopped.file}: ${result.stopped.message}`, code: 'copy-stopped', ...result });
     }
@@ -601,7 +611,7 @@ async function handleProject(req, res, segments) {
 // ---------- API ----------
 
 // Counts a write as busy for as long as it runs, so a switch of data folder cannot land in the middle of it.
-async function handleApi(req, res, segments) {
+async function handleApi(req: http.IncomingMessage, res: http.ServerResponse, segments: string[]): Promise<void> {
   if (segments[1] === 'project') return handleProject(req, res, segments);
   const writes = req.method !== 'GET' && req.method !== 'HEAD';
   if (writes) busy++;
@@ -614,18 +624,18 @@ async function handleApi(req, res, segments) {
 
 // A missing optional file (proposals, lexicon, lexicon-suggestions, review) of a backlog that exists reads as an empty file,
 // because the browser logs every failed request. A missing backlog folder, or a missing user-stories.csv, is still not found.
-async function readOrEmpty(dataDir, name, kind, full) {
+async function readOrEmpty(dataDir: string, name: string, kind: string, full: string): Promise<string> {
   try {
     return await fs.promises.readFile(full, 'utf8');
   } catch (err) {
-    if (err.code !== 'ENOENT' || kind === 'backlog' || !fs.existsSync(backlogFile(dataDir, name, 'backlog'))) throw err;
+    if (codeOf(err) !== 'ENOENT' || kind === 'backlog' || !fs.existsSync(backlogFile(dataDir, name, 'backlog'))) throw err;
     return '';
   }
 }
 
-async function handleStoreApi(req, res, segments) {
+async function handleStoreApi(req: http.IncomingMessage, res: http.ServerResponse, segments: string[]): Promise<void> {
   const [, kind, resource, fileRaw, ...rest] = segments;
-  if (!STORES.has(kind)) throw new HttpError(404, `Unknown kind "${kind}"`, 'unknown-store');
+  if (kind === undefined || !STORES.has(kind)) throw new HttpError(404, `Unknown kind "${kind}"`, 'unknown-store');
   const dataDir = getDataDir();
 
   if (req.method !== 'GET' && req.headers['x-requested-with'] !== 'the-toolbox') {
@@ -655,7 +665,7 @@ async function handleStoreApi(req, res, segments) {
     throw new HttpError(405, 'Method not allowed');
   }
 
-  let decoded;
+  let decoded: string;
   try {
     decoded = decodeURIComponent(fileRaw);
   } catch {
@@ -694,15 +704,15 @@ async function handleStoreApi(req, res, segments) {
 
 // Which kind of request a path is: `api` (/api or under /api/, never the app page), `file` (the last segment has an extension: a built file, or a 404)
 // or `app` (a page address: the app's index.html, so a reload on any tab works).
-function staticTarget(pathname) {
+export function staticTarget(pathname: string): 'api' | 'file' | 'app' {
   if (pathname === '/api' || pathname.startsWith('/api/')) return 'api';
   const last = pathname.slice(pathname.lastIndexOf('/') + 1);
   return path.extname(last) ? 'file' : 'app';
 }
 
-async function handleStatic(req, res, pathname) {
+async function handleStatic(req: http.IncomingMessage, res: http.ServerResponse, pathname: string): Promise<void> {
   if (req.method !== 'GET' && req.method !== 'HEAD') throw new HttpError(405, 'Method not allowed');
-  let rel;
+  let rel: string;
   try {
     rel = decodeURIComponent(pathname);
   } catch {
@@ -728,13 +738,13 @@ async function handleStatic(req, res, pathname) {
 
 // ---------- server ----------
 
-const server = http.createServer(async (req, res) => {
+export const server = http.createServer(async (req, res) => {
   try {
     // Guard against DNS rebinding: only accept loopback host names.
     const host = (req.headers.host || '').replace(/:\d+$/, '');
     if (host !== 'localhost' && host !== '127.0.0.1') throw new HttpError(403, 'Forbidden');
 
-    const { pathname } = new URL(req.url, 'http://localhost');
+    const { pathname } = new URL(req.url ?? '/', 'http://localhost');
     if (pathname.startsWith('/api/')) {
       await handleApi(req, res, ['', ...pathname.split('/').filter(Boolean).slice(1)]);
     } else {
@@ -743,11 +753,12 @@ const server = http.createServer(async (req, res) => {
   } catch (err) {
     const e = mapFsError(err, 'File');
     if (res.headersSent) return res.end();
-    send(res, e.status, { error: e.message, code: e.code, ...(e.detail || {}) });
+    const reply: ApiError = { error: e.message, code: e.code };
+    send(res, e.status, { ...reply, ...(e.detail || {}) });
   }
 });
 
-if (require.main === module) {
+if (import.meta.main) {
   server.listen(PORT, HOST, () => {
     console.log(`Backlog planner running at http://localhost:${PORT}/`);
     const { projectName } = loadConfig({ file: configPath() });
@@ -758,5 +769,3 @@ if (require.main === module) {
     if (hint) console.log(hint);
   });
 }
-
-module.exports = { server, staticTarget, setFolderDialog, setNewProjectParent, setCopyOptions };

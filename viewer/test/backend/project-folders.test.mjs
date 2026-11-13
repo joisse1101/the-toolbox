@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 
-const pc = createRequire(import.meta.url)('../../backend/storage/project-config.cjs');
+const pc = await import('../../backend/storage/project-config.ts');
 const { initFolders, copyData, migrateOlderLayout, checkFolder, confineDir, confineCodeBase, checkCodeBase, initCodeBase, copyToCodeBase, planCopy, planCopyToCodeBase, saveConfig, loadConfig, ROOT } = pc;
 
 function tmp() {
@@ -28,7 +28,7 @@ function scratch() {
 }
 test.after(() => fs.rmSync(SCRATCH, { recursive: true, force: true }));
 
-const loadStartingFiles = async () => (await import('../../backend/storage/starting-files.js')).startingFiles();
+const loadStartingFiles = async () => (await import('../../backend/storage/starting-files.ts')).startingFiles();
 const KIND_PATHS = { backlog: 'user-stories.csv', review: 'user-stories/review.csv', proposals: 'user-stories/proposals.csv', lexicon: 'lexicon.csv', 'lexicon-suggestions': 'lexicon/lexicon-suggestions.csv' };
 
 async function assertStartingFiles(backlogDir) {

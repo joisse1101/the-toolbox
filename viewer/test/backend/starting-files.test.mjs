@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { startingFiles } from '../../backend/storage/starting-files.js';
+import { startingFiles } from '../../backend/storage/starting-files.ts';
 import { parseCsv } from '../../shared/backlog/csv.ts';
 import { COLUMNS, BENCHED_COLUMN, loadBacklog } from '../../shared/backlog/model.ts';
 import { parseReview, REVIEW_COLUMNS } from '../../shared/review/review.ts';
