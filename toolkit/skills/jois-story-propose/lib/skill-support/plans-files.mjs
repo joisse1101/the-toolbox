@@ -11,9 +11,17 @@
 
 import path from 'node:path';
 
-export const LIFECYCLES = ['committed', 'local', 'user decides', 'removed by archive'];
+export const LIFECYCLES = ['committed', 'local', 'user decides', 'removed by archive']         ;
 
-export const PLANS_FILES = [
+                                                    
+
+                            
+               
+                 
+                         
+ 
+
+export const PLANS_FILES              = [
   { path: 'user-stories.csv', writer: 'portal, jois-story-plan (Frozen cell)', lifecycle: ['committed'] },
   { path: 'lexicon.csv', writer: 'portal, jois-story-propose', lifecycle: ['committed'] },
   { path: 'backlog.json', writer: 'portal (story-ID initials)', lifecycle: ['committed'] },
@@ -33,19 +41,19 @@ export const PLANS_FILES = [
 ];
 
 // A row's path as a gitignore pattern under the backlog folder: `<slice>` stands for any slice name.
-const pattern = (rowPath) => rowPath.replace(/<slice>/g, '*');
-const kept = (row) => row.lifecycle.includes('committed') || row.lifecycle.includes('user decides');
+const pattern = (rowPath        )         => rowPath.replace(/<slice>/g, '*');
+const kept = (row           )          => row.lifecycle.includes('committed') || row.lifecycle.includes('user decides');
 
 export const BLOCK_COMMENT = '# planner data: committed files only (printed by jois-story-plan/print-gitignore.mjs)';
 
 // The data folder as a path relative to the project root with `/` separators, or null when it is outside the root or is the root.
-export function relativeDataDir({ dataDir, root }) {
+export function relativeDataDir({ dataDir, root }                                   )                {
   const rel = path.relative(path.resolve(root), path.resolve(dataDir));
   if (!rel || rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) return null;
   return rel.split(path.sep).join('/');
 }
 
-export function gitignoreBlock({ dataDir, root }) {
+export function gitignoreBlock({ dataDir, root }                                   )                {
   const base = relativeDataDir({ dataDir, root });
   if (base === null) return null;
   const direct = PLANS_FILES.filter((row) => kept(row) && !row.path.startsWith('slices/'));

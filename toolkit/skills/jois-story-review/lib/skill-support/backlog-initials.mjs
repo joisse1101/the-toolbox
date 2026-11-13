@@ -4,21 +4,19 @@
 // backlog uses). A skill never saves the default; the portal does that when it first opens the backlog.
 
 import fs from 'node:fs';
-import { createRequire } from 'node:module';
-import { loadBacklog } from '../backlog/model.js';
-
-const require = createRequire(import.meta.url);
-const { readInitials, defaultInitials } = require('../storage/backlog-initials.cjs');
-const { backlogFile, listBacklogs } = require('../storage/backlog-paths.cjs');
+import { loadBacklog } from '../backlog/model.mjs';
+import { readInitials, defaultInitials } from '../storage/backlog-initials.mjs';
+                                                              
+import { backlogFile, listBacklogs } from '../storage/backlog-paths.mjs';
 
 // The other backlogs of the data folder as { name, initials, frozenCodes }. A sibling whose file cannot be read counts as
 // holding no frozen IDs.
-function siblingsOf(dataDir, name) {
+function siblingsOf(dataDir        , name        )            {
   return listBacklogs(dataDir)
     .filter((other) => other !== name)
     .map((other) => {
       const initials = readInitials(dataDir, other);
-      let frozenCodes = [];
+      let frozenCodes           = [];
       try {
         const text = fs.readFileSync(backlogFile(dataDir, other, 'backlog'), 'utf8');
         const { stories } = loadBacklog(text, { initials: initials || 'B0' });
@@ -28,6 +26,6 @@ function siblingsOf(dataDir, name) {
     });
 }
 
-export function initialsOf(dataDir, name) {
+export function initialsOf(dataDir        , name        )         {
   return readInitials(dataDir, name) ?? defaultInitials(siblingsOf(dataDir, name));
 }
