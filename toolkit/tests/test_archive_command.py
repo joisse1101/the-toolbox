@@ -70,7 +70,7 @@ def test_finding_section_never_names_its_command_and_ends_with_the_full_form_lin
     finding = _finding()
     assert "/jois-code:" not in finding
     assert "archive" not in finding.lower().replace("archived.md", "")
-    assert "print this command's full form, `slice <backlog>/<slice>`, with the real names" in finding
+    assert "print this command's full form, its slash command name followed by `slice <backlog>/<slice>`, with the real names" in finding
 
 
 def test_every_stop_after_the_slice_is_settled_prints_the_full_form():

@@ -44,7 +44,7 @@ AskUserQuestion shows at most four options plus free text. When more than four s
 
 When the same `<backlog>/slices/<slice>` matches in more than one place, list the paths and ask which one. Write nothing until the user answers.
 
-Once the slice is settled, announce its backlog and name. At the end of this command, and at every stop after the slice is settled, print this command's full form, `slice <backlog>/<slice>`, with the real names, as the last lines.
+Once the slice is settled, announce its backlog and name. At the end of this command, and at every stop after the slice is settled, print this command's full form, its slash command name followed by `slice <backlog>/<slice>`, with the real names, as the last lines.
 
 ## Rules
 
