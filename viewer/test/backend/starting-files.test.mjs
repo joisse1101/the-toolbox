@@ -1,15 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { startingFiles } from '../../logic/backlog/starting-files.js';
-import { parseCsv } from '../../logic/backlog/csv.js';
-import { COLUMNS, BENCHED_COLUMN, loadBacklog } from '../../logic/backlog/model.js';
-import { parseReview, REVIEW_COLUMNS } from '../../logic/review/review.js';
-import { parseLexicon, COLUMNS as LEXICON_COLUMNS } from '../../logic/lexicon/lexicon.js';
-import { parseSuggestions, COLUMNS as SUGGESTION_COLUMNS } from '../../logic/lexicon/lexicon-suggestions.js';
+import { startingFiles } from '../../backend/storage/starting-files.js';
+import { parseCsv } from '../../shared/backlog/csv.js';
+import { COLUMNS, BENCHED_COLUMN, loadBacklog } from '../../shared/backlog/model.js';
+import { parseReview, REVIEW_COLUMNS } from '../../shared/review/review.js';
+import { parseLexicon, COLUMNS as LEXICON_COLUMNS } from '../../shared/lexicon/lexicon.js';
+import { parseSuggestions, COLUMNS as SUGGESTION_COLUMNS } from '../../shared/lexicon/lexicon-suggestions.js';
 
 const require = createRequire(import.meta.url);
-const { KINDS } = require('../../logic/storage/backlog-paths.cjs');
+const { KINDS } = require('../../shared/storage/backlog-paths.cjs');
 
 const textOf = (kind) => startingFiles().find((f) => f.kind === kind).text;
 

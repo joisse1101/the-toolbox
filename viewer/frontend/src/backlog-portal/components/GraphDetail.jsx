@@ -1,4 +1,4 @@
-import { storyLabel as title } from '../../../../logic/backlog/model.js';
+import { storyLabel as title } from '../../../../shared/backlog/model.js';
 
 // Coarse levels: the story dependencies behind the selected group or arrow, and a button to show them as stories.
 export default function GraphDetail({ detailPairs, byId, onOpen, onShowStories }) {

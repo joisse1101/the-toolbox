@@ -4,8 +4,8 @@
 
 const fs = require('fs');
 const path = require('path');
-const { HttpError, validateBacklogName } = require('./file-name.cjs');
-const { backlogDir, backlogFile } = require('./backlog-paths.cjs');
+const { HttpError, validateBacklogName } = require('../../shared/storage/file-name.cjs');
+const { backlogDir, backlogFile } = require('../../shared/storage/backlog-paths.cjs');
 
 const MAX_NAME_TRIES = 1000;
 

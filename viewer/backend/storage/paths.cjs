@@ -1,6 +1,6 @@
 'use strict';
 // Where things live. The private data (backlogs, reviews, proposals) is set by `dataDir` in the project config
-// (planner.config.yaml, or the file PLANNER_CONFIG names) and defaults to the planner's data/ folder. See project-config.cjs.
+// (viewer.config.yaml, or the file VIEWER_CONFIG names) and defaults to the viewer's data/ folder. See project-config.cjs.
 // DATA_DIR is the folder as read when this module loaded, for short-lived scripts; the server calls
 // getDataDir() each time, so setDataDir() takes effect at once.
 
@@ -26,7 +26,7 @@ function setDataDir(dir) {
 // a `user-stories` folder), or null when nothing needs moving. A data folder named in the config is never moved, only renamed inside.
 function legacyDataHint({ root = ROOT, dataDir = getDataDir(), custom = path.resolve(dataDir) !== DEFAULT_DATA_DIR } = {}) {
   if (!custom && !fs.existsSync(dataDir) && fs.existsSync(path.join(root, 'data'))) {
-    return 'Your data is still in data/. It now lives in planner/data/ and the backlogs folder is `backlogs`: run `Move-Item data planner/data`, then `Rename-Item planner/data/user-stories backlogs`.';
+    return 'Your data is still in data/. It now lives in viewer/data/ and the backlogs folder is `backlogs`: run `Move-Item data viewer/data`, then `Rename-Item viewer/data/user-stories backlogs`.';
   }
   if (fs.existsSync(path.join(dataDir, 'user-stories')) && !fs.existsSync(path.join(dataDir, 'backlogs'))) {
     return `The backlogs folder is now \`backlogs\`: run \`Rename-Item "${path.join(dataDir, 'user-stories')}" backlogs\`.`;

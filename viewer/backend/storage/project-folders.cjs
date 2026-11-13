@@ -8,7 +8,7 @@ const os = require('os');
 const path = require('path');
 
 const { writeBacklogFiles } = require('./backlog-files.cjs');
-const { KIND_FILES, PLANS_DIR, listBacklogs, detectOlderLayout, validateBacklogName } = require('./backlog-paths.cjs');
+const { KIND_FILES, PLANS_DIR, listBacklogs, detectOlderLayout, validateBacklogName } = require('../../shared/storage/backlog-paths.cjs');
 
 const ROOT = path.resolve(__dirname, '..', '..', '..');
 
@@ -45,11 +45,11 @@ function systemFolders(env = process.env) {
 // Decides whether the browser may name `dir` as a data folder. Returns { ok: true, dir (real path) } or
 // { ok: false, reason }. Absolute paths only; links are resolved before any check.
 function confineDir(dir, options = {}) {
-  return confinePath(dir, options, { noun: 'data folder', allowPlannerData: true });
+  return confinePath(dir, options, { noun: 'data folder', allowViewerData: true });
 }
 
-// The shared rules; `noun` is the word the reasons use, `allowPlannerData` the one repository exception.
-function confinePath(dir, { root = ROOT, env = process.env, home = os.homedir() }, { noun, allowPlannerData }) {
+// The shared rules; `noun` is the word the reasons use, `allowViewerData` the one repository exception.
+function confinePath(dir, { root = ROOT, env = process.env, home = os.homedir() }, { noun, allowViewerData }) {
   if (typeof dir !== 'string' || !dir.trim()) return { ok: false, reason: 'The folder must not be empty.' };
   if (!path.isAbsolute(dir.trim())) return { ok: false, reason: 'The folder must be an absolute path.' };
   const real = realResolve(dir.trim());
@@ -59,9 +59,9 @@ function confinePath(dir, { root = ROOT, env = process.env, home = os.homedir() 
   }
   if (path.relative(realResolve(home), real) === '') return { ok: false, reason: `The home folder itself cannot be the ${noun}; pick a folder inside it.` };
   const realRoot = realResolve(root);
-  if (inside(realRoot, real) && !(allowPlannerData && inside(path.join(realRoot, 'planner', 'data'), real))) {
-    return { ok: false, reason: allowPlannerData
-      ? `A folder inside the repository cannot be the ${noun}, except planner/data.`
+  if (inside(realRoot, real) && !(allowViewerData && inside(path.join(realRoot, 'viewer', 'data'), real))) {
+    return { ok: false, reason: allowViewerData
+      ? `A folder inside the repository cannot be the ${noun}, except viewer/data.`
       : `A folder inside the repository cannot be the ${noun}.` };
   }
   try {
@@ -72,11 +72,11 @@ function confinePath(dir, { root = ROOT, env = process.env, home = os.homedir() 
   return { ok: true, dir: real };
 }
 
-// Decides whether the browser may name `dir` as a code base. Same rules as confineDir with no planner/data exception,
+// Decides whether the browser may name `dir` as a code base. Same rules as confineDir with no viewer/data exception,
 // and the folder must exist (it is never created) and must not hold a file named `.plans`. Returns
 // { ok: true, dir (real path of the code base), plansDir } or { ok: false, reason }.
 function confineCodeBase(dir, options = {}) {
-  const c = confinePath(dir, options, { noun: 'code base', allowPlannerData: false });
+  const c = confinePath(dir, options, { noun: 'code base', allowViewerData: false });
   if (!c.ok) return c;
   if (!isDir(c.dir)) return { ok: false, reason: 'The code base folder does not exist.' };
   const plansDir = path.join(c.dir, PLANS_DIR);
@@ -151,7 +151,7 @@ async function initFolders(dir) {
   if (existingBacklogs.length) {
     return { dir: abs, createdDataDir, created: createdDataDir ? [name] : [], existing: createdDataDir ? existingBacklogs : [name, ...existingBacklogs], createdBacklog: null };
   }
-  const { startingFiles } = await import('../backlog/starting-files.js');
+  const { startingFiles } = await import('./starting-files.js');
   const made = await writeBacklogFiles(abs, FIRST_BACKLOG, startingFiles());
   return {
     dir: abs,

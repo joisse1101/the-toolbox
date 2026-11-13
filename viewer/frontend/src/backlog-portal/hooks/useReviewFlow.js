@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { unitsOf, unitStoryCode, openCounts, orphanUnits, reviewOverview, acceptAll as acceptReviewUnits, acceptSummaryText } from '../../../../logic/review/review.js';
+import { unitsOf, unitStoryCode, openCounts, orphanUnits, reviewOverview, acceptAll as acceptReviewUnits, acceptSummaryText } from '../../../../shared/review/review.js';
 import { useReview } from './useReview.js';
 
 // Review suggestions for the open backlog (its review file), shown next to the fields they concern: the counts and

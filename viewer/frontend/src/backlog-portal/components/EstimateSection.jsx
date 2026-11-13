@@ -1,6 +1,6 @@
-import { POINTS, SPLIT_ABOVE, PRIORITIES } from '../../../../logic/backlog/model.js';
+import { POINTS, SPLIT_ABOVE, PRIORITIES } from '../../../../shared/backlog/model.js';
 import Info from './Info.jsx';
-import guideline from '../../../../guidelines/sprint-points-guideline.md?raw';
+import guideline from '../../../../shared/guidelines/sprint-points-guideline.md?raw';
 import { Row } from './Layout.jsx';
 import { Label } from './FormParts.jsx';
 

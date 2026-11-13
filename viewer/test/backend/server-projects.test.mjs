@@ -9,7 +9,7 @@ import { createRequire } from 'node:module';
 import { tempConfig } from '../helpers/temp-config.mjs';
 
 // Mock data only: temp folders holding a copy of the sample backlog, a temp config and a temp parent folder for new
-// projects. Nothing here touches the real planner/data or the real config.
+// projects. Nothing here touches the real viewer/data or the real config.
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SAMPLE = path.join(here, '..', 'sample-data', 'sample', 'user-stories.csv');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'server-projects-test-'));
@@ -20,8 +20,8 @@ const parent = path.join(tmp, 'projects');
 const configFile = tempConfig(dirA, 'Alpha');
 const ORIGINAL = `# kept comment\n${fs.readFileSync(configFile, 'utf8')}`;
 fs.writeFileSync(configFile, ORIGINAL);
-process.env.PLANNER_CONFIG = configFile;
-const { server, setNewProjectParent, setCopyOptions } = createRequire(import.meta.url)('../../portal/server/server.cjs');
+process.env.VIEWER_CONFIG = configFile;
+const { server, setNewProjectParent, setCopyOptions } = createRequire(import.meta.url)('../../backend/server.cjs');
 setNewProjectParent(parent);
 
 const HEADERS = { 'X-Requested-With': 'the-toolbox', 'Content-Type': 'application/json' };

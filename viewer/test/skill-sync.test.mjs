@@ -7,8 +7,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SKILLS, DEFAULT_SKILLS_DIR } from '../scripts/sync-skill-logic.mjs';
 
-// The generated copies in toolkit/skills/<skill>/lib and references must equal what planner/scripts/sync-skill-logic.mjs
-// produces from the planner's files. To fix a failure, run `node planner/scripts/sync-skill-logic.mjs` and commit the result.
+// The generated copies in toolkit/skills/<skill>/lib and references must equal what viewer/scripts/sync-skill-logic.mjs
+// produces from the viewer's shared files. To fix a failure, run `node viewer/scripts/sync-skill-logic.mjs` and commit the result.
 const SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'sync-skill-logic.mjs');
 const GENERATED = ['lib', 'references'];
 
@@ -67,12 +67,12 @@ test('every skill present gets its logic, support helpers and guidelines, each c
       assert.ok(files.includes(expected), `${skill} lacks ${expected}`);
     }
     assert.equal(files.includes('lib/storage/write-log.cjs'), false, `${skill} copies the removed write log`);
-    assert.equal(files.some((f) => f === 'lib/storage/paths.cjs' || f === 'lib/storage/project-config.cjs'), false, `${skill} copies the planner's config reader`);
+    assert.equal(files.some((f) => f === 'lib/storage/paths.cjs' || f === 'lib/storage/project-config.cjs'), false, `${skill} copies the viewer's config reader`);
     assert.equal(files.some((f) => f.startsWith('lib/diagrams/')), false, `${skill} copies diagram logic`);
     for (const f of files) {
       const first = fs.readFileSync(path.join(out, skill, f), 'utf8').split(/\r?\n/)[0];
       assert.match(first, /^(\/\/|<!--) GENERATED\. Do not edit this copy\.( -->)?$/, `${skill}/${f} has no generated header`);
-      assert.doesNotMatch(first, /planner\//, `${skill}/${f} header names a path of this repo`);
+      assert.doesNotMatch(first, /viewer\//, `${skill}/${f} header names a path of this repo`);
     }
   }
 });
@@ -106,25 +106,25 @@ test('the check names a copy that has drifted, is missing or has no source', () 
 });
 
 test('a copy has its source line ending throughout: CRLF sources give CRLF copies, LF sources give LF copies', () => {
-  const PLANNER = path.resolve(path.dirname(SCRIPT), '..');
-  const scratch = path.resolve(PLANNER, '..', '.scratch');
+  const VIEWER = path.resolve(path.dirname(SCRIPT), '..');
+  const scratch = path.resolve(VIEWER, '..', '.scratch');
   fs.mkdirSync(scratch, { recursive: true });
   const root = fs.mkdtempSync(path.join(scratch, 'skill-sync-eol-'));
   try {
-    // Two copies of the planner folders the script reads: one as LF, one as CRLF.
+    // Two copies of the viewer folders the script reads: one as LF, one as CRLF.
     const outputs = {};
     for (const eol of ['lf', 'crlf']) {
-      const planner = path.join(root, eol, 'planner');
-      for (const dir of ['scripts', 'logic', 'guidelines']) fs.cpSync(path.join(PLANNER, dir), path.join(planner, dir), { recursive: true });
-      for (const file of filesUnder(planner)) {
-        const target = path.join(planner, ...file.split('/'));
+      const viewer = path.join(root, eol, 'viewer');
+      for (const dir of ['scripts', 'shared']) fs.cpSync(path.join(VIEWER, dir), path.join(viewer, dir), { recursive: true });
+      for (const file of filesUnder(viewer)) {
+        const target = path.join(viewer, ...file.split('/'));
         const text = fs.readFileSync(target, 'utf8').replace(/\r\n/g, '\n');
         fs.writeFileSync(target, eol === 'crlf' ? text.replace(/\n/g, '\r\n') : text, 'utf8');
       }
       const skills = path.join(root, eol, 'skills');
       for (const skill of Object.keys(SKILLS)) fs.mkdirSync(path.join(skills, skill), { recursive: true });
       const out = path.join(root, eol, 'out');
-      const run = spawnSync(process.execPath, [path.join(planner, 'scripts', 'sync-skill-logic.mjs'), '--skills-dir', skills, '--out', out], { encoding: 'utf8' });
+      const run = spawnSync(process.execPath, [path.join(viewer, 'scripts', 'sync-skill-logic.mjs'), '--skills-dir', skills, '--out', out], { encoding: 'utf8' });
       assert.equal(run.status, 0, run.stderr);
       outputs[eol] = out;
     }

@@ -23,8 +23,8 @@ for (const [dir, name] of [[dirA, 'one'], [dirB, 'two']]) {
 fs.mkdirSync(path.join(dirA, 'backups', 'one.csv'), { recursive: true });
 fs.writeFileSync(path.join(dirA, 'backups', 'one.csv', 'old.csv'), 'x');
 const configFile = tempConfig(dirA, 'Alpha');
-process.env.PLANNER_CONFIG = configFile;
-const { server, setFolderDialog } = createRequire(import.meta.url)('../../portal/server/server.cjs');
+process.env.VIEWER_CONFIG = configFile;
+const { server, setFolderDialog } = createRequire(import.meta.url)('../../backend/server.cjs');
 // Tests never open the real folder dialog: every pick goes through this stub.
 setFolderDialog(async () => {
   throw new Error('the real folder dialog must not open in a test');
@@ -96,7 +96,7 @@ test('switch during a write: busy, config and served folder unchanged, nothing w
 test('refused directories: the config is unchanged and no folder is created', async () => {
   const before = fs.readFileSync(configFile, 'utf8');
   const link = path.join(tmp, 'link-to-logic');
-  fs.symlinkSync(path.join(REPO, 'planner', 'logic'), link, 'junction');
+  fs.symlinkSync(path.join(REPO, 'viewer', 'shared'), link, 'junction');
   const system = process.platform === 'win32' ? process.env.SystemRoot : '/etc';
   const missing = path.join(tmp, 'never-created');
   const cases = [
@@ -104,7 +104,7 @@ test('refused directories: the config is unchanged and no folder is created', as
     ['system folder', system],
     ['drive root', path.parse(tmp).root],
     ['link into the repository', link],
-    ['source folder of the repository', path.join(REPO, 'planner', 'logic')],
+    ['source folder of the repository', path.join(REPO, 'viewer', 'shared')],
     ['a file', SAMPLE],
   ];
   for (const [label, dir] of cases) {
@@ -118,7 +118,7 @@ test('refused directories: the config is unchanged and no folder is created', as
     assert.ok(check.reason, label);
   }
   assert.equal(fs.readFileSync(configFile, 'utf8'), before);
-  assert.equal(fs.existsSync(path.join(REPO, 'planner', 'logic', 'backlogs')), false);
+  assert.equal(fs.existsSync(path.join(REPO, 'viewer', 'shared', 'backlogs')), false);
 
   // A missing folder cannot be saved directly; only init or the copy creates it.
   const direct = await save({ dataDir: missing });
@@ -282,7 +282,7 @@ test('code base: confined on every route, config and served folder unchanged whe
     ['relative path', '..\elsewhere'],
     ['system folder', system],
     ['drive root', path.parse(tmp).root],
-    ['inside the repository', path.join(REPO, 'planner', 'data')],
+    ['inside the repository', path.join(REPO, 'viewer', 'data')],
     ['missing folder', missing],
     ['.plans is a file', withFile],
   ];

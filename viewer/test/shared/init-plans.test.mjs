@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { initPlans } from '../../logic/skill-support/init-plans.mjs';
+import { initPlans } from '../../shared/skill-support/init-plans.mjs';
 
 // "A skill asks before creating .plans": the init step creates `.plans` in the current folder and nothing else.
 const SKILLS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'toolkit', 'skills');

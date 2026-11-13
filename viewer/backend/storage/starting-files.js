@@ -3,11 +3,11 @@
 // module, so a column change shows up here with no second edit. Pure: no file access; the writer is
 // storage/backlog-files.cjs, which places each file by its kind.
 
-import { toCsv } from './csv.js';
-import { COLUMNS, BENCHED_COLUMN } from './model.js';
-import { REVIEW_COLUMNS } from '../review/review.js';
-import { COLUMNS as LEXICON_COLUMNS } from '../lexicon/lexicon.js';
-import { COLUMNS as SUGGESTION_COLUMNS } from '../lexicon/lexicon-suggestions.js';
+import { toCsv } from '../../shared/backlog/csv.js';
+import { COLUMNS, BENCHED_COLUMN } from '../../shared/backlog/model.js';
+import { REVIEW_COLUMNS } from '../../shared/review/review.js';
+import { COLUMNS as LEXICON_COLUMNS } from '../../shared/lexicon/lexicon.js';
+import { COLUMNS as SUGGESTION_COLUMNS } from '../../shared/lexicon/lexicon-suggestions.js';
 
 const BOM = '﻿';
 

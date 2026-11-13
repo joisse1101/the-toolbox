@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { emptyCriterion, criteriaCellText } from '../../../../logic/backlog/model.js';
-import { criterionNumberOf } from '../../../../logic/review/review.js';
+import { emptyCriterion, criteriaCellText } from '../../../../shared/backlog/model.js';
+import { criterionNumberOf } from '../../../../shared/review/review.js';
 import { Label, CellWarning } from './FormParts.jsx';
 import { needs, invalid } from './fieldCues.js';
 

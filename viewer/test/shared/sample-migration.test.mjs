@@ -6,8 +6,8 @@ import { createRequire } from 'node:module';
 import { tempData, SAMPLE, PLAN_FIXTURES } from '../helpers/backlog-tree.mjs';
 
 const require = createRequire(import.meta.url);
-const { migrateOlderLayout } = require('../../logic/storage/project-folders.cjs');
-const { listBacklogs, detectOlderLayout } = require('../../logic/storage/backlog-paths.cjs');
+const { migrateOlderLayout } = require('../../backend/storage/project-folders.cjs');
+const { listBacklogs, detectOlderLayout } = require('../../shared/storage/backlog-paths.cjs');
 
 // The older layout built in a temp folder from the committed sample: one file per backlog in each kind's folder.
 function olderLayoutFromSample() {

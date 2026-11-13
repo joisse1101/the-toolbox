@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { storyLabel } from '../../../../logic/backlog/model.js';
-import { dependencyChoices, dependentsOf } from '../../../../logic/backlog/ids.js';
+import { storyLabel } from '../../../../shared/backlog/model.js';
+import { dependencyChoices, dependentsOf } from '../../../../shared/backlog/ids.js';
 
 // "Depends on" (IDs, with a picker) and "Required by".
 export default function DependenciesSection({ story: s, stories, frozen, edit, list, onOpen }) {

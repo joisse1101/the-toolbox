@@ -1,4 +1,4 @@
-import { storyCellText } from '../../../../logic/backlog/model.js';
+import { storyCellText } from '../../../../shared/backlog/model.js';
 import { Grid } from './Layout.jsx';
 import { Label, CellWarning } from './FormParts.jsx';
 import { needs, invalid } from './fieldCues.js';

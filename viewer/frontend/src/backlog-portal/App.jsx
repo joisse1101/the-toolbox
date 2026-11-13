@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { backlogProblems, gatherFeatures } from '../../../logic/backlog/ids.js';
-import { groupByEpic } from '../../../logic/backlog/model.js';
+import { backlogProblems, gatherFeatures } from '../../../shared/backlog/ids.js';
+import { groupByEpic } from '../../../shared/backlog/model.js';
 import { useBacklog } from './hooks/useBacklog.js';
 import { useConfirm } from './hooks/useConfirm.js';
 import { useReviewFlow } from './hooks/useReviewFlow.js';
@@ -18,7 +18,7 @@ import StoriesTab from './components/StoriesTab.jsx';
 import GraphTab from './components/GraphTab.jsx';
 import ReviewTab from './components/ReviewTab.jsx';
 import ProposedTab from './components/ProposedTab.jsx';
-import { openRows } from '../../../logic/lexicon/lexicon-suggestions.js';
+import { openRows } from '../../../shared/lexicon/lexicon-suggestions.js';
 import LexiconTab from './components/LexiconTab.jsx';
 import SettingsTab from './components/SettingsTab.jsx';
 import { useSettings } from './hooks/useSettings.js';

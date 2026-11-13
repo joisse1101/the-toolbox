@@ -6,7 +6,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const bi = require('../../logic/storage/backlog-initials.cjs');
+const bi = require('../../shared/storage/backlog-initials.cjs');
 
 const sib = (name, initials, frozenCodes = []) => ({ name, initials, frozenCodes });
 

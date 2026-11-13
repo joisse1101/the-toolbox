@@ -5,8 +5,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { tempConfig } from '../helpers/temp-config.mjs';
-import { startingFiles } from '../../logic/backlog/starting-files.js';
-import { backlogFile } from '../../logic/storage/backlog-paths.cjs';
+import { startingFiles } from '../../backend/storage/starting-files.js';
+import { backlogFile } from '../../shared/storage/backlog-paths.cjs';
 
 // The New button's create route. Mock data only: the committed sample data copied to a temp folder under .scratch/.
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -14,8 +14,8 @@ const scratch = path.resolve(here, '..', '..', '..', '.scratch');
 fs.mkdirSync(scratch, { recursive: true });
 const root = fs.mkdtempSync(path.join(scratch, 'server-create-backlog-'));
 fs.cpSync(path.join(here, '..', 'sample-data'), root, { recursive: true });
-process.env.PLANNER_CONFIG = tempConfig(root);
-const { server } = createRequire(import.meta.url)('../../portal/server/server.cjs');
+process.env.VIEWER_CONFIG = tempConfig(root);
+const { server } = createRequire(import.meta.url)('../../backend/server.cjs');
 
 const HEADERS = { 'X-Requested-With': 'the-toolbox', 'Content-Type': 'application/json' };
 let origin;

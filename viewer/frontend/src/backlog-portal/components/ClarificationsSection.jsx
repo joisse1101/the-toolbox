@@ -1,4 +1,4 @@
-import { openCount, emptyClarification } from '../../../../logic/backlog/story-text.js';
+import { openCount, emptyClarification } from '../../../../shared/backlog/story-text.js';
 import { CellWarning } from './FormParts.jsx';
 
 const CLARIFICATIONS_WARNING = 'The Clarifications cell does not follow "Q1: …" / "A1: …", so it is kept as it is';

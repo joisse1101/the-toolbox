@@ -1,4 +1,4 @@
-import { PRIORITIES } from '../../../../logic/backlog/model.js';
+import { PRIORITIES } from '../../../../shared/backlog/model.js';
 
 export const KEEP = 'keep'; // bulk Priority "No change" ('' is "None", which clears)
 

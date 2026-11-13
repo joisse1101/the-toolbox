@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
-import { reviewOverview, unitStoryCode } from '../../../../logic/review/review.js';
+import { reviewOverview, unitStoryCode } from '../../../../shared/review/review.js';
 import { Suggestion } from './Suggestions.jsx';
-import { storyLabel } from '../../../../logic/backlog/model.js';
+import { storyLabel } from '../../../../shared/backlog/model.js';
 import TabHeader from './TabHeader.jsx';
 import EmptyState from './EmptyState.jsx';
 import { useConfirm } from '../hooks/useConfirm.js';

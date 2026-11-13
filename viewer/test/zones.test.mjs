@@ -28,8 +28,9 @@ const starts = (file, folder) => file === folder || file.startsWith(`${folder}/`
 
 // Folders a file may import from, by the zone the file is in; null for files no rule covers.
 function allowed(file) {
-  if (starts(file, 'planner/logic')) return ['planner/logic'];
-  if (starts(file, 'planner/portal')) return ['planner/portal', 'planner/logic', 'planner/guidelines'];
+  if (starts(file, 'viewer/shared')) return ['viewer/shared'];
+  if (starts(file, 'viewer/backend')) return ['viewer/backend', 'viewer/shared'];
+  if (starts(file, 'viewer/frontend')) return ['viewer/frontend', 'viewer/shared'];
   // The story skills are toolkit items; the toolkit may import nothing outside itself.
   if (starts(file, 'toolkit')) return ['toolkit'];
   return null;
@@ -40,8 +41,8 @@ function imports(file) {
   return [...text.matchAll(IMPORT)].map((m) => rel(path.resolve(path.dirname(path.join(REPO, file)), m[1])));
 }
 
-const files = [...sources(path.join(REPO, 'planner')), ...sources(path.join(REPO, 'toolkit'))]
-  .map(rel).filter((f) => allowed(f) && !starts(f, 'planner/test'));
+const files = [...sources(path.join(REPO, 'viewer')), ...sources(path.join(REPO, 'toolkit'))]
+  .map(rel).filter((f) => allowed(f) && !starts(f, 'viewer/test'));
 
 test('every source file imports only from the zones its own zone may depend on', () => {
   assert.ok(files.length > 50, `found ${files.length} source files; the scan is looking in the wrong place`);
@@ -54,19 +55,25 @@ test('every source file imports only from the zones its own zone may depend on',
   assert.deepEqual(breaches, []);
 });
 
-test('the zone rules cover the layout: logic, portal, skills and toolkit all have source files', () => {
-  for (const folder of ['planner/logic', 'planner/portal', 'planner/logic/skill-support', 'toolkit/skills/jois-story-review', 'toolkit/skills/jois-story-plan']) {
+test('the zone rules cover the layout: shared, backend, frontend, skills and toolkit all have source files', () => {
+  for (const folder of ['viewer/shared', 'viewer/backend', 'viewer/frontend', 'viewer/shared/skill-support', 'toolkit/skills/jois-story-review', 'toolkit/skills/jois-story-plan']) {
     assert.ok(files.some((f) => starts(f, folder)), `no source files under ${folder}`);
   }
 });
 
 test('the rules reject what they are for', () => {
-  assert.equal(allowed('planner/logic/backlog/ids.js').some((f) => starts('planner/portal/web/lib/word-diff.js', f)), false);
-  assert.equal(allowed('toolkit/skills/jois-story-plan/diagrams/checks.js').some((f) => starts('planner/logic/backlog/model.js', f)), false);
-  assert.equal(allowed('planner/portal/web/main.jsx').some((f) => starts('toolkit/skills/jois-story-review/write-review.mjs', f)), false);
-  assert.equal(allowed('toolkit/skills/jois-story-review/read-backlog.mjs').some((f) => starts('planner/logic/backlog/model.js', f)), false);
-  assert.equal(allowed('toolkit/skills/jois-story-review/lib/backlog/model.js').some((f) => starts('planner/logic/backlog/ids.js', f)), false);
-  assert.equal(allowed('toolkit/skills/jois-story-review/write-review.mjs').some((f) => starts('planner/guidelines/product-backlog.md', f)), false);
-  assert.equal(allowed('toolkit/skills/jois-story-review/write-review.mjs').some((f) => starts('planner/portal/server/flatten.js', f)), false);
-  assert.equal(allowed('toolkit/skills/jois-story-propose/write-proposal.mjs').some((f) => starts('planner/logic/backlog/model.js', f)), false);
+  const imports = (from, to) => allowed(from).some((f) => starts(to, f));
+  assert.equal(imports('viewer/shared/backlog/ids.js', 'viewer/backend/storage/paths.cjs'), false);
+  assert.equal(imports('viewer/shared/backlog/ids.js', 'viewer/frontend/src/lib/word-diff.js'), false);
+  assert.equal(imports('viewer/backend/server.cjs', 'viewer/frontend/src/lib/word-diff.js'), false);
+  assert.equal(imports('viewer/frontend/src/main.jsx', 'viewer/backend/storage/paths.cjs'), false);
+  assert.equal(imports('viewer/backend/server.cjs', 'viewer/shared/backlog/model.js'), true);
+  assert.equal(imports('viewer/frontend/src/backlog-portal/App.jsx', 'viewer/shared/guidelines/product-backlog.md'), true);
+  assert.equal(imports('toolkit/skills/jois-story-plan/diagrams/checks.js', 'viewer/shared/backlog/model.js'), false);
+  assert.equal(imports('toolkit/skills/jois-story-review/read-backlog.mjs', 'viewer/shared/backlog/model.js'), false);
+  assert.equal(imports('toolkit/skills/jois-story-review/lib/backlog/model.js', 'viewer/shared/backlog/ids.js'), false);
+  assert.equal(imports('toolkit/skills/jois-story-review/write-review.mjs', 'viewer/shared/guidelines/product-backlog.md'), false);
+  assert.equal(imports('toolkit/skills/jois-story-review/write-review.mjs', 'viewer/backend/server.cjs'), false);
+  assert.equal(imports('toolkit/skills/jois-story-propose/write-proposal.mjs', 'viewer/shared/backlog/model.js'), false);
+  assert.equal(imports('viewer/frontend/src/main.jsx', 'toolkit/skills/jois-story-review/write-review.mjs'), false);
 });

@@ -4,11 +4,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
-import { startingFiles } from '../../logic/backlog/starting-files.js';
+import { startingFiles } from '../../backend/storage/starting-files.js';
 
 const require = createRequire(import.meta.url);
-const { writeBacklogFiles } = require('../../logic/storage/backlog-files.cjs');
-const { backlogFile, listBacklogs, KINDS } = require('../../logic/storage/backlog-paths.cjs');
+const { writeBacklogFiles } = require('../../backend/storage/backlog-files.cjs');
+const { backlogFile, listBacklogs, KINDS } = require('../../shared/storage/backlog-paths.cjs');
 
 // Temp folders go under the project's .scratch/, never the system temp folder.
 const scratch = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '.scratch');

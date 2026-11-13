@@ -71,7 +71,7 @@ export default function AddProjectDialog({ projects }) {
 
       {!isLink && (
         <form className="dialog-body" onSubmit={submitNew}>
-          <p className="muted">Creates a folder with this name in planner/data, with a first backlog.</p>
+          <p className="muted">Creates a folder with this name in viewer/data, with a first backlog.</p>
           <label htmlFor="newProjectName">Project name</label>
           <input type="text" id="newProjectName" autoComplete="off" spellCheck={false} autoFocus value={dialog.name} aria-invalid={error ? 'true' : undefined} aria-describedby={error ? 'addProjectError' : undefined} onChange={(e) => actions.setName(e.target.value)} />
           {errorText}

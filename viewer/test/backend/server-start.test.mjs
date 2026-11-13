@@ -11,7 +11,7 @@ const freePort = () => new Promise((resolve) => {
   const s = net.createServer().listen(0, '127.0.0.1', () => { const { port } = s.address(); s.close(() => resolve(port)); });
 });
 
-const server = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'portal', 'server', 'server.cjs');
+const server = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'backend', 'server.cjs');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'server-start-test-'));
 
 async function run(configText) {
@@ -19,7 +19,7 @@ async function run(configText) {
   const config = path.join(tmp, `config-${Math.random().toString(36).slice(2)}.yaml`);
   fs.writeFileSync(config, configText);
   return spawnSync(process.execPath, [server], {
-    env: { ...process.env, PLANNER_CONFIG: config, PORT: port },
+    env: { ...process.env, VIEWER_CONFIG: config, PORT: port },
     encoding: 'utf8',
     timeout: 20000,
   });
@@ -44,7 +44,7 @@ test('a valid config prints the project name and the data folder', async () => {
   fs.mkdirSync(data);
   const config = path.join(tmp, 'good.yaml');
   fs.writeFileSync(config, `projectName: Gamma\ndataDir: ${JSON.stringify(data)}\n`);
-  const child = spawn(process.execPath, [server], { env: { ...process.env, PLANNER_CONFIG: config, PORT: String(await freePort()) }, stdio: ['ignore', 'pipe', 'pipe'] });
+  const child = spawn(process.execPath, [server], { env: { ...process.env, VIEWER_CONFIG: config, PORT: String(await freePort()) }, stdio: ['ignore', 'pipe', 'pipe'] });
   let out = '';
   try {
     await new Promise((resolve, reject) => {

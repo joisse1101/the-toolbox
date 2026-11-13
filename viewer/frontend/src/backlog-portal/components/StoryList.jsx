@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { groupByEpic, storyIssues, storyLabel } from '../../../../logic/backlog/model.js';
-import { openCount } from '../../../../logic/backlog/story-text.js';
+import { groupByEpic, storyIssues, storyLabel } from '../../../../shared/backlog/model.js';
+import { openCount } from '../../../../shared/backlog/story-text.js';
 import { anyOpen, epicKey, featureKey } from '../../lib/collapse.js';
 import { issueClass, rowTooltip } from './issues.js';
 import StateMark from './StateMark.jsx';

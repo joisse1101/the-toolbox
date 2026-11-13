@@ -1,17 +1,17 @@
-// Writes the planner logic and guidelines that each story skill needs into the skill's own folder, so an installed
-// skill runs with nothing from planner/. The planner stays the source; the copies are generated and never edited.
+// Writes the shared logic and guidelines that each story skill needs into the skill's own folder, so an installed
+// skill runs with nothing from viewer/. The viewer's shared/ folder stays the source; the copies are generated and never edited.
 //
-//   node planner/scripts/sync-skill-logic.mjs [--skills-dir <folder>] [--out <folder>]
+//   node viewer/scripts/sync-skill-logic.mjs [--skills-dir <folder>] [--out <folder>]
 //
 // --skills-dir  where the skill folders are (default: <repo>/toolkit/skills). A skill in SKILLS whose folder is not
 //               there yet is skipped, so the script works before and after each skill moves into the toolkit.
 // --out         where to write (default: the same folder as --skills-dir). The sync test points it at a temp folder.
 //
 // Per skill it writes
-//   lib/<path under planner/logic>   the files in SKILLS[skill].logic and every file they import at the top level of
+//   lib/<path under viewer/shared>   the files in SKILLS[skill].logic and every file they import at the top level of
 //                                    the file (an import inside a function is lazy and is not followed)
 //   references/<file>                the guidelines in SKILLS[skill].guidelines
-// The folders under lib/ mirror planner/logic/, so a relative import between two copied files is unchanged; imports
+// The folders under lib/ mirror viewer/shared/, so a relative import between two copied files is unchanged; imports
 // are still rewritten from the new location (see rewriteImports) so a later change of layout stays correct.
 // Each copy starts with a line naming its source and saying not to edit it.
 
@@ -19,10 +19,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const PLANNER = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const REPO = path.dirname(PLANNER);
-const LOGIC = path.join(PLANNER, 'logic');
-const GUIDELINES = path.join(PLANNER, 'guidelines');
+const VIEWER = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const REPO = path.dirname(VIEWER);
+const LOGIC = path.join(VIEWER, 'shared');
+const GUIDELINES = path.join(LOGIC, 'guidelines');
 
 export const DEFAULT_SKILLS_DIR = path.join(REPO, 'toolkit', 'skills');
 
@@ -32,7 +32,7 @@ const SUPPORT = ['skill-support/paths.cjs', 'skill-support/write-atomic.mjs', 's
 const INIT = ['skill-support/init-plans.mjs', 'skill-support/plans-files.mjs'];
 const STORY_GUIDELINES = ['product-backlog.md', 'sprint-points-guideline.md', 'plans-files.md'];
 
-// What each skill's scripts import (paths under planner/logic/; the files those import come along). Diagram logic is
+// What each skill's scripts import (paths under viewer/shared/; the files those import come along). Diagram logic is
 // not here: it belongs to jois-story-plan and is not copied.
 export const SKILLS = {
   'jois-story-review': {
@@ -82,14 +82,14 @@ function topLevelImports(file) {
   return [...text.matchAll(TOP_LEVEL_IMPORT)].map((m) => path.resolve(path.dirname(file), m[1]));
 }
 
-// The files of `roots` (absolute paths) and everything they import at the top level, all under planner/logic/.
+// The files of `roots` (absolute paths) and everything they import at the top level, all under viewer/shared/.
 function closure(roots) {
   const seen = new Set();
   const queue = [...roots];
   while (queue.length) {
     const file = queue.pop();
     if (seen.has(file)) continue;
-    if (!file.startsWith(LOGIC + path.sep)) throw new Error(`${posix(path.relative(REPO, file))} is outside planner/logic/ and cannot be copied into a skill`);
+    if (!file.startsWith(LOGIC + path.sep)) throw new Error(`${posix(path.relative(REPO, file))} is outside viewer/shared/ and cannot be copied into a skill`);
     if (!fs.existsSync(file)) throw new Error(`${posix(path.relative(REPO, file))} does not exist`);
     seen.add(file);
     queue.push(...topLevelImports(file));

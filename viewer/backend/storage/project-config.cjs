@@ -1,26 +1,26 @@
 'use strict';
 // The project config: a YAML file with `projectName` and one folder key, `codeBase` or `dataDir`. Load, validate and
-// default rules only; pure Node. The file is planner/planner.config.yaml unless PLANNER_CONFIG names another one. A
+// default rules only; pure Node. The file is viewer/viewer.config.yaml unless VIEWER_CONFIG names another one. A
 // relative dataDir or codeBase is resolved against the folder that holds the config file. A codeBase's data folder is
 // `<codeBase>/.plans`.
 
 const fs = require('fs');
 const path = require('path');
 const YAML = require('yaml');
-const { PLANS_DIR } = require('./backlog-paths.cjs');
+const { PLANS_DIR } = require('../../shared/storage/backlog-paths.cjs');
 const {
   confineDir, confineCodeBase, checkFolder, checkCodeBase, initFolders, initCodeBase, copyData, copyToCodeBase, planCopy, planCopyToCodeBase, migrateOlderLayout,
 } = require('./project-folders.cjs');
 
 const ROOT = path.resolve(__dirname, '..', '..', '..');
-const DEFAULT_CONFIG_PATH = path.join(ROOT, 'planner', 'planner.config.yaml');
-const DEFAULT_DATA_DIR = path.join(ROOT, 'planner', 'data');
+const DEFAULT_CONFIG_PATH = path.join(ROOT, 'viewer', 'viewer.config.yaml');
+const DEFAULT_DATA_DIR = path.join(ROOT, 'viewer', 'data');
 const KEYS = ['projectName', 'codeBase', 'dataDir', 'projects'];
 const ENTRY_KEYS = ['name', 'codeBase', 'dataDir'];
 
-// The config file to read: PLANNER_CONFIG (relative to the working folder) or the default place.
+// The config file to read: VIEWER_CONFIG (relative to the working folder) or the default place.
 function configPath(env = process.env) {
-  return env.PLANNER_CONFIG ? path.resolve(env.PLANNER_CONFIG) : DEFAULT_CONFIG_PATH;
+  return env.VIEWER_CONFIG ? path.resolve(env.VIEWER_CONFIG) : DEFAULT_CONFIG_PATH;
 }
 
 // Checks a parsed config object; throws an Error naming the bad key. `file` is only for the message.

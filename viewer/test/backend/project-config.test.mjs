@@ -5,14 +5,14 @@ import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 
-const { PLANS_DIR } = createRequire(import.meta.url)('../../logic/storage/backlog-paths.cjs');
-const { loadConfig, saveConfig, configPath, DEFAULT_DATA_DIR } = createRequire(import.meta.url)('../../logic/storage/project-config.cjs');
+const { PLANS_DIR } = createRequire(import.meta.url)('../../shared/storage/backlog-paths.cjs');
+const { loadConfig, saveConfig, configPath, DEFAULT_CONFIG_PATH, DEFAULT_DATA_DIR } = createRequire(import.meta.url)('../../backend/storage/project-config.cjs');
 
 function tmp() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'project-config-'));
 }
 function write(dir, text) {
-  const file = path.join(dir, 'planner.config.yaml');
+  const file = path.join(dir, 'viewer.config.yaml');
   fs.writeFileSync(file, text);
   return file;
 }
@@ -31,19 +31,25 @@ test('relative data directory is resolved against the config file folder', () =>
   assert.equal(cfg.dataDir, path.join(dir, 'sub', 'data'));
 });
 
-test('PLANNER_CONFIG names the file that is read', () => {
+test('VIEWER_CONFIG names the file that is read', () => {
   const dir = tmp();
   const file = write(dir, 'projectName: Other\n');
-  assert.equal(configPath({ PLANNER_CONFIG: file }), file);
-  assert.equal(loadConfig({ file: configPath({ PLANNER_CONFIG: file }) }).projectName, 'Other');
-  assert.match(configPath({}), /planner[\\/]planner\.config\.yaml$/);
+  assert.equal(configPath({ VIEWER_CONFIG: file }), file);
+  assert.equal(loadConfig({ file: configPath({ VIEWER_CONFIG: file }) }).projectName, 'Other');
+  assert.match(configPath({}), /viewer[\\/]viewer\.config\.yaml$/);
+});
+
+test('the old variable is not read: PLANNER_CONFIG alone leaves the default file in place', () => {
+  const file = write(tmp(), 'projectName: Old\n');
+  assert.equal(configPath({ PLANNER_CONFIG: file }), DEFAULT_CONFIG_PATH);
+  assert.notEqual(configPath({ PLANNER_CONFIG: file }), file);
 });
 
 test('no config file: defaults, and loading does not fail', () => {
   const cfg = loadConfig({ file: path.join(tmp(), 'missing.yaml') });
   assert.equal(cfg.dataDir, DEFAULT_DATA_DIR);
   assert.equal(cfg.projectName, '');
-  assert.match(cfg.dataDir, /planner[\\/]data$/);
+  assert.match(cfg.dataDir, /viewer[\\/]data$/);
 });
 
 test('key missing: projectName without dataDir uses the default data directory', () => {
@@ -141,7 +147,7 @@ test('saveConfig of a dataDir removes codeBase; bad code bases are refused and w
 });
 
 test('the example config file parses with loadConfig', () => {
-  const example = path.resolve(import.meta.dirname, '..', '..', 'planner.config.example.yaml');
+  const example = path.resolve(import.meta.dirname, '..', '..', 'viewer.config.example.yaml');
   const cfg = loadConfig({ file: example });
   assert.equal(cfg.projectName, 'My project');
   assert.equal(cfg.dataDir, path.join(path.dirname(example), 'data'));

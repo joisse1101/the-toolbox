@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { createFileStore } from '../../shared/files.js';
-import { loadBacklog, newStory, displayOrder, applyBulk } from '../../../../logic/backlog/model.js';
-import { commitEpic, commitEpics, moveStory, moveGroup, gatherFeatures, recodedBetween, removeStory, removeStories, wouldCycle, renumber } from '../../../../logic/backlog/ids.js';
-import { applySuggestions, acceptAll } from '../../../../logic/review/review.js';
+import { loadBacklog, newStory, displayOrder, applyBulk } from '../../../../shared/backlog/model.js';
+import { commitEpic, commitEpics, moveStory, moveGroup, gatherFeatures, recodedBetween, removeStory, removeStories, wouldCycle, renumber } from '../../../../shared/backlog/ids.js';
+import { applySuggestions, acceptAll } from '../../../../shared/review/review.js';
 import { useAutosave } from './useAutosave.js';
 import { useConfirm } from './useConfirm.js';
 
@@ -123,7 +123,7 @@ export function reducer(state, action) {
       const result = applySuggestions(state.backlog.stories, action.rows, state.backlog.headers, state.initials);
       return result.error ? state : withStories(state, result.stories);
     }
-    // Accept all: the stories acceptAll (planner/logic/review/review.js) computed for a whole run, stored as one edit.
+    // Accept all: the stories acceptAll (viewer/shared/review/review.js) computed for a whole run, stored as one edit.
     case 'acceptSuggestions':
       return withStories(state, action.stories);
     // The whole story list was recomputed elsewhere (accepting proposed stories, see proposals.js): store it and save.
@@ -390,7 +390,7 @@ export function useBacklog() {
         return { ok: true };
       },
 
-      // Applies the eligible units in order as one edit. Returns { applied, skipped } (see acceptAll in planner/logic/review/review.js).
+      // Applies the eligible units in order as one edit. Returns { applied, skipped } (see acceptAll in viewer/shared/review/review.js).
       acceptAll(units) {
         const { backlog } = stateRef.current;
         const result = acceptAll(backlog.stories, units, backlog.headers, stateRef.current.initials);

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { storyIssues } from '../../../../logic/backlog/model.js';
+import { storyIssues } from '../../../../shared/backlog/model.js';
 import { issueClass } from './issues.js';
 import SuggestionList from './Suggestions.jsx';
 import { onNavKeyDown } from './storyFormNav.js';

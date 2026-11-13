@@ -1,4 +1,4 @@
-import { storyIssues, storyLabel } from '../../../../logic/backlog/model.js';
+import { storyIssues, storyLabel } from '../../../../shared/backlog/model.js';
 import { issueClass, rowTooltip } from './issues.js';
 import StateMark from './StateMark.jsx';
 import ResizeHandle from './ResizeHandle.jsx';

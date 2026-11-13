@@ -1,4 +1,4 @@
-import { storyCellText } from '../../../../logic/backlog/model.js';
+import { storyCellText } from '../../../../shared/backlog/model.js';
 
 // Red wins over yellow.
 export function issueClass(errors, warnings) {

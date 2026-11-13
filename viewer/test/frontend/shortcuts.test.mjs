@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ignoresKey, isTextEntry } from '../../portal/web/lib/shortcuts.js';
+import { ignoresKey, isTextEntry } from '../../frontend/src/lib/shortcuts.js';
 
 const key = (target, mods = {}) => ({ target, ctrlKey: false, altKey: false, metaKey: false, ...mods });
 

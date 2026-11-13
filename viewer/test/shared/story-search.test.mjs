@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { loadBacklog } from '../../logic/backlog/model.js';
-import { matchesQuery, findStories, searchReply, SEARCH_CAP } from '../../logic/backlog/story-search.js';
+import { loadBacklog } from '../../shared/backlog/model.js';
+import { matchesQuery, findStories, searchReply, SEARCH_CAP } from '../../shared/backlog/story-search.js';
 
 const CSV = [
   'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes,Legacy Ref',

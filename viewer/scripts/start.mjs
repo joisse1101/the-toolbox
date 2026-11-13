@@ -1,22 +1,22 @@
 // One command to run the app:  npm start [-- --dev] [-- --build] [-- --no-open]
-//   (default)  builds planner/portal/dist when it is missing or older than the sources, then runs the server and opens the browser
+//   (default)  builds viewer/frontend/dist when it is missing or older than the sources, then runs the server and opens the browser
 //   --dev      runs the server plus the Vite dev server (hot reload) and opens the Vite page
 //   --build    forces a rebuild first
 //   --no-open  does not open the browser
-// PORT is passed through to the server; the data folder comes from planner/planner.config.yaml (see wiki/planner/architecture/Data-Folder.md). Ctrl+C stops everything.
+// PORT is passed through to the server; the data folder comes from viewer/viewer.config.yaml (see wiki/viewer/architecture/Data-Folder.md). Ctrl+C stops everything.
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = new Set(process.argv.slice(2));
 const dev = args.has('--dev');
 const port = Number(process.env.PORT) || 3000;
 const VITE_PORT = 5173;
-const viteBin = path.join(ROOT, 'planner', 'node_modules', 'vite', 'bin', 'vite.js');
-const viteConfig = path.join(ROOT, 'planner', 'portal', 'web', 'vite.config.mjs');
+const viteBin = path.join(ROOT, 'node_modules', 'vite', 'bin', 'vite.js');
+const viteConfig = path.join(ROOT, 'frontend', 'vite.config.mjs');
 
 if (!fs.existsSync(viteBin)) {
   console.error('Dependencies are not installed. Run `npm install` first.');
@@ -26,6 +26,7 @@ if (!fs.existsSync(viteBin)) {
 function newestMtime(dir) {
   let newest = 0;
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name === 'dist') continue; // the build output is not a source
     const full = path.join(dir, entry.name);
     newest = Math.max(newest, entry.isDirectory() ? newestMtime(full) : fs.statSync(full).mtimeMs);
   }
@@ -33,10 +34,10 @@ function newestMtime(dir) {
 }
 
 function needsBuild() {
-  const built = path.join(ROOT, 'planner', 'portal', 'dist', 'index.html');
+  const built = path.join(ROOT, 'frontend', 'dist', 'index.html');
   if (!fs.existsSync(built)) return true;
   const builtAt = fs.statSync(built).mtimeMs;
-  return ['planner/portal/web', 'planner/logic', 'planner/guidelines'].some((d) => newestMtime(path.join(ROOT, d)) > builtAt);
+  return ['frontend', 'shared'].some((d) => newestMtime(path.join(ROOT, d)) > builtAt);
 }
 
 if (!dev && (args.has('--build') || needsBuild())) {
@@ -65,7 +66,7 @@ function stop(code = 0) {
 process.on('SIGINT', () => stop());
 process.on('SIGTERM', () => stop());
 
-run('The server', path.join(ROOT, 'planner', 'portal', 'server', 'server.cjs'), []);
+run('The server', path.join(ROOT, 'backend', 'server.cjs'), []);
 if (dev) run('The Vite dev server', viteBin, ['--config', viteConfig, '--port', String(VITE_PORT), '--strictPort']);
 
 if (!args.has('--no-open')) {

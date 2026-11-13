@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { newStory, loadBacklog, serializeBacklog, COLUMNS } from '../../logic/backlog/model.js';
-import { renumber } from '../../logic/backlog/ids.js';
+import { newStory, loadBacklog, serializeBacklog, COLUMNS } from '../../shared/backlog/model.js';
+import { renumber } from '../../shared/backlog/ids.js';
 import {
   isPlaceholder, nextPlaceholder, removeProposed, reorderProposed, moveProposed, acceptProposed, moveToProposed,
-} from '../../logic/backlog/proposals.js';
+} from '../../shared/backlog/proposals.js';
 
 let n = 1000;
 const st = (epic, extra = {}) => Object.assign(newStory(COLUMNS), { id: ++n, epic, codedEpic: epic, ...extra });

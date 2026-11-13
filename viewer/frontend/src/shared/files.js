@@ -88,7 +88,7 @@ export function copyToCodeBase(codeBase) {
 // `activeProject` the index of the active one. Choosing one is saveProject({ codeBase }) or saveProject({ dataDir }).
 
 // Adds a project and makes it active. Pass { codeBase, name?, init? } to link a code base or { newName } to create
-// planner/data/<newName>. Resolves to the settings plus { added, switched, init? }; for a code base with no planner
+// viewer/data/<newName>. Resolves to the settings plus { added, switched, init? }; for a code base with no planner
 // files it changes nothing and resolves with `needsInit: true` until it is called again with `init: true`.
 // A refused name or folder throws (code 'refused' or 'exists'; 'busy' means try again).
 export function addProject(body) {

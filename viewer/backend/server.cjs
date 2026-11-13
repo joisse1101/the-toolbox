@@ -6,14 +6,14 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
-const { HttpError, validateBacklogName } = require('../../logic/storage/file-name.cjs');
-const { writeBacklogFiles } = require('../../logic/storage/backlog-files.cjs');
-const { validateInitials, readInitials, writeInitials, findConflict, defaultInitials } = require('../../logic/storage/backlog-initials.cjs');
-const { PLANS_DIR, KINDS, BACKLOG_FILE, backlogDir, backlogFile, listBacklogs, detectOlderLayout } =require('../../logic/storage/backlog-paths.cjs');
+const { HttpError, validateBacklogName } = require('../shared/storage/file-name.cjs');
+const { writeBacklogFiles } = require('./storage/backlog-files.cjs');
+const { validateInitials, readInitials, writeInitials, findConflict, defaultInitials } = require('../shared/storage/backlog-initials.cjs');
+const { PLANS_DIR, KINDS, BACKLOG_FILE, backlogDir, backlogFile, listBacklogs, detectOlderLayout } =require('../shared/storage/backlog-paths.cjs');
 // The config is read when paths.cjs loads. Run as the server, a bad config ends the process with the message that names the key.
 let paths;
 try {
-  paths = require('../../logic/storage/paths.cjs');
+  paths = require('./storage/paths.cjs');
 } catch (err) {
   if (require.main !== module) throw err;
   console.error(`Cannot start: ${err.message}`);
@@ -22,11 +22,11 @@ try {
 const { getDataDir, setDataDir, legacyDataHint } = paths;
 const {
   ROOT, loadConfig, saveConfig, configPath, confineDir, confineCodeBase, checkFolder, checkCodeBase, initFolders, initCodeBase, copyData, copyToCodeBase, planCopy, migrateOlderLayout,
-} = require('../../logic/storage/project-config.cjs');
+} = require('./storage/project-config.cjs');
 
 const HOST = '127.0.0.1';
 const PORT = Number(process.env.PORT) || 3000;
-const DIST_DIR = path.join(__dirname, '..', 'dist'); // built by `npm run build`
+const DIST_DIR = path.join(__dirname, '..', 'frontend', 'dist'); // built by `npm run build`
 const MAX_BODY = 10 * 1024 * 1024;
 
 // Allow-list of the kinds of file the API reaches: `backlog`, `review`, `proposals`, `lexicon` and `lexicon-suggestions`.
@@ -119,7 +119,7 @@ async function writeNew(file, content) {
 // The other backlogs of the data folder as { name, initials, frozenCodes } for the initials checks. The model is an ES
 // module, so it loads with a dynamic import. A sibling whose file cannot be read counts as holding no frozen IDs.
 async function siblingsOf(dataDir, name) {
-  const { loadBacklog } = await import('../../logic/backlog/model.js');
+  const { loadBacklog } = await import('../shared/backlog/model.js');
   return listBacklogs(dataDir)
     .filter((other) => other !== name)
     .map((other) => {
@@ -145,7 +145,7 @@ async function openInitials(dataDir, name) {
 // A taken name gets the next free number. Returns the name used. The starting files are an ES module, so they load with a
 // dynamic import. When backlog.json cannot be written the folder is removed, so no partial backlog is left.
 async function createBacklog(dataDir, requested) {
-  const { startingFiles } = await import('../../logic/backlog/starting-files.js');
+  const { startingFiles } = await import('./storage/starting-files.js');
   const name = await writeBacklogFiles(dataDir, requested, startingFiles());
   try {
     writeInitials(dataDir, name, defaultInitials(await siblingsOf(dataDir, name)));
@@ -291,8 +291,8 @@ function sameName(a, b) {
   return a.toLowerCase() === b.toLowerCase();
 }
 
-// The folder that holds the folders of new projects: planner/data. Tests point it at a temp folder (setNewProjectParent).
-let newProjectParent = path.join(ROOT, 'planner', 'data');
+// The folder that holds the folders of new projects: viewer/data. Tests point it at a temp folder (setNewProjectParent).
+let newProjectParent = path.join(ROOT, 'viewer', 'data');
 function setNewProjectParent(dir) {
   newProjectParent = dir;
 }
@@ -320,7 +320,7 @@ function saveAndSwitch(changes) {
   return saved;
 }
 
-// POST /api/project/add: { codeBase, name?, init? } links a code base, { newName } creates planner/data/<newName>.
+// POST /api/project/add: { codeBase, name?, init? } links a code base, { newName } creates viewer/data/<newName>.
 // A project already in the list is switched to, not added twice. Replies the settings plus `added` and `switched`.
 async function addProject(body) {
   refuseWhenBusy();

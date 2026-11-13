@@ -1,19 +1,19 @@
-# Copy this file to planner.config.yaml (git-ignored) and edit it. Every key is optional.
+# Copy this file to viewer.config.yaml (git-ignored) and edit it. Every key is optional.
 
-# Name of the project, shown in the portal header. Default: empty.
+# Name of the project, shown in the viewer header. Default: empty.
 projectName: My project
 
-# Where the planner data lives. Set at most one of codeBase and dataDir; setting both is an error.
+# Where the viewer's data lives. Set at most one of codeBase and dataDir; setting both is an error.
 
 # Folder of the code base this project plans. Absolute, or relative to this file's folder.
 # The data lives in its .plans folder (<codeBase>/.plans). Skills started in the code base folder find it there.
 # codeBase: C:\code\my-project
 
 # Folder holding the planner data directly. Absolute, or relative to this file's folder.
-# Default when neither key is set: planner/data
+# Default when neither key is set: viewer/data
 dataDir: ./data
 
-# Saved projects the portal can switch between. Optional; the portal writes it the first time you add a project.
+# Saved projects the viewer can switch between. Optional; the viewer writes it the first time you add a project.
 # The active project stays in codeBase or dataDir above (the skills read only those two keys); the list holds every
 # project you know. Each entry has exactly one of codeBase or dataDir (absolute, or relative to this file's folder)
 # and an optional name. Leave it out to use a single project.

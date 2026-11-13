@@ -8,7 +8,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
-const bp = require('../../logic/storage/backlog-paths.cjs');
+const bp = require('../../shared/storage/backlog-paths.cjs');
 
 // A new empty data folder (the tests use no other).
 export const tempData = (prefix = 'backlog-tree-') => fs.mkdtempSync(path.join(os.tmpdir(), prefix));

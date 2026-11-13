@@ -20,7 +20,7 @@ const writeStored = (name, value) => {
 };
 
 // The folded Epic and Feature groups of the story list for backlog `file`, kept in the browser under `planner.collapsed.<file>`
-// (see planner/portal/web/lib/collapse.js for what a key is). `groups` is `groupByEpic(stories)`; `ready` is true once a backlog is loaded, and only
+// (see viewer/frontend/src/lib/collapse.js for what a key is). `groups` is `groupByEpic(stories)`; `ready` is true once a backlog is loaded, and only
 // then are the keys of groups that have left the backlog forgotten. `toggleKey` folds one group, `toggleLevel` every group of a
 // level ('epic' or 'feature'), `reveal` opens one Feature and its Epic.
 export default function useCollapsed(file, groups, ready) {

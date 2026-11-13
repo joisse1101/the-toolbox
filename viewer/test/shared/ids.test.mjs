@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseCsv } from '../../logic/backlog/csv.js';
-import { loadBacklog, serializeBacklog, newStory, storyIssues, COLUMNS } from '../../logic/backlog/model.js';
+import { parseCsv } from '../../shared/backlog/csv.js';
+import { loadBacklog, serializeBacklog, newStory, storyIssues, COLUMNS } from '../../shared/backlog/model.js';
 import {
   epicPrefix, renumber, moveStory, moveGroup, gatherFeatures, recodedBetween, commitEpic, commitEpics, removeStory, removeStories, freezeStories, dependentsOf, wouldCycle, dependencyChoices, backlogProblems,
-} from '../../logic/backlog/ids.js';
+} from '../../shared/backlog/ids.js';
 
 const I = 'B1'; // the backlog initials of most tests
 let n = 0;

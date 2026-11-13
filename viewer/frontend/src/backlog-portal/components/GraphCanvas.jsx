@@ -1,5 +1,5 @@
 import EmptyState from './EmptyState.jsx';
-import { storyIssues, storyLabel as title } from '../../../../logic/backlog/model.js';
+import { storyIssues, storyLabel as title } from '../../../../shared/backlog/model.js';
 import { issueClass, rowTooltip } from './issues.js';
 import { stateWord } from './StateMark.jsx';
 import { NODE_W, NODE_H, BAND_PAD, MIN_LABEL_ZOOM, slot, edgeKey, clip, edgePath } from './graphGeometry.js';

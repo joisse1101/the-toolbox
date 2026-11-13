@@ -6,8 +6,8 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const bp = require('../../logic/storage/backlog-paths.cjs');
-const { validateBacklogName } =require('../../logic/storage/file-name.cjs');
+const bp = require('../../shared/storage/backlog-paths.cjs');
+const { validateBacklogName } =require('../../shared/storage/file-name.cjs');
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'backlog-paths-'));
 const D = path.join(os.tmpdir(), 'data');
@@ -68,7 +68,7 @@ test('a built path never leaves the data folder', () => {
 });
 
 test('validateName (the older file rule) is gone: the backlog name rule is the only one', () => {
-  assert.equal(require('../../logic/storage/file-name.cjs').validateName, undefined);
+  assert.equal(require('../../shared/storage/file-name.cjs').validateName, undefined);
 });
 
 test('listBacklogs lists subfolders holding user-stories.csv, sorted, and not logs or loose files', () => {

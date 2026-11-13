@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 
-const { loadConfig, saveConfig, DEFAULT_DATA_DIR } = createRequire(import.meta.url)('../../logic/storage/project-config.cjs');
+const { loadConfig, saveConfig, DEFAULT_DATA_DIR } = createRequire(import.meta.url)('../../backend/storage/project-config.cjs');
 
 // Temp folders live under the project's .scratch/ (git-ignored) and are removed afterwards.
 const SCRATCH = path.resolve(import.meta.dirname, '..', '..', '..', '.scratch', 'project-config-projects');
@@ -18,7 +18,7 @@ function tmp() {
   return dir;
 }
 function write(dir, text) {
-  const file = path.join(dir, 'planner.config.yaml');
+  const file = path.join(dir, 'viewer.config.yaml');
   fs.writeFileSync(file, text);
   return file;
 }
@@ -216,7 +216,7 @@ test('a config with no projects key is rewritten as before by other saves', () =
 });
 
 test('the example config still loads, and its documented projects block parses once uncommented', () => {
-  const example = path.resolve(import.meta.dirname, '..', '..', 'planner.config.example.yaml');
+  const example = path.resolve(import.meta.dirname, '..', '..', 'viewer.config.example.yaml');
   const text = fs.readFileSync(example, 'utf8');
   assert.match(text, /projects/);
   assert.equal(loadConfig({ file: example }).projects.length, 1);

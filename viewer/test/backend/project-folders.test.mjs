@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 
-const pc = createRequire(import.meta.url)('../../logic/storage/project-config.cjs');
+const pc = createRequire(import.meta.url)('../../backend/storage/project-config.cjs');
 const { initFolders, copyData, migrateOlderLayout, checkFolder, confineDir, confineCodeBase, checkCodeBase, initCodeBase, copyToCodeBase, planCopy, planCopyToCodeBase, saveConfig, loadConfig, ROOT } = pc;
 
 function tmp() {
@@ -28,7 +28,7 @@ function scratch() {
 }
 test.after(() => fs.rmSync(SCRATCH, { recursive: true, force: true }));
 
-const loadStartingFiles = async () => (await import('../../logic/backlog/starting-files.js')).startingFiles();
+const loadStartingFiles = async () => (await import('../../backend/storage/starting-files.js')).startingFiles();
 const KIND_PATHS = { backlog: 'user-stories.csv', review: 'user-stories/review.csv', proposals: 'user-stories/proposals.csv', lexicon: 'lexicon.csv', 'lexicon-suggestions': 'lexicon/lexicon-suggestions.csv' };
 
 async function assertStartingFiles(backlogDir) {
@@ -454,21 +454,21 @@ test('check refuses the home folder itself but not a folder inside a temp home',
   assert.equal(confineDir(path.join(home, 'planner-data'), { home }).ok, true);
 });
 
-test('check refuses a file and folders in the repository except planner/data', () => {
+test('check refuses a file and folders in the repository except viewer/data', () => {
   const dir = tmp();
   put(dir, 'a.txt');
   assert.match(checkFolder(path.join(dir, 'a.txt')).reason, /file/);
-  assert.equal(checkFolder(path.join(ROOT, 'planner', 'logic')).status, 'refused');
-  assert.equal(checkFolder(path.join(ROOT, 'planner', 'test', 'sample-data')).status, 'refused');
-  assert.equal(confineDir(path.join(ROOT, 'planner', 'data')).ok, true);
-  assert.equal(confineDir(path.join(ROOT, 'planner', 'data', 'sub')).ok, true);
+  assert.equal(checkFolder(path.join(ROOT, 'viewer', 'shared')).status, 'refused');
+  assert.equal(checkFolder(path.join(ROOT, 'viewer', 'test', 'sample-data')).status, 'refused');
+  assert.equal(confineDir(path.join(ROOT, 'viewer', 'data')).ok, true);
+  assert.equal(confineDir(path.join(ROOT, 'viewer', 'data', 'sub')).ok, true);
 });
 
-test('check refuses a junction that leads into planner/logic', (t) => {
+test('check refuses a junction that leads into viewer/shared', (t) => {
   const base = tmp();
   const link = path.join(base, 'looks-fine');
   try {
-    fs.symlinkSync(path.join(ROOT, 'planner', 'logic'), link, 'junction');
+    fs.symlinkSync(path.join(ROOT, 'viewer', 'shared'), link, 'junction');
   } catch (err) {
     return t.skip(`cannot create a junction here: ${err.code}`);
   }
@@ -480,7 +480,7 @@ test('check refuses a junction that leads into planner/logic', (t) => {
   } finally {
     fs.unlinkSync(link); // removes the junction only
   }
-  assert.ok(fs.existsSync(path.join(ROOT, 'planner', 'logic', 'storage')));
+  assert.ok(fs.existsSync(path.join(ROOT, 'viewer', 'shared', 'storage')));
 });
 
 // ---- code base: confinement (2.1)
@@ -513,11 +513,11 @@ test('code base: the home folder itself is refused, a folder inside it is accept
   assert.equal(ok.plansDir, path.join(ok.dir, '.plans'));
 });
 
-test('code base: a folder inside the repository is refused, planner/data included', () => {
-  const r = confineCodeBase(path.join(ROOT, 'planner', 'logic'));
+test('code base: a folder inside the repository is refused, viewer/data included', () => {
+  const r = confineCodeBase(path.join(ROOT, 'viewer', 'shared'));
   assert.equal(r.ok, false);
   assert.match(r.reason, /repository/);
-  assert.equal(confineCodeBase(path.join(ROOT, 'planner', 'data')).ok, false, 'no planner/data exception');
+  assert.equal(confineCodeBase(path.join(ROOT, 'viewer', 'data')).ok, false, 'no viewer/data exception');
   assert.equal(confineCodeBase(ROOT).ok, false);
 });
 
@@ -575,7 +575,7 @@ test('code base init creates .plans and .plans/new-backlog with its starting fil
   assert.deepEqual(fs.readdirSync(cb).sort(), ['.plans', 'src']);
   assert.deepEqual(fs.readdirSync(path.join(cb, '.plans')), ['new-backlog']);
   await assertStartingFiles(path.join(cb, '.plans', 'new-backlog'));
-  assert.equal(fs.existsSync(path.join(cb, 'planner.config.yaml')), false, 'no config is written');
+  assert.equal(fs.existsSync(path.join(cb, 'viewer.config.yaml')), false, 'no config is written');
   assert.equal(fs.readFileSync(path.join(cb, 'src', 'app.js'), 'utf8'), 'code');
 });
 
@@ -643,7 +643,7 @@ test('code base copy creates .plans when missing and refuses a missing code base
 
 function cfg(text) {
   const dir = tmp();
-  const file = path.join(dir, 'planner.config.yaml');
+  const file = path.join(dir, 'viewer.config.yaml');
   fs.writeFileSync(file, text);
   return file;
 }
@@ -661,7 +661,7 @@ test('save keeps a comment the user wrote', () => {
 });
 
 test('save creates a missing config file', () => {
-  const file = path.join(tmp(), 'sub', 'planner.config.yaml');
+  const file = path.join(tmp(), 'sub', 'viewer.config.yaml');
   saveConfig({ projectName: 'Fresh' }, { file });
   assert.equal(loadConfig({ file }).projectName, 'Fresh');
 });
