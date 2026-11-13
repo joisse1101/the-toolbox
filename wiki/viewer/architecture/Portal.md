@@ -4,11 +4,11 @@ The portal is the viewer's server and web app. It shows and edits the backlog fi
 
 ## The server
 
-`viewer/backend/server.cjs` uses only Node built-ins (no Express). It serves `viewer/frontend/dist/` and a small CSV file API.
+`viewer/backend/server.ts` uses only Node built-ins (no Express). It serves `viewer/frontend/dist/` and a small CSV file API.
 
 ### File API
 
-`STORES` at the top of the file is an allow-list of the five kinds defined in `viewer/shared/storage/backlog-paths.cjs`:
+`STORES` at the top of the file is an allow-list of the five kinds defined in `viewer/shared/storage/backlog-paths.ts`:
 
 - `backlog`
 - `review` (review suggestions)
@@ -66,7 +66,7 @@ The open tab comes only from the address. `resolveTab` in `viewer/frontend/src/t
 
 Code that two backlog features need goes in `viewer/frontend/src/tools/backlog/shared/`, so a tab can be moved or removed alone. `app/` may import tools, because the routes there mount them.
 
-The server sends `viewer/frontend/dist/index.html` for any path that is not under `/api/` and whose last segment has no file extension, so a reload or a bookmark on `/backlog/graph` loads the app and the router takes over. A path with an extension that has no file in `dist/` answers `404`, so a missing script or style file is not hidden behind the page. `staticTarget` in `viewer/backend/server.cjs` makes this choice. The `VIEWER_DIST_DIR` environment variable points the server at another dist folder, which the static-file test uses.
+The server sends `viewer/frontend/dist/index.html` for any path that is not under `/api/` and whose last segment has no file extension, so a reload or a bookmark on `/backlog/graph` loads the app and the router takes over. A path with an extension that has no file in `dist/` answers `404`, so a missing script or style file is not hidden behind the page. `staticTarget` in `viewer/backend/server.ts` makes this choice. The `VIEWER_DIST_DIR` environment variable points the server at another dist folder, which the static-file test uses.
 
 `viewer/frontend/src/shared/api/files.js` is the API client. `createFileStore(kind)` gives `list`, `read`, `create`, `write`, `rename` and `openFolder`, with the backlog named without `.csv`. `viewer/frontend/src/shared/style.css` holds the common styles.
 
@@ -141,7 +141,7 @@ The Stories table's bulk bar is quiet until a row is ticked: it has no accent bo
 
 ### Locking a group
 
-With the opt-in `onLockGroup` prop, each Epic and Feature head also has a lock button. It locks or unlocks the stories of that group through `lockGroup` in `useBacklog`, and `groupLockState` in `viewer/shared/backlog/ids.js` gives the head's mark. Nothing about the group is stored, so a story added later is unlocked. The Proposed tab's list has no lock button.
+With the opt-in `onLockGroup` prop, each Epic and Feature head also has a lock button. It locks or unlocks the stories of that group through `lockGroup` in `useBacklog`, and `groupLockState` in `viewer/shared/backlog/ids.ts` gives the head's mark. Nothing about the group is stored, so a story added later is unlocked. The Proposed tab's list has no lock button.
 
 ### Settings tab
 
