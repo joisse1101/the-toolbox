@@ -8,7 +8,7 @@ import { tempProject } from './helpers/temp-project.mjs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { writeReview, checkReview } from '../../skills/jois-story-review/write-review.mjs';
-import { parseReview, serializeReview } from '../../skills/jois-story-review/lib/review/review.js';
+import { parseReview, serializeReview } from '../../skills/jois-story-review/lib/review/review.mjs';
 
 const SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../skills/jois-story-review/write-review.mjs');
 

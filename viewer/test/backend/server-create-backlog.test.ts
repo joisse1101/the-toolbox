@@ -1,0 +1,74 @@
+import type { AddressInfo } from 'node:net';
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { tempConfig } from '../helpers/temp-config.ts';
+import { startingFiles } from '../../backend/storage/starting-files.ts';
+import { backlogFile } from '../../shared/storage/backlog-paths.ts';
+
+// The New button's create route. Mock data only: the committed sample data copied to a temp folder under .scratch/.
+const here = path.dirname(fileURLToPath(import.meta.url));
+const scratch = path.resolve(here, '..', '..', '..', '.scratch');
+fs.mkdirSync(scratch, { recursive: true });
+const root = fs.mkdtempSync(path.join(scratch, 'server-create-backlog-'));
+fs.cpSync(path.join(here, '..', 'sample-data'), root, { recursive: true });
+process.env.VIEWER_CONFIG = tempConfig(root);
+const { server } = await import('../../backend/server.ts');
+
+const HEADERS = { 'X-Requested-With': 'the-toolbox', 'Content-Type': 'application/json' };
+let origin: string;
+test.before(async () => {
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+});
+test.after(() => {
+  server.close();
+  fs.rmSync(root, { recursive: true });
+});
+
+const create = (name: string) => fetch(`${origin}/api/backlog/files`, { method: 'POST', headers: HEADERS, body: JSON.stringify({ name }) });
+const fileOf = (backlog: string, kind: string) => backlogFile(root, backlog, kind);
+const snapshot = (dir: string) => Object.fromEntries(
+  fs.readdirSync(dir, { recursive: true, withFileTypes: true })
+    .filter((e) => e.isFile())
+    .map((e) => { const f = path.join(e.parentPath, e.name); return [path.relative(dir, f), fs.readFileSync(f, 'utf8')]; }),
+);
+
+test('New creates all five files, each holding only its header row', async () => {
+  const res = await create('new-backlog');
+  assert.equal(res.status, 201);
+  assert.deepEqual(await res.json(), { name: 'new-backlog' });
+  const files = startingFiles();
+  assert.equal(files.length, 5);
+  for (const { kind, text } of files) {
+    const file = fileOf('new-backlog', kind);
+    assert.equal(fs.readFileSync(file, 'utf8'), text, kind);
+    assert.equal(text.trim().split(/\r?\n/).length, 1, `${kind} has one row`);
+  }
+});
+
+test('a second New is numbered and leaves the first unchanged', async () => {
+  const before = snapshot(path.join(root, 'new-backlog'));
+  const res = await create('new-backlog');
+  assert.deepEqual(await res.json(), { name: 'new-backlog-2' });
+  assert.deepEqual(snapshot(path.join(root, 'new-backlog')), before);
+  assert.equal(Object.keys(snapshot(path.join(root, 'new-backlog-2'))).length, 6, 'the five starting files and backlog.json');
+});
+
+test('nothing is taken from an existing backlog, and the existing backlog is unchanged', async () => {
+  const sample = path.join(root, 'sample');
+  fs.mkdirSync(path.join(sample, 'user-stories'), { recursive: true });
+  fs.writeFileSync(path.join(sample, 'lexicon.csv'), 'Term,Part of,Definition,Avoid,Notes\r\nWidget,,A thing,,\r\n');
+  fs.writeFileSync(path.join(sample, 'user-stories', 'proposals.csv'), 'ID,Title\r\nNEW-1,Proposed one\r\n');
+  const before = snapshot(sample);
+  assert.ok(before['user-stories.csv'].split(/\r?\n/).length > 2, 'the sample backlog has stories');
+
+  const res = await create('fresh');
+  assert.equal(res.status, 201);
+  for (const { kind, text } of startingFiles()) {
+    assert.equal(fs.readFileSync(fileOf('fresh', kind), 'utf8'), text, kind);
+  }
+  assert.deepEqual(snapshot(sample), before);
+});

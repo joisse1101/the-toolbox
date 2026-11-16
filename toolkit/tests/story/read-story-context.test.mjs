@@ -7,8 +7,8 @@ import { pathOf, putFile } from './helpers/backlog-tree.mjs';
 import { tempProject } from './helpers/temp-project.mjs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { serializeReview } from '../../skills/jois-story-explore/lib/review/review.js';
-import { composeSuggestions, emptySuggestions } from '../../skills/jois-story-explore/lib/lexicon/lexicon-suggestions.js';
+import { serializeReview } from '../../skills/jois-story-explore/lib/review/review.mjs';
+import { composeSuggestions, emptySuggestions } from '../../skills/jois-story-explore/lib/lexicon/lexicon-suggestions.mjs';
 import { readStoryContext, formatSection, formatMenu, formatStory, fileLines, SECTIONS, backlogIndex, listBacklogs, searchStories, readFile } from '../../skills/jois-story-explore/read-story-context.mjs';
 
 const SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'skills', 'jois-story-explore', 'read-story-context.mjs');

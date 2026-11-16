@@ -8,18 +8,16 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 
-import { loadBacklog, groupByEpic, serializeBacklog } from './lib/backlog/model.js';
-import { parseLexicon } from './lib/lexicon/lexicon.js';
+import { loadBacklog, groupByEpic, serializeBacklog } from './lib/backlog/model.mjs';
+import { parseLexicon } from './lib/lexicon/lexicon.mjs';
 import { dataDirOrThrow } from './lib/skill-support/resolve-data-dir.mjs';
 import { initialsOf } from './lib/skill-support/backlog-initials.mjs';
 import { backlogChecks } from './backlog-checks.js';
 
-const require = createRequire(import.meta.url);
-const { backlogDir, backlogFile, listBacklogs: listBacklogFolders } = require('./lib/storage/backlog-paths.cjs');
-const { GUIDELINES_DIR, shown } = require('./lib/skill-support/paths.cjs');
+import { backlogDir, backlogFile, listBacklogs as listBacklogFolders } from './lib/storage/backlog-paths.mjs';
+import { GUIDELINES_DIR, shown } from './lib/skill-support/paths.mjs';
 
 export function listBacklogs({ dataDir = dataDirOrThrow() } = {}) {
   return listBacklogFolders(dataDir);

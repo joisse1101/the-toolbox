@@ -5,20 +5,18 @@
 // Reads <name>/user-stories.csv (it must exist) and <name>/lexicon.csv, applies the input and writes <name>/lexicon.csv. The input
 // is a JSON list of { term, definition, avoid?, notes?, partOf? }: every item ADDS a term (and needs a definition); a term
 // that is already there is refused, because a change to it is a suggestion (suggest-lexicon.mjs). The rules are those
-// of the portal's Lexicon tab (lib/lexicon/lexicon.js, a copy of the planner's), checked on the lexicon as it will be; one invalid item means nothing is
+// of the portal's Lexicon tab (lib/lexicon/lexicon.mjs, a copy of the planner's), checked on the lexicon as it will be; one invalid item means nothing is
 // written. There is no output path argument: the target is fixed, user-stories.csv is only checked, and no term is changed or removed.
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
-import { applyTermItems, composeLexicon, emptyLexicon, parseLexicon } from './lib/lexicon/lexicon.js';
+import { applyTermItems, composeLexicon, emptyLexicon, parseLexicon } from './lib/lexicon/lexicon.mjs';
 import { describeParseError, writeAtomic } from './lib/skill-support/write-atomic.mjs';
 import { dataDirOrThrow } from './lib/skill-support/resolve-data-dir.mjs';
 
-const require = createRequire(import.meta.url);
-const { backlogDir, backlogFile } = require('./lib/storage/backlog-paths.cjs'); // same name rules as the file API
-const { shown } = require('./lib/skill-support/paths.cjs');
+import { backlogDir, backlogFile } from './lib/storage/backlog-paths.mjs'; // same name rules as the file API
+import { shown } from './lib/skill-support/paths.mjs';
 
 // Reads the backlog and the lexicon and validates the input against them. Returns { ok: true, file, result } (result: the
 // applyTermItems result, with the lexicon as it will be) or { ok: false, errors }. Writes nothing.

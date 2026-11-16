@@ -2,8 +2,8 @@
 // diagram files hold none; `source.json` holds { scope, stories: [{ id, title, hash, epic, feature }], drawnAt } and is
 // healed by Title against the backlog on every read. Pure: `backlogStories` are the stories of loadBacklog.
 import { createHash } from 'node:crypto';
-import { sameTitle } from '../lib/backlog/story-ref.js';
-import { storyCellText, criteriaCellText } from '../lib/backlog/model.js';
+import { sameTitle } from '../lib/backlog/story-ref.mjs';
+import { storyCellText, criteriaCellText } from '../lib/backlog/model.mjs';
 
 const norm = (s) => String(s ?? '').trim().toLowerCase();
 

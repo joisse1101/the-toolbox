@@ -7,7 +7,6 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import { parseLimits } from './diagrams/limits.js';
 import { checkContextMap as findProblems, composeContextMap, epicNames } from './diagrams/context-map.js';
@@ -17,8 +16,7 @@ import { readMapFiles, MAP_SOURCE_FILE, MAP_DOCUMENT_FILE } from './read-context
 import { parseMermaid, mermaidMissing } from './parse-mermaid.mjs';
 import { dataDirOrThrow } from './lib/skill-support/resolve-data-dir.mjs';
 
-const require = createRequire(import.meta.url);
-const { GUIDELINES_DIR } = require('./lib/skill-support/paths.cjs');
+import { GUIDELINES_DIR } from './lib/skill-support/paths.mjs';
 
 const norm = (s) => String(s ?? '').trim().toLowerCase();
 const trimmed = (s) => String(s ?? '').trim();

@@ -4,9 +4,9 @@
 // A problem about a lexicon term has `term` instead of `storyId` and `title`. Frozen stories are checked too, and marked
 // `frozen`, because the review uses them as context but does not review them. Priority is never checked.
 
-import { backlogProblems } from './lib/backlog/ids.js';
-import { POINTS, SPLIT_ABOVE, storyIssues } from './lib/backlog/model.js';
-import { lexiconProblems } from './lib/lexicon/lexicon.js';
+import { backlogProblems } from './lib/backlog/ids.mjs';
+import { POINTS, SPLIT_ABOVE, storyIssues } from './lib/backlog/model.mjs';
+import { lexiconProblems } from './lib/lexicon/lexicon.mjs';
 
 const norm = (s) => String(s ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
 const same = (s) => `${norm(s.epic)} | ${norm(s.feature)} | ${norm(s.title)}`;

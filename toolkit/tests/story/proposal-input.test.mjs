@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildProposals } from '../../skills/jois-story-propose/proposal-input.js';
-import { loadBacklog, serializeBacklog, criteriaCellText, storyCellText, proposalHeaders } from '../../skills/jois-story-propose/lib/backlog/model.js';
+import { loadBacklog, serializeBacklog, criteriaCellText, storyCellText, proposalHeaders } from '../../skills/jois-story-propose/lib/backlog/model.mjs';
 
 const HEAD = 'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes,Team\r\n';
 const BACKLOG =

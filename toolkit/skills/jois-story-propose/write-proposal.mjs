@@ -11,17 +11,15 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
-import { loadBacklog, serializeBacklog, proposalHeaders } from './lib/backlog/model.js';
+import { loadBacklog, serializeBacklog, proposalHeaders } from './lib/backlog/model.mjs';
 import { buildProposals } from './proposal-input.js';
 import { describeParseError, writeAtomic } from './lib/skill-support/write-atomic.mjs';
 import { dataDirOrThrow } from './lib/skill-support/resolve-data-dir.mjs';
 import { initialsOf } from './lib/skill-support/backlog-initials.mjs';
 
-const require = createRequire(import.meta.url);
-const { backlogDir, backlogFile } = require('./lib/storage/backlog-paths.cjs'); // same name rules as the file API
-const { shown } = require('./lib/skill-support/paths.cjs');
+import { backlogDir, backlogFile } from './lib/storage/backlog-paths.mjs'; // same name rules as the file API
+import { shown } from './lib/skill-support/paths.mjs';
 
 // Reads the backlog and the proposals and validates the input against them. Returns { ok: true, file, backlog,
 // proposals, built } (built: the buildProposals result) or { ok: false, errors }. Writes nothing.

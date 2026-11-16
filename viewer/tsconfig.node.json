@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "lib": ["ES2023"],
+    "types": ["node"]
+  },
+  "include": ["backend/**/*.ts", "shared/**/*.ts", "scripts/**/*.ts", "test/**/*.ts"],
+  "exclude": ["test/frontend/**"]
+}

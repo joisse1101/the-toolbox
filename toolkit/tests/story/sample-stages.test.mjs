@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { loadBacklog } from '../../skills/jois-story-plan/lib/backlog/model.js';
+import { loadBacklog } from '../../skills/jois-story-plan/lib/backlog/model.mjs';
 import { parseLimits } from '../../skills/jois-story-plan/diagrams/limits.js';
 import { compareSource, scopeStories } from '../../skills/jois-story-plan/diagrams/source.js';
 import { checkSlice, formatProblems } from '../../skills/jois-story-plan/diagrams/checks.js';

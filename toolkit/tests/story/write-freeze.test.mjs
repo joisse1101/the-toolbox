@@ -7,8 +7,8 @@ import { fileURLToPath } from 'node:url';
 import { putFile, pathOf, putSampleInitials, FIXTURE_BACKLOG_CSV } from './helpers/backlog-tree.mjs';
 import { tempProject } from './helpers/temp-project.mjs';
 import { writeFreeze, checkFreeze } from '../../skills/jois-story-plan/write-freeze.mjs';
-import { loadBacklog, serializeBacklog } from '../../skills/jois-story-plan/lib/backlog/model.js';
-import { parseCsv, toCsv } from '../../skills/jois-story-plan/lib/backlog/csv.js';
+import { loadBacklog, serializeBacklog } from '../../skills/jois-story-plan/lib/backlog/model.mjs';
+import { parseCsv, toCsv } from '../../skills/jois-story-plan/lib/backlog/csv.mjs';
 
 const SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../skills/jois-story-plan/write-freeze.mjs');
 

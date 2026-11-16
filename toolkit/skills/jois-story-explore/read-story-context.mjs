@@ -22,20 +22,18 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
-import { parseCsv, toCsv } from './lib/backlog/csv.js';
-import { BENCHED_COLUMN, loadBacklog, serializeBacklog } from './lib/backlog/model.js';
-import { findStories, searchReply } from './lib/backlog/story-search.js';
-import { parseReview, serializeReview } from './lib/review/review.js';
-import { resolveStoryRef } from './lib/backlog/story-ref.js';
-import { parseSuggestions, composeSuggestions, isOpen } from './lib/lexicon/lexicon-suggestions.js';
+import { parseCsv, toCsv } from './lib/backlog/csv.mjs';
+import { BENCHED_COLUMN, loadBacklog, serializeBacklog } from './lib/backlog/model.mjs';
+import { findStories, searchReply } from './lib/backlog/story-search.mjs';
+import { parseReview, serializeReview } from './lib/review/review.mjs';
+import { resolveStoryRef } from './lib/backlog/story-ref.mjs';
+import { parseSuggestions, composeSuggestions, isOpen } from './lib/lexicon/lexicon-suggestions.mjs';
 import { dataDirOrThrow } from './lib/skill-support/resolve-data-dir.mjs';
 import { initialsOf } from './lib/skill-support/backlog-initials.mjs';
 
-const require = createRequire(import.meta.url);
-const { backlogDir, backlogFile, listBacklogs: listBacklogFolders, KIND_FILES } = require('./lib/storage/backlog-paths.cjs');
-const { GUIDELINES_DIR } = require('./lib/skill-support/paths.cjs');
+import { backlogDir, backlogFile, listBacklogs as listBacklogFolders, KIND_FILES } from './lib/storage/backlog-paths.mjs';
+import { GUIDELINES_DIR } from './lib/skill-support/paths.mjs';
 
 // A file of a backlog as the replies name it: `<name>/user-stories/review.csv`.
 const label = (name, kind) => `${name}/${KIND_FILES[kind].join('/')}`;
@@ -44,7 +42,7 @@ const label = (name, kind) => `${name}/${KIND_FILES[kind].join('/')}`;
 const nameOf = (dataDir, name) => path.basename(backlogDir(dataDir, name));
 
 export const SECTIONS = ['guidelines', 'index', 'reviews', 'lexicon-suggestions'];
-// Read as files, not as sections: the kind of file each one is (see backlog-paths.cjs).
+// Read as files, not as sections: the kind of file each one is (see backlog-paths.mjs).
 export const FILE_SECTIONS = { proposals: 'proposals', lexicon: 'lexicon' };
 // A result longer than this may be cut off by the tool that shows it.
 const RESULT_CAP = 30000;

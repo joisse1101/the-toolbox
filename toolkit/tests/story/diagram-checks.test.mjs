@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadBacklog } from '../../skills/jois-story-plan/lib/backlog/model.js';
+import { loadBacklog } from '../../skills/jois-story-plan/lib/backlog/model.mjs';
 import { parseLimits } from '../../skills/jois-story-plan/diagrams/limits.js';
 import { scopeStories } from '../../skills/jois-story-plan/diagrams/source.js';
 import { readDocument } from '../../skills/jois-story-plan/diagrams/document.js';
