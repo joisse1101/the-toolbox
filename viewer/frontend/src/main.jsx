@@ -1,23 +1,14 @@
 import { createRoot } from 'react-dom/client';
+import { BrowserRouter } from 'react-router';
 import './shared/style.css';
+import './tools/backlog/backlog.css';
+import AppRoutes from './app/routes.jsx';
+import { ConfirmProvider } from './shared/ui/ConfirmDialog.jsx';
 
-function Launcher() {
-  return (
-    <main className="page">
-      <h1>Backlog planner</h1>
-      <p className="muted">Local tools that keep their data as plain files in this repo.</p>
-      <ul className="tool-list">
-        <li>
-          <a href="/backlog-portal/">
-            <div className="card">
-              <strong>Backlog portal</strong>
-              Write user stories with acceptance criteria and keep them as CSV backlogs, one folder per backlog, in <code>viewer/data/</code>.
-            </div>
-          </a>
-        </li>
-      </ul>
-    </main>
-  );
-}
-
-createRoot(document.getElementById('root')).render(<Launcher />);
+createRoot(document.getElementById('root')).render(
+  <BrowserRouter>
+    <ConfirmProvider>
+      <AppRoutes />
+    </ConfirmProvider>
+  </BrowserRouter>,
+);
