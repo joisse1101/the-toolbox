@@ -41,6 +41,8 @@ Inside `viewer/frontend/src/` the same test enforces three more rules: `shared/`
 
 Nothing in `viewer/shared/` imports the backend or the frontend, and nothing imports the contents of `viewer/data/`. The architecture behind this is in the wiki, see the table below.
 
+Imports use three `#` aliases, `#shared/*`, `#backend/*` and `#frontend/*`, defined once in the `imports` field of `viewer/package.json` (they map to `viewer/shared/`, `viewer/backend/` and `viewer/frontend/`). Node, `tsc` and Vite all resolve them, and the specifier keeps its file extension, for example `#shared/backlog/ids.ts`. Use an alias for an import that crosses a zone or climbs two or more folders to another part of the same zone. Keep short relative imports, and relative imports inside one feature. `viewer/shared/` internals and `toolkit/` stay relative, because `viewer/scripts/sync-skill-logic.ts` follows only relative imports. `viewer/test/zones.test.ts` resolves the aliases before it applies the zone rules, and reports a `#` import that no alias maps.
+
 The viewer is TypeScript in ES modules (`"type": "module"` in `viewer/package.json`): `.ts` for the backend, shared code, scripts and tests, and `.tsx` for React components. Node 24+ runs the `.ts` files directly by stripping the types, so the server, the scripts and the tests need no build step; only the frontend is built, by Vite. No `.cjs` file remains in the viewer. `viewer/scripts/sync-skill-logic.ts` strips the types from the shared `.ts` files and writes each copy into `toolkit/skills/*/lib/` as a plain `.mjs` ES module, so the skill scripts import those copies directly. The toolkit's own scripts stay JavaScript (`.mjs`, `.js`).
 
 ## Workflow

@@ -2,6 +2,11 @@
   "name": "the-toolbox",
   "private": true,
   "type": "module",
+  "imports": {
+    "#shared/*": "./shared/*",
+    "#backend/*": "./backend/*",
+    "#frontend/*": "./frontend/*"
+  },
   "scripts": {
     "dev": "vite --config frontend/vite.config.ts",
     "build": "vite build --config frontend/vite.config.ts",
