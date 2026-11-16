@@ -27,7 +27,7 @@ A new project has neither, and exploring needs neither, because it writes nothin
 
 - name the folder the script looked in;
 - say that the session may have started in the wrong folder (then start it in the code base folder);
-- for a new project, say how to get a backlog before saving: in the planner, **Add Project...** links this folder and offers to create `.plans` and a first backlog, and `jois-story-propose` can create `.plans` on a yes;
+- for a new project, say how to get a backlog before saving: in the viewer, **Add Project...** links this folder and offers to create `.plans` and a first backlog, and `jois-story-propose` can create `.plans` on a yes;
 - say that you explore now without one, so the drafts are checked against the guidelines and the wiki only, not against stories or a lexicon.
 
 Then carry on with "Input" and the rest of this skill, skipping only the reads that need a backlog. This skill still never creates `.plans` or a backlog itself. Do not prefix the command with an environment variable: every command you run starts with `node`. Never guess a folder.
@@ -71,7 +71,7 @@ Then carry on with "Input" and the rest of this skill, skipping only the reads t
 
 ## Contradictions
 
-Apply the rule of the `story-contradiction-rule` capability to every new or changed story you discuss, and run the check before you show a draft as ready. The rule is kept in the toolbox repository, in `openspec/specs/story-contradiction-rule/spec.md` and, summarised, in its wiki page `wiki/planner/Story-Skills.md`; this section only says how this skill carries it out.
+Apply the rule of the `story-contradiction-rule` capability to every new or changed story you discuss, and run the check before you show a draft as ready. The rule is kept in the toolbox repository, in `openspec/specs/story-contradiction-rule/spec.md` and, summarised, in its wiki page `wiki/viewer/Story-Skills.md`; this section only says how this skill carries it out.
 
 **Find the wiki page.** First check that `wiki/` exists in the current folder, as an `ls`-style existence check (a `Glob` for `wiki/*`, say) made whatever a loaded `CLAUDE.md` says about the docs. When the current folder has no `wiki/`, say in one line, once per session and not again for later stories, that you found no wiki and that `jois-init:docs` sets one up, skip the `CLAUDE.md` table, `wiki/Home.md` and the search, carry on against the backlog and the proposals alone, and do not create `wiki/`. A `CLAUDE.md` with no "Where the docs are" table and no `wiki/` counts as no wiki. Do not use a `CLAUDE.md` or a wiki that came into your context from a parent folder (for example one the session loaded by itself). When `wiki/` exists, read, relative to the current folder and never a parent, first the "Where the docs are" table of `CLAUDE.md`, then `wiki/Home.md` and the topic pages, which means only the pages that the table or `wiki/Home.md` names for the story's topic, and only then `Grep` on `wiki/` by the story's terms. Never read unrelated pages or the GitHub copy of the wiki.
 

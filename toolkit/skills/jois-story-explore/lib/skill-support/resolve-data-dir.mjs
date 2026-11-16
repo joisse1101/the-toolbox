@@ -12,7 +12,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-// The same name as PLANS_DIR in planner/logic/storage/backlog-paths.cjs. This file imports nothing from the planner,
+// The same name as PLANS_DIR in viewer/shared/storage/backlog-paths.cjs. This file imports nothing from the viewer,
 // so the literal is repeated and a test checks the two match.
 export const PLANS_DIR = '.plans';
 

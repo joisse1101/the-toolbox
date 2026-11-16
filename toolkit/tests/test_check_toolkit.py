@@ -379,7 +379,7 @@ def test_package_json_without_a_lock_file_fails(tmp_path):
 
 def test_script_importing_outside_its_skill_folder_fails(tmp_path):
     name = _skill_tree(tmp_path)
-    _write(tmp_path, f"skills/{name}/read.mjs", "import { x } from '../../../planner/logic/x.js';\n")
+    _write(tmp_path, f"skills/{name}/read.mjs", "import { x } from '../../../viewer/shared/x.js';\n")
     problems = _problems(tmp_path)
     assert any(f"skills/{name}/read.mjs:1" in p and "outside the skill folder" in p for p in problems)
 

@@ -1,7 +1,7 @@
-planner/data/*
-planner/planner.config.yaml
+viewer/data/*
+viewer/viewer.config.yaml
 node_modules/
-planner/portal/dist/
+viewer/frontend/dist/
 .trees/
 .scratch/
 

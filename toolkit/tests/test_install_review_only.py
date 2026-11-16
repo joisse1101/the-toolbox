@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 
 TOOLKIT = Path(__file__).resolve().parent.parent
-SAMPLE_DATA = TOOLKIT.parent / "planner" / "test" / "sample-data"
+SAMPLE_DATA = TOOLKIT.parent / "viewer" / "test" / "sample-data"
 POWERSHELL = shutil.which("powershell") or shutil.which("pwsh")
 NODE = shutil.which("node")
 

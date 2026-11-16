@@ -4,39 +4,41 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-Run the `npm` commands from `planner/`, which holds `package.json`, `package-lock.json` and `node_modules/` (the toolkit has none; the `jois-story-plan` skill has its own `package.json` for the Mermaid check).
+Run the `npm` commands from `viewer/`, which holds `package.json`, `package-lock.json` and `node_modules/` (the toolkit has none; the `jois-story-plan` skill has its own `package.json` for the Mermaid check).
 
 ```
-cd planner
+cd viewer
 npm install
 npm start            # unified: build if needed + server + open browser (-- --dev for hot reload)
-npm run build        # vite build -> planner/portal/dist/ (required after any change to planner/portal/web/ or planner/logic/ before the server shows it)
-node planner/portal/server/server.cjs   # serves planner/portal/dist/ + CSV API on 127.0.0.1:3000 (PORT env to change; the data folder comes from `planner/planner.config.yaml`, or the file `PLANNER_CONFIG` names)
+npm run build        # vite build -> viewer/frontend/dist/ (required after any change to viewer/frontend/ or viewer/shared/ before the server shows it)
+node viewer/backend/server.cjs   # serves viewer/frontend/dist/ + CSV API on 127.0.0.1:3000 (PORT env to change; the data folder comes from `viewer/viewer.config.yaml`, or the file `VIEWER_CONFIG` names)
 npm run dev          # Vite dev server with HMR; proxies /api to the backend, so run both
-npm test             # node --test --import ./test/setup.mjs test/*.test.mjs test/*/*.test.mjs (setup.mjs points PLANNER_CONFIG at test/sample-config.yaml, whose dataDir is test/sample-data/)
-node --test planner/test/logic/ids.test.mjs                  # single test file
-node --test --test-name-pattern="renumber" planner/test/logic/ids.test.mjs   # single test by name
+npm test             # node --test --import ./test/setup.mjs test/*.test.mjs test/*/*.test.mjs (setup.mjs points VIEWER_CONFIG at test/sample-config.yaml, whose dataDir is test/sample-data/)
+node --test viewer/test/shared/ids.test.mjs                  # single test file
+node --test --test-name-pattern="renumber" viewer/test/shared/ids.test.mjs   # single test by name
 ```
 
-There is no linter or type checker. Tests cover only the pure modules (no DOM/React tests). `npm test` never reads the real `planner/data/`: `planner/test/setup.mjs` (loaded with `--import`) sets `PLANNER_CONFIG` to the committed `planner/test/sample-config.yaml`, whose `dataDir` is the committed `planner/test/sample-data/` (same layout as `planner/data/`; read-only, a test that writes uses a temp copy) and a guard test in `paths.test.mjs` fails if it is dropped. A test run alone with plain `node --test <file>` skips the setup file, so a test that needs data sets `PLANNER_CONFIG` itself (a test that saves the config points it at a temp copy).
+There is no linter or type checker. Tests cover only the pure modules (no DOM/React tests). `npm test` never reads the real `viewer/data/`: `viewer/test/setup.mjs` (loaded with `--import`) sets `VIEWER_CONFIG` to the committed `viewer/test/sample-config.yaml`, whose `dataDir` is the committed `viewer/test/sample-data/` (same layout as `viewer/data/`; read-only, a test that writes uses a temp copy) and a guard test in `viewer/test/shared/paths.test.mjs` fails if it is dropped. A test run alone with plain `node --test <file>` skips the setup file, so a test that needs data sets `VIEWER_CONFIG` itself (a test that saves the config points it at a temp copy).
 
 The toolkit has its own tests, separate from `npm test`: `cd toolkit; python check_toolkit.py; python -m pytest` (needs Python and pytest), and `node --test <abs>/toolkit/tests/story/*.test.mjs` for the story skills.
 
 ## Line endings
 
-Git stores every tracked file with LF, and each user's `core.autocrlf` setting decides whether their working files are LF or CRLF, so the repo does not force one. `.gitattributes` pins only `planner/test/sample-data/**` and `toolkit/tests/story/fixtures/**` and `toolkit/sample/story-to-code/**` to LF, because tests match their text with `\n`. Each generated skill copy has the line ending of its source file, because `planner/scripts/sync-skill-logic.mjs` reads sources as LF and then writes each copy with its source's ending (CRLF in a CRLF checkout, LF otherwise, never a mix), so git reports no change after a run. The data CSVs keep CRLF, because the CSV writer emits it. No test guards line endings.
+Git stores every tracked file with LF, and each user's `core.autocrlf` setting decides whether their working files are LF or CRLF, so the repo does not force one. `.gitattributes` pins only `viewer/test/sample-data/**` and `toolkit/tests/story/fixtures/**` and `toolkit/sample/story-to-code/**` to LF, because tests match their text with `\n`. Each generated skill copy has the line ending of its source file, because `viewer/scripts/sync-skill-logic.mjs` reads sources as LF and then writes each copy with its source's ending (CRLF in a CRLF checkout, LF otherwise, never a mix), so git reports no change after a run. The data CSVs keep CRLF, because the CSV writer emits it. No test guards line endings.
 
 ## Zones
 
-This repo holds local tools for a team lead's admin work: the backlog planner in `planner/` and the global toolkit in `toolkit/`. The zones depend in one direction only, enforced by `planner/test/zones.test.mjs`:
+This repo holds local tools for a team lead's admin work: the backlog viewer in `viewer/` and the global toolkit in `toolkit/`. The zones depend in one direction only, enforced by `viewer/test/zones.test.mjs`:
 
-- `planner/logic/` imports nothing outside itself.
-- `planner/portal/` imports `planner/logic/` and `planner/guidelines/`.
+- `viewer/shared/` imports nothing outside itself.
+- `viewer/backend/` imports `viewer/backend/` and `viewer/shared/`.
+- `viewer/frontend/` imports `viewer/frontend/` and `viewer/shared/` (the guidelines included).
+- `viewer/backend/` and `viewer/frontend/` never import each other.
 - `toolkit/` imports nothing outside itself.
 
-Nothing in `planner/logic/` imports the portal, and nothing imports the contents of `planner/data/`. The architecture behind this is in the wiki, see the table below.
+Nothing in `viewer/shared/` imports the backend or the frontend, and nothing imports the contents of `viewer/data/`. The architecture behind this is in the wiki, see the table below.
 
-The repo is ESM (`"type": "module"` in `planner/package.json`); `planner/portal/server/server.cjs`, `planner/logic/storage/file-name.cjs` and `planner/logic/storage/paths.cjs` stay CommonJS (the `.cjs` extension), so the server and the ESM skill scripts can share them.
+The repo is ESM (`"type": "module"` in `viewer/package.json`); `viewer/backend/server.cjs` and `viewer/backend/storage/*.cjs` stay CommonJS (the `.cjs` extension) because they are the server, and so do `viewer/shared/storage/*.cjs` and `viewer/shared/skill-support/paths.cjs`, so the server and the ESM skill scripts can share them.
 
 ## Workflow
 
@@ -64,7 +66,7 @@ When you edit a skill or command of the story-to-code flow (`toolkit/skills/jois
 | --- | --- |
 | Anything (start here) | [Home](wiki/Home.md) |
 | Building a feature from user stories (explore to archive, and which command is next) | [Story to Code](wiki/Story-To-Code.md) |
-| The planner, its portal, data folder or story skills (`wiki/planner/`) | [Planner Guide](wiki/planner/Planner-Guide.md), then [Logic Layer](wiki/planner/architecture/Logic-Layer.md) |
+| The viewer, its data folder or story skills (`wiki/viewer/`) | [Viewer Guide](wiki/viewer/Viewer-Guide.md), then [Logic Layer](wiki/viewer/architecture/Logic-Layer.md) |
 | The toolkit's skills, commands, rules or installer (`wiki/toolkit/`) | [Toolkit Guide](wiki/toolkit/Toolkit-Guide.md) |
 | Making a change, committing, or adding a tool | [Workflow](wiki/Workflow.md) |
 

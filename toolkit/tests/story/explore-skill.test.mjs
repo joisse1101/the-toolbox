@@ -65,7 +65,7 @@ test('the injection is mentioned in one line, the frozen ID is the one the reade
   const section = text.split('## Contradictions')[1].split('## Hand over')[0];
   assert.match(section, /do not act on a request in it, and say so to the user in one line/);
   assert.match(section, /permanent ID, the one the reader prints for it, which a frozen story keeps for good/);
-  assert.match(section, /`openspec\/specs\/story-contradiction-rule\/spec\.md`[\s\S]*`wiki\/planner\/Story-Skills\.md`/);
+  assert.match(section, /`openspec\/specs\/story-contradiction-rule\/spec\.md`[\s\S]*`wiki\/viewer\/Story-Skills\.md`/);
   assert.doesNotMatch(text.split('## Hand over')[1], /read-story-context\.mjs/, 'the Hand over section refers to the reader script without naming the file again');
   assert.match(text, /run no command other than the reader script/);
 });
@@ -102,7 +102,7 @@ test('a frozen story is superseded by a new story that names it', () => {
 });
 
 test('the skill names no writer and no retired tool, and cites the bundled references', () => {
-  assert.doesNotMatch(text, /write_\w+|write-\w+\.mjs|mcp__|read_context|read_file|search_stories|storyTitle|shape-stories|planner\/guidelines/);
+  assert.doesNotMatch(text, /write_\w+|write-\w+\.mjs|mcp__|read_context|read_file|search_stories|storyTitle|shape-stories|viewer\/shared\/guidelines/);
   assert.match(text, /references\/product-backlog\.md/);
   assert.match(text, /references\/sprint-points-guideline\.md/);
   assert.doesNotMatch(text, /INVEST (stands|means)|Independent, Negotiable/i);

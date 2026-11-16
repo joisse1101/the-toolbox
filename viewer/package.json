@@ -1,0 +1,20 @@
+{
+  "name": "the-toolbox",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --config frontend/vite.config.mjs",
+    "build": "vite build --config frontend/vite.config.mjs",
+    "start": "node scripts/start.mjs --build",
+    "test": "node --test --import ./test/setup.mjs test/*.test.mjs test/*/*.test.mjs"
+  },
+  "dependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.2.1",
+    "vite": "^8.3.6"
+  }
+}

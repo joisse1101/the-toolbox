@@ -22,7 +22,7 @@ The change moves through four steps, and the commit rule applies at the end of e
 3. `/opsx:archive` archives the change after review. It follows the commit rule, so it stages by explicit path and waits for the confirmation word.
 4. `/jois-git:write-pr` opens the pull request (see the next recipe).
 
-When the change shapes user stories rather than code, the story skills have their own order, described in [Story Skills](../planner/Story-Skills.md).
+When the change shapes user stories rather than code, the story skills have their own order, described in [Story Skills](../viewer/Story-Skills.md).
 
 ## Build a feature from user stories
 

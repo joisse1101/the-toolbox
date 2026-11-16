@@ -2,12 +2,12 @@
 
 ## Purpose
 
-Lets a planner project be named and pointed at its data directory from a visible YAML file and the portal, and prepares a directory with the structure the planner needs. It replaces the hidden `PLANNER_DATA_DIR` environment variable.
+Lets a viewer project be named and pointed at its data directory from a visible YAML file and the portal, and prepares a directory with the structure the viewer needs. It replaces the hidden `PLANNER_DATA_DIR` environment variable.
 
 ## Requirements
 
 ### Requirement: Project config file
-The system SHALL read the project name, the active code base or data directory, and an optional list of saved projects from a YAML file with four keys, `projectName`, `codeBase`, `dataDir` and `projects`. The file is `planner/planner.config.yaml` unless the `PLANNER_CONFIG` environment variable names another file. Each `projects` entry holds one path, `codeBase` or `dataDir`, and an optional `name`; its capability is `project-switcher`.
+The system SHALL read the project name, the active code base or data directory, and an optional list of saved projects from a YAML file with four keys, `projectName`, `codeBase`, `dataDir` and `projects`. The file is `viewer/viewer.config.yaml` unless the `VIEWER_CONFIG` environment variable names another file. Each `projects` entry holds one path, `codeBase` or `dataDir`, and an optional `name`; its capability is `project-switcher`.
 
 #### Scenario: Config present
 - **WHEN** the config holds `projectName: Payments` and `dataDir: D:\planner-data`
@@ -18,8 +18,12 @@ The system SHALL read the project name, the active code base or data directory, 
 - **THEN** it is resolved against the folder that holds the config file
 
 #### Scenario: Alternative config file
-- **WHEN** `PLANNER_CONFIG` names a file
-- **THEN** that file is read instead of `planner/planner.config.yaml`
+- **WHEN** `VIEWER_CONFIG` names a file
+- **THEN** that file is read instead of `viewer/viewer.config.yaml`
+
+#### Scenario: The old variable is not read
+- **WHEN** `PLANNER_CONFIG` names a file and `VIEWER_CONFIG` is not set
+- **THEN** `viewer/viewer.config.yaml` is read and the named file is not
 
 #### Scenario: Code base present
 - **WHEN** the config holds `codeBase: D:\code\payments`
@@ -38,15 +42,15 @@ The system SHALL read the project name, the active code base or data directory, 
 - **THEN** it loads as before and the list is empty
 
 ### Requirement: Safe defaults
-The system SHALL fall back to a default for a missing file or a missing key, so a setup without a config keeps working. The default data directory is `planner/data` and the default project name is empty.
+The system SHALL fall back to a default for a missing file or a missing key, so a setup without a config keeps working. The default data directory is `viewer/data` and the default project name is empty.
 
 #### Scenario: No config file
 - **WHEN** no config file exists
-- **THEN** the data directory is `planner/data` and loading does not fail
+- **THEN** the data directory is `viewer/data` and loading does not fail
 
 #### Scenario: Key missing
 - **WHEN** the config has `projectName` but no `dataDir`
-- **THEN** the data directory is `planner/data`
+- **THEN** the data directory is `viewer/data`
 
 ### Requirement: Invalid config fails at load
 The system SHALL validate the config when it loads. It SHALL fail naming the bad key for an unknown key, a value of the wrong type, an empty `dataDir` or an empty `codeBase`, and for a config that sets both `codeBase` and `dataDir`. It SHALL fail naming the entry for a `projects` value that is not a list, an entry that is not an object, an entry with an unknown key, an entry with both or neither of `codeBase` and `dataDir`, an empty path, or a `name` that is not text. For a file that is not valid YAML it SHALL fail naming the file.
@@ -87,11 +91,11 @@ The system SHALL NOT read `PLANNER_DATA_DIR` or `TLT_DATA_DIR`. The config file 
 - **THEN** the config's folder is used and the variable is ignored
 
 ### Requirement: Every consumer uses the config
-The portal server SHALL take the data directory from the project config through the planner's own resolution. The story skills SHALL take the same directory from the same config, found as the `toolkit-story-skills` capability describes, reading the `codeBase` and `dataDir` keys only. A story skill's script SHALL NOT import the planner's resolution.
+The viewer's server SHALL take the data directory from the project config through the viewer's own resolution. The story skills SHALL NOT read the project config; they use only the `.plans` folder of the folder they run in, as the `toolkit-story-skills` capability describes. A story skill's script SHALL NOT import the viewer's resolution.
 
 #### Scenario: Config changed, script run
-- **WHEN** the config's `dataDir` is changed and a skill script is started afterwards
-- **THEN** the script reads and writes in the new directory
+- **WHEN** the config's `dataDir` is changed and a skill script is started afterwards from a folder that holds `.plans`
+- **THEN** the script reads and writes in that `.plans` folder, not in the config's directory
 
 ### Requirement: Init creates the folder structure
 The system SHALL, on request, create the data directory when it is missing, and SHALL create a first backlog in it, named `new-backlog` and holding the starting files of the `backlog-folder-layout` capability, when the directory holds no backlog. It SHALL NOT create a backlog when the directory already holds one. It SHALL NOT overwrite, modify or delete any existing file or folder. The reply SHALL list what was created and what already existed.
@@ -222,7 +226,7 @@ The system SHALL, when the user changes the folder of the current project in the
 - **THEN** the portal switches to it, lists no backlog and offers to migrate
 
 ### Requirement: The server confines a directory sent by the browser
-The server SHALL accept a data directory from the browser only as an absolute path. It SHALL resolve links before checking, and SHALL refuse a system folder, a drive root, a path that is a file, and any path inside the repository other than `planner/data`. It SHALL NOT create a folder except through init or the copy.
+The server SHALL accept a data directory from the browser only as an absolute path. It SHALL resolve links before checking, and SHALL refuse a system folder, a drive root, a path that is a file, and any path inside the repository other than `viewer/data`. It SHALL NOT create a folder except through init or the copy.
 
 #### Scenario: Relative path
 - **WHEN** the browser sends `..\elsewhere`
@@ -233,7 +237,7 @@ The server SHALL accept a data directory from the browser only as an absolute pa
 - **THEN** the server refuses it and names the reason
 
 #### Scenario: Link into a protected folder
-- **WHEN** the path is a junction that leads into the repository's `planner/logic`
+- **WHEN** the path is a junction that leads into the repository's `viewer/shared`
 - **THEN** the server refuses it
 
 #### Scenario: Missing folder saved directly
@@ -241,14 +245,14 @@ The server SHALL accept a data directory from the browser only as an absolute pa
 - **THEN** the save is refused and the reply says the folder must be created by init or the copy first
 
 ### Requirement: Tests never use the real data
-The test suite SHALL point `PLANNER_CONFIG` at a committed test config whose `dataDir` is the sample data folder, and a test SHALL fail if that setup is missing.
+The test suite SHALL point `VIEWER_CONFIG` at a committed test config whose `dataDir` is the sample data folder, and a test SHALL fail if that setup is missing.
 
 #### Scenario: Suite run
 - **WHEN** `npm test` runs
 - **THEN** every test reads the sample data folder and none reads the real data directory
 
 #### Scenario: Setup dropped
-- **WHEN** the test setup no longer sets `PLANNER_CONFIG`
+- **WHEN** the test setup no longer sets `VIEWER_CONFIG`
 - **THEN** the guard test fails
 
 ### Requirement: A code base keeps its artifacts in .plans
@@ -271,7 +275,7 @@ A config with `dataDir`, and a setup with no config, SHALL behave as before this
 
 #### Scenario: No config
 - **WHEN** no config file exists
-- **THEN** the portal serves `planner/data`
+- **THEN** the portal serves `viewer/data`
 
 ### Requirement: Init creates the .plans folder in a code base
 The system SHALL, on request, create the `.plans` folder in a chosen code base when it is missing, and SHALL create a first backlog in it by the same rule as init of a data directory. It SHALL NOT create the code base, and SHALL NOT overwrite, modify or delete any existing file or folder. The reply SHALL list what was created and what already existed.
