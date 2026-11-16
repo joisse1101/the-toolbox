@@ -3,8 +3,8 @@ name: jois-story-plan
 description: Draw the context map of a backlog with the user (bounded contexts, the Epics each holds, the owner and the links between them), and turn the shaped stories of one Epic, one Feature or one story of a backlog (a folder of the data folder that holds `user-stories.csv`) into a slice in `<backlog>/slices/<slice>/`: one markdown document holding the use-case specification, a class diagram and sequence diagrams as fenced Mermaid blocks, drawn to references/diagram-conventions.md, and a `tasks.md` of build tasks, one or more per acceptance criterion, written with it. Decides the scope (Epic, Feature or story) with the user first, holds a design checkpoint (an outline and the open design decisions, asked of the user) before drafting at design level, grounded in the existing code when the current folder holds the code of the flow, shows the complete document, asks one yes/no and writes only after the user confirms. Reports slices and a context map that are stale because stories or Epics changed. Never changes the backlog, the proposals, the reviews, the lexicon or the repo. Use when the user wants to plan, draw, diagram or specify stories, or to redraw a slice.
 allowed-tools: Bash(node *read-diagrams.mjs*), Bash(node *read-context-map.mjs*), Bash(node *write-diagram.mjs*), Bash(node *write-context-map.mjs*), Bash(node *write-freeze.mjs*), Bash(node *init-plans.mjs*), Bash(git rev-parse:*), Bash(git check-ignore:*), Bash(git add *slices*), Bash(git commit:*), AskUserQuestion, Skill, Read, Grep, Glob
 metadata:
-  version: "1.9.0"
-  last_updated: "2026-11-13"
+  version: "1.10.0"
+  last_updated: "2026-11-16"
 ---
 
 # Plan stories into diagrams
