@@ -117,13 +117,13 @@ test('a fix shows each file it changes, and a decision confirmed while undecided
 test('the writer-input one-liner in the skill turns the printed slice into the JSON the writer takes', async () => {
   const { execFileSync } = await import('node:child_process');
   const { sampleTree } = await import('./helpers/backlog-tree.mjs');
-  const { tempConfig } = await import('./helpers/temp-config.mjs');
+  const { tempProject } = await import('./helpers/temp-project.mjs');
   const planDir = path.resolve(SKILL_DIR, '..', 'jois-story-plan');
   const block = /```bash\n(node <plan skill folder>\/read-diagrams[\s\S]*?)\n```/.exec(text)[1];
   const builder = /\| node -e '([\s\S]*?)' \| node <plan skill folder>\/write-diagram/.exec(block)[1];
-  const root = sampleTree({ withSlice: true });
-  const env = { ...process.env, PLANNER_CONFIG: tempConfig(root) };
-  const printed = execFileSync('node', [path.join(planDir, 'read-diagrams.mjs'), 'sample', '--slice', 'streaks'], { env, encoding: 'utf8' });
+  const project = tempProject();
+  sampleTree({ withSlice: true, into: project.dataDir });
+  const printed = execFileSync('node', [path.join(planDir, 'read-diagrams.mjs'), 'sample', '--slice', 'streaks'], { cwd: project.cwd, encoding: 'utf8' });
   const json = JSON.parse(execFileSync('node', ['-e', builder], { input: printed, encoding: 'utf8' }));
   assert.deepEqual(Object.keys(json), ['slice', 'scope', 'stories', 'files']);
   assert.equal(json.slice, 'streaks');

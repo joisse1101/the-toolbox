@@ -1,20 +1,19 @@
 import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { pathOf, decidedPath } from './helpers/backlog-tree.mjs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { writeLexicon, checkLexicon } from '../../skills/jois-story-propose/write-lexicon.mjs';
 import { parseLexicon } from '../../skills/jois-story-propose/lib/lexicon/lexicon.js';
-import { tempConfig } from './helpers/temp-config.mjs';
+import { tempProject } from './helpers/temp-project.mjs';
 
 const SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../skills/jois-story-propose/write-lexicon.mjs');
 const BACKLOG = 'Epic,Title\r\nIdentity,Login\r\n';
 
 function temp() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'lexicon-test-'));
+  const root = tempProject().dataDir; // the `.plans` of a temp project, so the CLI runs from its parent
   fs.mkdirSync(path.dirname(pathOf(root, 'data', 'backlog')), { recursive: true });
   fs.writeFileSync(pathOf(root, 'data', 'backlog'), BACKLOG);
   return root;
@@ -116,17 +115,17 @@ test('invalid JSON is reported with a position and writes nothing', () => {
 
 test('the script reports what it did, and a refused run exits 1', () => {
   const root = temp();
-  const env = { ...process.env, PLANNER_CONFIG: tempConfig(root) };
-  const ok = spawnSync('node', [SCRIPT, 'data.csv'], { input: '[{"term":"User","definition":"A person."}]', env, encoding: 'utf8' });
+  const cwd = path.dirname(root);
+  const ok = spawnSync('node', [SCRIPT, 'data.csv'], { input: '[{"term":"User","definition":"A person."}]', cwd, encoding: 'utf8' });
   assert.equal(ok.status, 0);
   assert.match(ok.stdout, /^Added 1 term to the lexicon of data \(User\); 1 in the lexicon now\./);
-  const again = spawnSync('node', [SCRIPT, 'data.csv'], { input: '[{"term":"User","definition":"A person."}]', env, encoding: 'utf8' });
+  const again = spawnSync('node', [SCRIPT, 'data.csv'], { input: '[{"term":"User","definition":"A person."}]', cwd, encoding: 'utf8' });
   assert.equal(again.status, 1);
   assert.match(again.stderr, /"User" is already a term/);
-  const bad = spawnSync('node', [SCRIPT, 'data.csv'], { input: '[{"term":"X"}]', env, encoding: 'utf8' });
+  const bad = spawnSync('node', [SCRIPT, 'data.csv'], { input: '[{"term":"X"}]', cwd, encoding: 'utf8' });
   assert.equal(bad.status, 1);
   assert.match(bad.stderr, /Nothing was written\. 1 problem:/);
-  assert.equal(spawnSync('node', [SCRIPT], { input: '[]', env, encoding: 'utf8' }).status, 2);
+  assert.equal(spawnSync('node', [SCRIPT], { input: '[]', cwd, encoding: 'utf8' }).status, 2);
 });
 
 test('a check reports the same problems and the terms it would add, and changes nothing', () => {
@@ -165,14 +164,14 @@ test('a write that does not stick fails naming the missing term', () => {
 
 test('CLI: --check reports the terms it would add and writes no file; a bad item fails the check', () => {
   const root = temp();
-  const env = { ...process.env, PLANNER_CONFIG: tempConfig(root) };
+  const cwd = path.dirname(root);
   const before = fs.readdirSync(path.dirname(pathOf(root, 'data', 'lexicon')));
-  const ok = spawnSync('node', [SCRIPT, 'data.csv', '--check'], { input: '[{"term":"User","definition":"A person."}]', env, encoding: 'utf8' });
+  const ok = spawnSync('node', [SCRIPT, 'data.csv', '--check'], { input: '[{"term":"User","definition":"A person."}]', cwd, encoding: 'utf8' });
   assert.equal(ok.status, 0);
   assert.match(ok.stdout, /^Check passed, nothing written\. Would add 1 term to the lexicon of data \(User\)\./);
-  const bad = spawnSync('node', [SCRIPT, 'data.csv', '--check'], { input: '[{"term":"X"}]', env, encoding: 'utf8' });
+  const bad = spawnSync('node', [SCRIPT, 'data.csv', '--check'], { input: '[{"term":"X"}]', cwd, encoding: 'utf8' });
   assert.equal(bad.status, 1);
   assert.match(bad.stderr, /Nothing was written\. 1 problem:/);
-  assert.equal(spawnSync('node', [SCRIPT, 'data.csv', '--oops'], { input: '[]', env, encoding: 'utf8' }).status, 2);
+  assert.equal(spawnSync('node', [SCRIPT, 'data.csv', '--oops'], { input: '[]', cwd, encoding: 'utf8' }).status, 2);
   assert.deepEqual(fs.readdirSync(path.dirname(pathOf(root, 'data', 'lexicon'))), before, 'no file was created');
 });

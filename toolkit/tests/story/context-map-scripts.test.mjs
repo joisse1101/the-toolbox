@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { sampleTree, pathOf, slicesPath, backlogPath, SAMPLE_SLICE } from './helpers/backlog-tree.mjs';
-import { tempConfig } from './helpers/temp-config.mjs';
+import { tempProject } from './helpers/temp-project.mjs';
 import { planSkillCopy } from './helpers/plan-skill.mjs';
 
 // The scripts run from a temp copy of the skill folder that has the Mermaid packages (see helpers/plan-skill.mjs).
@@ -136,9 +136,9 @@ test('the committed sample map passes the checks and the parser, matches its com
 });
 
 test('cli: write-context-map --check reports and writes nothing, the write then writes, and read-context-map shows the map', () => {
-  const root = setup();
-  const env = { ...process.env, PLANNER_CONFIG: tempConfig(root) };
-  const run = (script, args, body) => spawnSync(process.execPath, [path.join(plan.dir, script), ...args], { input: body === undefined ? '' : JSON.stringify(body), encoding: 'utf8', env });
+  const project = tempProject();
+  const root = sampleTree({ into: project.dataDir });
+  const run = (script, args, body) => spawnSync(process.execPath, [path.join(plan.dir, script), ...args], { input: body === undefined ? '' : JSON.stringify(body), encoding: 'utf8', cwd: project.cwd });
   const mapFiles = () => fs.readdirSync(dirOf(root)).filter((f) => f.startsWith('context-map'));
   const checked = run('write-context-map.mjs', ['sample', '--check'], MAP);
   assert.equal(checked.status, 0, checked.stderr);

@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathOf, decidedPath } from './helpers/backlog-tree.mjs';
+import { tempProject } from './helpers/temp-project.mjs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { writeReview, checkReview } from '../../skills/jois-story-review/write-review.mjs';
@@ -17,7 +18,7 @@ const CSV =
   'B1-IAM-0002,Identity & Access Management,SSO,SSO Login,"As a user, I want SSO, so that no credentials",55,,,,\r\n';
 
 function temp() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'review-test-'));
+  const root = tempProject().dataDir; // the `.plans` of a temp project, so the CLI runs from its parent
   fs.mkdirSync(path.dirname(pathOf(root, 'data', 'backlog')), { recursive: true });
   fs.writeFileSync(pathOf(root, 'data', 'backlog'), CSV);
   return root;
@@ -100,14 +101,8 @@ test('re-running keeps the status of rows already decided', () => {
   assert.deepEqual(after.map((x) => x.status), ['dismissed', 'open']);
 });
 
-// The CLI finds its data folder through PLANNER_CONFIG, as an installed skill does.
-function cliEnv(root) {
-  const config = path.join(root, 'planner.config.yaml');
-  fs.writeFileSync(config, `dataDir: ${JSON.stringify(root)}
-`);
-  return { ...process.env, PLANNER_CONFIG: config };
-}
-const cli = (root, args, input = '[]') => spawnSync(process.execPath, [SCRIPT, ...args], { input, encoding: 'utf8', env: cliEnv(root) });
+// The CLI finds its data folder as `.plans` in the current folder, as an installed skill does.
+const cli = (root, args, input = '[]') => spawnSync(process.execPath, [SCRIPT, ...args], { input, encoding: 'utf8', cwd: path.dirname(root) });
 
 test('CLI: bad name exits non-zero and writes nothing; extra arguments are refused', () => {
   const root = temp();
@@ -118,10 +113,10 @@ test('CLI: bad name exits non-zero and writes nothing; extra arguments are refus
   assert.equal(extra.status, 2);
 });
 
-test('CLI: without a data folder it says so and writes nothing', () => {
+test('CLI: from a folder without .plans it says so and writes nothing', () => {
   const root = temp();
-  const env = { ...process.env, PLANNER_CONFIG: '' };
-  const r = spawnSync(process.execPath, [SCRIPT, 'data.csv'], { input: '[]', encoding: 'utf8', env, cwd: root });
+  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'no-plans-'));
+  const r = spawnSync(process.execPath, [SCRIPT, 'data.csv'], { input: '[]', encoding: 'utf8', cwd: bare });
   assert.equal(r.status, 1);
   assert.match(r.stderr, /No data folder was found/);
   assert.equal(fs.existsSync(path.dirname(pathOf(root, 'data', 'review'))), false);

@@ -4,7 +4,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { tempData, putFile, pathOf, putSampleInitials, FIXTURE_BACKLOG_CSV } from './helpers/backlog-tree.mjs';
+import { putFile, pathOf, putSampleInitials, FIXTURE_BACKLOG_CSV } from './helpers/backlog-tree.mjs';
+import { tempProject } from './helpers/temp-project.mjs';
 import { writeFreeze, checkFreeze } from '../../skills/jois-story-plan/write-freeze.mjs';
 import { loadBacklog, serializeBacklog } from '../../skills/jois-story-plan/lib/backlog/model.js';
 import { parseCsv, toCsv } from '../../skills/jois-story-plan/lib/backlog/csv.js';
@@ -17,7 +18,7 @@ const TWO = { id: 'H1-HT-0002', title: 'See the best streak' };
 const RPT = { id: 'H1-FT-0001', title: 'Count focus sessions by category' };
 
 function temp(csv = SAMPLE) {
-  const root = tempData('freeze-test-');
+  const root = tempProject().dataDir; // the `.plans` of a temp project, so the command line runs from its parent
   putFile(root, 'sample', 'backlog', csv);
   putSampleInitials(root, 'sample');
   return root;
@@ -153,10 +154,7 @@ test('a file with no Frozen column gets one, empty for every other row', () => {
 
 test('the command line reads stdin, supports --check and exits 1 on a problem', () => {
   const root = temp();
-  const env = { ...process.env, PLANNER_CONFIG: '' };
-  fs.writeFileSync(path.join(root, 'planner.config.yaml'), `dataDir: ${JSON.stringify(root)}\n`);
-  env.PLANNER_CONFIG = path.join(root, 'planner.config.yaml');
-  const call = (args, input) => spawnSync(process.execPath, [SCRIPT, ...args], { input, env, encoding: 'utf8' });
+  const call = (args, input) => spawnSync(process.execPath, [SCRIPT, ...args], { input, cwd: path.dirname(root), encoding: 'utf8' });
   const ok = call(['sample', '--check'], JSON.stringify([TWO]));
   assert.equal(ok.status, 0, ok.stderr);
   assert.match(ok.stdout, /Check passed; nothing was written/);

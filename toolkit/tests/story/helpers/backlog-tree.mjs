@@ -41,8 +41,9 @@ export function putSampleInitials(dataDir, name) {
 }
 
 // A temp data folder holding the sample backlog `sample` and, on request, the mock slice and the mock context map.
-export function sampleTree({ withSlice = false, withMap = false } = {}) {
-  const root = tempData('sample-tree-');
+// `into` names an existing data folder to fill, such as a temp project's `.plans`.
+export function sampleTree({ withSlice = false, withMap = false, into } = {}) {
+  const root = into ?? tempData('sample-tree-');
   putFile(root, 'sample', 'backlog', fs.readFileSync(FIXTURE_BACKLOG_CSV, 'utf8'));
   const dir = bp.backlogDir(root, 'sample');
   putSampleInitials(root, 'sample');

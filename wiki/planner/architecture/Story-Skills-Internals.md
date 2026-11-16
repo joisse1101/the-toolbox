@@ -4,14 +4,9 @@ How the five story skills work inside. The skills are global toolkit items in `t
 
 ## Where the data folder comes from
 
-The scripts use `planner/logic/skill-support/resolve-data-dir.mjs`, which is copied into each skill. It looks in this order:
+The scripts use `planner/logic/skill-support/resolve-data-dir.mjs`, which is copied into each skill. It looks only for a `.plans/` folder in the current folder. It reads no environment variable and no config file, so a skill has one way to find its data and nothing can point it at the wrong folder by accident.
 
-1. The file that `PLANNER_CONFIG` names.
-2. A `.plans/` folder in the current folder.
-3. `planner.config.yaml` in the current folder.
-4. Otherwise the skill reports that nothing was found and asks the user.
-
-It never reads a parent folder, so a skill started in a sub-folder finds nothing, and its message names the folder it looked in. Only `codeBase` and `dataDir` are read, from a flat `key: value` file, so no `yaml` package is needed. A relative value is resolved against the config file's folder.
+It never reads a parent folder, so a skill started in a sub-folder finds nothing, and its message names the folder it looked in. When `.plans` is missing the skill reports that nothing was found and asks the user. When `.plans` is a file or cannot be read, the skill shows the error and does not guess another folder.
 
 `jois-story-propose`, `jois-story-review` and `jois-story-plan` have `init-plans.mjs`, which creates `<current folder>/.plans` only after the user agrees. It sits over `planner/logic/skill-support/init-plans.mjs` and refuses a file named `.plans`. `jois-story-explore` only reports, because it never writes.
 

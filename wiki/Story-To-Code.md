@@ -6,7 +6,7 @@ A **slice** is the unit the flow builds: a set of stories planned together into 
 
 ## The stages
 
-Start Claude in the code base folder, because the skills look for the data folder (`.plans`, or the folder `PLANNER_CONFIG` names) in the current folder only. Then run the stages in this order. Explore and review are optional, and every other stage needs the one before it.
+Start Claude in the code base folder, because the skills look for the data folder (`.plans`) in the current folder only. Then run the stages in this order. Explore and review are optional, and every other stage needs the one before it.
 
 1. **Explore** the idea with `jois-story-explore`. It discusses scope, splitting and acceptance criteria and writes nothing. See [Story Skills](planner/Story-Skills.md).
 2. **Propose** the agreed stories with `/jois-story:propose`. It writes them to `<backlog>/user-stories/proposals.csv`.

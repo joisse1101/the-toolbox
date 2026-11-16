@@ -6,8 +6,7 @@
 // frozen. A story that is already frozen is left as it is, so running the same freeze twice changes nothing. An ID that is not in
 // the file, a Title that does not match its ID, or an ID that the file holds in another form than the portal would give it, stops the
 // whole run before anything is written. --check runs the same preparation and writes nothing. The write is atomic and the file is
-// read again afterwards. The data folder comes from the PLANNER_CONFIG variable, else .plans or a planner.config.yaml in the
-// current folder (see lib/skill-support/resolve-data-dir.mjs).
+// read again afterwards. The data folder is the .plans folder in the current folder (see lib/skill-support/resolve-data-dir.mjs).
 
 import fs from 'node:fs';
 import path from 'node:path';

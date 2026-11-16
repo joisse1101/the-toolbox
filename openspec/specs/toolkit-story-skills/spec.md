@@ -145,28 +145,32 @@ Once nothing uses them, the repository SHALL NOT contain the story launchers, th
 - **WHEN** the repository is searched for `planner/claude/launchers`, `planner/claude/mcp` and `locked-settings.json`
 - **THEN** none is found and no document still describes them
 
-### Requirement: A story skill finds the data folder in the current folder
-A story skill SHALL find the backlog data folder in this order: the file the `PLANNER_CONFIG` variable names, then a `.plans` folder in the current folder, then a `planner.config.yaml` in the current folder. It SHALL NOT look in any parent folder. It SHALL read the `codeBase` and `dataDir` keys only and resolve a relative value against the config file's folder.
-
-#### Scenario: Variable wins
-- **WHEN** `PLANNER_CONFIG` names a config file and the current folder also has a `.plans` folder
-- **THEN** the folder the variable's file names is used
+### Requirement: A story skill uses only .plans in the current folder
+A story skill SHALL use the `.plans` folder in the current folder as the backlog data folder, and SHALL look nowhere else. It SHALL NOT look in any parent folder, SHALL NOT read the `PLANNER_CONFIG` variable and SHALL NOT read a `planner.config.yaml` file. When it finds no data folder, its message SHALL name only `.plans` in the current folder.
 
 #### Scenario: .plans in the current folder
-- **WHEN** no variable is set and the current folder holds `.plans`
+- **WHEN** the current folder holds `.plans`
 - **THEN** that `.plans` is the data folder
 
-#### Scenario: Config in the current folder
-- **WHEN** no variable is set, there is no `.plans`, and the current folder holds `planner.config.yaml` with `codeBase`
-- **THEN** that code base's `.plans` is the data folder
+#### Scenario: The variable is ignored
+- **WHEN** `PLANNER_CONFIG` names a config file and the current folder also has a `.plans` folder
+- **THEN** the current folder's `.plans` is used and the variable's file is not read
+
+#### Scenario: The variable alone finds nothing
+- **WHEN** `PLANNER_CONFIG` names a valid config file and the current folder has no `.plans`
+- **THEN** the skill reports that no data folder was found in the current folder
+
+#### Scenario: A config file alone finds nothing
+- **WHEN** the current folder holds `planner.config.yaml` with `codeBase` or `dataDir` and no `.plans`
+- **THEN** the skill reports that no data folder was found in the current folder and does not read the config file
 
 #### Scenario: Started in a sub-folder
 - **WHEN** the session starts in a sub-folder of a code base and the code base's `.plans` is in the parent
 - **THEN** the skill does not examine the parent and reports that no data folder was found
 
-#### Scenario: Unreadable config
-- **WHEN** the config file names both `codeBase` and `dataDir`, names neither, or is not a flat `key: value` file
-- **THEN** the skill reports the file and the problem and does not guess a folder
+#### Scenario: The message names only .plans
+- **WHEN** no data folder is found
+- **THEN** the message names the current folder and `.plans`, and does not mention `PLANNER_CONFIG` or `planner.config.yaml`
 
 #### Scenario: .plans is a file
 - **WHEN** the current folder holds a file named `.plans`

@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { pathOf, putFile } from './helpers/backlog-tree.mjs';
+import { tempProject } from './helpers/temp-project.mjs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { serializeReview } from '../../skills/jois-story-explore/lib/review/review.js';
@@ -12,18 +13,12 @@ import { readStoryContext, formatSection, formatMenu, formatStory, fileLines, SE
 
 const SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'skills', 'jois-story-explore', 'read-story-context.mjs');
 
-// The CLI finds its data folder through PLANNER_CONFIG, as an installed skill does. The config sits in its own temp folder.
-function tempConfig(dataDir) {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'story-config-'));
-  const file = path.join(dir, 'planner.config.yaml');
-  fs.writeFileSync(file, `dataDir: ${JSON.stringify(path.resolve(dataDir))}
-`);
-  return file;
-}
-const cliIn = (root) => (...args) => spawnSync(process.execPath, [SCRIPT, ...args], { encoding: 'utf8', env: { ...process.env, PLANNER_CONFIG: tempConfig(root) } });
+// The CLI finds its data folder as `.plans` in the current folder, as an installed skill does. `root` is the `.plans` of a temp
+// project (see temp), so the CLI runs from its parent folder.
+const cliIn = (root) => (...args) => spawnSync(process.execPath, [SCRIPT, ...args], { encoding: 'utf8', cwd: path.dirname(root) });
 
 function temp() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'context-test-'));
+  const root = tempProject().dataDir;
   fs.mkdirSync(path.dirname(pathOf(root, 'data', 'backlog')), { recursive: true });
   fs.mkdirSync(path.join(root, 'guidelines'));
   fs.writeFileSync(path.join(root, 'guidelines', 'product-backlog.md'), '# Guidelines\n');
@@ -566,9 +561,9 @@ test('CLI: story IDs after reviews take ID=Title, checked, with every mismatch r
   assert.match(bad.stderr, /storyIds\[1\]: B1-IAM-0001 is now "Login".*\nstoryIds\[2\]: B1-IAM-0002 is now "Logout"/);
 });
 
-test('CLI: without a data folder the script says so and exits non-zero', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'no-config-'));
-  const r = spawnSync(process.execPath, [SCRIPT, 'data.csv'], { encoding: 'utf8', cwd: dir, env: { ...process.env, PLANNER_CONFIG: '' } });
+test('CLI: from a folder without .plans the script says so and exits non-zero', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'no-plans-'));
+  const r = spawnSync(process.execPath, [SCRIPT, 'data.csv'], { encoding: 'utf8', cwd: dir });
   assert.equal(r.status, 1);
   assert.match(r.stderr, /No data folder was found/);
 });

@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { sampleTree, pathOf, slicesPath, SAMPLE_SLICE } from './helpers/backlog-tree.mjs';
-import { tempConfig } from './helpers/temp-config.mjs';
+import { tempProject } from './helpers/temp-project.mjs';
 import { planSkillCopy } from './helpers/plan-skill.mjs';
 
 // The scripts run from a temp copy of the skill folder that has the Mermaid packages (see helpers/plan-skill.mjs).
@@ -17,7 +17,7 @@ const FIXTURE_SLICE = SAMPLE_SLICE;
 
 // A temp data folder holding the sample backlog and, with `withSlice`, the committed mock slice.
 function setup({ withSlice = false } = {}) {
-  return sampleTree({ withSlice });
+  return sampleTree({ withSlice, into: tempProject().dataDir });
 }
 const sliceDir = (root, slice = 'streaks') => path.join(slicesPath(root, 'sample'), slice);
 const snapshot = (dir) => Object.fromEntries(fs.readdirSync(dir).sort().map((f) => [f, fs.readFileSync(path.join(dir, f), 'utf8')]));
@@ -204,9 +204,10 @@ test('write: a second document is refused, naming the rule', async () => {
 });
 
 // ---- the scripts as Bash runs them ----
+// `root` is the `.plans` of a temp project (see setup), so the scripts run from its parent folder.
 
 const run = (copy, script, args, body, root) => spawnSync(process.execPath, [path.join(copy.dir, script), ...args], {
-  input: body === undefined ? '' : JSON.stringify(body), encoding: 'utf8', env: { ...process.env, PLANNER_CONFIG: tempConfig(root) },
+  input: body === undefined ? '' : JSON.stringify(body), encoding: 'utf8', cwd: path.dirname(root),
 });
 const sliceBody = (over = {}) => ({ slice: 'streaks', scope: SCOPE, stories: PAIRS, files: fixtureFiles(), ...over });
 
@@ -252,12 +253,12 @@ test('cli: without the Mermaid packages the writers refuse, naming the skill fol
   assert.equal(fs.existsSync(slicesPath(root, 'sample')), false);
 });
 
-test('cli: a script run with no data folder set says so and a bad stdin is named', () => {
+test('cli: a script run from a folder without .plans says so and a bad stdin is named', () => {
   const root = setup();
-  const noConfig = spawnSync(process.execPath, [path.join(plan.dir, 'read-diagrams.mjs'), 'sample'], { encoding: 'utf8', cwd: os.tmpdir(), env: { ...process.env, PLANNER_CONFIG: '' } });
+  const noConfig = spawnSync(process.execPath, [path.join(plan.dir, 'read-diagrams.mjs'), 'sample'], { encoding: 'utf8', cwd: fs.mkdtempSync(path.join(os.tmpdir(), 'no-plans-')) });
   assert.equal(noConfig.status, 1);
   assert.match(noConfig.stderr, /No data folder was found/);
-  const bad = spawnSync(process.execPath, [path.join(plan.dir, 'write-diagram.mjs'), 'sample', '--check'], { input: '{ nope', encoding: 'utf8', env: { ...process.env, PLANNER_CONFIG: tempConfig(root) } });
+  const bad = spawnSync(process.execPath, [path.join(plan.dir, 'write-diagram.mjs'), 'sample', '--check'], { input: '{ nope', encoding: 'utf8', cwd: path.dirname(root) });
   assert.equal(bad.status, 1);
   assert.match(bad.stderr, /not valid JSON/);
 });

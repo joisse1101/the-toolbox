@@ -131,8 +131,9 @@ def test_command_requires_validation_at_the_current_commit():
 def test_a_missing_data_folder_is_its_own_reason_and_not_a_stale_slice():
     step = _step(2, 3)
     assert "no data folder was found is its own reason, not a stale slice" in step
-    for place in ("`PLANNER_CONFIG`", "`.plans`", "`planner.config.yaml`"):
-        assert place in step
+    assert "`.plans`" in step
+    for gone in ("PLANNER_CONFIG", "planner.config.yaml"):
+        assert gone not in step
     assert "Run the scripts from the project root" in step
 
 
