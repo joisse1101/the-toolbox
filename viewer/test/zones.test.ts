@@ -4,12 +4,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// The zones depend on each other in one direction only (see CLAUDE.md). This reads every source file's relative
-// imports and checks where each one points.
+// The zones depend on each other in one direction only (see CLAUDE.md). This reads every source file's relative and
+// `#` alias imports and checks where each one points. The aliases come from the `imports` field of viewer/package.json.
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const SOURCE = /\.(c|m)?[jt]sx?$/;
 const SKIP = new Set(['node_modules', 'dist', '.git', 'data', '.trees']);
-const IMPORT = /(?:from|import|require\(|import\()\s*['"](\.{1,2}\/[^'"?]+)/g;
+const IMPORT = /(?:from|import|require\(|import\()\s*['"](\.{1,2}\/[^'"?]+|#[^'"?]+)/g;
 
 const rel = (p: string) => path.relative(REPO, p).split(path.sep).join('/');
 
@@ -56,35 +56,65 @@ function frontendBreach(file: string, target: string) {
   return null;
 }
 
-function imports(file: string) {
-  const text = fs.readFileSync(path.join(REPO, file), 'utf8');
-  return [...text.matchAll(IMPORT)].map((m) => rel(path.resolve(path.dirname(path.join(REPO, file)), m[1])));
+// The alias map, read from viewer/package.json so the test follows the config: "#shared/" -> "viewer/shared/".
+function readAliases(): Map<string, string> {
+  const pkg = JSON.parse(fs.readFileSync(path.join(REPO, 'viewer', 'package.json'), 'utf8')) as { imports?: Record<string, string> };
+  const aliases = new Map<string, string>();
+  for (const [key, value] of Object.entries(pkg.imports ?? {})) {
+    if (key.endsWith('/*') && value.endsWith('/*')) {
+      aliases.set(key.slice(0, -1), path.posix.join('viewer', value.slice(0, -1)));
+    }
+  }
+  return aliases;
 }
+const ALIASES = readAliases();
+
+// Resolves one import specifier of `file` to a repo-relative path. Returns null for a `#` specifier no alias maps.
+function resolveSpecifier(file: string, specifier: string, aliases = ALIASES): string | null {
+  if (!specifier.startsWith('#')) return path.posix.normalize(path.posix.join(path.posix.dirname(file), specifier));
+  for (const [prefix, folder] of aliases) {
+    if (specifier.startsWith(prefix)) return path.posix.normalize(folder + specifier.slice(prefix.length));
+  }
+  return null;
+}
+
+const specifiers = (text: string) => [...text.matchAll(IMPORT)].map((m) => m[1]);
+
+// The zone breaches of a file's text: an import outside the folders its zone may use, or an unmapped `#` import.
+function zoneBreaches(file: string, text: string, aliases = ALIASES): string[] {
+  const breaches: string[] = [];
+  for (const specifier of specifiers(text)) {
+    const target = resolveSpecifier(file, specifier, aliases);
+    if (target === null) breaches.push(`${file} -> ${specifier} (no alias maps it)`);
+    else if (!allowed(file)!.some((folder) => starts(target, folder))) breaches.push(`${file} -> ${target}`);
+  }
+  return breaches;
+}
+
+// The frontend-rule breaches of a file's text. An unmapped `#` import is reported by zoneBreaches, so it is skipped here.
+function frontendBreaches(file: string, text: string, aliases = ALIASES): string[] {
+  const breaches: string[] = [];
+  for (const specifier of specifiers(text)) {
+    const target = resolveSpecifier(file, specifier, aliases);
+    const rule = target === null ? null : frontendBreach(file, target);
+    if (rule) breaches.push(`${file} -> ${target} (${rule})`);
+  }
+  return breaches;
+}
+
+const read = (file: string) => fs.readFileSync(path.join(REPO, file), 'utf8');
 
 const files = [...sources(path.join(REPO, 'viewer')), ...sources(path.join(REPO, 'toolkit'))]
   .map(rel).filter((f) => allowed(f) && !starts(f, 'viewer/test'));
 
 test('every source file imports only from the zones its own zone may depend on', () => {
   assert.ok(files.length > 50, `found ${files.length} source files; the scan is looking in the wrong place`);
-  const breaches: string[] = [];
-  for (const file of files) {
-    for (const target of imports(file)) {
-      if (!allowed(file)!.some((folder) => starts(target, folder))) breaches.push(`${file} -> ${target}`);
-    }
-  }
-  assert.deepEqual(breaches, []);
+  assert.deepEqual(files.flatMap((file) => zoneBreaches(file, read(file))), []);
 });
 
 test('inside the frontend, shared/ stays below the tools, and tools and features stay apart', () => {
   assert.ok(files.some((f) => starts(f, `${SRC}/tools/backlog/features`)), 'no feature files found');
-  const breaches: string[] = [];
-  for (const file of files) {
-    for (const target of imports(file)) {
-      const rule = frontendBreach(file, target);
-      if (rule) breaches.push(`${file} -> ${target} (${rule})`);
-    }
-  }
-  assert.deepEqual(breaches, []);
+  assert.deepEqual(files.flatMap((file) => frontendBreaches(file, read(file))), []);
 });
 
 test('the zone rules cover the layout: shared, backend, frontend, skills and toolkit all have source files', () => {
@@ -119,4 +149,33 @@ test('the frontend rules reject what they are for', () => {
   assert.equal(frontendBreach(`${T}/features/stories/StoriesTab.jsx`, `${T}/shared/issues.js`), null);
   assert.equal(frontendBreach(`${T}/features/stories/StoriesTab.jsx`, `${SRC}/shared/ui/EmptyState.jsx`), null);
   assert.equal(frontendBreach(`${SRC}/app/routes.jsx`, `${T}/BacklogTool.jsx`), null);
+});
+
+test('the alias map is read from package.json and covers the three zones', () => {
+  assert.equal(ALIASES.get('#shared/'), 'viewer/shared/');
+  assert.equal(ALIASES.get('#backend/'), 'viewer/backend/');
+  assert.equal(ALIASES.get('#frontend/'), 'viewer/frontend/');
+});
+
+test('an aliased import is checked against the zone rules', () => {
+  const from = (file: string, specifier: string) => zoneBreaches(file, `import x from '${specifier}';`);
+  assert.equal(from('viewer/shared/backlog/ids.ts', '#backend/x.ts').length, 1);
+  assert.equal(from('viewer/backend/server.ts', '#frontend/x.ts').length, 1);
+  assert.equal(from('viewer/frontend/src/main.tsx', '#backend/x.ts').length, 1);
+  assert.equal(from('viewer/backend/server.ts', '#shared/backlog/model.ts').length, 0);
+  assert.equal(from('viewer/frontend/src/main.tsx', '#frontend/src/app/routes.tsx').length, 0);
+});
+
+test('a # import that no alias maps is a breach', () => {
+  const breaches = zoneBreaches('viewer/backend/server.ts', `import x from '#nope/x.ts';`);
+  assert.equal(breaches.length, 1);
+  assert.match(breaches[0], /#nope\/x\.ts/);
+});
+
+test('an aliased import is checked against the frontend rules', () => {
+  const T = `${SRC}/tools/backlog`;
+  const breaches = frontendBreaches(`${T}/features/stories/StoriesTab.tsx`, `import g from '#frontend/src/tools/backlog/features/graph/graph.ts';`);
+  assert.equal(breaches.length, 1);
+  assert.match(breaches[0], /another feature/);
+  assert.deepEqual(frontendBreaches(`${T}/features/stories/StoriesTab.tsx`, `import g from '#frontend/src/shared/ui/EmptyState.tsx';`), []);
 });
