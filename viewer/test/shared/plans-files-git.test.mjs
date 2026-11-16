@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PLANS_FILES, gitignoreBlock } from '../../logic/skill-support/plans-files.mjs';
+import { PLANS_FILES, gitignoreBlock } from '../../shared/skill-support/plans-files.mjs';
 
 // "Status matches the table": a mock .plans tree with one file per row, the printed block as .gitignore, and real git.
 // The mock repo is its own git repo under the project's .scratch/, so git applies its .gitignore and not the outer one.

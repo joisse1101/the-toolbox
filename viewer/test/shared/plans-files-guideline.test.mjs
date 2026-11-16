@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PLANS_FILES, LIFECYCLES } from '../../logic/skill-support/plans-files.mjs';
+import { PLANS_FILES, LIFECYCLES } from '../../shared/skill-support/plans-files.mjs';
 
 // The readable table in the guideline and the data module hold the same paths, writers and lifecycles.
-const GUIDELINE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'guidelines', 'plans-files.md');
+const GUIDELINE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'shared', 'guidelines', 'plans-files.md');
 
 function guidelineRows() {
   const text = fs.readFileSync(GUIDELINE, 'utf8').replace(/\r\n/g, '\n');

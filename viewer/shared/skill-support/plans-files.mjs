@@ -1,5 +1,5 @@
 // The one table of the files written under `<data folder>/<backlog>/`: path, who writes it and how long it lives.
-// planner/guidelines/plans-files.md shows the same table to people, and a test keeps the two equal. The .gitignore block
+// viewer/shared/guidelines/plans-files.md shows the same table to people, and a test keeps the two equal. The .gitignore block
 // the story skills print is built from these rows, so a file the table lacks is a file the block would not cover.
 //
 // Lifecycles: `committed` (belongs in git), `local` (stays on the machine, ignored), `user decides` (re-included so a plain

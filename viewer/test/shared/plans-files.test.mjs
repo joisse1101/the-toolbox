@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import { PLANS_FILES, gitignoreBlock } from '../../logic/skill-support/plans-files.mjs';
+import { PLANS_FILES, gitignoreBlock } from '../../shared/skill-support/plans-files.mjs';
 
 // "One table lists every file under the data folder" and "A gitignore block is printed from the table".
 const lifecycleOf = (rowPath) => PLANS_FILES.find((row) => row.path === rowPath)?.lifecycle;

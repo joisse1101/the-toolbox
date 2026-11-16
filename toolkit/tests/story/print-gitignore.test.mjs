@@ -35,31 +35,17 @@ test('print-gitignore prints the block for .plans and writes nothing', () => {
   }
 });
 
-test('print-gitignore uses the folder a planner.config.yaml names inside the project', () => {
+test('print-gitignore ignores a planner.config.yaml and prints the block for .plans', () => {
   const cwd = temp();
   try {
+    fs.mkdirSync(path.join(cwd, '.plans'));
     fs.writeFileSync(path.join(cwd, 'planner.config.yaml'), 'dataDir: docs/plans\n');
     const result = run(PRINT, cwd);
     assert.equal(result.status, 0, result.stderr);
-    assert.match(lf(result.stdout), /^!docs\/plans\/$/m);
-    assert.doesNotMatch(result.stdout, /\.plans/);
+    assert.ok(lf(result.stdout).startsWith(PLANS_BLOCK_START), result.stdout);
+    assert.doesNotMatch(result.stdout, /docs\/plans/);
   } finally {
     fs.rmSync(cwd, { recursive: true });
-  }
-});
-
-test('print-gitignore says no block is needed for a data folder outside the project', () => {
-  const cwd = temp();
-  const outside = temp();
-  try {
-    fs.writeFileSync(path.join(cwd, 'planner.config.yaml'), `dataDir: ${outside.replace(/\\/g, '/')}\n`);
-    const result = run(PRINT, cwd);
-    assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, /^No \.gitignore block is needed/);
-    assert.doesNotMatch(result.stdout, /^!/m);
-  } finally {
-    fs.rmSync(cwd, { recursive: true });
-    fs.rmSync(outside, { recursive: true });
   }
 });
 

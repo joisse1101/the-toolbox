@@ -77,7 +77,7 @@ After the slice is written and read back, the skill runs `jois-story-verify` on 
 
 ### Printing the .gitignore block
 
-`print-gitignore.mjs` in the plan skill's folder prints the `.gitignore` block that keeps only the committed planner files in git, for the data folder it resolves like the other scripts. It writes nothing, and says no block is needed when the data folder is outside the project. Each skill's `init-plans.mjs` prints the same block after its "Created" line. The user reviews the block and adds it to `.gitignore` themselves. The block is built from the file table in [Data Folder](architecture/Data-Folder.md#lifecycle-of-each-file).
+`print-gitignore.mjs` in the plan skill's folder prints the `.gitignore` block that keeps only the committed planner files in git, for the `.plans` folder in the current folder, like the other scripts. It writes nothing. Each skill's `init-plans.mjs` prints the same block after its "Created" line. The user reviews the block and adds it to `.gitignore` themselves. The block is built from the file table in [Data Folder](architecture/Data-Folder.md#lifecycle-of-each-file).
 
 ### Freezing the stories of a slice
 
