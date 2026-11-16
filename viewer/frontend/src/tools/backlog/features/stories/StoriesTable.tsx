@@ -1,12 +1,12 @@
 import type { RefObject } from 'react';
-import { storyIssues, storyLabel } from '../../../../../../shared/backlog/model.ts';
-import { issueClass, rowTooltip } from '../../shared/issues.ts';
-import StateMark from '../../../../shared/ui/StateMark.tsx';
-import ResizeHandle from '../../../../shared/ui/ResizeHandle.tsx';
+import { storyIssues, storyLabel } from '#shared/backlog/model.ts';
+import { issueClass, rowTooltip } from '#frontend/src/tools/backlog/shared/issues.ts';
+import StateMark from '#frontend/src/shared/ui/StateMark.tsx';
+import ResizeHandle from '#frontend/src/shared/ui/ResizeHandle.tsx';
 import { COLUMNS, CHECK_WIDTH, COLUMN_LIMITS } from './storiesColumns.ts';
 import type { Column } from './storiesColumns.ts';
 import type { SortDir } from './story-table.ts';
-import type { Story } from '../../../../../../shared/types.ts';
+import type { Story } from '#shared/types.ts';
 
 // A cell's tooltip: its full text (the cell may be cut off), then the row's completeness reasons.
 const cellTitle = (text: string, rowTip: string | undefined) => [text, rowTip].filter(Boolean).join('\n\n') || undefined;

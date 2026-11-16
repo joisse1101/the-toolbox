@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { resolveStoryRef, sameTitle } from '../../shared/backlog/story-ref.ts';
-import type { StoryRefResult } from '../../shared/backlog/story-ref.ts';
+import { resolveStoryRef, sameTitle } from '#shared/backlog/story-ref.ts';
+import type { StoryRefResult } from '#shared/backlog/story-ref.ts';
 type Ref = StoryRefResult<{ code: string }>;
 type Found = Extract<Ref, { ok: true }> & { story: { code: string } };
 type Failed = Extract<Ref, { ok: false }>;

@@ -1,15 +1,15 @@
 import { useState } from 'react';
 import type { DragEvent, KeyboardEvent } from 'react';
-import type { Story } from '../../../../../shared/types.ts';
-import type { EpicGroup } from '../../../../../shared/backlog/model.ts';
-import { groupByEpic, storyIssues, storyLabel } from '../../../../../shared/backlog/model.ts';
-import { openCount } from '../../../../../shared/backlog/story-text.ts';
-import type { Level } from '../../../shared/lib/collapse.ts';
-import { anyOpen, epicKey, featureKey } from '../../../shared/lib/collapse.ts';
+import type { Story } from '#shared/types.ts';
+import type { EpicGroup } from '#shared/backlog/model.ts';
+import { groupByEpic, storyIssues, storyLabel } from '#shared/backlog/model.ts';
+import { openCount } from '#shared/backlog/story-text.ts';
+import type { Level } from '#frontend/src/shared/lib/collapse.ts';
+import { anyOpen, epicKey, featureKey } from '#frontend/src/shared/lib/collapse.ts';
 import type { GroupRef } from '../shell/useBacklog.ts';
 import { issueClass, rowTooltip } from './issues.ts';
-import StateMark from '../../../shared/ui/StateMark.tsx';
-import { Row } from '../../../shared/ui/Layout.tsx';
+import StateMark from '#frontend/src/shared/ui/StateMark.tsx';
+import { Row } from '#frontend/src/shared/ui/Layout.tsx';
 
 // Drag a story to reorder it inside its epic, or onto another epic's group to move it there. Dropping on the
 // "(No epic)" group does nothing. `drag` is the story being dragged, `drop` = { epic, beforeId } where it would land

@@ -15,7 +15,7 @@ fs.mkdirSync(path.join(dist, 'assets'));
 fs.writeFileSync(path.join(dist, 'index.html'), INDEX);
 fs.writeFileSync(path.join(dist, 'assets', 'app.js'), 'console.log(1);');
 process.env.VIEWER_DIST_DIR = dist;
-const { server, staticTarget } = await import('../../backend/server.ts');
+const { server, staticTarget } = await import('#backend/server.ts');
 
 let origin: string;
 test.before(async () => {

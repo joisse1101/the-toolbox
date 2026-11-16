@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import type { GraphItem, GraphLayout } from '../../frontend/src/tools/backlog/features/graph/graph.ts';
-import { layoutGraph, relatedIds, fitView, zoomAt, panBy, toGraphPoint, MIN_ZOOM, MAX_ZOOM } from '../../frontend/src/tools/backlog/features/graph/graph.ts';
+import type { GraphItem, GraphLayout } from '#frontend/src/tools/backlog/features/graph/graph.ts';
+import { layoutGraph, relatedIds, fitView, zoomAt, panBy, toGraphPoint, MIN_ZOOM, MAX_ZOOM } from '#frontend/src/tools/backlog/features/graph/graph.ts';
 
 let n = 0;
 const story = (code: string, dependsOn: string[] = []): GraphItem => ({ id: ++n, code, dependsOn });

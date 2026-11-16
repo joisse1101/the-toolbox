@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import type { BacklogFile, ReviewRow, ReviewStatus, Story } from '../../../../../../shared/types.ts';
-import type { Ask } from '../../../../shared/hooks/useConfirm.ts';
-import type { BacklogActions } from '../../shell/useBacklog.ts';
-import { acceptProposed, moveToProposed as moveStoryToProposed } from '../../../../../../shared/backlog/proposals.ts';
-import { openUnitsFor } from '../../../../../../shared/review/review.ts';
+import type { BacklogFile, ReviewRow, ReviewStatus, Story } from '#shared/types.ts';
+import type { Ask } from '#frontend/src/shared/hooks/useConfirm.ts';
+import type { BacklogActions } from '#frontend/src/tools/backlog/shell/useBacklog.ts';
+import { acceptProposed, moveToProposed as moveStoryToProposed } from '#shared/backlog/proposals.ts';
+import { openUnitsFor } from '#shared/review/review.ts';
 import { useProposals } from './useProposals.ts';
 
 // Proposed stories for the open backlog (its proposals file; the tab is always there, the file may not be), and the

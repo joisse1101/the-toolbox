@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { newStory, loadBacklog, serializeBacklog, COLUMNS } from '../../shared/backlog/model.ts';
-import { renumber } from '../../shared/backlog/ids.ts';
+import { newStory, loadBacklog, serializeBacklog, COLUMNS } from '#shared/backlog/model.ts';
+import { renumber } from '#shared/backlog/ids.ts';
 import {
   isPlaceholder, nextPlaceholder, removeProposed, reorderProposed, moveProposed, acceptProposed, moveToProposed,
-} from '../../shared/backlog/proposals.ts';
-import type { Story } from '../../shared/types.ts';
+} from '#shared/backlog/proposals.ts';
+import type { Story } from '#shared/types.ts';
 
 type Accepted = Exclude<ReturnType<typeof acceptProposed>, { error: string }> & { error?: undefined };
 type Moved = Exclude<ReturnType<typeof moveToProposed>, { error: string }> & { error?: undefined };

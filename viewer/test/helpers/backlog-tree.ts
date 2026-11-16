@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import * as bp from '../../shared/storage/backlog-paths.ts';
+import * as bp from '#shared/storage/backlog-paths.ts';
 
 // A new empty data folder (the tests use no other).
 export const tempData = (prefix = 'backlog-tree-') => fs.mkdtempSync(path.join(os.tmpdir(), prefix));

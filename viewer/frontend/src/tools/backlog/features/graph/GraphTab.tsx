@@ -1,14 +1,14 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, PointerEvent } from 'react';
-import type { Story } from '../../../../../../shared/types.ts';
+import type { Story } from '#shared/types.ts';
 import type { GraphEdge, GraphItem, GraphLayout, GraphLevel, GraphView, Point } from './graph.ts';
-import TabHeader from '../../../../shared/ui/TabHeader.tsx';
+import TabHeader from '#frontend/src/shared/ui/TabHeader.tsx';
 import GraphToolbar from './GraphToolbar.tsx';
 import GraphDetail from './GraphDetail.tsx';
 import GraphCanvas from './GraphCanvas.tsx';
 import GraphUnlinked from './GraphUnlinked.tsx';
-import { storyLabel as title } from '../../../../../../shared/backlog/model.ts';
-import { wouldCycle } from '../../../../../../shared/backlog/ids.ts';
+import { storyLabel as title } from '#shared/backlog/model.ts';
+import { wouldCycle } from '#shared/backlog/ids.ts';
 import { layoutGraph, groupStories, relatedIds, fitView, zoomAt, panBy, toGraphPoint } from './graph.ts';
 import { edgeKey, bandGeometry } from './graphGeometry.ts';
 

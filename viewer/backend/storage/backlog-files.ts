@@ -3,9 +3,9 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { HttpError, validateBacklogName } from '../../shared/storage/file-name.ts';
-import { backlogDir, backlogFile } from '../../shared/storage/backlog-paths.ts';
-import type { BacklogKind } from '../../shared/types.ts'; // the kinds of file a backlog holds
+import { HttpError, validateBacklogName } from '#shared/storage/file-name.ts';
+import { backlogDir, backlogFile } from '#shared/storage/backlog-paths.ts';
+import type { BacklogKind } from '#shared/types.ts'; // the kinds of file a backlog holds
 
 const MAX_NAME_TRIES = 1000;
 

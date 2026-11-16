@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseLexicon, findTerm, saveTerm } from '../../shared/lexicon/lexicon.ts';
+import { parseLexicon, findTerm, saveTerm } from '#shared/lexicon/lexicon.ts';
 import {
   applySuggestion, composeSuggestions, emptySuggestions, impactOf, openRows, parseSuggestions, staleReason, validateItems,
-} from '../../shared/lexicon/lexicon-suggestions.ts';
-import type { Lexicon, LexiconSuggestion } from '../../shared/types.ts';
+} from '#shared/lexicon/lexicon-suggestions.ts';
+import type { Lexicon, LexiconSuggestion } from '#shared/types.ts';
 
 type Saved = { ok: true; lexicon: Lexicon };
 type Loose = Partial<LexiconSuggestion>; // the tests pass the fields a case needs, not a whole row

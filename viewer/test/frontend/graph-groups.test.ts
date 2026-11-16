@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import type { Story } from '../../shared/types.ts';
-import { groupStories, layoutGraph } from '../../frontend/src/tools/backlog/features/graph/graph.ts';
+import type { Story } from '#shared/types.ts';
+import { groupStories, layoutGraph } from '#frontend/src/tools/backlog/features/graph/graph.ts';
 
 let n = 0;
 // A partial story: the grouping code reads only these fields.

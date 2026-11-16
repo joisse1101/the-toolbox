@@ -1,10 +1,10 @@
 import type { KeyboardEvent, PointerEvent, RefObject } from 'react';
-import type { Story } from '../../../../../../shared/types.ts';
+import type { Story } from '#shared/types.ts';
 import type { GraphEdge, GraphLayout, GraphLevel, GraphNode, GraphView, Point, groupStories } from './graph.ts';
-import EmptyState from '../../../../shared/ui/EmptyState.tsx';
-import { storyIssues, storyLabel as title } from '../../../../../../shared/backlog/model.ts';
-import { issueClass, rowTooltip } from '../../shared/issues.ts';
-import { stateWord } from '../../../../shared/ui/StateMark.tsx';
+import EmptyState from '#frontend/src/shared/ui/EmptyState.tsx';
+import { storyIssues, storyLabel as title } from '#shared/backlog/model.ts';
+import { issueClass, rowTooltip } from '#frontend/src/tools/backlog/shared/issues.ts';
+import { stateWord } from '#frontend/src/shared/ui/StateMark.tsx';
 import { NODE_W, NODE_H, BAND_PAD, MIN_LABEL_ZOOM, slot, edgeKey, clip, edgePath } from './graphGeometry.ts';
 import type { bandGeometry } from './graphGeometry.ts';
 

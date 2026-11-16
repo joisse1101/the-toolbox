@@ -1,7 +1,7 @@
-import type { Clarification, Story } from '../../../../../../shared/types.ts';
+import type { Clarification, Story } from '#shared/types.ts';
 import type { Edit, ListFields } from './formTypes.ts';
-import { openCount, emptyClarification } from '../../../../../../shared/backlog/story-text.ts';
-import { CellWarning } from '../../../../shared/ui/FormParts.tsx';
+import { openCount, emptyClarification } from '#shared/backlog/story-text.ts';
+import { CellWarning } from '#frontend/src/shared/ui/FormParts.tsx';
 
 const CLARIFICATIONS_WARNING = 'The Clarifications cell does not follow "Q1: …" / "A1: …", so it is kept as it is';
 

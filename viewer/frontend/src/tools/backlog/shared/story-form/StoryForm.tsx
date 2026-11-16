@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
 import type { ChangeEvent } from 'react';
-import type { Story } from '../../../../../../shared/types.ts';
-import type { ReviewUnit } from '../../../../../../shared/review/review.ts';
+import type { Story } from '#shared/types.ts';
+import type { ReviewUnit } from '#shared/review/review.ts';
 import type { Edit, ListFields, SetField, SetStoryPart, StoryPart } from './formTypes.ts';
-import { storyIssues } from '../../../../../../shared/backlog/model.ts';
+import { storyIssues } from '#shared/backlog/model.ts';
 import { issueClass } from '../issues.ts';
 import SuggestionList from '../Suggestions.tsx';
 import { onNavKeyDown } from './storyFormNav.ts';

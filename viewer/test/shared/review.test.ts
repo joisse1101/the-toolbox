@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { loadBacklog } from '../../shared/backlog/model.ts';
+import { loadBacklog } from '#shared/backlog/model.ts';
 import {
   parseReview, serializeReview, validateFindings, fillCurrent, mergeStatus, suggestionState, applySuggestions,
   unitsOf, unitState, acceptAll, acceptSummaryText, criterionNumberOf, displayRow, openCounts, openUnitsFor, retargetRows, reviewOverview, REVIEW_COLUMNS,
-} from '../../shared/review/review.ts';
-import type { ApplyResult, Finding, ReviewUnit, SkipReason } from '../../shared/review/review.ts';
-import type { Criterion, ReviewRow, Story } from '../../shared/types.ts';
+} from '#shared/review/review.ts';
+import type { ApplyResult, Finding, ReviewUnit, SkipReason } from '#shared/review/review.ts';
+import type { Criterion, ReviewRow, Story } from '#shared/types.ts';
 
 type Applied = Extract<ApplyResult, { stories: Story[] }> & { error?: undefined };
 type Refused = { error: string; stories?: undefined };

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
-import type { Backlog } from '../../../../shared/types.ts';
+import type { Backlog } from '#shared/types.ts';
 import type { FileStore } from '../api/files.ts';
-import { serializeBacklog } from '../../../../shared/backlog/model.ts';
+import { serializeBacklog } from '#shared/backlog/model.ts';
 import { useConfirm } from './useConfirm.ts';
 
 const SAVE_DEBOUNCE_MS = 600;

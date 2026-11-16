@@ -2,7 +2,7 @@
 // A group is named by its Epic (and Feature) name, never by a story ID (IDs shift on renumber), and the set holds the
 // *closed* keys, so a group the set has never seen is open. `groups` is the result of `groupByEpic` (viewer/shared/backlog/model.js).
 
-import type { EpicGroup } from '../../../../shared/backlog/model.ts';
+import type { EpicGroup } from '#shared/backlog/model.ts';
 
 export type Level = 'epic' | 'feature';
 export const LEVELS: Level[] = ['epic', 'feature'];

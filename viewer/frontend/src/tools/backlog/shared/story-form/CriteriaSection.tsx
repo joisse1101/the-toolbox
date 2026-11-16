@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import type { Story } from '../../../../../../shared/types.ts';
-import type { ReviewUnit } from '../../../../../../shared/review/review.ts';
+import type { Story } from '#shared/types.ts';
+import type { ReviewUnit } from '#shared/review/review.ts';
 import type { Cues, Edit } from './formTypes.ts';
-import { emptyCriterion, criteriaCellText } from '../../../../../../shared/backlog/model.ts';
-import { criterionNumberOf } from '../../../../../../shared/review/review.ts';
-import { Label, CellWarning } from '../../../../shared/ui/FormParts.tsx';
+import { emptyCriterion, criteriaCellText } from '#shared/backlog/model.ts';
+import { criterionNumberOf } from '#shared/review/review.ts';
+import { Label, CellWarning } from '#frontend/src/shared/ui/FormParts.tsx';
 import { needs, invalid } from './fieldCues.ts';
 
 const $ = (id: string) => document.getElementById(id);

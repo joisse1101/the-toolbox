@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { EpicGroup } from '../../../../shared/backlog/model.ts';
+import type { EpicGroup } from '#shared/backlog/model.ts';
 import type { Level } from '../lib/collapse.ts';
 import { parseClosed, pruneClosed, reveal as revealGroup, serializeClosed, toggleLevel as toggleGroupLevel } from '../lib/collapse.ts';
 

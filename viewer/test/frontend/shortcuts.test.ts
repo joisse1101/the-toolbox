@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { ignoresKey, isTextEntry } from '../../frontend/src/tools/backlog/shell/shortcuts.ts';
+import { ignoresKey, isTextEntry } from '#frontend/src/tools/backlog/shell/shortcuts.ts';
 
 // A partial keyboard event: the code under test reads only these fields.
 const key = (target: unknown, mods: Partial<KeyboardEvent> = {}) => ({ target, ctrlKey: false, altKey: false, metaKey: false, ...mods }) as unknown as KeyboardEvent;

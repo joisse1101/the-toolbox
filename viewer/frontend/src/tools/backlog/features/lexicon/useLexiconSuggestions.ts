@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { LexiconSuggestionsFile, ReviewStatus } from '../../../../../../shared/types.ts';
-import { createFileStore, messageOf } from '../../../../shared/api/files.ts';
-import { composeSuggestions, emptySuggestions, parseSuggestions } from '../../../../../../shared/lexicon/lexicon-suggestions.ts';
+import type { LexiconSuggestionsFile, ReviewStatus } from '#shared/types.ts';
+import { createFileStore, messageOf } from '#frontend/src/shared/api/files.ts';
+import { composeSuggestions, emptySuggestions, parseSuggestions } from '#shared/lexicon/lexicon-suggestions.ts';
 
 const store = createFileStore('lexicon-suggestions');
 const SAVE_DEBOUNCE_MS = 400;

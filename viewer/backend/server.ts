@@ -5,18 +5,18 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import { HttpError, validateBacklogName } from '../shared/storage/file-name.ts';
+import { HttpError, validateBacklogName } from '#shared/storage/file-name.ts';
 import { writeBacklogFiles } from './storage/backlog-files.ts';
 import { startingFiles } from './storage/starting-files.ts';
 import { codeOf, messageOf } from './storage/errors.ts';
-import { validateInitials, readInitials, writeInitials, findConflict, defaultInitials } from '../shared/storage/backlog-initials.ts';
-import { PLANS_DIR, KINDS, BACKLOG_FILE, backlogDir, backlogFile, listBacklogs, detectOlderLayout } from '../shared/storage/backlog-paths.ts';
-import { loadBacklog } from '../shared/backlog/model.ts';
+import { validateInitials, readInitials, writeInitials, findConflict, defaultInitials } from '#shared/storage/backlog-initials.ts';
+import { PLANS_DIR, KINDS, BACKLOG_FILE, backlogDir, backlogFile, listBacklogs, detectOlderLayout } from '#shared/storage/backlog-paths.ts';
+import { loadBacklog } from '#shared/backlog/model.ts';
 import {
   ROOT, loadConfig, saveConfig, configPath, confineDir, confineCodeBase, checkFolder, checkCodeBase, initFolders, initCodeBase, copyData, copyToCodeBase, planCopy, migrateOlderLayout,
 } from './storage/project-config.ts';
 import type { ConfigChanges } from './storage/project-config.ts';
-import type { BacklogKind, ApiError } from '../shared/types.ts';
+import type { BacklogKind, ApiError } from '#shared/types.ts';
 
 // The config is read when paths.ts loads. Run as the server, a bad config ends the process with the message that names the key.
 let paths: typeof import('./storage/paths.ts');

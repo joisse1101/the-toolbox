@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
-import type { Backlog, BacklogFile, ReviewRow, Story } from '../../../../../shared/types.ts';
-import { createFileStore, messageOf } from '../../../shared/api/files.ts';
-import { loadBacklog, newStory, displayOrder, applyBulk } from '../../../../../shared/backlog/model.ts';
-import { commitEpic, commitEpics, moveStory, moveGroup, gatherFeatures, recodedBetween, removeStory, removeStories, wouldCycle, renumber } from '../../../../../shared/backlog/ids.ts';
-import { applySuggestions, acceptAll } from '../../../../../shared/review/review.ts';
-import { useAutosave } from '../../../shared/hooks/useAutosave.ts';
-import type { StatusReport } from '../../../shared/hooks/useAutosave.ts';
-import { useConfirm } from '../../../shared/hooks/useConfirm.ts';
+import type { Backlog, BacklogFile, ReviewRow, Story } from '#shared/types.ts';
+import { createFileStore, messageOf } from '#frontend/src/shared/api/files.ts';
+import { loadBacklog, newStory, displayOrder, applyBulk } from '#shared/backlog/model.ts';
+import { commitEpic, commitEpics, moveStory, moveGroup, gatherFeatures, recodedBetween, removeStory, removeStories, wouldCycle, renumber } from '#shared/backlog/ids.ts';
+import { applySuggestions, acceptAll } from '#shared/review/review.ts';
+import { useAutosave } from '#frontend/src/shared/hooks/useAutosave.ts';
+import type { StatusReport } from '#frontend/src/shared/hooks/useAutosave.ts';
+import { useConfirm } from '#frontend/src/shared/hooks/useConfirm.ts';
 
 const store = createFileStore('backlog');
 const NEW_BACKLOG_NAME = 'new-backlog';

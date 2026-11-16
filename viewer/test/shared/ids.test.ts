@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseCsv } from '../../shared/backlog/csv.ts';
-import { loadBacklog, serializeBacklog, newStory, storyIssues, COLUMNS } from '../../shared/backlog/model.ts';
-import type { Story } from '../../shared/types.ts';
+import { parseCsv } from '#shared/backlog/csv.ts';
+import { loadBacklog, serializeBacklog, newStory, storyIssues, COLUMNS } from '#shared/backlog/model.ts';
+import type { Story } from '#shared/types.ts';
 import {
   epicPrefix, renumber, moveStory, moveGroup, gatherFeatures, recodedBetween, commitEpic, commitEpics, removeStory, removeStories, freezeStories, dependentsOf, wouldCycle, dependencyChoices, backlogProblems,
-} from '../../shared/backlog/ids.ts';
+} from '#shared/backlog/ids.ts';
 
 const I = 'B1'; // the backlog initials of most tests
 let n = 0;

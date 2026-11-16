@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, KeyboardEvent } from 'react';
 import type { useProjects } from './useProjects.ts';
 import AddProjectDialog from './AddProjectDialog.tsx';
-import { Row } from '../../../shared/ui/Layout.tsx';
+import { Row } from '#frontend/src/shared/ui/Layout.tsx';
 
 const ADD_PROJECT = 'add-project';
 

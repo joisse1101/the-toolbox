@@ -1,5 +1,5 @@
 import type { KeyboardEvent } from 'react';
-import type { Story } from '../../../../../../shared/types.ts';
+import type { Story } from '#shared/types.ts';
 
 const $ = (id: string) => document.getElementById(id)!;
 

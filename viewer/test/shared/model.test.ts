@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseCsv } from '../../shared/backlog/csv.ts';
+import { parseCsv } from '#shared/backlog/csv.ts';
 import {
   loadBacklog, serializeBacklog, newStory, newBacklogText, shouldSplit, storyIssues, storyLabel, COLUMNS,
   groupByEpic, displayOrder, applyBulk,
-} from '../../shared/backlog/model.ts';
+} from '#shared/backlog/model.ts';
 
 const load = (text: string, options: { placeholderIds?: boolean } = {}) => loadBacklog(text, { initials: 'B1', ...options });
 
@@ -287,7 +287,7 @@ test('applyBulk: a frozen story is skipped completely and counted', () => {
 });
 
 test('Benched: only a proposals file has the column, and it round-trips', async () => {
-  const { serializeBacklog, proposalHeaders } = await import('../../shared/backlog/model.ts');
+  const { serializeBacklog, proposalHeaders } = await import('#shared/backlog/model.ts');
   assert.ok(!load('ID,Epic\r\n').headers.includes('Benched'));
   const loaded = load('ID,Epic,Benched\r\nNEW-1,IAM,Yes\r\nNEW-2,IAM,\r\n', { placeholderIds: true });
   assert.deepEqual(loaded.stories.map((s) => s.benched), [true, false]);

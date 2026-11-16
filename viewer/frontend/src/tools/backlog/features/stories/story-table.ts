@@ -1,5 +1,5 @@
-import { PRIORITIES } from '../../../../../../shared/backlog/model.ts';
-import type { Story } from '../../../../../../shared/types.ts';
+import { PRIORITIES } from '#shared/backlog/model.ts';
+import type { Story } from '#shared/types.ts';
 
 // Filter and sort for the Stories tab table. Pure: the table's rows come in, the rows to show come out.
 

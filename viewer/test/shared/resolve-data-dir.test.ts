@@ -4,8 +4,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import * as backlogPaths from '../../shared/storage/backlog-paths.ts';
-import { resolveDataDir, dataDirOrThrow, PLANS_DIR } from '../../shared/skill-support/resolve-data-dir.ts';
+import * as backlogPaths from '#shared/storage/backlog-paths.ts';
+import { resolveDataDir, dataDirOrThrow, PLANS_DIR } from '#shared/skill-support/resolve-data-dir.ts';
 
 // The scenarios of "A story skill uses only .plans in the current folder" in the toolkit-story-skills spec.
 const TEST_DIR = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -99,7 +99,7 @@ test('dataDirOrThrow returns the .plans folder when it exists', () => {
 });
 
 test('a fresh code base after init: .plans is found with no yaml present, and its backlog is listed', async () => {
-  const { initCodeBase } = await import('../../backend/storage/project-config.ts');
+  const { initCodeBase } = await import('#backend/storage/project-config.ts');
   const { listBacklogs } = backlogPaths;
   const codeBase = temp();
   assert.deepEqual(((await initCodeBase(codeBase)) as { created: string[] }).created, ['.plans', 'new-backlog']);

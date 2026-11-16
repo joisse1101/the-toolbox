@@ -6,10 +6,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import YAML from 'yaml';
-import { PLANS_DIR } from '../../shared/storage/backlog-paths.ts';
+import { PLANS_DIR } from '#shared/storage/backlog-paths.ts';
 import { confineDir } from './project-folders.ts';
 import { codeOf, messageOf } from './errors.ts';
-import type { ProjectConfig, SavedProject } from '../../shared/types.ts';
+import type { ProjectConfig, SavedProject } from '#shared/types.ts';
 
 export {
   confineDir, confineCodeBase, checkFolder, checkCodeBase, initFolders, initCodeBase, copyData, copyToCodeBase, planCopy, planCopyToCodeBase, migrateOlderLayout,

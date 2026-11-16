@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { Story } from '../../../../../../shared/types.ts';
+import type { Story } from '#shared/types.ts';
 import type { ProposedNotice } from './useProposedFlow.ts';
-import { backlogProblems } from '../../../../../../shared/backlog/ids.ts';
-import StoryList from '../../shared/StoryList.tsx';
-import StoryForm from '../../shared/story-form/StoryForm.tsx';
-import ResizeHandle from '../../../../shared/ui/ResizeHandle.tsx';
-import TabHeader from '../../../../shared/ui/TabHeader.tsx';
-import EmptyState from '../../../../shared/ui/EmptyState.tsx';
-import useListWidth from '../../../../shared/hooks/useListWidth.ts';
+import { backlogProblems } from '#shared/backlog/ids.ts';
+import StoryList from '#frontend/src/tools/backlog/shared/StoryList.tsx';
+import StoryForm from '#frontend/src/tools/backlog/shared/story-form/StoryForm.tsx';
+import ResizeHandle from '#frontend/src/shared/ui/ResizeHandle.tsx';
+import TabHeader from '#frontend/src/shared/ui/TabHeader.tsx';
+import EmptyState from '#frontend/src/shared/ui/EmptyState.tsx';
+import useListWidth from '#frontend/src/shared/hooks/useListWidth.ts';
 
 // The Proposed tab: the Editor's story list and form on the proposals file, plus Accept selected / Accept all / Delete selected.
 // The list and form are mounted only while the tab is shown, because the form finds its fields by DOM id and the

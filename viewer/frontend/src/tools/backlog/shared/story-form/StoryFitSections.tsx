@@ -1,9 +1,9 @@
 import type { ChangeEvent } from 'react';
-import type { Story } from '../../../../../../shared/types.ts';
+import type { Story } from '#shared/types.ts';
 import type { Cues, ListFields, SetField, SetStoryPart } from './formTypes.ts';
-import { storyCellText } from '../../../../../../shared/backlog/model.ts';
-import { Grid } from '../../../../shared/ui/Layout.tsx';
-import { Label, CellWarning } from '../../../../shared/ui/FormParts.tsx';
+import { storyCellText } from '#shared/backlog/model.ts';
+import { Grid } from '#frontend/src/shared/ui/Layout.tsx';
+import { Label, CellWarning } from '#frontend/src/shared/ui/FormParts.tsx';
 import { needs, invalid } from './fieldCues.ts';
 
 const STORY_WARNING = 'The User Story cell does not follow "As …, I want …, so that …", so it is kept as it is';
