@@ -82,6 +82,58 @@ test('a story with no ID is refused and the others are still frozen', () => {
   assert.match(r.text, /refused and not frozen/);
 });
 
+// The SAMPLE with the Clarifications cell of one story set to `text`.
+function clarified(id, text) {
+  const rows = parseCsv(SAMPLE);
+  const col = rows[0].indexOf('Clarifications');
+  rows.find((r) => r[0] === id)[col] = text;
+  return toCsv(rows);
+}
+
+test('a story with an open clarification is refused and the others are still frozen', () => {
+  const root = temp(clarified('H1-HT-0002', 'Q1: Does a rest day break a streak?\nA1:'));
+  const r = run(root, [TWO, RPT]);
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.toFreeze, ['H1-FT-0001']);
+  assert.equal(r.refused.length, 1);
+  assert.equal(r.refused[0].id, 'H1-HT-0002');
+  assert.match(r.refused[0].reason, /H1-HT-0002 has 1 open clarification.*Does a rest day break a streak\?/);
+  assert.match(r.text, /refused and not frozen/);
+  const out = fs.readFileSync(csvPath(root), 'utf8');
+  assert.equal(cell(out, 'H1-HT-0002', 'Frozen'), '');
+  assert.equal(cell(out, 'H1-FT-0001', 'Frozen'), 'Yes');
+});
+
+test('--check reports the open clarification and writes nothing', () => {
+  const root = temp(clarified('H1-HT-0002', 'Q1: Does a rest day break a streak?\nA1:'));
+  const before = fs.readFileSync(csvPath(root));
+  const r = check(root, [TWO, RPT]);
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.toFreeze, ['H1-FT-0001']);
+  assert.match(r.refused[0].reason, /open clarification.*Does a rest day break a streak\?/);
+  assert.deepEqual(fs.readFileSync(csvPath(root)), before);
+});
+
+test('a story whose every clarification is answered is frozen', () => {
+  const root = temp(clarified('H1-HT-0002', 'Q1: Does a rest day break a streak?\nA1: Yes\nQ2: Is a streak per habit?\nA2: Yes, per habit'));
+  const r = run(root, [TWO]);
+  assert.deepEqual([r.ok, r.changed, r.toFreeze, r.refused], [true, true, ['H1-HT-0002'], []]);
+  assert.equal(cell(fs.readFileSync(csvPath(root), 'utf8'), 'H1-HT-0002', 'Frozen'), 'Yes');
+});
+
+test('a story with no clarification pairs is frozen', () => {
+  const root = temp();
+  const r = run(root, [TWO]);
+  assert.deepEqual([r.ok, r.toFreeze, r.refused], [true, ['H1-HT-0002'], []]);
+});
+
+test('free-text clarifications that do not parse are not read as open', () => {
+  const root = temp(clarified('H1-HT-0002', 'Ask the product owner about rest days.'));
+  const r = run(root, [TWO]);
+  assert.deepEqual([r.ok, r.toFreeze, r.refused], [true, ['H1-HT-0002'], []]);
+  assert.equal(cell(fs.readFileSync(csvPath(root), 'utf8'), 'H1-HT-0002', 'Frozen'), 'Yes');
+});
+
 test('an ID without the backlog initials is refused and the story stays not frozen', () => {
   const old = SAMPLE.replace('H1-HT-0002', 'HT-0002');
   const root = temp(old);
