@@ -1,13 +1,13 @@
 import { useMemo } from 'react';
-import type { ReviewUnit } from '../../../../../../shared/review/review.ts';
-import type { ReviewRow, Story } from '../../../../../../shared/types.ts';
-import { reviewOverview, unitStoryCode } from '../../../../../../shared/review/review.ts';
-import { Suggestion } from '../../shared/Suggestions.tsx';
-import { storyLabel } from '../../../../../../shared/backlog/model.ts';
-import TabHeader from '../../../../shared/ui/TabHeader.tsx';
-import EmptyState from '../../../../shared/ui/EmptyState.tsx';
-import { useConfirm } from '../../../../shared/hooks/useConfirm.ts';
-import { Row } from '../../../../shared/ui/Layout.tsx';
+import type { ReviewUnit } from '#shared/review/review.ts';
+import type { ReviewRow, Story } from '#shared/types.ts';
+import { reviewOverview, unitStoryCode } from '#shared/review/review.ts';
+import { Suggestion } from '#frontend/src/tools/backlog/shared/Suggestions.tsx';
+import { storyLabel } from '#shared/backlog/model.ts';
+import TabHeader from '#frontend/src/shared/ui/TabHeader.tsx';
+import EmptyState from '#frontend/src/shared/ui/EmptyState.tsx';
+import { useConfirm } from '#frontend/src/shared/hooks/useConfirm.ts';
+import { Row } from '#frontend/src/shared/ui/Layout.tsx';
 
 // Every suggestion of the review in one place: open ones grouped by Area, out-of-date ones (Dismiss only) last.
 interface ReviewTabProps {

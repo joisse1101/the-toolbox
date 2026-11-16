@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   parseLexicon, composeLexicon, lexiconProblems, saveTerm, renameTerm, deleteTerm, applyTermItems, emptyLexicon,
-} from '../../shared/lexicon/lexicon.ts';
-import type { Lexicon } from '../../shared/types.ts';
+} from '#shared/lexicon/lexicon.ts';
+import type { Lexicon } from '#shared/types.ts';
 
 type Saved = { ok: true; lexicon: Lexicon };
 type Refused = { ok: false; errors: string[] };

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import * as bi from '../../shared/storage/backlog-initials.ts';
+import * as bi from '#shared/storage/backlog-initials.ts';
 
 type HttpErr = Error & { status?: number; code?: string }; // what the storage helpers throw
 

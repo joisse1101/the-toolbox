@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
-import type { Lexicon, LexiconSuggestion, LexiconTerm } from '../../../../../../shared/types.ts';
-import { FileApiError, createFileStore, messageOf } from '../../../../shared/api/files.ts';
-import { composeLexicon, deleteTerm, emptyLexicon, findTerm, parseLexicon, saveTerm } from '../../../../../../shared/lexicon/lexicon.ts';
-import { applySuggestion } from '../../../../../../shared/lexicon/lexicon-suggestions.ts';
-import { useAutosave } from '../../../../shared/hooks/useAutosave.ts';
-import type { StatusReport } from '../../../../shared/hooks/useAutosave.ts';
+import type { Lexicon, LexiconSuggestion, LexiconTerm } from '#shared/types.ts';
+import { FileApiError, createFileStore, messageOf } from '#frontend/src/shared/api/files.ts';
+import { composeLexicon, deleteTerm, emptyLexicon, findTerm, parseLexicon, saveTerm } from '#shared/lexicon/lexicon.ts';
+import { applySuggestion } from '#shared/lexicon/lexicon-suggestions.ts';
+import { useAutosave } from '#frontend/src/shared/hooks/useAutosave.ts';
+import type { StatusReport } from '#frontend/src/shared/hooks/useAutosave.ts';
 
 const lexiconStore = createFileStore('lexicon');
 

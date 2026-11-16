@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const { loadConfig, saveConfig, DEFAULT_DATA_DIR } = await import('../../backend/storage/project-config.ts');
+const { loadConfig, saveConfig, DEFAULT_DATA_DIR } = await import('#backend/storage/project-config.ts');
 
 // Temp folders live under the project's .scratch/ (git-ignored) and are removed afterwards.
 const SCRATCH = path.resolve(import.meta.dirname, '..', '..', '..', '.scratch', 'project-config-projects');

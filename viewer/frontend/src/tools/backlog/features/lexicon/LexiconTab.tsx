@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent } from 'react';
-import type { Lexicon, LexiconEdit, LexiconEditField, LexiconSuggestion, LexiconSuggestionsFile, LexiconTerm } from '../../../../../../shared/types.ts';
-import type { LexiconResult } from '../../../../../../shared/lexicon/lexicon.ts';
-import { childrenOf } from '../../../../../../shared/lexicon/lexicon.ts';
-import { FIELD_LABELS, impactOf, isOpen, staleReason } from '../../../../../../shared/lexicon/lexicon-suggestions.ts';
-import { wordDiff } from '../../../../shared/lib/word-diff.ts';
-import ResizeHandle from '../../../../shared/ui/ResizeHandle.tsx';
-import TabHeader from '../../../../shared/ui/TabHeader.tsx';
-import EmptyState from '../../../../shared/ui/EmptyState.tsx';
-import useListWidth from '../../../../shared/hooks/useListWidth.ts';
-import { useConfirm } from '../../../../shared/hooks/useConfirm.ts';
-import { Row, Grid } from '../../../../shared/ui/Layout.tsx';
+import type { Lexicon, LexiconEdit, LexiconEditField, LexiconSuggestion, LexiconSuggestionsFile, LexiconTerm } from '#shared/types.ts';
+import type { LexiconResult } from '#shared/lexicon/lexicon.ts';
+import { childrenOf } from '#shared/lexicon/lexicon.ts';
+import { FIELD_LABELS, impactOf, isOpen, staleReason } from '#shared/lexicon/lexicon-suggestions.ts';
+import { wordDiff } from '#frontend/src/shared/lib/word-diff.ts';
+import ResizeHandle from '#frontend/src/shared/ui/ResizeHandle.tsx';
+import TabHeader from '#frontend/src/shared/ui/TabHeader.tsx';
+import EmptyState from '#frontend/src/shared/ui/EmptyState.tsx';
+import useListWidth from '#frontend/src/shared/hooks/useListWidth.ts';
+import { useConfirm } from '#frontend/src/shared/hooks/useConfirm.ts';
+import { Row, Grid } from '#frontend/src/shared/ui/Layout.tsx';
 
 // A term as the form edits it: every field is text, Avoid is one string separated by semicolons.
 interface Draft {

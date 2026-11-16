@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseCsv, toCsv } from '../../shared/backlog/csv.ts';
+import { parseCsv, toCsv } from '#shared/backlog/csv.ts';
 
 test('round-trips tricky values', () => {
   const rows = [

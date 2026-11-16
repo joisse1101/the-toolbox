@@ -2,7 +2,7 @@
 // A story depends on the stories in `dependsOn` (by ID). In the layout a story sits in a layer to the right of every
 // story it depends on, so edges (drawn from the dependent to its dependency) all point left.
 
-import type { Story } from '../../../../../../shared/types.ts';
+import type { Story } from '#shared/types.ts';
 
 // What the layout reads of a story.
 export type GraphItem = Pick<Story, 'id' | 'code' | 'dependsOn'>;

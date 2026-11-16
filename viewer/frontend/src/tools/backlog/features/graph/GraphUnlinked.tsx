@@ -1,8 +1,8 @@
-import type { Story } from '../../../../../../shared/types.ts';
+import type { Story } from '#shared/types.ts';
 import type { GraphLayout, groupStories } from './graph.ts';
-import StateMark from '../../../../shared/ui/StateMark.tsx';
-import { storyIssues, storyLabel as title } from '../../../../../../shared/backlog/model.ts';
-import { issueClass, rowTooltip } from '../../shared/issues.ts';
+import StateMark from '#frontend/src/shared/ui/StateMark.tsx';
+import { storyIssues, storyLabel as title } from '#shared/backlog/model.ts';
+import { issueClass, rowTooltip } from '#frontend/src/tools/backlog/shared/issues.ts';
 
 // The stories or groups that no arrow touches, listed below the graph.
 export default function GraphUnlinked({ coarse, layout, grouping, groupLabel, problems, linkFrom, link, onToggleLink, onOpen }: {

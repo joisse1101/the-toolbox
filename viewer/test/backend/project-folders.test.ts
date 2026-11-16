@@ -5,12 +5,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import type { CopyResult } from '../../backend/storage/project-folders.ts';
+import type { CopyResult } from '#backend/storage/project-folders.ts';
 type Refused = { refused: string };
 type Checked = { status: string; reason: string; dir: string };
 type Inited = { refused: string; created: string[]; existing: string[]; createdDataDir: boolean };
 
-const pc = await import('../../backend/storage/project-config.ts');
+const pc = await import('#backend/storage/project-config.ts');
 const { initFolders, copyData, migrateOlderLayout, checkFolder, confineDir, confineCodeBase, checkCodeBase, initCodeBase, copyToCodeBase, planCopy, planCopyToCodeBase, saveConfig, loadConfig, ROOT } = pc;
 
 function tmp() {
@@ -32,7 +32,7 @@ function scratch() {
 }
 test.after(() => fs.rmSync(SCRATCH, { recursive: true, force: true }));
 
-const loadStartingFiles = async () => (await import('../../backend/storage/starting-files.ts')).startingFiles();
+const loadStartingFiles = async () => (await import('#backend/storage/starting-files.ts')).startingFiles();
 const KIND_PATHS = { backlog: 'user-stories.csv', review: 'user-stories/review.csv', proposals: 'user-stories/proposals.csv', lexicon: 'lexicon.csv', 'lexicon-suggestions': 'lexicon/lexicon-suggestions.csv' };
 
 async function assertStartingFiles(backlogDir: string) {

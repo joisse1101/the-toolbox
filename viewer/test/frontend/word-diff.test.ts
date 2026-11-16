@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import type { DiffPart } from '../../frontend/src/shared/lib/word-diff.ts';
-import { wordDiff } from '../../frontend/src/shared/lib/word-diff.ts';
+import type { DiffPart } from '#frontend/src/shared/lib/word-diff.ts';
+import { wordDiff } from '#frontend/src/shared/lib/word-diff.ts';
 
 const kinds = (parts: DiffPart[]) => parts.map((p) => [p.text.trim(), p.kind]);
 const rejoin = (parts: DiffPart[]) => parts.filter((p) => p.kind !== 'removed').map((p) => p.text).join('');

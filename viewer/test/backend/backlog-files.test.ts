@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { startingFiles } from '../../backend/storage/starting-files.ts';
+import { startingFiles } from '#backend/storage/starting-files.ts';
 
-const { writeBacklogFiles } = await import('../../backend/storage/backlog-files.ts');
-import { backlogFile, listBacklogs, KINDS } from '../../shared/storage/backlog-paths.ts';
+const { writeBacklogFiles } = await import('#backend/storage/backlog-files.ts');
+import { backlogFile, listBacklogs, KINDS } from '#shared/storage/backlog-paths.ts';
 
 // Temp folders go under the project's .scratch/, never the system temp folder.
 const scratch = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '.scratch');

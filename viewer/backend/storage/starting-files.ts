@@ -3,12 +3,12 @@
 // module, so a column change shows up here with no second edit. Pure: no file access; the writer is
 // storage/backlog-files.ts, which places each file by its kind.
 
-import { toCsv } from '../../shared/backlog/csv.ts';
-import { COLUMNS, BENCHED_COLUMN } from '../../shared/backlog/model.ts';
-import { REVIEW_COLUMNS } from '../../shared/review/review.ts';
-import { COLUMNS as LEXICON_COLUMNS } from '../../shared/lexicon/lexicon.ts';
-import type { BacklogKind } from '../../shared/types.ts';
-import { COLUMNS as SUGGESTION_COLUMNS } from '../../shared/lexicon/lexicon-suggestions.ts';
+import { toCsv } from '#shared/backlog/csv.ts';
+import { COLUMNS, BENCHED_COLUMN } from '#shared/backlog/model.ts';
+import { REVIEW_COLUMNS } from '#shared/review/review.ts';
+import { COLUMNS as LEXICON_COLUMNS } from '#shared/lexicon/lexicon.ts';
+import type { BacklogKind } from '#shared/types.ts';
+import { COLUMNS as SUGGESTION_COLUMNS } from '#shared/lexicon/lexicon-suggestions.ts';
 
 const BOM = '﻿';
 

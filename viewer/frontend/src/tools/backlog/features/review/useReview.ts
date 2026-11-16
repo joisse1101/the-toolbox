@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ReviewRow, ReviewStatus } from '../../../../../../shared/types.ts';
-import { createFileStore, messageOf } from '../../../../shared/api/files.ts';
-import { parseReview, serializeReview, retargetRows } from '../../../../../../shared/review/review.ts';
+import type { ReviewRow, ReviewStatus } from '#shared/types.ts';
+import { createFileStore, messageOf } from '#frontend/src/shared/api/files.ts';
+import { parseReview, serializeReview, retargetRows } from '#shared/review/review.ts';
 
 const store = createFileStore('review');
 const SAVE_DEBOUNCE_MS = 400;

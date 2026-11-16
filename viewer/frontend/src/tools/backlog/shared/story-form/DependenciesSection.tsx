@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import type { ChangeEvent } from 'react';
-import type { Story } from '../../../../../../shared/types.ts';
+import type { Story } from '#shared/types.ts';
 import type { Edit, ListFields } from './formTypes.ts';
-import { storyLabel } from '../../../../../../shared/backlog/model.ts';
-import { dependencyChoices, dependentsOf } from '../../../../../../shared/backlog/ids.ts';
+import { storyLabel } from '#shared/backlog/model.ts';
+import { dependencyChoices, dependentsOf } from '#shared/backlog/ids.ts';
 
 // "Depends on" (IDs, with a picker) and "Required by".
 export default function DependenciesSection({ story: s, stories, frozen, edit, list, onOpen }: { story: Story; stories: Story[]; frozen: boolean; edit: Edit; list: ListFields; onOpen: (id: number) => void }) {

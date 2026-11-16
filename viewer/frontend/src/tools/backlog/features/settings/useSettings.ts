@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { FolderTarget, Migration, ProjectInit, ProjectSettings } from '../../../../shared/api/files.ts';
-import { FileApiError, messageOf, getProject, saveProject, pickProjectFolder, initProjectFolder, planProjectRelocation, applyProjectRelocation, migrateOlderLayout } from '../../../../shared/api/files.ts';
+import type { FolderTarget, Migration, ProjectInit, ProjectSettings } from '#frontend/src/shared/api/files.ts';
+import { FileApiError, messageOf, getProject, saveProject, pickProjectFolder, initProjectFolder, planProjectRelocation, applyProjectRelocation, migrateOlderLayout } from '#frontend/src/shared/api/files.ts';
 
 // Survives the page reload that follows a switch, so the Settings tab can still show the note about skill sessions.
 const SWITCHED_KEY = 'planner.dataDirSwitched';

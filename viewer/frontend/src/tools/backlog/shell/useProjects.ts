@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { useSettings } from '../features/settings/useSettings.ts';
-import { addProject, messageOf, pickProjectFolder } from '../../../shared/api/files.ts';
+import { addProject, messageOf, pickProjectFolder } from '#frontend/src/shared/api/files.ts';
 
 const SETTLE_FAILED = 'The latest changes could not be saved yet, so the project was not changed.';
 

@@ -1,7 +1,7 @@
 import type { useSettings } from './useSettings.ts';
 import type { CopyCounts } from './useSettings.ts';
-import TabHeader from '../../../../shared/ui/TabHeader.tsx';
-import { Row } from '../../../../shared/ui/Layout.tsx';
+import TabHeader from '#frontend/src/shared/ui/TabHeader.tsx';
+import { Row } from '#frontend/src/shared/ui/Layout.tsx';
 
 const SESSION_NOTE = 'Skill scripts and open Claude sessions use the new data folder only after they are started again.';
 

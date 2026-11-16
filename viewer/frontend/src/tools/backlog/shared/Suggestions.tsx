@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
-import type { ReviewRow, Story } from '../../../../../shared/types.ts';
-import type { ReviewUnit } from '../../../../../shared/review/review.ts';
-import { unitState, displayRow } from '../../../../../shared/review/review.ts';
-import { wordDiff } from '../../../shared/lib/word-diff.ts';
+import type { ReviewRow, Story } from '#shared/types.ts';
+import type { ReviewUnit } from '#shared/review/review.ts';
+import { unitState, displayRow } from '#shared/review/review.ts';
+import { wordDiff } from '#frontend/src/shared/lib/word-diff.ts';
 
 // An append adds to the field the row names (Notes text, or a Clarifications question).
 const VERB: Record<string, string> = { replace: 'Suggested', add: 'Add', remove: 'Remove', append: 'Add', resolve: 'Resolve', 'add-story': 'New story' };

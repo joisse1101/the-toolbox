@@ -9,7 +9,7 @@ import path from 'node:path';
 import { writeBacklogFiles } from './backlog-files.ts';
 import { codeOf, messageOf } from './errors.ts';
 import { startingFiles } from './starting-files.ts';
-import { KIND_FILES, PLANS_DIR, listBacklogs, detectOlderLayout, validateBacklogName } from '../../shared/storage/backlog-paths.ts';
+import { KIND_FILES, PLANS_DIR, listBacklogs, detectOlderLayout, validateBacklogName } from '#shared/storage/backlog-paths.ts';
 
 // What the confine functions take: the repository root, the environment and the home folder (tests set them).
 type ConfineOptions = { root?: string; env?: NodeJS.ProcessEnv; home?: string };

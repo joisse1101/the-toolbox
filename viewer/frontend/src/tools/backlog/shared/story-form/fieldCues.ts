@@ -1,6 +1,6 @@
 // The cues a story form field shows when it has no value: a red (required) or yellow (optional) border, and a note.
 // A benched story is parked, so it shows none.
-import type { Criterion, Story } from '../../../../../../shared/types.ts';
+import type { Criterion, Story } from '#shared/types.ts';
 
 export const needs = (cls: string | undefined) => (cls === 'missing' ? 'Required' : null);
 export const invalid = (cls: string | undefined): 'true' | undefined => (cls === 'missing' ? 'true' : undefined);

@@ -1,5 +1,5 @@
-import type { Story } from '../../../../../../shared/types.ts';
-import { storyLabel as title } from '../../../../../../shared/backlog/model.ts';
+import type { Story } from '#shared/types.ts';
+import { storyLabel as title } from '#shared/backlog/model.ts';
 
 // Coarse levels: the story dependencies behind the selected group or arrow, and a button to show them as stories.
 export default function GraphDetail({ detailPairs, byId, onOpen, onShowStories }: {

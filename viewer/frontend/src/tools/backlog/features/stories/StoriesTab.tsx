@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { BulkPatch } from '../../shell/useBacklog.ts';
-import type { Story } from '../../../../../../shared/types.ts';
-import { fitWidths, makeRoom } from '../../../../shared/lib/panel-size.ts';
-import { displayOrder } from '../../../../../../shared/backlog/model.ts';
-import { matchesQuery } from '../../../../../../shared/backlog/story-search.ts';
+import type { BulkPatch } from '#frontend/src/tools/backlog/shell/useBacklog.ts';
+import type { Story } from '#shared/types.ts';
+import { fitWidths, makeRoom } from '#frontend/src/shared/lib/panel-size.ts';
+import { displayOrder } from '#shared/backlog/model.ts';
+import { matchesQuery } from '#shared/backlog/story-search.ts';
 import { filterOptions, filterStories, sortStories, visibleChecked } from './story-table.ts';
 import type { Filter, FilterKey, SortDir } from './story-table.ts';
-import TabHeader from '../../../../shared/ui/TabHeader.tsx';
-import EmptyState from '../../../../shared/ui/EmptyState.tsx';
+import TabHeader from '#frontend/src/shared/ui/TabHeader.tsx';
+import EmptyState from '#frontend/src/shared/ui/EmptyState.tsx';
 import StoriesBulkBar, { KEEP } from './StoriesBulkBar.tsx';
 import StoriesFilters from './StoriesFilters.tsx';
 import StoriesTable from './StoriesTable.tsx';
@@ -15,8 +15,8 @@ import type { Column } from './storiesColumns.ts';
 import {
   COLUMNS, SIZED, FIXED_TOTAL, CHECK_WIDTH, COLUMN_LIMITS, COLUMN_DEFAULTS, SHRINK_ORDER, fittedWidth,
 } from './storiesColumns.ts';
-import { useConfirm } from '../../../../shared/hooks/useConfirm.ts';
-import usePanelSizes from '../../../../shared/hooks/usePanelSizes.ts';
+import { useConfirm } from '#frontend/src/shared/hooks/useConfirm.ts';
+import usePanelSizes from '#frontend/src/shared/hooks/usePanelSizes.ts';
 
 const distinct = (stories: readonly Story[], key: 'epic' | 'feature') => [...new Set(stories.map((o) => o[key].trim()).filter(Boolean))];
 

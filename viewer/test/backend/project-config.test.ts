@@ -4,8 +4,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { PLANS_DIR } from '../../shared/storage/backlog-paths.ts';
-const { loadConfig, saveConfig, configPath, DEFAULT_CONFIG_PATH, DEFAULT_DATA_DIR } = await import('../../backend/storage/project-config.ts');
+import { PLANS_DIR } from '#shared/storage/backlog-paths.ts';
+const { loadConfig, saveConfig, configPath, DEFAULT_CONFIG_PATH, DEFAULT_DATA_DIR } = await import('#backend/storage/project-config.ts');
 
 function tmp() {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'project-config-'));

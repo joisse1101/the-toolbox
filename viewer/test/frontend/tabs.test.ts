@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { TABS, resolveTab } from '../../frontend/src/tools/backlog/tabs.ts';
+import { TABS, resolveTab } from '#frontend/src/tools/backlog/tabs.ts';
 
 const open = { hasBacklog: true, hasReview: true };
 const noReview = { hasBacklog: true, hasReview: false };

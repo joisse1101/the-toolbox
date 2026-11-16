@@ -21,7 +21,7 @@ const configFile = tempConfig(dirA, 'Alpha');
 const ORIGINAL = `# kept comment\n${fs.readFileSync(configFile, 'utf8')}`;
 fs.writeFileSync(configFile, ORIGINAL);
 process.env.VIEWER_CONFIG = configFile;
-const { server, setNewProjectParent, setCopyOptions } = await import('../../backend/server.ts');
+const { server, setNewProjectParent, setCopyOptions } = await import('#backend/server.ts');
 setNewProjectParent(parent);
 
 type Entry = { dataDir: string; label: string; exists: boolean; synthetic?: boolean };

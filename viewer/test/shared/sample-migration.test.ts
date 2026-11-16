@@ -4,8 +4,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { tempData, SAMPLE, PLAN_FIXTURES } from '../helpers/backlog-tree.ts';
 
-const { migrateOlderLayout } = await import('../../backend/storage/project-folders.ts');
-import { listBacklogs, detectOlderLayout } from '../../shared/storage/backlog-paths.ts';
+const { migrateOlderLayout } = await import('#backend/storage/project-folders.ts');
+import { listBacklogs, detectOlderLayout } from '#shared/storage/backlog-paths.ts';
 
 // The older layout built in a temp folder from the committed sample: one file per backlog in each kind's folder.
 function olderLayoutFromSample() {

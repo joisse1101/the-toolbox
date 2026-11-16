@@ -4,9 +4,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import * as bp from '../../shared/storage/backlog-paths.ts';
-import * as fileName from '../../shared/storage/file-name.ts';
-import { validateBacklogName } from '../../shared/storage/file-name.ts';
+import * as bp from '#shared/storage/backlog-paths.ts';
+import * as fileName from '#shared/storage/file-name.ts';
+import { validateBacklogName } from '#shared/storage/file-name.ts';
 
 type HttpErr = Error & { status?: number; code?: string }; // what the storage helpers throw
 

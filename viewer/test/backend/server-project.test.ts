@@ -24,7 +24,7 @@ fs.mkdirSync(path.join(dirA, 'backups', 'one.csv'), { recursive: true });
 fs.writeFileSync(path.join(dirA, 'backups', 'one.csv', 'old.csv'), 'x');
 const configFile = tempConfig(dirA, 'Alpha');
 process.env.VIEWER_CONFIG = configFile;
-const { server, setFolderDialog } = await import('../../backend/server.ts');
+const { server, setFolderDialog } = await import('#backend/server.ts');
 // Tests never open the real folder dialog: every pick goes through this stub.
 setFolderDialog(async () => {
   throw new Error('the real folder dialog must not open in a test');

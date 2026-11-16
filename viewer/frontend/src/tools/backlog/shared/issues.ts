@@ -1,5 +1,5 @@
-import type { Story } from '../../../../../shared/types.ts';
-import { storyCellText } from '../../../../../shared/backlog/model.ts';
+import type { Story } from '#shared/types.ts';
+import { storyCellText } from '#shared/backlog/model.ts';
 
 // Red wins over yellow.
 export function issueClass(errors: readonly string[], warnings: readonly string[]): 'incomplete' | 'warn' | '' {

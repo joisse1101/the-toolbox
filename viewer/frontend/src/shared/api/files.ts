@@ -2,7 +2,7 @@
 // Errors are thrown as FileApiError with a readable message; `locked` is true when the file
 // is held open by another program (for example Excel).
 
-import type { BacklogKind, SavedProject } from '../../../../shared/types.ts';
+import type { BacklogKind, SavedProject } from '#shared/types.ts';
 
 export class FileApiError extends Error {
   status: number;

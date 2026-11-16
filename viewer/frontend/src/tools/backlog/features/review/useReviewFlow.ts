@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { BacklogFile, Story } from '../../../../../../shared/types.ts';
-import type { Ask } from '../../../../shared/hooks/useConfirm.ts';
-import type { BacklogActions } from '../../shell/useBacklog.ts';
-import type { ReviewUnit } from '../../../../../../shared/review/review.ts';
-import { unitsOf, unitStoryCode, openCounts, orphanUnits, reviewOverview, acceptAll as acceptReviewUnits, acceptSummaryText } from '../../../../../../shared/review/review.ts';
+import type { BacklogFile, Story } from '#shared/types.ts';
+import type { Ask } from '#frontend/src/shared/hooks/useConfirm.ts';
+import type { BacklogActions } from '#frontend/src/tools/backlog/shell/useBacklog.ts';
+import type { ReviewUnit } from '#shared/review/review.ts';
+import { unitsOf, unitStoryCode, openCounts, orphanUnits, reviewOverview, acceptAll as acceptReviewUnits, acceptSummaryText } from '#shared/review/review.ts';
 import { useReview } from './useReview.ts';
 
 // Review suggestions for the open backlog (its review file), shown next to the fields they concern: the counts and
