@@ -2,8 +2,8 @@
 // stories as JSON on stdin (an array of { id, title }, the ID and current Title of each story, as the slice names them):
 //   node <skill folder>/write-freeze.mjs <backlog name> [--check]
 // It changes only the `Frozen` cell of the stories it names, and no other cell, row, column or ID. A story with no ID, or with an ID that
-// does not start with the backlog's initials (the portal has not rewritten it yet), is refused and left as it is; the others are
-// frozen. A story that is already frozen is left as it is, so running the same freeze twice changes nothing. An ID that is not in
+// does not start with the backlog's initials (the portal has not rewritten it yet), or a story with an open clarification (a Q<n>:
+// whose A<n>: is empty), is refused and left as it is, with its open questions named; the others are frozen. A story that is already frozen is left as it is, so running the same freeze twice changes nothing. An ID that is not in
 // the file, a Title that does not match its ID, or an ID that the file holds in another form than the portal would give it, stops the
 // whole run before anything is written. --check runs the same preparation and writes nothing. The write is atomic and the file is
 // read again afterwards. The data folder is the .plans folder in the current folder (see lib/skill-support/resolve-data-dir.mjs).
@@ -12,7 +12,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseCsv, toCsv } from './lib/backlog/csv.mjs';
-import { loadBacklog } from './lib/backlog/model.mjs';
+import { clarificationsCellText, loadBacklog } from './lib/backlog/model.mjs';
+import { openCount, parseClarifications } from './lib/backlog/story-text.mjs';
 import { resolveStoryRef } from './lib/backlog/story-ref.mjs';
 import { describeParseError, writeAtomic } from './lib/skill-support/write-atomic.mjs';
 import { dataDirOrThrow } from './lib/skill-support/resolve-data-dir.mjs';
@@ -24,6 +25,13 @@ import { shown } from './lib/skill-support/paths.mjs';
 const FROZEN = 'Frozen';
 const isYes = (v) => String(v ?? '').trim().toLowerCase() === 'yes';
 const columnOf = (headers, name) => headers.findIndex((h) => h.trim().toLowerCase() === name.toLowerCase());
+
+// The open questions of a story, read from its Clarifications cell with the portal's own counting (parseClarifications, openCount).
+function openQuestions(story) {
+  const parsed = parseClarifications(clarificationsCellText(story));
+  if (!parsed.ok || !openCount(parsed.pairs)) return [];
+  return parsed.pairs.filter((p) => p.q.trim() && !p.a.trim()).map((p) => p.q.trim().replace(/\s+/g, ' '));
+}
 
 // The raw rows with the `Frozen` cell of the listed IDs set to Yes (the column is added at the end when the file has none).
 function withFrozen(rows, codes) {
@@ -110,6 +118,12 @@ function prepare({ dataDir, name, input }) {
     }
     if (seen.has(id)) return;
     seen.add(id);
+    // A story is ready when no question of its Clarifications cell is open. A cell that does not follow the Q<n>:/A<n>: form has no pairs, so it is not read as open.
+    const open = ref.story.frozen ? [] : openQuestions(ref.story);
+    if (open.length) {
+      refused.push({ id, title, reason: `${id} has ${open.length} open clarification${open.length === 1 ? '' : 's'}, so it cannot be frozen. Answer ${open.length === 1 ? 'it' : 'them'} in the portal first: ${open.map((q) => `"${q}"`).join(', ')}.` });
+      return;
+    }
     (ref.story.frozen ? already : toFreeze).push(id);
   });
   if (errors.length) return { ok: false, errors };
