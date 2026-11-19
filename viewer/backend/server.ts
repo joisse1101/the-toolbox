@@ -16,7 +16,7 @@ import {
   ROOT, loadConfig, saveConfig, configPath, confineDir, confineCodeBase, checkFolder, checkCodeBase, initFolders, initCodeBase, copyData, copyToCodeBase, planCopy, migrateOlderLayout,
 } from './storage/project-config.ts';
 import type { ConfigChanges } from './storage/project-config.ts';
-import type { BacklogKind, ApiError } from '#shared/types.ts';
+import type { ApiError } from '#shared/types.ts';
 
 // The config is read when paths.ts loads. Run as the server, a bad config ends the process with the message that names the key.
 let paths: typeof import('./storage/paths.ts');
@@ -723,7 +723,7 @@ async function handleStatic(req: http.IncomingMessage, res: http.ServerResponse,
   if (kind === 'api') throw new HttpError(404, 'Not found');
   const full = kind === 'app' ? path.join(DIST_DIR, 'index.html') : path.resolve(DIST_DIR, '.' + rel);
   if (full !== DIST_DIR && !full.startsWith(DIST_DIR + path.sep)) throw new HttpError(404, 'Not found');
-  let target = full;
+  const target = full;
   try {
     const st = await fs.promises.stat(target);
     if (st.isDirectory()) throw new Error('directory');

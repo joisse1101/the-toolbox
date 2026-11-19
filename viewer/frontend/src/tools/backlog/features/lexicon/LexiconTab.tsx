@@ -159,7 +159,7 @@ function TermForm({ term, lexicon, error, onSave, onRemove, onCancel }: {
   const saved = term ? toDraft(term) : blankDraft;
   const signature = JSON.stringify(saved);
   // The term changed under the form (a save, or the file was reloaded): show what is stored.
-  useEffect(() => setDraft(term ? toDraft(term) : blankDraft), [signature]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => setDraft(term ? toDraft(term) : blankDraft), [signature]);
   const set = (field: keyof Draft) => (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setDraft((d) => ({ ...d, [field]: e.target.value }));
   const dirty = !same(draft, saved);
   const commit = (next = draft) => {

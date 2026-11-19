@@ -2,7 +2,7 @@ import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { pathOf, decidedPath } from './helpers/backlog-tree.mjs';
+import { pathOf } from './helpers/backlog-tree.mjs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { writeProposal, checkProposal, missingAfterWrite } from '../../skills/jois-story-propose/write-proposal.mjs';

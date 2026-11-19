@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { tempData, putFile, pathOf } from './helpers/backlog-tree.mjs';
 import { readBacklog, readSection, listBacklogs, scopeOf, scopeLine } from '../../skills/jois-story-review/read-backlog.mjs';
