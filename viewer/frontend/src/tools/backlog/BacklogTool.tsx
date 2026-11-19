@@ -9,6 +9,7 @@ import NotFoundPage from '#frontend/src/app/NotFoundPage.tsx';
 import { useConfirm } from '#frontend/src/shared/hooks/useConfirm.ts';
 import { useReviewFlow } from './features/review/useReviewFlow.ts';
 import { useProposedFlow } from './features/proposed/useProposedFlow.ts';
+import { useMigrateFlow } from './features/stories/useMigrateFlow.ts';
 import { useShortcuts } from './shell/useShortcuts.ts';
 import { useLexicon } from './features/lexicon/useLexicon.ts';
 import { useLexiconSuggestions } from './features/lexicon/useLexiconSuggestions.ts';
@@ -25,7 +26,6 @@ import LexiconTab from './features/lexicon/LexiconTab.tsx';
 import SettingsTab from './features/settings/SettingsTab.tsx';
 import { useSettings } from './features/settings/useSettings.ts';
 import { useProjects } from './shell/useProjects.ts';
-import type { GroupRef } from './shell/useBacklog.ts';
 import type { LexiconSuggestion } from '#shared/types.ts';
 import useCollapsed from '#frontend/src/shared/hooks/useCollapsed.ts';
 
@@ -39,7 +39,9 @@ const KEYBOARD_ICON = (
 
 export default function App() {
   const ask = useConfirm();
-  const { state, selected, status, message, ready, actions } = useBacklog();
+  // Set below, once the review and proposals hooks exist: they need the backlog hook's state, so the backlog hook calls this late.
+  const followIdChanges = useRef<(changes: ReadonlyMap<string, string>) => void>(() => {});
+  const { state, selected, status, message, ready, actions } = useBacklog({ onIdChanges: (changes) => followIdChanges.current(changes) });
   const { files, current, backlog, selectedId, checked, lastChecked } = state;
   const stories = useMemo(() => backlog?.stories ?? [], [backlog]);
   const problems = useMemo(() => backlogProblems(stories), [stories]);
@@ -68,7 +70,14 @@ export default function App() {
   const { tab, setTab } = useTab({ settled: ready && (!current || review.loaded), hasBacklog: !!current, hasReview: review.exists });
   const { proposals, proposedNotice, acceptSelected, acceptAll, moveToProposed } =
     useProposedFlow({ current, stories, backlog, initials: state.initials, actions, review, ask, reveal });
+  const migrate = useMigrateFlow({ current, stories, headers: backlog?.headers ?? [], initials: state.initials, files, actions, review, ask, onIdChanges: (changes) => followIdChanges.current(changes) });
   const refreshProposals = proposals.actions.refreshFromDisk;
+  // Every save that changes story IDs (any cause) makes this backlog's open review rows and proposed stories follow. The
+  // other backlogs' files are rewritten by the server (see useAutosave).
+  followIdChanges.current = (changes) => {
+    review.retarget(changes);
+    proposals.actions.relinkStories(changes);
+  };
 
   // The lexicon of the open backlog (its lexicon file); the tab is always there, the file may not be.
   const lexicon = useLexicon(current);
@@ -121,14 +130,6 @@ export default function App() {
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [refreshAll]);
-
-  // Dragging a story or a group, and Renumber, renumber stories: their open review suggestions follow them.
-  const moveStory = (id: number, epic: unknown, beforeId?: number | null) => review.retarget(actions.moveStory(id, epic, beforeId));
-  const moveGroup = (group: GroupRef, beforeKey?: string | null) => review.retarget(actions.moveGroup(group, beforeKey));
-  const renumberDisplayed = async () => {
-    const recoded = await actions.renumberDisplayed();
-    if (recoded) review.retarget(recoded);
-  };
 
   const addStory = () => {
     actions.addStory();
@@ -239,7 +240,7 @@ export default function App() {
         <EditorTab
           hidden={!current || tab !== 'editor'} stories={stories} problems={problems} suggestionCounts={suggestionCounts} selectedId={selectedId} selected={selected}
           selectedUnits={selectedUnits} focusRequest={focusRequest} renumberDisabled={renumberDisabled} collapse={collapse} actions={actions}
-          onFocused={() => setFocusRequest(null)} onAdd={addStory} onMove={moveStory} onMoveGroup={moveGroup} onRenumber={renumberDisplayed}
+          onFocused={() => setFocusRequest(null)} onAdd={addStory} onMove={actions.moveStory} onMoveGroup={actions.moveGroup} onRenumber={actions.renumberDisplayed}
           onApplySuggestion={applyUnit} onDismissSuggestion={dismissUnit} onMoveToProposed={moveToProposed}
         />
 
@@ -264,7 +265,7 @@ export default function App() {
         />
 
         <StoriesTab
-          stories={stories} headers={backlog?.headers ?? []} problems={problems} checked={checked} lastChecked={lastChecked} hidden={!current || tab !== 'stories'}
+          stories={stories} headers={backlog?.headers ?? []} problems={problems} checked={checked} lastChecked={lastChecked} hidden={!current || tab !== 'stories'} current={current} migrate={migrate}
           onOpen={openInEditor} onCheck={actions.toggleChecked} onCheckAll={actions.checkAll} onApplyBulk={actions.applyBulkPatch} onDeleteChecked={actions.deleteChecked}
         />
 

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadBacklog } from '#shared/backlog/model.ts';
-import { NONE, filterOptions, filterStories, sortStories, visibleChecked } from '#frontend/src/tools/backlog/features/stories/story-table.ts';
+import { NONE, filterOptions, filterStories, sortStories, tickRange, tickableIds, visibleChecked } from '#frontend/src/tools/backlog/features/stories/story-table.ts';
 
 const CSV = [
   'ID,Epic,Feature,Title,User Story,Sprint points,Depends On',
@@ -65,4 +65,30 @@ test('visibleChecked hides nothing when every row is shown', () => {
   const { ids, hiddenCount } = visibleChecked(stories, checked);
   assert.deepEqual([...ids], [stories[2].id]);
   assert.equal(hiddenCount, 0);
+});
+
+const freeze = (list: typeof stories, ...at: number[]) => list.map((s, i) => (at.includes(i) ? { ...s, frozen: true } : s));
+
+test('tickRange leaves a frozen row out of a shift range', () => {
+  const rows = freeze(stories, 1);
+  assert.deepEqual(tickRange(rows, rows[2].id, rows[0].id, true), [rows[0].id, rows[2].id]);
+});
+
+test('tickRange ticks one row without shift or when the anchor is not shown', () => {
+  assert.deepEqual(tickRange(stories, stories[2].id, stories[0].id, false), [stories[2].id]);
+  assert.deepEqual(tickRange(stories, stories[2].id, null, true), [stories[2].id]);
+});
+
+test('tickRange returns nothing for a click on a frozen row', () => {
+  const rows = freeze(stories, 2);
+  assert.deepEqual(tickRange(rows, rows[2].id, null, false), []);
+});
+
+test('tickableIds leaves frozen rows out of select-all', () => {
+  const rows = freeze(stories, 0, 3);
+  assert.deepEqual(tickableIds(rows), [rows[1].id, rows[2].id]);
+});
+
+test('tickableIds is empty when every shown row is frozen', () => {
+  assert.deepEqual(tickableIds(freeze(stories, 0, 1, 2, 3)), []);
 });

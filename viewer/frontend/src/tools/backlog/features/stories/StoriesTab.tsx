@@ -4,13 +4,15 @@ import type { Story } from '#shared/types.ts';
 import { fitWidths, makeRoom } from '#frontend/src/shared/lib/panel-size.ts';
 import { displayOrder } from '#shared/backlog/model.ts';
 import { matchesQuery } from '#shared/backlog/story-search.ts';
-import { filterOptions, filterStories, sortStories, visibleChecked } from './story-table.ts';
+import { filterOptions, filterStories, sortStories, tickRange, tickableIds, visibleChecked } from './story-table.ts';
 import type { Filter, FilterKey, SortDir } from './story-table.ts';
 import TabHeader from '#frontend/src/shared/ui/TabHeader.tsx';
 import EmptyState from '#frontend/src/shared/ui/EmptyState.tsx';
 import StoriesBulkBar from './StoriesBulkBar.tsx';
 import StoriesFilters from './StoriesFilters.tsx';
 import StoriesTable from './StoriesTable.tsx';
+import MigrateDialog from './MigrateDialog.tsx';
+import type { MigrateFlow } from './useMigrateFlow.ts';
 import type { Column } from './storiesColumns.ts';
 import {
   COLUMNS, SIZED, FIXED_TOTAL, CHECK_WIDTH, COLUMN_LIMITS, COLUMN_DEFAULTS, SHRINK_ORDER, fittedWidth,
@@ -23,8 +25,8 @@ const distinct = (stories: readonly Story[], key: 'epic' | 'feature') => [...new
 const NO_FILTER: Filter = { epic: '', feature: '' };
 
 // Every story in one table, with ticks and a bulk edit bar. The table itself is read-only.
-export default function StoriesTab({ stories, headers, problems, checked, lastChecked, hidden, onOpen, onCheck, onCheckAll, onApplyBulk, onDeleteChecked }: {
-  stories: Story[]; headers: readonly string[]; problems: ReadonlyMap<number, string[]>; checked: ReadonlySet<number>; lastChecked: number | null; hidden: boolean;
+export default function StoriesTab({ stories, headers, problems, checked, lastChecked, hidden, current, migrate, onOpen, onCheck, onCheckAll, onApplyBulk, onDeleteChecked }: {
+  stories: Story[]; headers: readonly string[]; problems: ReadonlyMap<number, string[]>; checked: ReadonlySet<number>; lastChecked: number | null; hidden: boolean; current: string | null; migrate: MigrateFlow;
   onOpen: (id: number) => void; onCheck: (ids: number[], on: boolean, anchor: number | null) => void;
   onCheckAll: (on: boolean, ids: Iterable<number>) => void;
   onApplyBulk: (patch: BulkPatch, ids: ReadonlySet<number>) => { skipped: number };
@@ -33,7 +35,6 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
   const ask = useConfirm();
   const [epic, setEpic] = useState('');
   const [feature, setFeature] = useState('');
-  const [note, setNote] = useState('');
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState(NO_FILTER);
   const [sort, setSort] = useState<{ key: string; dir: SortDir } | null>(null); // { key, dir } or null = backlog order
@@ -77,11 +78,12 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
   // as hidden and are never edited or deleted.
   const { ids: visibleIds, hiddenCount: hiddenChecked } = useMemo(() => visibleChecked(rows, checked), [rows, checked]);
   const n = visibleIds.size;
+  const tickable = useMemo(() => tickableIds(rows), [rows]);
   const shownChecked = n;
 
   useEffect(() => {
-    selectAll.current!.indeterminate = shownChecked > 0 && shownChecked < rows.length;
-  }, [shownChecked, rows.length]);
+    selectAll.current!.indeterminate = shownChecked > 0 && shownChecked < tickable.length;
+  }, [shownChecked, tickable.length]);
 
   const patch = {
     epic: epic.trim(),
@@ -110,37 +112,28 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
   };
   const setFilterKey = (key: FilterKey, value: string) => setFilter((cur) => ({ ...cur, [key]: value }));
 
-  const tick = (id: number, on: boolean, shift: boolean) => {
-    const ids = rows.map((r) => r.id);
-    let range = [id];
-    if (shift && lastChecked !== null && ids.includes(lastChecked)) {
-      const [from, to] = [ids.indexOf(lastChecked), ids.indexOf(id)].sort((a, b) => a - b);
-      range = ids.slice(from, to + 1);
-    }
-    onCheck(range, on, id);
-  };
+  const tick = (id: number, on: boolean, shift: boolean) => onCheck(tickRange(rows, id, lastChecked, shift), on, id);
 
   const apply = async () => {
     if (!n || isEmpty) return;
     const parts = [];
     if (patch.epic) parts.push(`Epic to "${patch.epic}"`);
-    const frozenSkipped = stories.filter((s) => visibleIds.has(s.id) && s.frozen).length; // read-only, so a bulk edit leaves them
-    const renumbered = patch.epic ? stories.filter((s) => visibleIds.has(s.id) && !s.frozen && s.epic.trim() !== patch.epic).length : 0;
+    const renumbered = patch.epic ? stories.filter((s) => visibleIds.has(s.id) && s.epic.trim() !== patch.epic).length : 0;
     if (patch.feature) parts.push(`Feature to "${patch.feature}"`);
     const noun = n === 1 ? 'story' : 'stories';
     const hiddenNote = hiddenChecked ? `\n\n${hiddenChecked} ticked ${hiddenChecked === 1 ? 'story is' : 'stories are'} hidden by the search or filters and stay unchanged.` : '';
-    const message = `Set ${parts.join(', ')} on ${n} visible ${noun}.${hiddenNote}${renumbered ? `\n\n${renumbered} ${renumbered === 1 ? 'story gets' : 'stories get'} new IDs, and links to them are updated.` : ''}${frozenSkipped ? `\n\n${frozenSkipped} frozen ${frozenSkipped === 1 ? 'story is' : 'stories are'} skipped.` : ''}\n\nThis cannot be undone.`;
+    const message = `Set ${parts.join(', ')} on ${n} visible ${noun}.${hiddenNote}${renumbered ? `\n\n${renumbered} ${renumbered === 1 ? 'story gets' : 'stories get'} new IDs, and links to them are updated.` : ''}\n\nThis cannot be undone.`;
     if (!(await ask({ title: `Change ${n} ${noun}?`, message, confirmLabel: 'Apply to selected' }))) return;
-    const { skipped } = onApplyBulk(patch, visibleIds);
-    setNote(skipped ? `${skipped} frozen ${skipped === 1 ? 'story was' : 'stories were'} skipped.` : '');
+    onApplyBulk(patch, visibleIds);
     setEpic('');
     setFeature('');
   };
 
+  // Migrate needs a ticked row on screen and another backlog to move it to; the hint says which is missing.
+  const migrateHint = n === 0 ? 'Tick a story that is shown to migrate it.' : migrate.others.length === 0 ? 'There is no other backlog in this project.' : null;
+
   const remove = async () => {
-    const { deleted, skipped } = await onDeleteChecked(visibleIds, hiddenChecked);
-    if (deleted) setNote(skipped ? `${skipped} frozen ${skipped === 1 ? 'story was' : 'stories were'} skipped.` : '');
-    else if (skipped) setNote(`Nothing deleted: ${skipped === 1 ? 'the selected story is' : 'all selected stories are'} frozen.`);
+    await onDeleteChecked(visibleIds, hiddenChecked);
   };
 
   return (
@@ -148,8 +141,8 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
       <TabHeader title="Stories" />
       <StoriesBulkBar
         checkedCount={checked.size} n={n} hiddenChecked={hiddenChecked} epic={epic} feature={feature}
-        note={note} isEmpty={isEmpty} onEpic={setEpic} onFeature={setFeature}
-        onApply={apply} onDelete={remove} onDeselectAll={() => onCheckAll(false, [...checked])}
+        isEmpty={isEmpty} migrateHint={migrateHint} migrateBusy={migrate.busy} note={migrate.note} onEpic={setEpic} onFeature={setFeature}
+        onApply={apply} onDelete={remove} onMigrate={migrate.openDialog} onDeselectAll={() => onCheckAll(false, [...checked])}
       />
       <StoriesFilters
         query={query} filter={filter} options={options} filtering={filtering}
@@ -157,7 +150,7 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
       />
       <p id="storiesCount" className="muted" role="status" aria-live="polite">{`${rows.length} of ${allRows.length} stories`}</p>
       <StoriesTable
-        rows={rows} problems={problems} checked={checked} shownChecked={shownChecked} sort={sort} widthOf={widthOf}
+        rows={rows} tickable={tickable} problems={problems} checked={checked} shownChecked={shownChecked} sort={sort} widthOf={widthOf}
         wrapRef={wrap} tableRef={table} selectAllRef={selectAll}
         onSort={toggleSort} onResize={resize} onCommitWidths={commitAll} onFit={fit}
         onCheckAll={onCheckAll} onTick={tick} onOpen={onOpen}
@@ -165,6 +158,12 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
       {rows.length === 0 && (narrowed && allRows.length
         ? <EmptyState title="No story matches" help="Change the search or the filters to see more stories." action={{ id: 'clearSearchBtn', label: 'Clear filters', onClick: clearSearch }} />
         : <EmptyState title="No stories yet" help="Add a story in the Editor tab, or propose some with the story skills." />)}
+      {migrate.dialog && current && (
+        <MigrateDialog
+          count={n} source={current} targets={migrate.dialog.targets} problem={migrate.dialog.problem}
+          onMigrate={(name) => migrate.run(name, visibleIds)} onCancel={migrate.closeDialog}
+        />
+      )}
       <datalist id="bulkEpicList">{distinct(stories, 'epic').map((v) => <option key={v} value={v} />)}</datalist>
       <datalist id="bulkFeatureList">{distinct(stories, 'feature').map((v) => <option key={v} value={v} />)}</datalist>
     </section>

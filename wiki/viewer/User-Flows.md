@@ -38,6 +38,18 @@ Use the explore and propose skills, then the Proposed tab. The skills write `<ba
 
 A story already in the backlog is not proposed again. A change to it comes back as a review suggestion in the next flow, and **Move to Proposed** on the Editor tab does the reverse of accepting.
 
+## Migrate stories to another backlog
+
+Use this to move stories from the open backlog to another backlog of the same data folder.
+
+1. Close the CSV files of the other backlogs if they are open in Excel, because the portal rewrites links in them.
+2. Open the **Stories** tab, and tick the stories to move. Frozen stories cannot be ticked.
+3. Press **Migrate (N)**, choose the target backlog in the dialog, and press **Migrate**.
+4. Read the confirmation (the count, the target, the new IDs and the review suggestions that will be dismissed), and confirm. It cannot be undone.
+5. Check the note above the table. A refusal, for example a locked target file, leaves everything as it was and names the file.
+
+The target is written first, then the open backlog, and then the links in every other backlog follow the changed IDs. If the browser closes between the first and the second step, the stories are in both backlogs, so none is lost, and you delete the copies in the open backlog by hand.
+
 ## Review and apply suggestions
 
 Use the review skill, then the Review tab or the story form. The skill writes `<backlog>/user-stories/review.csv`, and applying a suggestion edits `<backlog>/user-stories.csv` and marks the row in `review.csv`.

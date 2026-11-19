@@ -101,7 +101,7 @@ Text, muted, placeholder and disabled colours keep at least 4.5:1 contrast with 
 `viewer/frontend/src/tools/backlog/` is the only tool so far. These parts are worth knowing:
 
 - `viewer/frontend/src/tools/backlog/features/graph/graph.ts` lays out the dependency graph for the Graph tab. `groupStories` folds the stories into features or epics for the Features and Epics levels, which are read-only and reuse `layoutGraph`.
-- `viewer/frontend/src/tools/backlog/shell/useBacklog.ts` holds the reducer state, and `viewer/frontend/src/shared/hooks/useAutosave.ts` saves after a delay and retries on failure, for example when the file is locked in Excel.
+- `viewer/frontend/src/tools/backlog/shell/useBacklog.ts` holds the reducer state, and `viewer/frontend/src/shared/hooks/useAutosave.ts` saves after a delay and retries on failure, for example when the file is locked in Excel. For the backlog it also keeps the stories on disk as a baseline, and after each write it queues a `POST /api/relink` job with the save's ID changes (`viewer/frontend/src/shared/lib/relink-queue.ts` runs the jobs in order and retries only the backlogs that failed), so the status stays saving or failed until the other backlogs are updated.
 - `viewer/frontend/src/tools/backlog/features/<feature>/` holds each tab, for example `viewer/frontend/src/tools/backlog/features/editor/EditorTab.tsx`.
 
 ### Component layout

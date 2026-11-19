@@ -340,6 +340,24 @@ legend { font-weight: 600; padding: 0 var(--space-2); }
 .confirm-dialog button.confirm-danger { font-weight: 700; color: var(--accent-text); background: var(--bad); border-color: var(--bad); }
 .confirm-dialog button.confirm-danger:hover:not(:disabled) { background: var(--bad); border-color: var(--text); }
 
+.migrate-dialog {
+  width: min(440px, calc(100vw - 32px));
+  padding: var(--space-4);
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-4);
+}
+.migrate-dialog::backdrop { background: rgb(0 0 0 / 0.45); }
+.migrate-dialog h2 { margin: 0 0 var(--space-3); font-size: var(--text-lg); }
+.migrate-dialog p { margin: 0 0 var(--space-2); overflow-wrap: anywhere; }
+.migrate-dialog .migrate-targets { display: flex; flex-direction: column; gap: var(--space-2); max-height: 240px; margin: var(--space-3) 0 0; padding: 0; overflow-y: auto; border: 0; }
+.migrate-dialog .seg-item { display: flex; align-items: center; gap: var(--space-2); margin: 0; padding: var(--space-2) var(--space-3); font-size: inherit; color: var(--text); border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer; }
+.migrate-dialog .seg-item:has(input:checked) { border-color: var(--accent); }
+.migrate-dialog .dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-3); }
+.bulk-note { align-self: center; }
+
 /* Settings: a group with a heading, a path box that is read-only but selectable, and the red overwrite step. */
 .settings-group { margin-top: var(--space-3); }
 .settings-group > h3 { margin: 0 0 var(--space-2); font-size: var(--text-base, 1rem); }
