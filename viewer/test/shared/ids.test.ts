@@ -559,3 +559,19 @@ test('relinkStories: returns the same array and stories when nothing changes', (
   const out = relinkStories([...list, { ...st('Billing'), dependsOn: ['Q'] }], new Map([['Q', 'R']]));
   assert.equal(out[0], list[0]); // an untouched story is the same object
 });
+
+test('backlogProblems: a code of another backlog counts as existing, an unknown one with its initials still warns, no set changes nothing', () => {
+  const [a] = rn([st('Billing')]);
+  const linked = { ...a, dependsOn: ['OT-X-0001', 'OT-X-0099'] };
+  assert.equal(backlogProblems([linked]).get(linked.id)!.length, 2);
+  const known = backlogProblems([linked], new Set(['OT-X-0001'])).get(linked.id)!;
+  assert.equal(known.length, 1);
+  assert.match(known[0], /OT-X-0099.*does not exist/);
+  assert.equal(backlogProblems([{ ...a, dependsOn: ['OT-X-0001'] }], new Set(['OT-X-0001'])).size, 0);
+});
+
+test('backlogProblems: a cycle is followed only inside the given stories, not through other backlogs', () => {
+  const [a] = rn([st('Billing')]);
+  const linked = { ...a, dependsOn: ['OT-X-0001'] };
+  assert.equal(backlogProblems([linked], new Set(['OT-X-0001'])).size, 0);
+});

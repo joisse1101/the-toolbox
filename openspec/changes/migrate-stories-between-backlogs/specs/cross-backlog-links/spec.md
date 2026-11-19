@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Keeps a story ID that one backlog's files hold for a story of another backlog in the same data folder pointing at the same story, whenever that backlog's IDs change.
+Keeps a story ID that one backlog's files hold for a story of another backlog in the same data folder pointing at the same story, whenever that backlog's IDs change, and shows such a link as a working link rather than a missing story.
 
 ## ADDED Requirements
 
@@ -63,3 +63,32 @@ The save status SHALL show saved only after the backlog file is written and ever
 #### Scenario: Retry does not repeat a done rewrite
 - **WHEN** a rewrite reached B2 but failed on B3 and is retried
 - **THEN** only B3 is rewritten on the retry
+
+### Requirement: Links to other backlogs show their story
+In the Editor, a `Depends On` entry that names a story of another backlog of the same data folder SHALL show that story's Title and its backlog's name, and SHALL NOT be flagged as a story that does not exist, in the story form, the story list or the Stories tab. An entry that starts with another backlog's initials but that no story of that backlog has SHALL still be flagged as a story that does not exist. Cycle checks SHALL stay within the open backlog.
+
+#### Scenario: Link into another backlog
+- **WHEN** story A of `core` depends on `P1-IAM-0003`, a story of `payments` titled "Export invoices"
+- **THEN** A's Depends On shows `P1-IAM-0003` with "Export invoices" and `payments`, and A has no dependency warning
+
+#### Scenario: Missing story in another backlog
+- **WHEN** a story of `core` depends on `P1-IAM-0099` and no story of `payments` has that ID
+- **THEN** the story is flagged with a dependency that does not exist
+
+### Requirement: Required by includes other backlogs
+A story's Required by SHALL list every story, in any backlog of the data folder, whose `Depends On` names it. A story of another backlog SHALL be shown with its ID, Title and backlog name.
+
+#### Scenario: Dependent left behind by a migration
+- **WHEN** story A of `core` depends on story B, and B is migrated to `payments`
+- **THEN** B's Required by, with `payments` open, lists A with its ID, Title and `core`
+
+#### Scenario: Shown after the other backlog changes
+- **WHEN** a story of `reporting` is given a link to a story of `core` and saved, and the user then opens `core`
+- **THEN** that `core` story's Required by lists the `reporting` story
+
+### Requirement: The review's checks know the other backlogs
+The mechanical consistency report of the review skill SHALL NOT report a `Depends On` link to an existing story of another backlog of the same data folder as a story that does not exist. A link with another backlog's initials that no story has SHALL still be reported.
+
+#### Scenario: No removal suggested
+- **WHEN** a backlog is reviewed and one of its stories depends on an existing story of another backlog
+- **THEN** the report has no dependency problem for that link and the review writes no `remove` row for it

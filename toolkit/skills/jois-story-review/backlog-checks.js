@@ -1,8 +1,9 @@
 // The checks of a backlog that need no judgement: dependency links, duplicates, points, missing parts, words the lexicon
 // says to avoid, and overlap with the proposals. Feeds the review skill's `checks` section. Pure: no file access.
-//   backlogChecks({ stories, lexicon, proposals }) -> [{ storyId, title, frozen, kind, message }]
+//   backlogChecks({ stories, lexicon, proposals, otherCodes }) -> [{ storyId, title, frozen, kind, message }]
 // A problem about a lexicon term has `term` instead of `storyId` and `title`. Frozen stories are checked too, and marked
-// `frozen`, because the review uses them as context but does not review them.
+// `frozen`, because the review uses them as context but does not review them. `otherCodes` (optional) are the story codes
+// of the data folder's other backlogs: a `Depends On` link to one of them is not reported as missing.
 import { backlogProblems } from './lib/backlog/ids.mjs';
 import { POINTS, SPLIT_ABOVE, storyIssues } from './lib/backlog/model.mjs';
 import { lexiconProblems } from './lib/lexicon/lexicon.mjs';
@@ -28,11 +29,11 @@ function pointsProblem(story) {
   return null;
 }
 
-export function backlogChecks({ stories, lexicon = null, proposals = [] }) {
+export function backlogChecks({ stories, lexicon = null, proposals = [], otherCodes = [] }) {
   const out = [];
   const add = (story, kind, message) => out.push({ storyId: story.code || '(no ID)', title: story.title, frozen: story.frozen, kind, message });
 
-  const dependency = backlogProblems(stories);
+  const dependency = backlogProblems(stories, new Set(otherCodes));
   const proposed = proposals.filter((p) => !p.benched);
   const proposedByKey = new Map();
   for (const p of proposed) if (norm(p.title)) proposedByKey.set(same(p), [...(proposedByKey.get(same(p)) ?? []), p]);

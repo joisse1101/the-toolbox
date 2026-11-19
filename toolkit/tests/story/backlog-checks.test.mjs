@@ -107,3 +107,9 @@ test('a frozen story is checked and marked frozen', () => {
   assert.equal(out.length, 1);
   assert.equal(out[0].frozen, true);
 });
+
+test('a dependency on a code of another backlog is not reported when otherCodes holds it', () => {
+  const stories = backlog(row({ 'Depends On': 'Z9-D-0001' }));
+  assert.equal(backlogChecks({ stories }).length, 1);
+  assert.deepEqual(backlogChecks({ stories, otherCodes: ['Z9-D-0001'] }), []);
+});

@@ -30,7 +30,9 @@ The lexicon files, slices and the context map hold none that can change. Slices 
 
 - Following IDs changed by hand outside the portal.
 - Locking or merging when two browser tabs edit the same data folder.
-- The graph view of links that cross backlogs, and the "does not exist" warning for them.
+- The graph view of links that cross backlogs.
+- Cycle checks across backlogs. Each backlog is checked on its own, as today.
+- Story skills writing a new link to another backlog.
 
 ## Decisions
 
@@ -110,9 +112,31 @@ The migration flow lives in a new `useMigrateFlow` in the Stories feature. It ru
 3. Run `migrateStories`.
 4. Ask for confirmation, naming the open review suggestions that will be dismissed.
 5. Write the target with `store.write`. If this fails, stop: nothing has changed.
-6. Register the forwards, replace the source stories in memory, and dismiss the moved stories' open review rows. The normal autosave then writes the source and relinks every other backlog, the target included.
+6. Register the forwards, replace the source stories in memory, and dismiss the moved stories' open review rows.
+7. Await `settle()`, so the source is written and every other backlog, the target included, is relinked before the result note shows.
+
+Step 7 was added after a test in the real portal. Without it the source waited for the 600 ms autosave delay, and a reload inside that gap left the stories in both backlogs, the target's copies naming old source IDs, and no backlog relinked. The page-close warning covered the gap, but it is easy to click through. With step 7 the gap is only as long as the two requests, and the note tells the user when it is over. If the relink fails, `settle()` returns with the status failed and the queue keeps retrying, as for any save.
 
 A crash after step 5 leaves the moved stories in both backlogs, which is visible and repairable. It never loses a story.
+
+### 9. The portal reads the other backlogs into a read-only index
+
+A link to another backlog's story is correct on disk, but the Editor only knows the open backlog's stories, so it flagged such a link as missing and could not list dependents from other backlogs in Required by. The backlog tool therefore keeps an **index of the other backlogs**: for each other backlog of the data folder, its name and its stories' codes, Titles and `Depends On`. It is built in the frontend with the existing list and read calls, and parsed with `loadBacklog`. It is read-only and never written.
+
+The index is built when a backlog opens, and built again after each relink job finishes and after each migration, because those are the moments another backlog's files change through the portal. A change made outside the portal shows after the next open, as the open backlog's own files do.
+
+A pure function in `viewer/shared/backlog/` turns the other backlogs' story lists into two lookups:
+
+- code to `{ backlog, title }`, for labels in Depends On;
+- code of an open-backlog story to its dependents in other backlogs, for Required by.
+
+`backlogProblems(stories, external?)` takes an optional set of other backlogs' codes and treats them as existing. Cycles are still followed only inside the open backlog, which matches the Non-Goals.
+
+*Alternative considered: a server endpoint that returns all backlogs' codes.* The existing calls already return the files, data folders hold a handful of backlogs, and the server stays unchanged.
+
+### 10. The review skill's checks read the other backlogs' codes
+
+The review skill turns a "does not exist" problem into a `remove` row, so without this a review would suggest removing every link a migration kept. `toolkit/skills/jois-story-review/read-backlog.mjs` already knows the data folder; it reads the other backlogs' `user-stories.csv`, collects their codes and passes them through `backlogChecks` to `backlogProblems`. The synced copy of `ids.ts` carries the new parameter.
 
 ### 8. Frozen stories cannot be ticked
 

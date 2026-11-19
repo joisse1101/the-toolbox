@@ -104,3 +104,14 @@ The target backlog SHALL be written before the open backlog is changed. If writi
 #### Scenario: Selection after a migration
 - **WHEN** a migration succeeds
 - **THEN** the migrated stories leave the selection and the open backlog shows the remaining stories
+
+### Requirement: Migration saves at once
+After the target is written, the migration SHALL write the open backlog and update the links in every other backlog straight away, without waiting for the autosave delay. The note that reports the result SHALL appear only after both have finished. When either fails, the save status SHALL show failed and retry as for any save.
+
+#### Scenario: Page closed right after the note
+- **WHEN** the user migrates two linked stories and closes the page as soon as the result note shows
+- **THEN** the stories are in the target only, and every link in every backlog names the same story as before
+
+#### Scenario: Another backlog locked
+- **WHEN** a third backlog's file is open in Excel during a migration
+- **THEN** the save status shows failed naming that file, and the links there are updated once Excel releases it

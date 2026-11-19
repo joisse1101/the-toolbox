@@ -349,9 +349,10 @@ export function dependencyChoices(stories                  , story       )      
   return stories.filter((o) => o.code && o.id !== story.id && !story.dependsOn.includes(o.code) && !wouldCycle(stories, story.code, o.code));
 }
 
-// Advisory warnings from dependency data: Map(story.id -> messages).
-export function backlogProblems(stories                  )                        {
-  const codes = new Set(stories.map((s) => s.code).filter(Boolean));
+// Advisory warnings from dependency data: Map(story.id -> messages). `otherCodes` are the codes of the other backlogs'
+// stories: a link to one of them exists. Cycles are followed only inside `stories`.
+export function backlogProblems(stories                  , otherCodes                      = new Set())                        {
+  const codes = new Set([...stories.map((s) => s.code).filter(Boolean), ...otherCodes]);
   const problems = new Map                  ();
   for (const s of stories) {
     const msgs           = [];

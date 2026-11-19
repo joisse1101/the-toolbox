@@ -59,6 +59,17 @@
   - With a third backlog's CSV open in Excel, the save chip shows failed and recovers once it is closed.
 - [x] 6.4 Document Migrate in the Stories tab section of `wiki/viewer/Viewer-Guide.md`, and add a migration routine to `wiki/viewer/User-Flows.md`. Verify with `python scripts/check_docs.py`.
 
+## 8. Show links across backlogs and save a migration at once
+
+- [x] 8.1 Add an optional set of other backlogs' codes to `backlogProblems` in `viewer/shared/backlog/ids.ts`, treated as existing, with cycles still followed only inside the given stories (design decision 9). Verify with `ids.test.ts` cases: a known external code gives no warning, an unknown code with another backlog's initials still warns, and no set keeps today's behaviour.
+- [x] 8.2 Add a pure function in `viewer/shared/backlog/` that turns the other backlogs' story lists into the two lookups of design decision 9: code to `{ backlog, title }`, and open-backlog code to its dependents in other backlogs. Verify with tests: a dependent found in another backlog, a code held by no story left out, and the open backlog's own stories ignored.
+- [x] 8.3 Load the index in the backlog tool when a backlog opens, and load it again after each relink job finishes and after each migration. Verify with `npm run typecheck` and a manual check in a mock data folder under `.scratch/`.
+- [x] 8.4 In `DependenciesSection.tsx`, label a link to another backlog with its Title and backlog name instead of "No story has this ID", and add dependents from other backlogs to Required by with their backlog name. Pass the other backlogs' codes to `backlogProblems` in `BacklogTool.tsx` and `ProposedTab.tsx`. Verify with `npm run build` and a manual check with playwright-cli: A depends on B, B migrates, and B's Required by lists A with its backlog.
+- [x] 8.5 In `useMigrateFlow.ts`, await `settle()` after replacing the source stories and before showing the result note (design decision 7, step 7). Verify with playwright-cli in a mock data folder: reload the page as soon as the note shows, then check that every link in every backlog names the same story as before.
+- [x] 8.6 In `toolkit/skills/jois-story-review/read-backlog.mjs`, read the other backlogs' codes in the data folder and pass them through `backlogChecks` to `backlogProblems` (design decision 10). Run `node scripts/sync-skill-logic.ts` from `viewer/`. Verify with a toolkit test that a link to an existing story of another backlog gives no dependency problem, and with `cd toolkit; python check_toolkit.py; python -m pytest`.
+- [x] 8.7 Update "Story IDs, dependencies and frozen stories" in `wiki/viewer/Viewer-Guide.md` (links to other backlogs are shown with their story and appear in Required by), and describe the index function and the new `backlogProblems` parameter in `wiki/viewer/architecture/Logic-Layer.md`. Verify with `python scripts/check_docs.py`.
+- [x] 8.8 Run `npm run lint`, `npm run typecheck`, `npm test` and `npm run build` from `viewer/`, and `python scripts/check_docs.py`, and fix any failure. Verify: every command exits with code 0.
+
 ## 7. Whole-change check
 
 - [x] 7.1 Run the project's checks for the whole change and fix any failure: `npm run typecheck`, `npm test` and `npm run build` from `viewer/`, and `python scripts/check_docs.py`. Verify: every command exits with code 0.

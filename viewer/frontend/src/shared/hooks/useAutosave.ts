@@ -26,9 +26,11 @@ export interface AutosaveState<B> {
 // Opt-in: follow the ID changes of the stories this file holds. `stories` reads the story list out of the state's `backlog`;
 // `onIdChanges` receives each save's list (old code -> new code, '' = deleted) once the file is written, so the open
 // backlog's own review rows and proposals can follow it. The other backlogs are rewritten by the server (see relink-queue.ts).
+// `onRelinked` is called each time a relink job has reached the other backlogs' files.
 export interface AutosaveIds<B> {
   stories: (backlog: B) => readonly Story[];
   onIdChanges: (changes: ReadonlyMap<string, string>) => void;
+  onRelinked?: () => void;
 }
 
 // A forward replaces the '' (deleted) entry of the same old code: the story was moved to another backlog, not removed.
@@ -121,6 +123,7 @@ export function useAutosave<B = Backlog>({ store, stateRef, onStatus, onMessage,
         return false;
       }
       m.retryDelay = RETRY_FIRST_MS;
+      idsRef.current?.onRelinked?.();
       return true;
     }
 

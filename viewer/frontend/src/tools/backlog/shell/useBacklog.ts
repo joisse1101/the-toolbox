@@ -205,8 +205,9 @@ export function reducer(state: BacklogState, action: BacklogAction): BacklogStat
 }
 
 // The whole editor state for one open backlog, plus the actions that change it and keep it on disk.
-// `onIdChanges` receives each save's story ID changes (old code -> new code, '' = deleted) once the backlog is written.
-export function useBacklog({ onIdChanges }: { onIdChanges: (changes: ReadonlyMap<string, string>) => void }) {
+// `onIdChanges` receives each save's story ID changes (old code -> new code, '' = deleted) once the backlog is written;
+// `onRelinked` is called after each relink job has rewritten the other backlogs.
+export function useBacklog({ onIdChanges, onRelinked }: { onIdChanges: (changes: ReadonlyMap<string, string>) => void; onRelinked: () => void }) {
   const [state, dispatch] = useReducer(reducer, initial);
   const [status, setStatus] = useState<StatusReport>({ kind: 'idle', detail: '' });
   const [message, setMessage] = useState<string | null>(null);
@@ -216,10 +217,13 @@ export function useBacklog({ onIdChanges }: { onIdChanges: (changes: ReadonlyMap
   stateRef.current = state;
 
   const ask = useConfirm();
-  const autosave = useAutosave({ store, stateRef, onStatus: setStatus, onMessage: setMessage, ids: { stories: storiesOf, onIdChanges } });
+  const autosave = useAutosave({ store, stateRef, onStatus: setStatus, onMessage: setMessage, ids: { stories: storiesOf, onIdChanges, onRelinked } });
 
+  // Callers waiting for the render of an edit to mark the backlog dirty (see replaceStoriesAndSettle).
+  const renderWaiters = useRef<(() => void)[]>([]);
   useEffect(() => {
     if (state.edits > 0) autosave.markDirty();
+    renderWaiters.current.splice(0).forEach((resolve) => resolve());
   }, [state.edits, autosave]);
 
   const actions = useMemo(() => {
@@ -394,6 +398,14 @@ export function useBacklog({ onIdChanges }: { onIdChanges: (changes: ReadonlyMap
       },
 
       replaceStories: (stories: Story[]) => dispatch({ type: 'replaceStories', stories }),
+      // Replaces the stories, waits until the edit has rendered (that is when the save is marked pending), then settles.
+      // Resolves true once the file and every other backlog are written, false if saving is failing.
+      async replaceStoriesAndSettle(stories: Story[]) {
+        const rendered = new Promise<void>((resolve) => renderWaiters.current.push(resolve));
+        dispatch({ type: 'replaceStories', stories });
+        await rendered;
+        return autosave.settle();
+      },
       // The next save reports these old codes as moved to a new code in another backlog, not as deleted (a migration).
       registerForwards: (forwards: ReadonlyMap<string, string>) => autosave.registerForwards(forwards),
 

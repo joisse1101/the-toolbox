@@ -10,6 +10,7 @@ import { useConfirm } from '#frontend/src/shared/hooks/useConfirm.ts';
 import { useReviewFlow } from './features/review/useReviewFlow.ts';
 import { useProposedFlow } from './features/proposed/useProposedFlow.ts';
 import { useMigrateFlow } from './features/stories/useMigrateFlow.ts';
+import { useOtherBacklogs } from './shared/useOtherBacklogs.ts';
 import { useShortcuts } from './shell/useShortcuts.ts';
 import { useLexicon } from './features/lexicon/useLexicon.ts';
 import { useLexiconSuggestions } from './features/lexicon/useLexiconSuggestions.ts';
@@ -41,10 +42,15 @@ export default function App() {
   const ask = useConfirm();
   // Set below, once the review and proposals hooks exist: they need the backlog hook's state, so the backlog hook calls this late.
   const followIdChanges = useRef<(changes: ReadonlyMap<string, string>) => void>(() => {});
-  const { state, selected, status, message, ready, actions } = useBacklog({ onIdChanges: (changes) => followIdChanges.current(changes) });
+  // Set below, once the index of the other backlogs exists: it needs the backlog hook's state.
+  const reloadOthers = useRef<() => void>(() => {});
+  const { state, selected, status, message, ready, actions } = useBacklog({ onIdChanges: (changes) => followIdChanges.current(changes), onRelinked: () => reloadOthers.current() });
   const { files, current, backlog, selectedId, checked, lastChecked } = state;
   const stories = useMemo(() => backlog?.stories ?? [], [backlog]);
-  const problems = useMemo(() => backlogProblems(stories), [stories]);
+  // The other backlogs' stories: a link to one is shown with its story and is not a missing link.
+  const others = useOtherBacklogs({ current, files, stories });
+  reloadOthers.current = others.reload;
+  const problems = useMemo(() => backlogProblems(stories, others.codes), [stories, others.codes]);
   const renumberDisabled = useMemo(() => !state.initials || gatherFeatures(stories, state.initials) === stories, [stories, state.initials]); // nothing to put in order (and no backlog open yet: no initials)
 
   // Folded epics and features of the story list, remembered per backlog file. A story that turns up inside a folded group
@@ -70,7 +76,7 @@ export default function App() {
   const { tab, setTab } = useTab({ settled: ready && (!current || review.loaded), hasBacklog: !!current, hasReview: review.exists });
   const { proposals, proposedNotice, acceptSelected, acceptAll, moveToProposed } =
     useProposedFlow({ current, stories, backlog, initials: state.initials, actions, review, ask, reveal });
-  const migrate = useMigrateFlow({ current, stories, headers: backlog?.headers ?? [], initials: state.initials, files, actions, review, ask, onIdChanges: (changes) => followIdChanges.current(changes) });
+  const migrate = useMigrateFlow({ current, stories, headers: backlog?.headers ?? [], initials: state.initials, files, actions, review, ask, onIdChanges: (changes) => followIdChanges.current(changes), onMoved: others.reload });
   const refreshProposals = proposals.actions.refreshFromDisk;
   // Every save that changes story IDs (any cause) makes this backlog's open review rows and proposed stories follow. The
   // other backlogs' files are rewritten by the server (see useAutosave).
@@ -238,14 +244,14 @@ export default function App() {
         </div>
 
         <EditorTab
-          hidden={!current || tab !== 'editor'} stories={stories} problems={problems} suggestionCounts={suggestionCounts} selectedId={selectedId} selected={selected}
+          hidden={!current || tab !== 'editor'} stories={stories} problems={problems} others={others.index} suggestionCounts={suggestionCounts} selectedId={selectedId} selected={selected}
           selectedUnits={selectedUnits} focusRequest={focusRequest} renumberDisabled={renumberDisabled} collapse={collapse} actions={actions}
           onFocused={() => setFocusRequest(null)} onAdd={addStory} onMove={actions.moveStory} onMoveGroup={actions.moveGroup} onRenumber={actions.renumberDisplayed}
           onApplySuggestion={applyUnit} onDismissSuggestion={dismissUnit} onMoveToProposed={moveToProposed}
         />
 
         <ProposedTab
-          hidden={!current || tab !== 'proposed'} proposed={proposals.stories} backlogStories={stories}
+          hidden={!current || tab !== 'proposed'} proposed={proposals.stories} backlogStories={stories} others={others.index}
           selected={proposals.selected} selectedId={proposals.state.selectedId} notice={proposedNotice}
           onSelect={proposals.actions.selectStory} onAdd={() => proposals.actions.addStory(stories)} onDelete={proposals.actions.deleteMany}
           onEdit={proposals.actions.editStory} onCommitEpic={proposals.actions.commitEpic} onMove={proposals.actions.moveStory}

@@ -23,10 +23,10 @@ export interface MigrateNote {
 
 // The "Migrate" action of the Stories tab: moves the ticked stories into another backlog of the data folder.
 // The order matters (design decision 7): settle the open backlog, read the target fresh, work out the move, ask, write the
-// target, and only then change the open backlog, so a failed target write leaves everything as it was. The open backlog's
-// own autosave then writes the source and relinks every other backlog once (see useAutosave `registerForwards`).
+// target, and only then change the open backlog, so a failed target write leaves everything as it was. The flow then waits
+// for the open backlog's save, which writes the source and relinks every other backlog once (see useAutosave `registerForwards`).
 // `review` is the slice of the review result this flow uses (a feature never imports another feature).
-export function useMigrateFlow({ current, stories, headers, initials, files, actions, review, ask, onIdChanges }: {
+export function useMigrateFlow({ current, stories, headers, initials, files, actions, review, ask, onIdChanges, onMoved }: {
   current: string | null;
   stories: Story[];
   headers: readonly string[];
@@ -37,6 +37,8 @@ export function useMigrateFlow({ current, stories, headers, initials, files, act
   ask: Ask;
   // Makes the open backlog's proposals and review rows follow ID changes made outside its own save (the target's renumber).
   onIdChanges: (changes: ReadonlyMap<string, string>) => void;
+  // Called once the migration has reached every backlog, so the index of the other backlogs is read again.
+  onMoved: () => void;
 }) {
   const [dialog, setDialog] = useState<{ targets: MigrateTarget[] | null; problem: string | null } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -120,8 +122,12 @@ export function useMigrateFlow({ current, stories, headers, initials, files, act
       }
 
       actions.registerForwards(result.forwards);
-      actions.replaceStories(result.source); // the moved stories leave the ticked set with it
+      const sourceSaved = actions.replaceStoriesAndSettle(result.source); // the moved stories leave the ticked set with it
       if (units.length) now.review.decide(units.flatMap((u) => u.indexes), 'dismissed');
+      // The source is written and every other backlog relinked before the note shows (design decision 7, step 7): a
+      // reload right after the note then finds the backlogs consistent.
+      await sourceSaved;
+      onMoved();
       const codes = [...result.forwards.values()];
       const shown = codes.length > 3 ? `${codes.slice(0, 3).join(', ')} and ${codes.length - 3} more` : codes.join(', ');
       setNote({ kind: 'ok', text: `${count} ${noun} moved to ${targetName} as ${shown}.` });

@@ -348,9 +348,10 @@ export function dependencyChoices(stories: readonly Story[], story: Story): Stor
   return stories.filter((o) => o.code && o.id !== story.id && !story.dependsOn.includes(o.code) && !wouldCycle(stories, story.code, o.code));
 }
 
-// Advisory warnings from dependency data: Map(story.id -> messages).
-export function backlogProblems(stories: readonly Story[]): Map<number, string[]> {
-  const codes = new Set(stories.map((s) => s.code).filter(Boolean));
+// Advisory warnings from dependency data: Map(story.id -> messages). `otherCodes` are the codes of the other backlogs'
+// stories: a link to one of them exists. Cycles are followed only inside `stories`.
+export function backlogProblems(stories: readonly Story[], otherCodes: ReadonlySet<string> = new Set()): Map<number, string[]> {
+  const codes = new Set([...stories.map((s) => s.code).filter(Boolean), ...otherCodes]);
   const problems = new Map<number, string[]>();
   for (const s of stories) {
     const msgs: string[] = [];
