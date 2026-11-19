@@ -1,10 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { sampleTree, pathOf, slicesPath, backlogPath, SAMPLE_SLICE } from './helpers/backlog-tree.mjs';
+import { sampleTree, pathOf, slicesPath, backlogPath } from './helpers/backlog-tree.mjs';
 import { tempProject } from './helpers/temp-project.mjs';
 import { planSkillCopy } from './helpers/plan-skill.mjs';
 

@@ -80,7 +80,7 @@ export async function checkContextMap(input) {
 export async function writeContextMap(input) {
   const p = await prepare(input);
   if (!p.ok) return { ...p, text: problemsText(p.errors) };
-  const { loaded, source, sourceText, documentText } = p;
+  const { loaded, sourceText, documentText } = p;
   const existing = readMapFiles(loaded.backlogDir);
   if (existing.source === sourceText && existing.document === documentText) {
     return { ok: true, changed: false, written: [], base: loaded.base, text: `Nothing changed: ${loaded.base} already holds exactly this map.` };

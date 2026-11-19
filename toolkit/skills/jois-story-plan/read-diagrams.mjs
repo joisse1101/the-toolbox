@@ -78,7 +78,7 @@ export function readSliceFolder(sliceDir) {
 export const readConventions = ({ guidelinesDir = GUIDELINES_DIR } = {}) => fs.readFileSync(path.join(guidelinesDir, 'diagram-conventions.md'), 'utf8');
 
 // The repair of a slice whose stories moved: new IDs in source.json and in the specification's generated list.
-function heal({ sliceDir, slice, base, source, dataDir }) {
+function heal({ sliceDir, slice, source }) {
   const sourceText = `${JSON.stringify(source, null, 2)}\n`;
   const specFile = `UC-${slice}.md`;
   const specPath = path.join(sliceDir, specFile);

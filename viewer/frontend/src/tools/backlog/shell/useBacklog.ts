@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
-import type { Backlog, BacklogFile, ReviewRow, Story } from '#shared/types.ts';
+import type { BacklogFile, ReviewRow, Story } from '#shared/types.ts';
 import { createFileStore, messageOf } from '#frontend/src/shared/api/files.ts';
 import { loadBacklog, newStory, displayOrder, applyBulk } from '#shared/backlog/model.ts';
 import { commitEpic, commitEpics, moveStory, moveGroup, gatherFeatures, recodedBetween, removeStory, removeStories, wouldCycle, renumber } from '#shared/backlog/ids.ts';
@@ -177,13 +177,19 @@ export function reducer(state: BacklogState, action: BacklogAction): BacklogStat
     }
     case 'check': {
       const checked = new Set(state.checked);
-      for (const id of action.ids) action.on ? checked.add(id) : checked.delete(id);
+      for (const id of action.ids) {
+        if (action.on) checked.add(id);
+        else checked.delete(id);
+      }
       return { ...state, checked, lastChecked: action.anchor };
     }
     // Ticks or unticks exactly action.ids (the rows on screen); a story the Stories search hides keeps its tick.
     case 'checkAll': {
       const checked = new Set(state.checked);
-      for (const id of action.ids) action.on ? checked.add(id) : checked.delete(id);
+      for (const id of action.ids) {
+        if (action.on) checked.add(id);
+        else checked.delete(id);
+      }
       return { ...state, checked, lastChecked: null };
     }
     case 'bulk': {
@@ -262,7 +268,8 @@ export function useBacklog() {
           if (current && !files.includes(current)) {
             setMessage(`${current} no longer exists.`);
             autosave.discardPending();
-            files.length ? await loadFile(files[0], true) : clearCurrent();
+            if (files.length) await loadFile(files[0], true);
+            else clearCurrent();
             return;
           }
           if (!current && files.length) return await loadFile(files[0], true);

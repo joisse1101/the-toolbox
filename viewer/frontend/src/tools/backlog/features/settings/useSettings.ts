@@ -81,7 +81,7 @@ export function useSettings(settleAll: () => Promise<boolean>, onMigrated?: () =
   const [initResult, setInitResult] = useState<ProjectInit | null>(() => readStoredResult<ProjectInit>(INIT_RESULT_KEY));
   const [copyResult, setCopyResult] = useState<CopyCounts | null>(() => readStoredResult<CopyCounts>(COPY_RESULT_KEY));
   const [migrateResult, setMigrateResult] = useState<Migration | null>(null); // { copied, skipped, failed } after the user runs the migration
-  const [switched, setSwitched] = useState(() => readStored(SWITCHED_KEY) === '1');
+  const [switched] = useState(() => readStored(SWITCHED_KEY) === '1');
 
   useEffect(() => {
     clearStored(INIT_RESULT_KEY); // shown on this load only

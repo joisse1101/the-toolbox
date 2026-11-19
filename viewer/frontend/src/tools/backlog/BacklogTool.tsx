@@ -41,7 +41,7 @@ export default function App() {
   const ask = useConfirm();
   const { state, selected, status, message, ready, actions } = useBacklog();
   const { files, current, backlog, selectedId, checked, lastChecked } = state;
-  const stories = backlog?.stories ?? [];
+  const stories = useMemo(() => backlog?.stories ?? [], [backlog]);
   const problems = useMemo(() => backlogProblems(stories), [stories]);
   const renumberDisabled = useMemo(() => !state.initials || gatherFeatures(stories, state.initials) === stories, [stories, state.initials]); // nothing to put in order (and no backlog open yet: no initials)
 

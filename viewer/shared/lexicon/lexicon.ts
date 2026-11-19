@@ -179,7 +179,7 @@ export function applyTermItems(lexicon: Lexicon, items: unknown): { ok: true; le
   const errors: string[] = [];
   const added: string[] = [];
   const touched = new Map<string, number>(); // term key -> position of the last item that set it
-  let terms = lexicon.terms.map((t) => ({ ...t, avoid: [...t.avoid], cells: [...t.cells] }));
+  const terms = lexicon.terms.map((t) => ({ ...t, avoid: [...t.avoid], cells: [...t.cells] }));
   items.forEach((raw: unknown, i) => {
     const at = `item ${i + 1}`;
     const problem = (message: string): number => errors.push(`${at}: ${message}`);
