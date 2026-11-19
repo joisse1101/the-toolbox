@@ -7,7 +7,7 @@ Lets the team lead review a user-story backlog CSV against the Epic > Feature > 
 ## Requirements
 
 ### Requirement: Review skill in the repository
-The toolkit SHALL contain a review skill, `toolkit/skills/jois-story-review/SKILL.md`, that reviews a backlog CSV from the data folder against the standards in `product-backlog.md`, which the skill carries in its own `references/` folder. The skill SHALL take a backlog as input and SHALL produce a written report. The skill SHALL NOT restate the guidelines' definitions or rules: it SHALL cite them and describe only how to review (what to report, how to classify it, how to write the findings). The skill SHALL NOT modify the backlog CSV or any file other than its review CSV: it reports findings and suggests fixes, and the user applies them. The only file it may write is `<backlog>/user-stories/review.csv`, and only through the writer script described by the `backlog-review-suggestions` capability, run with Bash. The skill SHALL NOT review Priority.
+The toolkit SHALL contain a review skill, `toolkit/skills/jois-story-review/SKILL.md`, that reviews a backlog CSV from the data folder against the standards in `product-backlog.md`, which the skill carries in its own `references/` folder. The skill SHALL take a backlog as input and SHALL produce a written report. The skill SHALL NOT restate the guidelines' definitions or rules: it SHALL cite them and describe only how to review (what to report, how to classify it, how to write the findings). The skill SHALL NOT modify the backlog CSV or any file other than its review CSV: it reports findings and suggests fixes, and the user applies them. The only file it may write is `<backlog>/user-stories/review.csv`, and only through the writer script described by the `backlog-review-suggestions` capability, run with Bash.
 
 #### Scenario: Report only
 - **WHEN** the skill reviews the backlog `data-portal`
@@ -22,7 +22,7 @@ The toolkit SHALL contain a review skill, `toolkit/skills/jois-story-review/SKIL
 - **THEN** the skill asks which backlog in the data folder to review
 
 #### Scenario: Priority is ignored
-- **WHEN** a story has no Priority
+- **WHEN** the backlog file still has an old Priority column
 - **THEN** the report and the review CSV do not mention Priority
 
 #### Scenario: Rules come from the guidelines

@@ -20,7 +20,7 @@ The tool SHALL show a dropdown of the CSV files in `backlogs/` and load the chos
 - **THEN** the tool reloads the file and shows the edited content
 
 ### Requirement: Story fields
-For each story the tool SHALL provide: Epic, Feature and Title as short text fields, where Title is the title of the user story; an "As" text field (the role, written with its article, for example "a team lead"), and "I want" and "So that" text fields; Sprint points as a row of one-click buttons (see "Sprint points selector"); and Priority as a dropdown with the options Critical, High, Medium and Low, plus an empty "none" choice. Priority SHALL be optional and new stories SHALL start with none selected. The tool SHALL also provide an optional multi-line free-text Notes field, stored as-is and not parsed.
+For each story the tool SHALL provide: Epic, Feature and Title as short text fields, where Title is the title of the user story; an "As" text field (the role, written with its article, for example "a team lead"), and "I want" and "So that" text fields; and Sprint points as a row of one-click buttons (see "Sprint points selector"). The tool SHALL also provide an optional multi-line free-text Notes field, stored as-is and not parsed. The tool SHALL NOT provide a Priority field.
 
 #### Scenario: Notes field
 - **WHEN** the user types several lines into Notes
@@ -28,11 +28,11 @@ For each story the tool SHALL provide: Epic, Feature and Title as short text fie
 
 #### Scenario: Priority is optional
 - **WHEN** a new story is created
-- **THEN** Priority shows "none" and the story can be saved without one
+- **THEN** the form shows no Priority control and the story can be saved without one
 
 #### Scenario: Priority value not in the list
-- **WHEN** a loaded file has a Priority such as `Urgent` that is not one of the four options
-- **THEN** the dropdown shows `Urgent` as an extra selected option and the value is written back unchanged unless the user picks another
+- **WHEN** a loaded file has a Priority column holding a value such as `Urgent`
+- **THEN** the value is shown nowhere and is not written back when the file is saved
 
 #### Scenario: Hierarchy fields
 - **WHEN** the user opens a story
@@ -303,7 +303,7 @@ The Epic and Feature fields SHALL suggest values already used by stories in the 
 - **THEN** no suggestions are offered
 
 ### Requirement: Story completeness indicators
-The tool SHALL classify each story. A story is **incomplete** (red) when any of Epic, Feature, Title, As a, I want or So that is blank, or when it has no acceptance criterion, or when any of its criteria has a blank Given, When or Then. A story whose User Story or User Acceptance Criteria cell could not be parsed and is kept as raw text counts that cell as present. A story gets a **warning** (yellow) when Sprint points is missing, Priority is missing, or Sprint points is above 13. The indicator SHALL show on the story's row in the story list and on its form, SHALL list the reasons, and SHALL be advisory only and SHALL NOT block saving. When a story is both incomplete and has warnings, the row SHALL use the red style; the form SHALL show the red message first and the yellow message after it.
+The tool SHALL classify each story. A story is **incomplete** (red) when any of Epic, Feature, Title, As a, I want or So that is blank, or when it has no acceptance criterion, or when any of its criteria has a blank Given, When or Then. A story whose User Story or User Acceptance Criteria cell could not be parsed and is kept as raw text counts that cell as present. A story gets a **warning** (yellow) when Sprint points is missing or Sprint points is above 13. The indicator SHALL show on the story's row in the story list and on its form, SHALL list the reasons, and SHALL be advisory only and SHALL NOT block saving. When a story is both incomplete and has warnings, the row SHALL use the red style; the form SHALL show the red message first and the yellow message after it.
 
 #### Scenario: Missing capability
 - **WHEN** a story has a blank Feature
@@ -318,15 +318,15 @@ The tool SHALL classify each story. A story is **incomplete** (red) when any of 
 - **THEN** the story is red with Acceptance criteria named as the reason
 
 #### Scenario: Missing estimate only
-- **WHEN** a story has every required field but no Sprint points and no Priority
-- **THEN** its row is yellow and the form lists Sprint points and Priority as missing
+- **WHEN** a story has every required field but no Sprint points
+- **THEN** its row is yellow and the form lists Sprint points as missing
 
 #### Scenario: Red wins
 - **WHEN** a story has a blank Epic and also 21 Sprint points
 - **THEN** its row is red, and the form shows the red message followed by the "consider splitting" message
 
 #### Scenario: Complete story
-- **WHEN** all required fields, Sprint points and Priority are filled and points are 13 or less
+- **WHEN** all required fields and Sprint points are filled and points are 13 or less
 - **THEN** the row and the form have no indicator
 
 ### Requirement: Full-width generator layout
@@ -364,13 +364,13 @@ The story list SHALL group stories under a subheader per Epic, with each group's
 - **THEN** the CSV rows are written in their original order
 
 ### Requirement: Stories tab
-The tool SHALL provide two tabs for an open backlog: **Editor**, showing the story list and story form, and **Stories**, showing every story of the backlog in one table. The table SHALL have a row per story with the columns ID, Epic, Feature, Title, Sprint points, Priority and Depends On (the IDs, separated by commas), and SHALL show the same completeness indicator (red or yellow, with the reasons in a tooltip) as the story list. Rows SHALL be ordered the same as the grouped story list. The Stories tab SHALL NOT allow editing a single story's fields or reordering. Clicking a story's title in the table SHALL select that story and switch to the Editor tab. Switching tabs SHALL NOT change or reload the backlog.
+The tool SHALL provide two tabs for an open backlog: **Editor**, showing the story list and story form, and **Stories**, showing every story of the backlog in one table. The table SHALL have a row per story with the columns ID, Epic, Feature, Title, Sprint points and Depends On (the IDs, separated by commas), and SHALL show the same completeness indicator (red or yellow, with the reasons in a tooltip) as the story list. Rows SHALL be ordered the same as the grouped story list. The Stories tab SHALL NOT allow editing a single story's fields or reordering. Clicking a story's title in the table SHALL select that story and switch to the Editor tab. Switching tabs SHALL NOT change or reload the backlog.
 
 The Stories tab SHALL have a search box above the table. While the box holds text, the table SHALL show only the stories that match: a story matches when every space-separated word of the query appears, ignoring case, in at least one of its fields. The fields searched SHALL be every column of the story (including columns the tool does not know) and the text of its User Story, acceptance criteria and clarifications, whether or not that text was understood. Leading, trailing and repeated spaces in the query SHALL be ignored, and an empty query SHALL show every story. While a query is active the tab SHALL show how many of the backlog's stories match ("N of M stories"), and when none match it SHALL say so instead of "No stories yet". The query SHALL NOT be saved, SHALL NOT change the backlog, and SHALL NOT filter the Editor tab's story list. The row order of the matching stories SHALL be the same as without a query.
 
 #### Scenario: Show all stories
 - **WHEN** the user opens the Stories tab on a backlog with 12 stories
-- **THEN** the table shows 12 rows with their ID, epic, feature, title, points, priority and dependencies
+- **THEN** the table shows 12 rows with their ID, epic, feature, title, points and dependencies, and no Priority column
 
 #### Scenario: Open a story from the table
 - **WHEN** the user clicks the title of a story in the table
@@ -381,8 +381,8 @@ The Stories tab SHALL have a search box above the table. While the box holds tex
 - **THEN** its table row is red and its tooltip names Feature
 
 #### Scenario: Edits show in the table
-- **WHEN** the user changes a story's Priority in the Editor tab and switches to the Stories tab
-- **THEN** the table shows the new priority
+- **WHEN** the user changes a story's Sprint points in the Editor tab and switches to the Stories tab
+- **THEN** the table shows the new points
 
 #### Scenario: Dependencies in the table
 - **WHEN** story `IAM-0003` depends on `IAM-0001` and `DD-0002`
@@ -452,8 +452,8 @@ Each table row SHALL have a checkbox, and the header SHALL have a select-all che
 - **THEN** the status shows "3 selected" and that 2 of them are hidden by the search
 
 #### Scenario: Bulk edit reaches hidden selected stories
-- **WHEN** 3 stories are selected, a search hides 2 of them, and the user applies a Priority to the selection
-- **THEN** the confirmation names 3 stories and all 3 get the Priority
+- **WHEN** 3 stories are selected, a search hides 2 of them, and the user applies an Epic to the selection
+- **THEN** the confirmation names 3 stories and all 3 get the Epic
 
 ### Requirement: Dependency graph tab
 The tool SHALL provide a Graph tab, shown when a backlog is open, that draws each story as a node and each dependency as an arrow from the story to the story it depends on. Dependencies SHALL be editable in the graph as well as in the Editor.
@@ -819,7 +819,7 @@ On the Editor, Proposed and Lexicon tabs, a draggable divider SHALL separate the
 - **THEN** no divider is shown and the list and form are stacked as before
 
 ### Requirement: Resizable Stories table columns
-In the Stories tab, each column header (the selection column excluded) SHALL have a drag handle on its right edge. Dragging a handle SHALL change the width of that column only, between a minimum and a maximum width. Dragging a handle SHALL NOT sort the table or select anything, and clicking a header's sort button SHALL still sort. Column text wider than its column SHALL be cut off with an ellipsis and the full text SHALL remain available in the cell's tooltip. Each column's width SHALL be stored in the browser and applied again when the page is reopened, with the same fallbacks for a missing, invalid or out-of-range value and an unavailable browser store as the list panel. The table SHALL fill the width of its container: when the columns are narrower than the container, an extra empty column at the right SHALL take the difference, and when they are wider the columns SHALL be narrowed to fit, each giving up a share of its width above the minimum, so that the table does not scroll sideways. The stored widths SHALL NOT change when this happens and SHALL apply again when the container is wider. Only when even the minimum widths do not fit the container MAY the table scroll sideways. Dragging or fitting a column SHALL NOT widen it beyond the room the other columns leave. Double-clicking a handle SHALL set that column to the width of its widest text, header included, but no wider than the maximum column width, like double-clicking a column border in a spreadsheet. When the widened column does not fit beside the others, the other columns SHALL shrink to the minimum width one after the other, in the order Depends On, Title, Feature, Epic, Priority, Sprint points, ID, until it fits or none can shrink further; columns not needed for the room SHALL keep their widths. Columns the user has not resized SHALL keep their default width. Resizing SHALL NOT change the backlog, the sort, the search, the filters or the selection.
+In the Stories tab, each column header (the selection column excluded) SHALL have a drag handle on its right edge. Dragging a handle SHALL change the width of that column only, between a minimum and a maximum width. Dragging a handle SHALL NOT sort the table or select anything, and clicking a header's sort button SHALL still sort. Column text wider than its column SHALL be cut off with an ellipsis and the full text SHALL remain available in the cell's tooltip. Each column's width SHALL be stored in the browser and applied again when the page is reopened, with the same fallbacks for a missing, invalid or out-of-range value and an unavailable browser store as the list panel. The table SHALL fill the width of its container: when the columns are narrower than the container, an extra empty column at the right SHALL take the difference, and when they are wider the columns SHALL be narrowed to fit, each giving up a share of its width above the minimum, so that the table does not scroll sideways. The stored widths SHALL NOT change when this happens and SHALL apply again when the container is wider. Only when even the minimum widths do not fit the container MAY the table scroll sideways. Dragging or fitting a column SHALL NOT widen it beyond the room the other columns leave. Double-clicking a handle SHALL set that column to the width of its widest text, header included, but no wider than the maximum column width, like double-clicking a column border in a spreadsheet. When the widened column does not fit beside the others, the other columns SHALL shrink to the minimum width one after the other, in the order Depends On, Title, Feature, Epic, Sprint points, ID, until it fits or none can shrink further; columns not needed for the room SHALL keep their widths. Columns the user has not resized SHALL keep their default width. Resizing SHALL NOT change the backlog, the sort, the search, the filters or the selection.
 
 #### Scenario: Drag a column
 - **WHEN** the user drags the Title column's handle 80px to the right
@@ -843,7 +843,7 @@ In the Stories tab, each column header (the selection column excluded) SHALL hav
 
 #### Scenario: Fit takes room from the others in order
 - **WHEN** the columns fill the container and the user double-clicks the Epic column, whose text needs 100px more than it has
-- **THEN** the Depends On column shrinks (to its minimum if it must) and then the Title column, as far as needed to give the 100px, and Feature, Priority, Sprint points and ID keep their widths
+- **THEN** the Depends On column shrinks (to its minimum if it must) and then the Title column, as far as needed to give the 100px, and Feature, Sprint points and ID keep their widths
 
 #### Scenario: Fit stops at the maximum
 - **WHEN** the user double-clicks a column whose widest text needs more than the maximum column width
@@ -923,7 +923,7 @@ When a story appears inside a collapsed group, the panel SHALL expand only that 
 ### Requirement: Frozen stories are read-only
 A story is **frozen** when its `Frozen` cell holds `Yes`. Only `jois-story-plan` freezes stories (see the `frozen-stories` capability); the portal SHALL offer no way to freeze or unfreeze a story: no toggle on the story form, no button on an Epic or Feature header, no bulk action in the Stories tab and no keyboard shortcut. A frozen story SHALL be marked as frozen on its row in the story list, on its row in the Stories tab and on its form.
 
-The form of a frozen story SHALL show every field read-only: Epic, Feature, Title, As a, I want, So that, Sprint points, Priority, its own Depends On, the acceptance criteria, Notes and Clarifications. The form SHALL say that the story is frozen because it is part of a slice, and that a change to it is made by a new story that supersedes it. The Depends On entries of other stories that name a frozen story SHALL stay editable, and a frozen story SHALL be offered in the Depends on picker of other stories like any other story. Ctrl+Up/Down SHALL select a frozen story like any other.
+The form of a frozen story SHALL show every field read-only: Epic, Feature, Title, As a, I want, So that, Sprint points, its own Depends On, the acceptance criteria, Notes and Clarifications. The form SHALL say that the story is frozen because it is part of a slice, and that a change to it is made by a new story that supersedes it. The Depends On entries of other stories that name a frozen story SHALL stay editable, and a frozen story SHALL be offered in the Depends on picker of other stories like any other story. Ctrl+Up/Down SHALL select a frozen story like any other.
 
 A frozen story SHALL NOT be draggable (see "Reorder unfrozen stories by drag and drop"), SHALL NOT be moved to Proposed (see the `story-proposals` capability) and SHALL NOT be deleted: Alt+D SHALL do nothing for it and the user SHALL be told that a frozen story cannot be deleted, the Delete story button SHALL be disabled for it with the hint "A frozen story cannot be deleted", and Delete selected and Bulk edit SHALL skip it (see "Delete selected unfrozen stories" and "Bulk edit selected stories"). Applying a review suggestion to a frozen story is covered by the `backlog-review-suggestions` capability.
 
@@ -1155,11 +1155,11 @@ When at least one story is selected in the Stories tab, the bulk bar SHALL offer
 - **THEN** nothing is deleted and the message says the selected stories are frozen
 
 ### Requirement: Bulk edit selected unfrozen stories
-When at least one story is selected in the Stories tab, the tool SHALL show a bulk edit bar with a Priority dropdown, an Epic text field and a Feature text field. The Priority dropdown SHALL default to "No change" and offer "None", Critical, High, Medium and Low. The Epic and Feature fields SHALL suggest the values already used in the backlog, and an empty field SHALL mean "no change"; the tool SHALL NOT clear an Epic or Feature in bulk. The Apply button SHALL be disabled until at least one of the three is set. Applying SHALL first ask for confirmation naming what will change and how many stories are affected; when the Epic change gives stories new IDs, the confirmation SHALL say so. A bulk edit SHALL skip frozen stories whatever the field, because every field of a frozen story is read-only, and the confirmation SHALL say how many were skipped. On confirmation the tool SHALL set only the chosen fields on every selected unfrozen story, place the stories whose Epic changed at the bottom of the new Epic in their current row order, recompute IDs and rewrite dependencies as described in "Story IDs carry initials, epic prefix and number", leave all other fields and unselected stories untouched, keep the selection, reset the bar to "no change", and save through the normal auto-save. If every selected story is frozen, nothing SHALL change and the tool SHALL say so. If the user cancels, nothing SHALL change. There SHALL be no undo.
+When at least one story is selected in the Stories tab, the tool SHALL show a bulk edit bar with an Epic text field and a Feature text field. The Epic and Feature fields SHALL suggest the values already used in the backlog, and an empty field SHALL mean "no change"; the tool SHALL NOT clear an Epic or Feature in bulk. The Apply button SHALL be disabled until at least one of the two is set. Applying SHALL first ask for confirmation naming what will change and how many stories are affected; when the Epic change gives stories new IDs, the confirmation SHALL say so. A bulk edit SHALL skip frozen stories whatever the field, because every field of a frozen story is read-only, and the confirmation SHALL say how many were skipped. On confirmation the tool SHALL set only the chosen fields on every selected unfrozen story, place the stories whose Epic changed at the bottom of the new Epic in their current row order, recompute IDs and rewrite dependencies as described in "Story IDs carry initials, epic prefix and number", leave all other fields and unselected stories untouched, keep the selection, reset the bar to "no change", and save through the normal auto-save. If every selected story is frozen, nothing SHALL change and the tool SHALL say so. If the user cancels, nothing SHALL change. There SHALL be no undo.
 
 #### Scenario: Set priority only
-- **WHEN** 10 stories are selected, Priority is set to High, Epic and Feature are empty, and the user applies and confirms
-- **THEN** all 10 stories have Priority High and their Epic and Feature are unchanged
+- **WHEN** 10 stories are selected and the bulk edit bar is shown
+- **THEN** the bar offers only an Epic field and a Feature field, and no Priority control
 
 #### Scenario: Change epic
 - **WHEN** 4 unfrozen stories are selected, Epic is set to "Billing", and the user applies and confirms
@@ -1178,15 +1178,15 @@ When at least one story is selected in the Stories tab, the tool SHALL show a bu
 - **THEN** after confirming, all selected stories have Feature "Invoices" and their IDs are unchanged
 
 #### Scenario: Clear priority
-- **WHEN** Priority is set to "None" and applied with confirmation
-- **THEN** the selected stories have an empty Priority
+- **WHEN** a file with a Priority column is opened, a bulk edit is applied and confirmed, and the file is saved
+- **THEN** the saved file has no Priority column
 
 #### Scenario: Several fields at once
-- **WHEN** Priority High and Epic "Billing" are both set and confirmed
+- **WHEN** Epic "Billing" and Feature "Invoices" are both set and confirmed
 - **THEN** both are applied to every selected unfrozen story
 
 #### Scenario: Nothing to apply
-- **WHEN** stories are selected but Priority is "No change" and Epic and Feature are empty
+- **WHEN** stories are selected but the Epic and Feature fields are empty
 - **THEN** the Apply button is disabled
 
 #### Scenario: Confirmation
@@ -1206,15 +1206,15 @@ When at least one story is selected in the Stories tab, the tool SHALL show a bu
 - **THEN** the bulk edit bar is not shown
 
 #### Scenario: Frozen stories skipped
-- **WHEN** 5 stories are selected, 2 are frozen, and Priority is set to High and confirmed
-- **THEN** the 3 unfrozen stories get Priority High, the frozen ones are unchanged, and the confirmation said 2 were skipped
+- **WHEN** 5 stories are selected, 2 are frozen, and Epic is set to "Billing" and confirmed
+- **THEN** the 3 unfrozen stories get Epic "Billing", the frozen ones are unchanged, and the confirmation said 2 were skipped
 
 #### Scenario: Only frozen stories selected
 - **WHEN** every selected story is frozen and the user clicks Apply
 - **THEN** no story changes and the message says the selected stories are frozen
 
 ### Requirement: Story CSV format
-Each story SHALL be stored as one row with exactly these columns: `ID, Epic, Feature, Title, User Story, Sprint points, Priority, Depends On, User Acceptance Criteria, Notes, Frozen, Clarifications`.
+Each story SHALL be stored as one row with exactly these columns: `ID, Epic, Feature, Title, User Story, Sprint points, Depends On, User Acceptance Criteria, Notes, Frozen, Clarifications`.
 
 - `ID` SHALL hold the story ID, or be empty when the story has none.
 - `Title` SHALL hold the title of the user story.
@@ -1224,7 +1224,7 @@ Each story SHALL be stored as one row with exactly these columns: `ID, Epic, Fea
 - `Frozen` SHALL hold `Yes` for a frozen story and be empty otherwise. Any other value SHALL be read as unfrozen.
 - `Clarifications` SHALL hold the story's question and answer pairs in the form defined by the `story-clarifications` capability, or be empty.
 
-Values containing commas, quotes or line breaks SHALL be correctly quoted so the file round-trips and opens correctly in Excel. A file that lacks the `ID`, `Depends On`, `Title`, `Frozen` or `Clarifications` column SHALL be accepted and the columns added to it when it is saved. An older `Locked` column SHALL be ignored, never read as frozen, and SHALL NOT be written when the file is saved. The tool SHALL NOT translate other older column names: a `Capability` column SHALL be treated as an unknown column and kept unchanged.
+Values containing commas, quotes or line breaks SHALL be correctly quoted so the file round-trips and opens correctly in Excel. A file that lacks the `ID`, `Depends On`, `Title`, `Frozen` or `Clarifications` column SHALL be accepted and the columns added to it when it is saved. An older `Locked` column and an older `Priority` column SHALL be ignored on load, never read as a value, and SHALL NOT be written when the file is saved. The tool SHALL NOT translate other older column names: a `Capability` column SHALL be treated as an unknown column and kept unchanged.
 
 #### Scenario: Story sentence saved
 - **WHEN** the user enters As "a team lead", I want "to export a backlog", so that "I can share it"
@@ -1261,6 +1261,10 @@ Values containing commas, quotes or line breaks SHALL be correctly quoted so the
 #### Scenario: Old Locked column is dropped
 - **WHEN** a file with a `Locked` column holding `Yes` on a story is opened and saved
 - **THEN** the story is not frozen, the saved file has no `Locked` column, and every other column keeps its values
+
+#### Scenario: Old Priority column is dropped
+- **WHEN** a file with a `Priority` column holding `High` on a story is opened and saved
+- **THEN** the saved file has no `Priority` column, the story's other columns keep their values, and no Priority is shown anywhere
 
 #### Scenario: Frozen saved and reloaded
 - **WHEN** a frozen story is saved and the file is reloaded

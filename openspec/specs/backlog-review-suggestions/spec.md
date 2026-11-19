@@ -347,7 +347,7 @@ A review file MAY hold rows that settle a question of a backlog story, written b
 A review of a backlog SHALL be stored as a CSV file in the `reviews` folder with the same file name as the backlog it reviews (for example `reviews/data-portal.csv` for `backlogs/data-portal.csv`). One row SHALL describe one field edit and SHALL have the columns `Story ID`, `Field`, `Action`, `Current`, `Suggested`, `Reason`, `Area`, `Confidence`, `Group` and `Status`.
 
 - `Story ID` is the ID of the story the edit applies to, or `NEW-<n>` for a story to be created (see "Split suggestions").
-- `Field` is one of `Epic`, `Feature`, `Title`, `User Story`, `Sprint points`, `Depends On`, `User Acceptance Criteria`, `Notes`. Priority is not a Field: reviews do not cover it.
+- `Field` is one of `Epic`, `Feature`, `Title`, `User Story`, `Sprint points`, `Depends On`, `User Acceptance Criteria`, `Notes`.
 - `Action` is one of `replace`, `add`, `remove`, `append`, `add-story`.
 - `Area` is one of `Hierarchy`, `INVEST`, `Acceptance criteria`.
 - `Confidence` is `ready` (apply as-is) or `confirm` (a proposed default the user must check).
@@ -374,7 +374,7 @@ Every finding of a review about a story that is not frozen SHALL produce at leas
 - Wording, typo or weak "so that": `replace` on the field.
 - Missing or vague acceptance criterion: `add` or `replace` on `User Acceptance Criteria`.
 - Duplicate or unwanted acceptance criterion: `remove` on `User Acceptance Criteria`, with `Suggested` = the label of the criterion (for example `AC4`).
-- A value only the user can decide (for example a page size, a relevance threshold, missing Sprint points; never Priority): `replace` with a proposed default, `Confidence` = `confirm`.
+- A value only the user can decide (for example a page size, a relevance threshold, missing Sprint points): `replace` with a proposed default, `Confidence` = `confirm`.
 - A story or feature in the wrong place: `replace` on `Epic` or `Feature`.
 - A dependency problem: `add` or `remove` on `Depends On`.
 - An open question (for example a single-story feature): `append` the question to `Clarifications` (see "Clarification suggestion rows"), `Confidence` = `confirm`. A fact or decision worth recording, as opposed to something awaiting an answer, MAY still be an `append` to `Notes`.

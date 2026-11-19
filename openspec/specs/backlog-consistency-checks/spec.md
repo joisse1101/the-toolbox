@@ -37,7 +37,7 @@ The system SHALL compute, without a model, a list of consistency problems across
 - a lexicon problem (a term defined twice, without a definition, with an unknown or cyclic `Part of`, or avoiding a defined term);
 - a Clarifications pair that has an answer but was never resolved (the answer is still in `Clarifications` and not in Notes).
 
-Priority SHALL NOT be checked. A missing lexicon or proposals file SHALL mean no lexicon problems and no proposal overlaps, not an error.
+A missing lexicon or proposals file SHALL mean no lexicon problems and no proposal overlaps, not an error.
 
 #### Scenario: Dangling dependency
 - **WHEN** a story lists `B1-IAM-0099` in Depends On and no story has that ID
