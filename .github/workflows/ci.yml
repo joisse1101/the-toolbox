@@ -1,0 +1,55 @@
+name: ci
+
+# Runs on every pull request and on every push to main, so a broken main is seen at once.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  viewer:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: viewer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: viewer/package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build
+        run: npm run build
+      - name: Test
+        run: npm test
+
+  toolkit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install the toolkit test requirements
+        run: pip install -r toolkit/requirements.txt
+      - name: Check the toolkit
+        working-directory: toolkit
+        run: python check_toolkit.py
+      - name: Toolkit tests
+        working-directory: toolkit
+        run: python -m pytest
+      - name: Story skill tests
+        run: node --test "toolkit/tests/story/*.test.mjs"
