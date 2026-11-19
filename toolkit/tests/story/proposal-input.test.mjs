@@ -3,11 +3,11 @@ import assert from 'node:assert/strict';
 import { buildProposals } from '../../skills/jois-story-propose/proposal-input.js';
 import { loadBacklog, serializeBacklog, criteriaCellText, storyCellText, proposalHeaders } from '../../skills/jois-story-propose/lib/backlog/model.mjs';
 
-const HEAD = 'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes,Team\r\n';
+const HEAD = 'ID,Epic,Feature,Title,User Story,Sprint points,Depends On,User Acceptance Criteria,Notes,Team\r\n';
 const BACKLOG =
   HEAD +
-  'B1-IAM-0001,Identity & Access Management,Auth,Login,"As a user, I want to log in, so that I can access the portal",5,High,,"AC1: Given a, when b, then c",,Blue\r\n' +
-  'B1-IAM-0002,Identity & Access Management,SSO,SSO Login,"As a user, I want SSO, so that no credentials",3,,B1-IAM-0001;NEW-9,,,\r\n';
+  'B1-IAM-0001,Identity & Access Management,Auth,Login,"As a user, I want to log in, so that I can access the portal",5,,"AC1: Given a, when b, then c",,Blue\r\n' +
+  'B1-IAM-0002,Identity & Access Management,SSO,SSO Login,"As a user, I want SSO, so that no credentials",3,B1-IAM-0001;NEW-9,,,\r\n';
 
 const backlog = () => loadBacklog(BACKLOG, { initials: 'B1' });
 const proposals = (rows = '') => loadBacklog(HEAD + rows, { placeholderIds: true, initials: 'B1' });
@@ -38,10 +38,9 @@ test('a valid story is built with a placeholder ID and the fields set', () => {
   assert.equal(s.epic, 'Identity & Access Management');
   assert.equal(s.codedEpic, s.epic);
   assert.equal(s.points, '3');
-  assert.equal(s.priority, '');
   assert.equal(s.notes, 'From the audit');
   assert.equal(s.criteria.length, 2);
-  assert.equal(s.cells.length, 13);
+  assert.equal(s.cells.length, 12);
 });
 
 test('points may be a numeral string; each allowed value is accepted', () => {
@@ -87,8 +86,8 @@ test('Notes may have several lines, stored with \\n', () => {
   assert.equal(r.stories[0].notes, 'a\nb');
 });
 
-test('unknown keys are refused, and Priority says why', () => {
-  assert.match(errorsOf([story({ priority: 'High' })]).join(), /unknown key "priority".*Priority is not set/);
+test('unknown keys are refused, and priority is one of them', () => {
+  assert.match(errorsOf([story({ priority: 'High' })]).join(), /unknown key "priority"/);
   assert.match(errorsOf([story({ id: 'B1-IAM-0009' })]).join(), /id must be a proposed story ID/);
   assert.match(errorsOf([story({ code: 'x' })]).join(), /unknown key "code"/);
 });
@@ -152,13 +151,13 @@ test('built stories round-trip through the file with no raw-text fallback', () =
     const want = r.stories[i];
     assert.equal(s.rawUserStory, null);
     assert.equal(s.rawCriteria, null);
-    for (const k of ['code', 'epic', 'feature', 'title', 'asA', 'iWant', 'soThat', 'points', 'notes', 'priority']) assert.equal(s[k], want[k], k);
+    for (const k of ['code', 'epic', 'feature', 'title', 'asA', 'iWant', 'soThat', 'points', 'notes']) assert.equal(s[k], want[k], k);
     assert.deepEqual(s.dependsOn, want.dependsOn);
     assert.deepEqual(s.criteria, want.criteria);
     assert.equal(storyCellText(s), storyCellText(want));
     assert.equal(criteriaCellText(s), criteriaCellText(want));
-    assert.equal(s.cells.length, 14); // the Team and Benched columns are padded
-    assert.equal(s.cells[11], '');
+    assert.equal(s.cells.length, 13); // the Team and Benched columns are padded
+    assert.equal(s.cells[10], '');
   });
   assert.deepEqual(back.stories[1].dependsOn, ['B1-IAM-0001', 'NEW-10']);
 });
@@ -173,7 +172,6 @@ const ROW = (code, over = {}) =>
     over.title ?? 'Reset password',
     over.userStory ?? '"As a user, I want to reset my password, so that I can regain access"',
     over.points ?? '3',
-    '',
     over.dependsOn ?? '',
     over.criteria ?? '"AC1: Given a registered email, when I ask for a reset, then a link is sent"',
     over.notes ?? 'old note',
@@ -229,7 +227,7 @@ test('repeating the stored values changes nothing (the rebuild round-trips)', ()
 test('patch rejections', () => {
   const rows = [ROW('NEW-10'), ROW('NEW-11', { benched: 'Yes' })];
   const cases = [
-    [patch({ priority: 'High' }), /Patch 1 \(NEW-10\) .*unknown key "priority".*Priority is not set/],
+    [patch({ priority: 'High' }), /Patch 1 \(NEW-10\) .*unknown key "priority"/],
     [patch({ code: 'x' }), /unknown key "code"/],
     [patch({ benched: 'Yes' }), /unknown key "benched"/],
     [patch({ nope: 1 }), /unknown key "nope"/],

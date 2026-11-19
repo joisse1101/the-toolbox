@@ -7,7 +7,7 @@ import { storyCellText, criteriaCellText } from '../lib/backlog/model.mjs';
 
 const norm = (s) => String(s ?? '').trim().toLowerCase();
 
-// Short hash of what a story means: Title, User Story and criteria (not Notes, Priority or points).
+// Short hash of what a story means: Title, User Story and criteria (not Notes or points).
 export const storyHash = (story) =>
   createHash('sha256')
     .update(JSON.stringify([story.title, storyCellText(story), criteriaCellText(story)].map((s) => String(s ?? '').trim())))

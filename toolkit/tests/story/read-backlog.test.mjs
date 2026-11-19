@@ -40,14 +40,14 @@ test('a Frozen value on a story without an ID does not count as frozen', () => {
   assert.deepEqual(scopeOf(HEAD + ',,One,Yes\r\n', 'B1'), { total: 1, frozen: 0, submitted: 1 });
 });
 
-const FULL = 'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes,Frozen,Clarifications\r\n';
-const story = (id, epic, title, extra = '') => `${id},${epic},F,${title},"As a user, I want x, so that y",3,,${extra},"AC1: Given a, when b, then c",,,\r\n`;
+const FULL = 'ID,Epic,Feature,Title,User Story,Sprint points,Depends On,User Acceptance Criteria,Notes,Frozen,Clarifications\r\n';
+const story = (id, epic, title, extra = '') => `${id},${epic},F,${title},"As a user, I want x, so that y",3,${extra},"AC1: Given a, when b, then c",,,\r\n`;
 
 // A data folder with a backlog of two Epics, a lexicon and a proposals file with one benched story.
 function full() {
   const dirs = temp(FULL + story('B1-A-0001', 'A', 'One') + story('B1-A-0002', 'A', 'Two', 'B1-A-0099') + story('B1-B-0001', 'B', 'Three'));
   putFile(dirs.dataDir, 'data', 'lexicon', 'Term,Part of,Definition,Avoid,Notes\r\nDataset,,A set of rows,table,\r\n');
-  putFile(dirs.dataDir, 'data', 'proposals', `${FULL.trim()},Benched\r\nNEW-1,A,F,Idea,"As a user, I want x, so that y",3,,,"AC1: Given a, when b, then c",,,,Yes\r\nNEW-2,A,F,Other,"As a user, I want x, so that y",3,,,"AC1: Given a, when b, then c",,,,\r\n`);
+  putFile(dirs.dataDir, 'data', 'proposals', `${FULL.trim()},Benched\r\nNEW-1,A,F,Idea,"As a user, I want x, so that y",3,,"AC1: Given a, when b, then c",,,,Yes\r\nNEW-2,A,F,Other,"As a user, I want x, so that y",3,,"AC1: Given a, when b, then c",,,,\r\n`);
   fs.writeFileSync(path.join(dirs.guidelinesDir, 'sprint-points-guideline.md'), 'SIZING');
   return dirs;
 }

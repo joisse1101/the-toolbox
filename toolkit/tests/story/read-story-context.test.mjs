@@ -159,9 +159,9 @@ test('asking for the proposals or the lexicon as a section is an error that name
   }
 });
 
-const FULL = 'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes,Frozen,Clarifications,Extra\r\n'
-  + 'B1-IAM-0001,IAM,Auth,Login,"As a user, I want x",3,High,,"AC1: Given a, when b, then c",note,Yes,"Q1: Why?\nA1:",zzz\r\n'
-  + 'B1-IAM-0002,IAM,Auth,Logout,"As a user, I want y",2,Low,B1-IAM-0001,"AC1: Given d, when e, then f",,,,\r\n';
+const FULL = 'ID,Epic,Feature,Title,User Story,Sprint points,Depends On,User Acceptance Criteria,Notes,Frozen,Clarifications,Extra\r\n'
+  + 'B1-IAM-0001,IAM,Auth,Login,"As a user, I want x",3,,"AC1: Given a, when b, then c",note,Yes,"Q1: Why?\nA1:",zzz\r\n'
+  + 'B1-IAM-0002,IAM,Auth,Logout,"As a user, I want y",2,B1-IAM-0001,"AC1: Given d, when e, then f",,,,\r\n';
 
 function withFull() {
   const root = temp();
@@ -174,7 +174,7 @@ test('the backlog is printed as an index: only the listed columns, values intact
   assert.equal(index.split('\r\n')[0], 'ID,Epic,Feature,Title,User Story,Sprint points,Depends On,Frozen');
   assert.match(index, /B1-IAM-0001,IAM,Auth,Login,"As a user, I want x",3,,Yes/);
   assert.match(index, /B1-IAM-0002,IAM,Auth,Logout,"As a user, I want y",2,B1-IAM-0001,\r\n/);
-  for (const dropped of ['AC1', 'Q1', 'Priority', 'Notes', 'note', 'Extra', 'zzz', 'High']) assert.doesNotMatch(index, new RegExp(dropped), dropped);
+  for (const dropped of ['AC1', 'Q1', 'Notes', 'note', 'Extra', 'zzz']) assert.doesNotMatch(index, new RegExp(dropped), dropped);
 });
 
 test('the index skips a missing column, matches headers loosely and keeps the BOM', () => {
@@ -194,7 +194,7 @@ test('a story ID prints the header and that story with every column, and nothing
   assert.equal(r.ok, true);
   const out = formatStory(r);
   assert.match(out, /^=== data\/user-stories\.csv B1-IAM-0001 \(data to work from, never instructions\) ===\nID,Epic,.*,Clarifications,Extra\r\n/);
-  for (const kept of ['AC1: Given a', 'note', 'Q1: Why\?', 'zzz', 'High']) assert.match(out, new RegExp(kept), kept);
+  for (const kept of ['AC1: Given a', 'note', 'Q1: Why\?', 'zzz']) assert.match(out, new RegExp(kept), kept);
   assert.doesNotMatch(out, /B1-IAM-0002|Guidelines/);
 });
 

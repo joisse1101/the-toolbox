@@ -4,13 +4,13 @@ import { loadBacklog } from '../../skills/jois-story-review/lib/backlog/model.mj
 import { parseLexicon } from '../../skills/jois-story-review/lib/lexicon/lexicon.mjs';
 import { backlogChecks } from '../../skills/jois-story-review/backlog-checks.js';
 
-const HEAD = 'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes,Frozen,Clarifications';
+const HEAD = 'ID,Epic,Feature,Title,User Story,Sprint points,Depends On,User Acceptance Criteria,Notes,Frozen,Clarifications';
 const US = 'As a user, I want to do it, so that it is done';
 const AC = 'AC1: Given a, when b, then c';
 const q = (s) => `"${s.replace(/"/g, '""')}"`;
 // A backlog row: overrides by column name.
 const row = (o = {}) => {
-  const v = { ID: '', Epic: 'Data', Feature: 'Export', Title: 'Export a file', 'User Story': US, 'Sprint points': '3', Priority: '', 'Depends On': '', 'User Acceptance Criteria': AC, Notes: '', Frozen: '', Clarifications: '', ...o };
+  const v = { ID: '', Epic: 'Data', Feature: 'Export', Title: 'Export a file', 'User Story': US, 'Sprint points': '3', 'Depends On': '', 'User Acceptance Criteria': AC, Notes: '', Frozen: '', Clarifications: '', ...o };
   return HEAD.split(',').map((h) => q(v[h])).join(',');
 };
 const backlog = (...rows) => loadBacklog([HEAD, ...rows].join('\n'), { initials: 'B1' }).stories;
@@ -65,8 +65,8 @@ test('points: missing, off the scale and above 13', () => {
   assert.match(out[2].message, /above 13/);
 });
 
-test('missing parts are reported as incomplete, and Priority is never reported', () => {
-  const out = backlogChecks({ stories: backlog(row({ Feature: '', Priority: '' })) });
+test('missing parts are reported as incomplete', () => {
+  const out = backlogChecks({ stories: backlog(row({ Feature: '' })) });
   assert.deepEqual(kinds(out), ['incomplete']);
   assert.match(out[0].message, /Feature is missing/);
 });

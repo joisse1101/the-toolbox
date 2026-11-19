@@ -58,7 +58,7 @@ holds no other diagram file.
 
 `source.json` holds `{scope, stories, drawnAt}`: `scope` is `{type: "epic" | "feature" | "story", epic,
 feature?, title?}` and each story is `{id, title, hash, epic, feature}` (the last two break a tie between stories with one Title). The hash covers the Title, User Story and
-acceptance criteria text (not Notes or Priority). Story IDs are derived and shift on every renumber, so
+acceptance criteria text (not Notes). Story IDs are derived and shift on every renumber, so
 they are kept only here, healed by Title on read, and **never written in a diagram**.
 
 ## 3. Diagram rules

@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import { loadBacklog } from '../../skills/jois-story-plan/lib/backlog/model.mjs';
 import { buildSource, compareSource, scopeStories, storyHash, criteriaOf, storiesBlock, applyStoriesBlock } from '../../skills/jois-story-plan/diagrams/source.js';
 
-const HEADER = 'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes,Frozen,Clarifications';
+const HEADER = 'ID,Epic,Feature,Title,User Story,Sprint points,Depends On,User Acceptance Criteria,Notes,Frozen,Clarifications';
 const row = (epic, feature, title, ac = 'AC1: Given a, when b, then c.', notes = '') =>
-  `,${epic},${feature},${title},"As a member, I want ${title}, so that it works.",3,High,,"${ac}",${notes},,`;
+  `,${epic},${feature},${title},"As a member, I want ${title}, so that it works.",3,,"${ac}",${notes},,`;
 const load = (...rows) => loadBacklog([HEADER, ...rows].join('\n'), { initials: 'B1' }).stories;
 
 const SCOPE = { type: 'feature', epic: 'Identity', feature: 'Sign in' };

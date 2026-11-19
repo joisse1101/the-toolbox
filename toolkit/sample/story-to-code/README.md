@@ -61,7 +61,6 @@ The walk built streaks (the current and the best streak of a habit) on 2026-11-1
 
 What the walk showed, so a rerun does not hit it again:
 
-- The propose writer refuses a Priority field, so the proposed stories have none.
 - A project needs `scripts/check_docs.py` before archive works. The build script copies it, with `build_wiki.py`, from the docs templates, as `/jois-init:docs` would.
 - Validation and review record the commit they ran at. Archive refuses a validation older than the code, so a commit that changes anything outside `wiki/` after validate means validating again. `review.md` still records `c06e6f6`, and the later docs-checker commit changed no app code.
 - The review left five findings unfixed. They are written in `review.md`.

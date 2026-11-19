@@ -12,8 +12,8 @@ import { tempProject } from './helpers/temp-project.mjs';
 const SCRIPT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../skills/jois-story-propose/write-proposal.mjs');
 
 const CSV =
-  'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes,Team\r\n' +
-  'B1-IAM-0001,Identity & Access Management,Auth,Login,"As a user, I want to log in, so that I can access the portal",5,High,,"AC1: Given a, when b, then c",,Blue\r\n';
+  'ID,Epic,Feature,Title,User Story,Sprint points,Depends On,User Acceptance Criteria,Notes,Team\r\n' +
+  'B1-IAM-0001,Identity & Access Management,Auth,Login,"As a user, I want to log in, so that I can access the portal",5,,"AC1: Given a, when b, then c",,Blue\r\n';
 
 function temp() {
   const root = tempProject().dataDir; // the `.plans` of a temp project, so the CLI runs from its parent

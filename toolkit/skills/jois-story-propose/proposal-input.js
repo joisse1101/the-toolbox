@@ -31,7 +31,7 @@ function checkFields(raw, skip = []) {
   const fields = {};
 
   for (const key of Object.keys(raw)) {
-    if (!KEYS.includes(key)) errors.push(`has the unknown key "${key}" (allowed: ${KEYS.join(', ')})${key === 'priority' ? '; Priority is not set by the skills' : ''}`);
+    if (!KEYS.includes(key)) errors.push(`has the unknown key "${key}" (allowed: ${KEYS.join(', ')})`);
   }
   for (const key of REQUIRED) {
     if (!(key in raw) && !skip.includes(key)) errors.push(`is missing the key "${key}"`);

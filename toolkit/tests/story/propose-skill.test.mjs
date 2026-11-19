@@ -18,12 +18,12 @@ const front = text.split('---')[1];
 // Each one is the list a writer takes on standard input.
 const examples = () => [...text.matchAll(/```json\n([\s\S]*?)\n```/g)].map((m) => JSON.parse(m[1]));
 
-const HEAD = 'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes\r\n';
+const HEAD = 'ID,Epic,Feature,Title,User Story,Sprint points,Depends On,User Acceptance Criteria,Notes\r\n';
 const BACKLOG =
   HEAD +
-  'B1-IAM-0001,Identity & Access Management,Auth,Log in with a password,"As a user, I want to log in, so that I can access the portal",5,High,,"AC1: Given a, when b, then c",\r\n';
-const PROPOSALS = HEAD + 'NEW-3,Identity & Access Management,Auth,Send a welcome email,,,,,,\r\n';
-const FULL = (code, title) => `${code},Identity & Access Management,Auth,${title},"As a user, I want x, so that y",3,,,"AC1: Given a, when b, then c",\r\n`;
+  'B1-IAM-0001,Identity & Access Management,Auth,Log in with a password,"As a user, I want to log in, so that I can access the portal",5,,"AC1: Given a, when b, then c",\r\n';
+const PROPOSALS = HEAD + 'NEW-3,Identity & Access Management,Auth,Send a welcome email,,,,,\r\n';
+const FULL = (code, title) => `${code},Identity & Access Management,Auth,${title},"As a user, I want x, so that y",3,,"AC1: Given a, when b, then c",\r\n`;
 
 test('the skill is named jois-story-propose, versioned, and may run only its five scripts and the init script', () => {
   assert.match(front, /^name: jois-story-propose$/m);
