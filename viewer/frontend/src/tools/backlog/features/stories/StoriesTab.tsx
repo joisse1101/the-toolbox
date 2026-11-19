@@ -8,7 +8,7 @@ import { filterOptions, filterStories, sortStories, visibleChecked } from './sto
 import type { Filter, FilterKey, SortDir } from './story-table.ts';
 import TabHeader from '#frontend/src/shared/ui/TabHeader.tsx';
 import EmptyState from '#frontend/src/shared/ui/EmptyState.tsx';
-import StoriesBulkBar, { KEEP } from './StoriesBulkBar.tsx';
+import StoriesBulkBar from './StoriesBulkBar.tsx';
 import StoriesFilters from './StoriesFilters.tsx';
 import StoriesTable from './StoriesTable.tsx';
 import type { Column } from './storiesColumns.ts';
@@ -20,7 +20,7 @@ import usePanelSizes from '#frontend/src/shared/hooks/usePanelSizes.ts';
 
 const distinct = (stories: readonly Story[], key: 'epic' | 'feature') => [...new Set(stories.map((o) => o[key].trim()).filter(Boolean))];
 
-const NO_FILTER: Filter = { priority: '', epic: '', feature: '' };
+const NO_FILTER: Filter = { epic: '', feature: '' };
 
 // Every story in one table, with ticks and a bulk edit bar. The table itself is read-only.
 export default function StoriesTab({ stories, headers, problems, checked, lastChecked, hidden, onOpen, onCheck, onCheckAll, onApplyBulk, onDeleteChecked }: {
@@ -31,7 +31,6 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
   onDeleteChecked: (ids: ReadonlySet<number>, hiddenCount?: number) => Promise<{ deleted: number; skipped: number }>;
 }) {
   const ask = useConfirm();
-  const [priority, setPriority] = useState(KEEP);
   const [epic, setEpic] = useState('');
   const [feature, setFeature] = useState('');
   const [note, setNote] = useState('');
@@ -72,7 +71,7 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
     return sort ? sortStories(found, sort.key, sort.dir) : found;
   }, [allRows, filter, searching, query, headers, sort]);
   const options = useMemo(() => ({
-    priority: filterOptions(stories, 'priority'), epic: filterOptions(stories, 'epic'), feature: filterOptions(stories, 'feature'),
+    epic: filterOptions(stories, 'epic'), feature: filterOptions(stories, 'feature'),
   }), [stories]);
   // Bulk actions work on the ticked rows on screen only. Ticked stories the search or filters hide keep their tick, are counted
   // as hidden and are never edited or deleted.
@@ -85,11 +84,10 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
   }, [shownChecked, rows.length]);
 
   const patch = {
-    priority: priority === KEEP ? undefined : priority,
     epic: epic.trim(),
     feature: feature.trim(),
   };
-  const isEmpty = patch.priority === undefined && !patch.epic && !patch.feature;
+  const isEmpty = !patch.epic && !patch.feature;
 
   // Double-click a column handle: the column gets the width of its widest text (up to the column maximum).
   // A column grows only into the room the others leave; the others keep the widths shown, so nothing else moves.
@@ -125,7 +123,6 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
   const apply = async () => {
     if (!n || isEmpty) return;
     const parts = [];
-    if (patch.priority !== undefined) parts.push(patch.priority ? `Priority to "${patch.priority}"` : 'Priority to none');
     if (patch.epic) parts.push(`Epic to "${patch.epic}"`);
     const frozenSkipped = stories.filter((s) => visibleIds.has(s.id) && s.frozen).length; // read-only, so a bulk edit leaves them
     const renumbered = patch.epic ? stories.filter((s) => visibleIds.has(s.id) && !s.frozen && s.epic.trim() !== patch.epic).length : 0;
@@ -136,7 +133,6 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
     if (!(await ask({ title: `Change ${n} ${noun}?`, message, confirmLabel: 'Apply to selected' }))) return;
     const { skipped } = onApplyBulk(patch, visibleIds);
     setNote(skipped ? `${skipped} frozen ${skipped === 1 ? 'story was' : 'stories were'} skipped.` : '');
-    setPriority(KEEP);
     setEpic('');
     setFeature('');
   };
@@ -151,8 +147,8 @@ export default function StoriesTab({ stories, headers, problems, checked, lastCh
     <section id="storiesView" className="card stories-view" role="tabpanel" aria-labelledby="tabStories" hidden={hidden}>
       <TabHeader title="Stories" />
       <StoriesBulkBar
-        checkedCount={checked.size} n={n} hiddenChecked={hiddenChecked} priority={priority} epic={epic} feature={feature}
-        note={note} isEmpty={isEmpty} onPriority={setPriority} onEpic={setEpic} onFeature={setFeature}
+        checkedCount={checked.size} n={n} hiddenChecked={hiddenChecked} epic={epic} feature={feature}
+        note={note} isEmpty={isEmpty} onEpic={setEpic} onFeature={setFeature}
         onApply={apply} onDelete={remove} onDeselectAll={() => onCheckAll(false, [...checked])}
       />
       <StoriesFilters

@@ -1,23 +1,22 @@
-import { PRIORITIES } from '#shared/backlog/model.ts';
 import type { Story } from '#shared/types.ts';
 
 // Filter and sort for the Stories tab table. Pure: the table's rows come in, the rows to show come out.
 
 export const NONE = '(none)'; // filter value that matches a story with an empty field
 
-export type FilterKey = 'priority' | 'epic' | 'feature';
+export type FilterKey = 'epic' | 'feature';
 export type SortDir = 'asc' | 'desc';
 export type Filter = Record<FilterKey, string>;
 
-export const SORT_KEYS: readonly string[] = ['code', 'epic', 'feature', 'title', 'points', 'dependsOn']; // Priority is filtered, not sorted
+export const SORT_KEYS: readonly string[] = ['code', 'epic', 'feature', 'title', 'points', 'dependsOn'];
 
 const sortValue = (story: Story, key: string) => (key === 'dependsOn' ? story.dependsOn.join(', ') : String(story[key as keyof Story] ?? '')).trim();
 
-// A blank filter value ('') keeps every story. Each of priority, epic and feature, when set, must equal the story's
+// A blank filter value ('') keeps every story. Each of epic and feature, when set, must equal the story's
 // value (ignoring surrounding spaces); NONE matches an empty one.
-export function filterStories(stories: readonly Story[], { priority = '', epic = '', feature = '' }: Partial<Filter> = {}): Story[] {
+export function filterStories(stories: readonly Story[], { epic = '', feature = '' }: Partial<Filter> = {}): Story[] {
   const matches = (value: string, wanted: string) => !wanted || (wanted === NONE ? value.trim() === '' : value.trim() === wanted);
-  return stories.filter((s) => matches(s.priority, priority) && matches(s.epic, epic) && matches(s.feature, feature));
+  return stories.filter((s) => matches(s.epic, epic) && matches(s.feature, feature));
 }
 
 // The ticked stories a bulk action may touch: those among the rows on screen. A ticked story the search or filters hide is
@@ -39,10 +38,10 @@ export function sortStories(stories: Story[], key: string, dir: SortDir = 'asc')
   });
 }
 
-// The values a filter dropdown offers, sorted, with NONE last when some story has no value. Priority keeps its own order.
+// The values a filter dropdown offers, sorted, with NONE last when some story has no value.
 export function filterOptions(stories: readonly Story[], key: FilterKey): string[] {
   const values = stories.map((s) => s[key].trim());
   const named = [...new Set(values.filter(Boolean))];
-  named.sort(key === 'priority' ? (a, b) => PRIORITIES.indexOf(a) - PRIORITIES.indexOf(b) : (a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+  named.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
   return values.includes('') ? [...named, NONE] : named;
 }

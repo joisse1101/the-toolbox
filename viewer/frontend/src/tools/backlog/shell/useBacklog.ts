@@ -22,7 +22,7 @@ export interface BacklogState {
   edits: number; // bumped by every change to the backlog; the auto-save runs when it changes
 }
 
-export type BulkPatch = { priority?: string; epic?: string; feature?: string };
+export type BulkPatch = { epic?: string; feature?: string };
 export type GroupRef = { epic: string; feature?: string };
 
 export type BacklogAction =

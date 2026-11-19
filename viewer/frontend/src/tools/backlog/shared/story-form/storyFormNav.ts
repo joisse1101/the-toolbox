@@ -23,29 +23,21 @@ function focusRow(row: HTMLElement[], col: number) {
 }
 
 // Left/right move within a row of fields (text inputs only at the caret edge, so editing still works), up/down
-// move between rows. Sprint points: left/right step through the buttons, Alt+Right goes to Priority, Alt+Left back.
+// move between rows. Sprint points: left/right step through the buttons.
 export function onNavKeyDown(e: KeyboardEvent<HTMLElement>, story: Story) {
   if (e.nativeEvent.isComposing || (e.ctrlKey && !e.altKey) || e.metaKey || e.shiftKey || !e.key.startsWith('Arrow')) return;
   const el = e.target as HTMLInputElement | HTMLTextAreaElement; // a field of the form: input, textarea or a points button
   const rows = navRows(story);
   const pointsRow = rows[2];
-  const isPriority = el === $('priority');
-  const rowIdx = isPriority ? 2 : rows.findIndex((r) => r.includes(el));
+  const rowIdx = rows.findIndex((r) => r.includes(el));
   if (rowIdx < 0) return;
-  const col = isPriority ? pointsRow.length : rows[rowIdx].indexOf(el);
+  const col = rows[rowIdx].indexOf(el);
 
   if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
     const dir = e.key === 'ArrowLeft' ? -1 : 1;
     if (el.parentElement === $('pointsGroup')) {
-      if (e.altKey) {
-        if (dir !== 1) return;
-        $('priority').focus();
-      } else {
-        pointsRow[col + dir]?.focus();
-      }
-    } else if (isPriority) {
-      if (!(e.altKey && dir === -1)) return;
-      focusRow(pointsRow, 0);
+      if (e.altKey) return;
+      pointsRow[col + dir]?.focus();
     } else if (el.tagName === 'INPUT' && (!e.altKey || e.ctrlKey)) {
       // Ctrl+Alt jumps regardless of the caret position
       const atEdge = e.ctrlKey || (el.selectionStart === el.selectionEnd && el.selectionStart === (dir < 0 ? 0 : el.value.length));

@@ -92,7 +92,7 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
 
       <UserStorySection story={s} frozen={frozen} cues={cues} list={list} setStoryPart={setStoryPart} />
 
-      <EstimateSection story={s} frozen={frozen} cues={cues} list={list} edit={edit} setField={setField} />
+      <EstimateSection story={s} frozen={frozen} cues={cues} list={list} edit={edit} />
 
       <CriteriaSection story={s} frozen={frozen} cues={cues} edit={edit} units={forField('User Acceptance Criteria')} listOf={listOf} />
 

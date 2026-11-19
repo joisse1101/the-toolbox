@@ -5,7 +5,6 @@ export interface Column { key: string; label: string; className?: string; fixed?
 export const COLUMNS: Column[] = [
   { key: 'code', label: 'ID', fixed: 136 }, { key: 'epic', label: 'Epic' }, { key: 'feature', label: 'Feature' },
   { key: 'title', label: 'Title' }, { key: 'points', label: 'Points', className: 'num', fixed: 96 },
-  { key: 'priority', label: 'Priority', fixed: 88 }, // filtered, not sorted
   { key: 'dependsOn', label: 'Depends On', fixed: 144 },
 ];
 export const SIZED = COLUMNS.filter((c) => !c.fixed); // the columns a user can drag

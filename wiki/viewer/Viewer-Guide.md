@@ -43,7 +43,7 @@ A story with no epic has no ID yet, and one is assigned once an epic is set. The
 
 - Epic, Feature and Title, with suggestions drawn from the names already in the backlog.
 - The user story, split into "As", "I want" and "So that", with a preview of the single cell it is saved as.
-- Sprint points on the scale 1, 2, 3, 5, 8, 13, 21, 34 and 55 (the buttons above 13 warn that the story should be split), and Priority.
+- Sprint points on the scale 1, 2, 3, 5, 8, 13, 21, 34 and 55 (the buttons above 13 warn that the story should be split). An older file with a Priority column loses it when the portal opens the file.
 - User acceptance criteria, each as Given, When and Then, which can be added, removed and reordered by dragging.
 - Depends On, which lists the stories this one depends on and the stories that depend on it. A choice that would close a cycle is not offered.
 - Notes, and Clarifications as numbered questions with answers, where an empty answer is an open question.
@@ -62,9 +62,9 @@ A **frozen** story is reference only. Only the `jois-story-plan` skill freezes s
 
 ## Stories tab
 
-The Stories tab shows every story in one read-only table: ID, epic, feature, title, points, priority and depends on. Click a column header to sort ascending, then descending, then back to backlog order, and drag a column border to resize it (double-click fits the column to its text). The search box looks for a word in any field of a story, and three dropdowns filter by priority, epic and feature. Clicking a title opens the story in the Editor.
+The Stories tab shows every story in one read-only table: ID, epic, feature, title, points and depends on. Click a column header to sort ascending, then descending, then back to backlog order, and drag a column border to resize it (double-click fits the column to its text). The search box looks for a word in any field of a story, and two dropdowns filter by epic and feature. Clicking a title opens the story in the Editor.
 
-The tick boxes drive bulk actions on the selected stories: set Priority, Epic or Feature on all of them (confirmed first, because it cannot be undone and a new epic renumbers stories), or delete. Frozen stories are marked with a snowflake, and a bulk edit or a delete skips them and says how many it skipped. Shift-click ticks a range, and ticks the search or filters hide are left alone by select-all.
+The tick boxes drive bulk actions on the selected stories: set Epic or Feature on all of them (confirmed first, because it cannot be undone and a new epic renumbers stories), or delete. Frozen stories are marked with a snowflake, and a bulk edit or a delete skips them and says how many it skipped. Shift-click ticks a range, and ticks the search or filters hide are left alone by select-all.
 
 ## Graph tab
 

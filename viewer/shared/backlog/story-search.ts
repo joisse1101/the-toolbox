@@ -8,7 +8,7 @@ const KNOWN = new Set([...COLUMNS, BENCHED_COLUMN].map((c) => c.toLowerCase()));
 function haystack(story: Story, headers: readonly string[]): string {
   const unknown = headers.map((h, i) => (KNOWN.has(h.trim().toLowerCase()) ? '' : story.cells[i] ?? ''));
   return [
-    story.code, story.epic, story.feature, story.title, story.points, story.priority, story.notes,
+    story.code, story.epic, story.feature, story.title, story.points, story.notes,
     story.dependsOn.join(' '), storyCellText(story), criteriaCellText(story), clarificationsCellText(story),
     ...unknown,
   ].join('\n').toLowerCase();
