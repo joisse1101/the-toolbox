@@ -37,13 +37,16 @@ function Get-ItemHash([string]$Item) {
     $sha = [System.Security.Cryptography.SHA256]::Create()
     try {
         if ($entry.PSIsContainer) {
-            $root = $entry.FullName.TrimEnd('\')
-            # node_modules is what `npm ci` installed here, not part of the item, so it never counts.
-            $files = Get-ChildItem -LiteralPath $root -Recurse -File |
-                Where-Object { $_.FullName.Substring($root.Length + 1) -notmatch '(^|\\)node_modules\\' } |
-                Sort-Object { $_.FullName.Substring($root.Length + 1).Replace('\', '/') }
+            # Relative paths use '/' on every OS (Windows reports '\'), so the filter, the order and
+            # the hash are the same on Windows and Linux.
+            $root = $entry.FullName.TrimEnd('\', '/')
             $pairs = [System.Collections.Generic.List[object]]::new()
-            foreach ($f in $files) { $pairs.Add(@($f.FullName.Substring($root.Length + 1).Replace('\', '/'), $f.FullName)) }
+            Get-ChildItem -LiteralPath $root -Recurse -File |
+                ForEach-Object { , @($_.FullName.Substring($root.Length + 1).Replace('\', '/'), $_.FullName) } |
+                # node_modules is what `npm ci` installed here, not part of the item, so it never counts.
+                Where-Object { $_[0] -notmatch '(^|/)node_modules/' } |
+                Sort-Object { $_[0] } |
+                ForEach-Object { $pairs.Add($_) }
         }
         else {
             $pairs = [System.Collections.Generic.List[object]]::new()
