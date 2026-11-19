@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { newStory, loadBacklog, serializeBacklog, COLUMNS } from '#shared/backlog/model.ts';
-import { renumber } from '#shared/backlog/ids.ts';
+import { renumber, idChanges, relinkStories } from '#shared/backlog/ids.ts';
 import {
-  isPlaceholder, nextPlaceholder, removeProposed, reorderProposed, moveProposed, acceptProposed, moveToProposed,
+  isPlaceholder, nextPlaceholder, removeProposed, reorderProposed, moveProposed, acceptProposed, moveToProposed, migrateStories,
 } from '#shared/backlog/proposals.ts';
 import type { Story } from '#shared/types.ts';
 
@@ -281,4 +281,148 @@ test('acceptProposed: open questions do not block and the cell travels both ways
   assert.equal(acc.accepted[0].benched, false);
   const back = moveToProposed(acc.backlog, [], acc.accepted[0].id, COLUMNS, INITIALS) as Moved;
   assert.deepEqual(back.moved.clarifications, clar);
+});
+
+// ---------- migrateStories ----------
+
+type Migrated = Exclude<ReturnType<typeof migrateStories>, { error: string }> & { error?: undefined };
+const TARGET_INITIALS = 'B3';
+const targetOf = (...stories: Story[]) => renumber(stories, TARGET_INITIALS);
+const migrate = (source: Story[], target: Story[], which: Story[], sourceHeaders: string[] = [...COLUMNS], targetHeaders: string[] = [...COLUMNS]) =>
+  migrateStories({
+    source: { stories: source, headers: sourceHeaders },
+    target: { stories: target, headers: targetHeaders },
+    ids: new Set(which.map((s) => s.id)),
+    sourceInitials: INITIALS,
+    targetInitials: TARGET_INITIALS,
+  });
+
+test('migrate: joins the end of an existing Epic under another Feature', () => {
+  const source = backlogOf(st('Billing', { feature: 'Invoices' }));
+  const target = targetOf(...Array.from({ length: 4 }, () => st('Billing')), st('Reports'));
+  const r = migrate(source, target, [source[0]]) as Migrated;
+  assert.deepEqual(codes(r.target), ['B3-B-0001', 'B3-B-0002', 'B3-B-0003', 'B3-B-0004', 'B3-B-0005', 'B3-R-0001']);
+  assert.equal(r.target[4].feature, 'Invoices');
+  assert.deepEqual(codes(r.source), []);
+});
+
+test('migrate: a new Epic starts at the end of the target', () => {
+  const source = backlogOf(st('Search'));
+  const target = targetOf(st('Billing'), st('Reports'));
+  const r = migrate(source, target, [source[0]]) as Migrated;
+  assert.deepEqual(codes(r.target), ['B3-B-0001', 'B3-R-0001', 'B3-S-0001']);
+});
+
+test('migrate: several stories keep their relative order', () => {
+  const source = backlogOf(st('Billing', { title: 'a' }), st('Reports', { title: 'x' }), st('Billing', { title: 'b' }), st('Billing', { title: 'c' }));
+  const target = targetOf(st('Billing', { title: 'old' }), st('Reports', { title: 'old2' }));
+  const r = migrate(source, target, [source[3], source[0], source[2]]) as Migrated;
+  assert.deepEqual(r.target.map((s) => s.title), ['old', 'a', 'b', 'c', 'old2']);
+  assert.deepEqual(codes(r.target), ['B3-B-0001', 'B3-B-0002', 'B3-B-0003', 'B3-B-0004', 'B3-R-0001']);
+  assert.deepEqual(codes(r.source), ['B1-R-0001']);
+});
+
+test('migrate: fields and unknown columns move unchanged, the target gains the column', () => {
+  const sourceHeaders = [...COLUMNS, 'Owner'];
+  const moving = st('Billing', {
+    notes: 'keep me', cells: [...COLUMNS.map(() => ''), 'Ann'],
+    clarifications: [{ q: 'q1', a: 'a1' }, { q: 'q2', a: 'a2' }],
+  });
+  const source = backlogOf(moving);
+  const target = targetOf(st('Billing'));
+  const r = migrate(source, target, [source[0]], sourceHeaders) as Migrated;
+  assert.deepEqual(r.targetHeaders, [...COLUMNS, 'Owner']);
+  const copy = r.target[1];
+  assert.equal(copy.notes, 'keep me');
+  assert.deepEqual(copy.clarifications, [{ q: 'q1', a: 'a1' }, { q: 'q2', a: 'a2' }]);
+  assert.equal(copy.cells[COLUMNS.length], 'Ann');
+  assert.equal(r.target[0].cells.length, COLUMNS.length + 1);
+  assert.equal(r.target[0].cells[COLUMNS.length], '');
+  const text = serializeBacklog({ headers: r.targetHeaders, stories: r.target, hasBom: false });
+  assert.match(text, /Owner/);
+  assert.match(text, /Ann/);
+});
+
+test('migrate: a source column matches the target column without regard to case', () => {
+  const targetHeaders = [...COLUMNS, 'owner'];
+  const source = backlogOf(st('Billing', { cells: [...COLUMNS.map(() => ''), 'Ann'] }));
+  const target = targetOf(st('Billing', { cells: [...COLUMNS.map(() => ''), 'Bob'] }));
+  const r = migrate(source, target, [source[0]], [...COLUMNS, 'Owner'], targetHeaders) as Migrated;
+  assert.deepEqual(r.targetHeaders, targetHeaders);
+  assert.deepEqual(r.target.map((s) => s.cells[COLUMNS.length]), ['Bob', 'Ann']);
+});
+
+test('migrate: a frozen story or a story without an ID is refused and nothing moves', () => {
+  const source = backlogOf(st('Billing'), st('Billing'));
+  const frozen = [source[0], { ...source[1], frozen: true }];
+  const target = targetOf(st('Billing'));
+  assert.match((migrate(frozen, target, [frozen[1]]) as Refused).error, /frozen/);
+  const noId = [st('', {})];
+  assert.match((migrate(noId, target, noId) as Refused).error, /Epic/);
+  assert.match((migrate(source, target, []) as Refused).error, /no story/);
+});
+
+test('migrate: a frozen story that stays in the source keeps its ID', () => {
+  const frozenStory = st('Billing', { code: 'B1-B-0003', frozen: true });
+  const source = renumber([st('Billing'), st('Billing'), frozenStory, st('Billing')], INITIALS);
+  assert.equal(source[2].code, 'B1-B-0003');
+  const r = migrate(source, targetOf(st('Billing')), [source[0]]) as Migrated;
+  assert.equal(r.source.find((s) => s.id === frozenStory.id)!.code, 'B1-B-0003');
+  assert.deepEqual(codes(r.source), ['B1-B-0001', 'B1-B-0003', 'B1-B-0002']);
+});
+
+test('migrate: the target keeps its existing IDs and the copies get fresh internal ids', () => {
+  const target = targetOf(st('Billing'), st('Reports'), st('Billing'));
+  const source = backlogOf(st('Billing'), st('Reports'));
+  const r = migrate(source, target, source) as Migrated;
+  const existing = new Map(target.map((s) => [s.id, s.code]));
+  const kept = r.target.filter((s) => existing.has(s.id));
+  assert.equal(kept.length, 3);
+  assert.deepEqual(kept.map((s) => s.code), kept.map((s) => existing.get(s.id)));
+  const ids = r.target.map((s) => s.id);
+  assert.equal(new Set(ids).size, ids.length);
+});
+
+test('migrate: forwards map old source codes to target codes; recoded lists the stories that stay', () => {
+  const source = backlogOf(st('Billing'), st('Billing'), st('Billing'));
+  const target = targetOf(st('Billing'));
+  const r = migrate(source, target, [source[0], source[2]]) as Migrated;
+  assert.deepEqual([...r.forwards], [['B1-B-0001', 'B3-B-0002'], ['B1-B-0003', 'B3-B-0003']]);
+  assert.deepEqual([...r.recoded], [['B1-B-0002', 'B1-B-0001']]);
+});
+
+test('migrate: the source links to a moved story point at its target code, and moved links stay on old source codes', () => {
+  const source = backlogOf(st('Billing'), st('Billing'), st('Billing'));
+  const withDeps = [source[0], { ...source[1], dependsOn: ['B1-B-0001', 'B1-B-0003'] }, { ...source[2], dependsOn: ['B1-B-0001', 'B1-B-0002'] }];
+  const r = migrate(withDeps, targetOf(st('Billing')), [withDeps[0], withDeps[2]]) as Migrated;
+  assert.deepEqual(r.source.map((s) => [s.code, s.dependsOn]), [['B1-B-0001', ['B3-B-0002', 'B3-B-0003']]]);
+  assert.deepEqual(r.target.slice(1).map((s) => s.dependsOn), [[], ['B1-B-0001', 'B1-B-0002']]);
+});
+
+test('migrate end to end: applying the source save list to the target leaves every link on the intended story', () => {
+  // Source S1..S4 (Billing); S2 and S4 move. S1 -> S4. S3 -> S2, S1. S4 -> S2, S3, S1.
+  const s = backlogOf(st('Billing', { title: 'S1' }), st('Billing', { title: 'S2' }), st('Billing', { title: 'S3' }), st('Billing', { title: 'S4' }));
+  const dep = (i: number, ...d: string[]) => ({ ...s[i], dependsOn: d });
+  const source = [dep(0, 'B1-B-0004'), s[1], dep(2, 'B1-B-0002', 'B1-B-0001'), dep(3, 'B1-B-0002', 'B1-B-0003', 'B1-B-0001')];
+  // Target T1 -> source S3 (a link into the source), T2 -> T1.
+  const t = targetOf(st('Billing', { title: 'T1' }), st('Billing', { title: 'T2' }));
+  const target = [{ ...t[0], dependsOn: ['B1-B-0003'] }, { ...t[1], dependsOn: ['B3-B-0001'] }];
+
+  const r = migrate(source, target, [source[1], source[3]]) as Migrated;
+  assert.deepEqual(r.target.map((x) => x.title), ['T1', 'T2', 'S2', 'S4']);
+  assert.deepEqual(codes(r.target), ['B3-B-0001', 'B3-B-0002', 'B3-B-0003', 'B3-B-0004']);
+
+  // The save of the source sends idChanges(baseline, saved) with the forwards in place of the empty entries.
+  const changes = idChanges(source, r.source);
+  for (const [oldCode, newCode] of r.forwards) changes.set(oldCode, newCode);
+  const relinked = relinkStories(r.target, changes);
+  const byTitle = (title: string) => relinked.find((x) => x.title === title)!;
+
+  assert.deepEqual(r.source.map((x) => [x.title, x.code]), [['S1', 'B1-B-0001'], ['S3', 'B1-B-0002']]);
+  assert.deepEqual(byTitle('T1').dependsOn, ['B1-B-0002']); // S3
+  assert.deepEqual(byTitle('T2').dependsOn, ['B3-B-0001']); // T1, untouched
+  assert.deepEqual(byTitle('S2').dependsOn, []);
+  assert.deepEqual(byTitle('S4').dependsOn, ['B3-B-0003', 'B1-B-0002', 'B1-B-0001']); // S2 (moved), S3, S1
+  assert.deepEqual(r.source[0].dependsOn, ['B3-B-0004']); // S1 -> S4
+  assert.deepEqual(r.source[1].dependsOn, ['B3-B-0003', 'B1-B-0001']); // S3 -> S2, S1
 });

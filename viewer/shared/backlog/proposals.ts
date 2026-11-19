@@ -5,7 +5,7 @@
 // `Depends On` entry that named a placeholder now held by a story. Stories are never mutated.
 
 import type { Proposal, Story } from '../types.ts';
-import { renumber, backlogProblems } from './ids.ts';
+import { renumber, backlogProblems, recodedBetween } from './ids.ts';
 
 const PLACEHOLDER = /^NEW-(\d+)$/;
 
@@ -189,4 +189,80 @@ export function moveToProposed(
   const [moved] = relink([{ ...story, code: placeholder, cells, dependsOn: [...story.dependsOn], ambiguous: [...story.ambiguous] }], newCode);
   const proposals = [...relink(proposedStories, new Map([...toPlaceholder, ...newCode])), moved];
   return { backlog, proposals, moved, recoded: newCode };
+}
+
+export interface StoryList {
+  stories: Story[];
+  headers: string[];
+}
+
+const headerKey = (h: string): string => h.trim().toLowerCase();
+const TEMP_CODE = (i: number): string => `\u0000migrating-${i}`; // cannot clash with a real ID
+
+// Move the source stories whose internal `id` is in `ids` into the target backlog. `source` and `target` are the two
+// story lists with their headers; the initials are each backlog's own. Frozen stories and stories without an ID are refused.
+// The source loses the stories and is renumbered; its links to them are rewritten to their new target codes.
+// Each copy goes after the last story of its Epic in the target, or at the end, and the target is renumbered.
+// A copy keeps its `Depends On` exactly as it was (old source codes): the relink that follows the source's save rewrites
+// them once, together with the target's other links to the source. Renumbering the target here would shift them twice.
+// Returns { source, target, targetHeaders, forwards, recoded }: forwards is old source code -> new target code of each
+// moved story, recoded the source's old -> new codes of the stories that stay. Or { error } and nothing moves.
+export function migrateStories(args: {
+  source: StoryList;
+  target: StoryList;
+  ids: ReadonlySet<number>;
+  sourceInitials: string;
+  targetInitials: string;
+}): { source: Story[]; target: Story[]; targetHeaders: string[]; forwards: Map<string, string>; recoded: Map<string, string> } | { error: string } {
+  const { source, target, ids, sourceInitials, targetInitials } = args;
+  const chosen = source.stories.filter((s) => ids.has(s.id));
+  if (!chosen.length) return { error: 'There is no story to migrate.' };
+  const name = (s: Story): string => `${s.code || 'a story'}${s.title.trim() ? ` "${s.title.trim()}"` : ''}`;
+  const noCode = chosen.filter((s) => !s.code);
+  if (noCode.length) return { error: `Give ${noCode.map(name).join(', ')} an Epic before migrating ${noCode.length > 1 ? 'them' : 'it'}.` };
+  const frozen = chosen.filter((s) => s.frozen);
+  if (frozen.length) return { error: `${frozen.map(name).join(', ')} ${frozen.length > 1 ? 'are' : 'is'} frozen. A frozen story cannot be migrated.` };
+
+  const targetHeaders = [...target.headers];
+  const known = new Set(targetHeaders.map(headerKey));
+  for (const h of source.headers) {
+    if (!known.has(headerKey(h))) {
+      known.add(headerKey(h));
+      targetHeaders.push(h);
+    }
+  }
+  const padded = (s: Story): Story => {
+    if (s.cells.length >= targetHeaders.length) return s;
+    const cells = s.cells.slice();
+    while (cells.length < targetHeaders.length) cells.push('');
+    return { ...s, cells };
+  };
+
+  // Copies carry no code while the target is renumbered, so that renumber leaves their links alone and gives them codes.
+  let nextId = Math.max(0, ...source.stories.map((s) => s.id), ...target.stories.map((s) => s.id)) + 1;
+  const sourceAt = new Map<string, number>();
+  source.headers.forEach((h, i) => { if (!sourceAt.has(headerKey(h))) sourceAt.set(headerKey(h), i); });
+  const copies = chosen.map((s) => {
+    const epic = liveEpic(s);
+    const cells = targetHeaders.map((h) => s.cells[sourceAt.get(headerKey(h)) ?? -1] ?? '');
+    return { ...s, id: nextId++, code: '', frozen: false, epic, codedEpic: epic, cells, dependsOn: [...s.dependsOn], ambiguous: [...s.ambiguous] };
+  });
+  const placed = target.stories.map(padded);
+  for (const c of copies) {
+    const last = placed.map(liveEpic).lastIndexOf(c.epic);
+    placed.splice(last < 0 ? placed.length : last + 1, 0, c);
+  }
+  const newTarget = renumber(placed, targetInitials);
+  const newCode = new Map(newTarget.map((s) => [s.id, s.code] as const));
+  const forwards = new Map(chosen.map((s, i) => [s.code, newCode.get(copies[i].id) ?? ''] as const));
+
+  // Links to a moved story go through a temporary code, so the source's renumber cannot bind them to a story that
+  // takes the moved story's number.
+  const temp = new Map(chosen.map((s, i) => [s.code, TEMP_CODE(i)] as const));
+  const rest = relink(source.stories.filter((s) => !ids.has(s.id)), temp);
+  const renumbered = renumber(rest, sourceInitials);
+  const toTarget = new Map(chosen.map((s, i) => [TEMP_CODE(i), forwards.get(s.code) as string] as const));
+  const newSource = relink(renumbered, toTarget);
+
+  return { source: newSource, target: newTarget, targetHeaders, forwards, recoded: recodedBetween(source.stories, newSource) };
 }
