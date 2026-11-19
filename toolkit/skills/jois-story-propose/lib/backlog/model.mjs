@@ -9,16 +9,16 @@ import { renumber } from './ids.mjs';
 import { composeStory, parseStory, roleIsBlank, composeCriteria, parseCriteria, composeClarifications, parseClarifications } from './story-text.mjs';
 
 export const COLUMNS = [
-  'ID', 'Epic', 'Feature', 'Title', 'User Story', 'Sprint points', 'Priority', 'Depends On', 'User Acceptance Criteria', 'Notes', 'Frozen', 'Clarifications',
+  'ID', 'Epic', 'Feature', 'Title', 'User Story', 'Sprint points', 'Depends On', 'User Acceptance Criteria', 'Notes', 'Frozen', 'Clarifications',
 ];
-// The column the lock used to be stored in. It is ignored on load and dropped on save, never read as frozen.
-const OLD_LOCKED_COLUMN = 'locked';
+// Columns that used to exist. `locked` held the lock (never read as frozen); `priority` held an unused rating.
+// Both are dropped on load, so they are not written back.
+const OLD_COLUMNS = ['locked', 'priority'];
 // Only a proposals file has this column (see proposalHeaders): `Yes` or empty. A benched proposed story is parked: the
 // explore and propose skills do not see it, and it cannot be accepted until it is un-benched.
 export const BENCHED_COLUMN = 'Benched';
 export const POINTS = [1, 2, 3, 5, 8, 13, 21, 34, 55];
 export const SPLIT_ABOVE = 13;
-export const PRIORITIES = ['Critical', 'High', 'Medium', 'Low'];
 
 const BOM = '﻿';
 const COLUMN_BY_LOWER = new Map                ([...COLUMNS, BENCHED_COLUMN].map((c) => [c.toLowerCase(), c]));
@@ -50,7 +50,7 @@ export function newStory(headers                    )        {
     ambiguous: [], // dependsOn entries that named an ID several stories held in the loaded file
     epic: '', codedEpic: '', feature: '', title: '', // codedEpic: the epic the ID was last computed for
     asA: '', iWant: '', soThat: '',
-    points: '', priority: '', notes: '',
+    points: '', notes: '',
     benched: false, // proposed stories only: parked, hidden from the explore and propose skills
     frozen: false, // reference only: read-only, keeps its ID, is not moved, deleted or reviewed (valid only with a code)
     criteria: [emptyCriterion()],
@@ -72,7 +72,6 @@ function storyFromCells(cells          , idx             )        {
   story.feature = get('Feature');
   story.title = get('Title');
   story.points = get('Sprint points');
-  story.priority = get('Priority');
   story.notes = get('Notes');
   story.benched = get(BENCHED_COLUMN).trim().toLowerCase() === 'yes';
   story.frozen = get('Frozen').trim().toLowerCase() === 'yes' && !!story.code;
@@ -104,12 +103,13 @@ export const proposalHeaders = (headers                   )           => (header
 
 // `placeholderIds`: a proposals file, whose NEW-<n> IDs are kept as written instead of being derived (see proposals.js).
 // `initials`: the backlog's initials, which start every derived ID (required unless `placeholderIds`).
-// An old `Locked` column is removed here, so it is neither read as frozen nor written back; `changed` then says the
-// file needs saving.
+// An old `Locked` or `Priority` column is removed here, so it is neither read nor written back; `changed` then says
+// the file needs saving.
 export function loadBacklog(text        , { placeholderIds = false, initials }                                                  = {})              {
   const parsed = parseCsv(text);
-  const lockedAt = parsed.length ? parsed[0].findIndex((h) => h.trim().toLowerCase() === OLD_LOCKED_COLUMN) : -1;
-  const rows = lockedAt < 0 ? parsed : parsed.map((r) => r.filter((_, i) => i !== lockedAt));
+  const oldAt = new Set        ();
+  if (parsed.length) parsed[0].forEach((h, i) => { if (OLD_COLUMNS.includes(h.trim().toLowerCase())) oldAt.add(i); });
+  const rows = oldAt.size === 0 ? parsed : parsed.map((r) => r.filter((_, i) => !oldAt.has(i)));
   const headers = rows.length ? rows[0].slice() : [...COLUMNS];
   const idx = columnIndex(headers);
   for (const col of placeholderIds ? [...COLUMNS, BENCHED_COLUMN] : COLUMNS) {
@@ -129,7 +129,7 @@ export function loadBacklog(text        , { placeholderIds = false, initials }  
   // IDs follow position, so recompute them (this also gives IDs to files that have none). `changed` = needs saving.
   // Proposed stories are never frozen.
   const stories = placeholderIds ? loaded.map((s) => (s.frozen ? { ...s, frozen: false } : s)) : renumber(loaded, initials          );
-  const changed = lockedAt >= 0 || (!placeholderIds && stories !== loaded);
+  const changed = oldAt.size > 0 || (!placeholderIds && stories !== loaded);
   return { headers, stories, hasBom: text.charCodeAt(0) === 0xfeff, changed };
 }
 
@@ -157,7 +157,6 @@ export function serializeBacklog(backlog         )         {
     cells[idx['Title']] = s.title;
     cells[idx['User Story']] = storyCellText(s);
     cells[idx['Sprint points']] = s.points;
-    cells[idx['Priority']] = s.priority;
     cells[idx['Depends On']] = s.dependsOn.join(';');
     cells[idx['User Acceptance Criteria']] = criteriaCellText(s);
     cells[idx['Notes']] = s.notes;
@@ -202,7 +201,6 @@ export function storyIssues(story       , problems                    = [])     
   }
   const warnings = [...problems];
   if (blank(story.points)) warnings.push('Sprint points are missing');
-  if (blank(story.priority)) warnings.push('Priority is missing');
   if (shouldSplit(story)) warnings.push('Consider splitting this story: estimates above 13 points are usually too big for one sprint.');
   return { errors, warnings };
 }
@@ -247,16 +245,14 @@ export function displayOrder(stories                  )          {
   return groupByEpic(stories).flatMap((g) => g.features.flatMap((f) => f.stories));
 }
 
-// Bulk edit. Only defined fields are set: priority undefined = no change ('' clears it); a blank epic or
-// feature means no change. A frozen story is read-only in every field, so it is skipped completely.
+// Bulk edit. Only defined fields are set: a blank epic or feature means no change. A frozen story is read-only in every field, so it is skipped completely.
 // Returns { changed, skipped }: the stories changed, and the frozen listed ones left as they were.
 export function applyBulk(
   stories         ,
   ids                     ,
-  { priority, epic, feature }                                                         = {},
+  { epic, feature }                                      = {},
 )                                       {
-  const patch                                                        = {};
-  if (priority !== undefined) patch.priority = priority;
+  const patch                                           = {};
   if (!blank(epic)) patch.epic = (epic          ).trim();
   if (!blank(feature)) patch.feature = (feature          ).trim();
   let changed = 0;
