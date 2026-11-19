@@ -18,6 +18,18 @@ The portal is the viewer's server and web app. It shows and edits the backlog fi
 
 The API is `/api/<kind>/<backlog name>`. The name carries no `.csv`, and the server resolves it to the kind's fixed file in the backlog's folder under the current data folder. `list` returns the backlog folders, create makes the folder with the five empty starting files and a `backlog.json` holding the default initials (numbered on a name conflict; the folder is removed if `backlog.json` cannot be written) and rename renames the folder, so the initials stay. A read of kind `backlog` also returns `initials`, and a backlog without `backlog.json` is given the default, which is saved on that first read. `PATCH /api/backlog/files/<name>` with `{ "initials": "OPS" }` changes the initials: the value is validated (`400` with the rule when invalid), uppercased and refused with `409` (`initials-taken`) when a sibling backlog uses it or holds a frozen ID that starts with it, and the message names that sibling. The check covers the data folder being served only. The rules and the file are described in [Data Folder](Data-Folder.md). A read of `proposals`, `lexicon`, `lexicon-suggestions` or `review` for a backlog whose folder exists but whose file does not answers `200` with empty content, because the browser logs every failed request; the client treats that empty text as no file. A read for a backlog whose folder is missing, and every write to a missing file, still answers `404`. Slices, `logs` and everything else are not kinds, so the file API cannot reach them.
 
+### Relink route
+
+`POST /api/relink` follows changed story IDs into the other backlogs of the data folder, so their `Depends On` links and open review rows keep pointing at the right stories. It needs the same-origin header and takes `{ from, changes, only? }`:
+
+- `from` names the backlog whose IDs changed. It is never written.
+- `changes` maps each old ID to its new ID, or to `""` when the story was deleted.
+- `only` is an optional list of backlog names that limits the update, which lets a client retry only the backlogs that failed.
+
+The body is checked at entry and a bad shape, an unknown backlog or an empty `from` answers `400` (`refused`). For each other backlog the server rewrites its stories file (`user-stories.csv`), its `proposals.csv` and its `review.csv` (the last two sit in the backlog's `user-stories` folder) with `relinkBacklogText`, `relinkProposalsText` and `relinkReviewText` from `viewer/shared/backlog/relink-text.ts`. A missing proposals or review file is skipped and never created, and a file whose text does not change is not written. Each write goes to a temp file beside the target and is renamed over it, and the temp file is removed when that fails. The route counts as a write for the busy lock, so a switch of data folder is refused while it runs.
+
+The reply is `{ updated, failed }` (the `RelinkReply` type in `viewer/shared/types.ts`). `updated` lists the backlogs where at least one file was written. `failed` holds one `{ name, file, message }` per file that could not be read, rewritten or written, for example a file open in Excel or a review file that does not parse. A failed file does not stop the other files or backlogs. Empty `changes` answers `{ updated: [], failed: [] }` without reading any file.
+
 ### Settings routes
 
 The settings routes are handled before the store lookup:

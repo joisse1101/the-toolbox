@@ -12,11 +12,12 @@ import { codeOf, messageOf } from './storage/errors.ts';
 import { validateInitials, readInitials, writeInitials, findConflict, defaultInitials } from '#shared/storage/backlog-initials.ts';
 import { PLANS_DIR, KINDS, BACKLOG_FILE, backlogDir, backlogFile, listBacklogs, detectOlderLayout } from '#shared/storage/backlog-paths.ts';
 import { loadBacklog } from '#shared/backlog/model.ts';
+import { relinkBacklogText, relinkProposalsText, relinkReviewText } from '#shared/backlog/relink-text.ts';
 import {
   ROOT, loadConfig, saveConfig, configPath, confineDir, confineCodeBase, checkFolder, checkCodeBase, initFolders, initCodeBase, copyData, copyToCodeBase, planCopy, migrateOlderLayout,
 } from './storage/project-config.ts';
 import type { ConfigChanges } from './storage/project-config.ts';
-import type { ApiError } from '#shared/types.ts';
+import type { ApiError, RelinkReply } from '#shared/types.ts';
 
 // The config is read when paths.ts loads. Run as the server, a bad config ends the process with the message that names the key.
 let paths: typeof import('./storage/paths.ts');
@@ -202,6 +203,81 @@ async function renameBacklog(dataDir: string, from: unknown, toRaw: unknown): Pr
   }
   await fs.promises.rename(src, dst);
   return toName;
+}
+
+// The files POST /api/relink rewrites in each other backlog, with the helper that rewrites each one's text.
+const RELINK_FILES = [
+  { kind: 'backlog', relink: relinkBacklogText },
+  { kind: 'proposals', relink: relinkProposalsText },
+  { kind: 'review', relink: relinkReviewText },
+] as const;
+
+// Validates the body of POST /api/relink. Returns `from`, the ID changes as a Map and the backlogs to update (every other
+// backlog of the data folder, or those `only` names).
+function parseRelinkBody(dataDir: string, body: Body): { changes: Map<string, string>; targets: string[] } {
+  const refuse = (message: string) => new HttpError(400, message, 'refused');
+  const backlogs = listBacklogs(dataDir);
+  if (typeof body.from !== 'string' || !body.from) throw refuse('from must name a backlog.');
+  const from = validateBacklogName(body.from);
+  if (!backlogs.includes(from)) throw refuse(`${from} was not found`);
+
+  const { changes } = body;
+  if (typeof changes !== 'object' || changes === null || Array.isArray(changes)) throw refuse('changes must be an object of old ID to new ID.');
+  const entries = Object.entries(changes);
+  if (entries.some(([, to]) => typeof to !== 'string')) throw refuse('changes must map each old ID to a new ID, or to "" when deleted.');
+
+  let targets = backlogs.filter((name) => name !== from);
+  if (body.only !== undefined) {
+    const { only } = body;
+    if (!Array.isArray(only) || only.some((n) => typeof n !== 'string')) throw refuse('only must be a list of backlog names.');
+    const names = only.map((n: string) => validateBacklogName(n));
+    const unknown = names.find((n) => !backlogs.includes(n));
+    if (unknown !== undefined) throw refuse(`${unknown} was not found`);
+    targets = targets.filter((name) => names.includes(name));
+  }
+  return { changes: new Map(entries as [string, string][]), targets };
+}
+
+// Writes `content` to a temp file beside `file`, then renames it over `file`; the temp file is removed when either step fails.
+async function writeAtomic(file: string, content: string): Promise<void> {
+  const temp = `${file}.${process.pid}.tmp`;
+  try {
+    await fs.promises.writeFile(temp, content, 'utf8');
+    await fs.promises.rename(temp, file);
+  } catch (err) {
+    await fs.promises.rm(temp, { force: true });
+    throw err;
+  }
+}
+
+// POST /api/relink: { from, changes: { oldCode: newCode ('' = deleted) }, only? }. Rewrites the links to the changed IDs in the
+// stories, proposals and review files of every other backlog (or of `only`). Writes only the files that change; a missing
+// proposals or review file is skipped, never created. A file that fails is listed in `failed` and the other files go on.
+async function relinkBacklogs(dataDir: string, body: Body): Promise<RelinkReply> {
+  const { changes, targets } = parseRelinkBody(dataDir, body);
+  const reply: RelinkReply = { updated: [], failed: [] };
+  if (!changes.size) return reply;
+  for (const name of targets) {
+    let written = false;
+    for (const { kind, relink } of RELINK_FILES) {
+      const full = backlogFile(dataDir, name, kind);
+      const file = path.relative(backlogDir(dataDir, name), full).split(path.sep).join('/');
+      try {
+        const text = await fs.promises.readFile(full, 'utf8').catch((err: unknown) => {
+          if (codeOf(err) === 'ENOENT' && kind !== 'backlog') return null;
+          throw err;
+        });
+        const next = text === null ? null : relink(text, changes);
+        if (next === null) continue;
+        await writeAtomic(full, next);
+        written = true;
+      } catch (err) {
+        reply.failed.push({ name, file, message: mapFsError(err, file).message });
+      }
+    }
+    if (written) reply.updated.push(name);
+  }
+  return reply;
 }
 
 function openFolder(folder: string): void {
@@ -610,9 +686,24 @@ async function handleProject(req: http.IncomingMessage, res: http.ServerResponse
 
 // ---------- API ----------
 
+// POST /api/relink counts as a write, so a switch of data folder cannot land in the middle of it.
+async function handleRelink(req: http.IncomingMessage, res: http.ServerResponse, segments: string[]): Promise<void> {
+  if (segments.length > 2) throw new HttpError(404, 'Not found', 'not-found');
+  if (req.method !== 'POST') throw new HttpError(405, 'Method not allowed');
+  requireHeader(req);
+  const body = await readJson(req);
+  busy++;
+  try {
+    send(res, 200, await relinkBacklogs(getDataDir(), body));
+  } finally {
+    busy--;
+  }
+}
+
 // Counts a write as busy for as long as it runs, so a switch of data folder cannot land in the middle of it.
 async function handleApi(req: http.IncomingMessage, res: http.ServerResponse, segments: string[]): Promise<void> {
   if (segments[1] === 'project') return handleProject(req, res, segments);
+  if (segments[1] === 'relink') return handleRelink(req, res, segments);
   const writes = req.method !== 'GET' && req.method !== 'HEAD';
   if (writes) busy++;
   try {

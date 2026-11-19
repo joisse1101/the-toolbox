@@ -139,6 +139,18 @@ export interface ProjectConfig {
 
 // ---------- API ----------
 
+// The reply of POST /api/relink (backend/server.ts): the backlogs where at least one file was written, and one entry per file
+// that could not be read, rewritten or written (`file` is relative to the backlog's folder).
+export interface RelinkFailure {
+  name: string;
+  file: string;
+  message: string;
+}
+export interface RelinkReply {
+  updated: string[];
+  failed: RelinkFailure[];
+}
+
 // The body of an error reply (backend/server.ts).
 export interface ApiError {
   error: string;
