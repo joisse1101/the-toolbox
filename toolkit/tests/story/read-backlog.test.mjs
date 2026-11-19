@@ -126,3 +126,12 @@ test('a name with or without .csv reads the same backlog, and a missing backlog 
 test('a CSV that cannot be read gives no scope (the line is left out)', () => {
   assert.equal(scopeOf(undefined), null);
 });
+
+test('checks: a link to an existing story of another backlog is no dependency problem, a link to a missing one still is', () => {
+  const dirs = temp(FULL + story('B1-A-0001', 'A', 'One', 'Z9-X-0001') + story('B1-A-0002', 'A', 'Two', 'Z9-X-0099'));
+  putFile(dirs.dataDir, 'other', 'backlog', FULL + story('Z9-X-0001', 'X', 'Elsewhere'));
+  const r = section(dirs, 'checks');
+  assert.equal(r.ok, true);
+  assert.doesNotMatch(r.text, /Z9-X-0001/);
+  assert.match(r.text, /Z9-X-0099, which does not exist/);
+});

@@ -56,8 +56,9 @@ export function useProposedFlow({ current, stories, backlog, initials, actions, 
     actions.replaceStories(result.backlog);
     proposals.actions.replaceStories(result.proposals);
     if (units.length) review.decide(units.flatMap((u) => u.indexes), 'dismissed');
-    // The stories below it were renumbered: their open suggestions follow them. Links to the moved story now name its placeholder.
-    review.retarget(new Map([...result.recoded, [story.code, result.moved.code]]));
+    // Links in this backlog's review to the moved story now name its placeholder. The stories below it were renumbered:
+    // the save's list of ID changes (useAutosave) makes their open suggestions follow them.
+    review.retarget(new Map([[story.code, result.moved.code]]));
     setProposedNotice({ kind: 'ok', text: `Moved ${story.code} to Proposed as ${result.moved.code}.` }); // shown in the Proposed tab
   };
 

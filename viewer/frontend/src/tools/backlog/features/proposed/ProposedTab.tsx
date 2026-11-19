@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Story } from '#shared/types.ts';
 import type { ProposedNotice } from './useProposedFlow.ts';
 import { backlogProblems } from '#shared/backlog/ids.ts';
+import type { OtherBacklogsIndex } from '#shared/backlog/other-backlogs.ts';
 import StoryList from '#frontend/src/tools/backlog/shared/StoryList.tsx';
 import StoryForm from '#frontend/src/tools/backlog/shared/story-form/StoryForm.tsx';
 import ResizeHandle from '#frontend/src/shared/ui/ResizeHandle.tsx';
@@ -18,6 +19,7 @@ interface ProposedTabProps {
   hidden: boolean;
   proposed: Story[];
   backlogStories: Story[];
+  others: OtherBacklogsIndex;
   selected: Story | null;
   selectedId: number | null;
   notice: ProposedNotice | null;
@@ -33,7 +35,7 @@ interface ProposedTabProps {
 }
 
 export default function ProposedTab({
-  hidden, proposed, backlogStories, selected, selectedId, notice,
+  hidden, proposed, backlogStories, others, selected, selectedId, notice,
   onSelect, onAdd, onDelete, onEdit, onCommitEpic, onMove, onOpenBacklogStory, onAccept, onAcceptAll,
 }: ProposedTabProps) {
   // Ticked stories for Accept selected. Ids that are gone (accepted, deleted) drop out.
@@ -53,10 +55,11 @@ export default function ProposedTab({
   const list = useListWidth('proposed');
   const all = useMemo(() => [...backlogStories, ...proposed], [backlogStories, proposed]);
   // Warnings are computed over both lists so a link to a backlog story is not "missing"; only proposed stories are shown.
+  const otherCodes = useMemo(() => new Set(others.byCode.keys()), [others]);
   const problems = useMemo(() => {
     const ids = new Set(proposed.map((s) => s.id));
-    return new Map([...backlogProblems(all)].filter(([id]) => ids.has(id)));
-  }, [all, proposed]);
+    return new Map([...backlogProblems(all, otherCodes)].filter(([id]) => ids.has(id)));
+  }, [all, proposed, otherCodes]);
 
   // A benched story is parked and cannot be accepted: Accept is disabled with the reason until it is un-benched.
   const benchedTicked = proposed.filter((s) => ticked.has(s.id) && s.benched).length;
@@ -102,7 +105,7 @@ export default function ProposedTab({
             />
             {selected && (
               <StoryForm
-                story={selected} stories={all} problems={problems} focusRequest={focusRequest}
+                story={selected} stories={all} problems={problems} others={others} focusRequest={focusRequest}
                 onFocused={() => setFocusRequest(null)} onEdit={onEdit} onCommitEpic={onCommitEpic} onOpen={open}
                 onBench={(id, on) => onEdit(id, (d) => { d.benched = on; })}
               />

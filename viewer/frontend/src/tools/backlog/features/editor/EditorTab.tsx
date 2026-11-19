@@ -8,16 +8,18 @@ import EmptyState from '#frontend/src/shared/ui/EmptyState.tsx';
 import ResizeHandle from '#frontend/src/shared/ui/ResizeHandle.tsx';
 import useListWidth from '#frontend/src/shared/hooks/useListWidth.ts';
 import StoryList from '#frontend/src/tools/backlog/shared/StoryList.tsx';
+import type { OtherBacklogsIndex } from '#shared/backlog/other-backlogs.ts';
 import StoryForm from '#frontend/src/tools/backlog/shared/story-form/StoryForm.tsx';
 
 // The Editor tab: the story list beside the form of the selected story.
 export default function EditorTab({
-  hidden, stories, problems, suggestionCounts, selectedId, selected, selectedUnits, focusRequest, renumberDisabled, collapse, actions,
+  hidden, stories, problems, others, suggestionCounts, selectedId, selected, selectedUnits, focusRequest, renumberDisabled, collapse, actions,
   onFocused, onAdd, onMove, onMoveGroup, onRenumber, onApplySuggestion, onDismissSuggestion, onMoveToProposed,
 }: {
   hidden: boolean;
   stories: Story[];
   problems: Map<number, string[]>;
+  others: OtherBacklogsIndex;
   suggestionCounts: Map<string, number>;
   selectedId: number | null;
   selected: Story | null | undefined;
@@ -47,7 +49,7 @@ export default function EditorTab({
           <StoryList stories={stories} problems={problems} suggestionCounts={suggestionCounts} selectedId={selectedId} onSelect={actions.selectStory} onAdd={onAdd} onMove={onMove} onMoveGroup={onMoveGroup} onRenumber={onRenumber} renumberDisabled={renumberDisabled} collapse={collapse} />
           {selected && (
             <StoryForm
-              story={selected} stories={stories} problems={problems} suggestions={selectedUnits} focusRequest={focusRequest}
+              story={selected} stories={stories} problems={problems} others={others} suggestions={selectedUnits} focusRequest={focusRequest}
               onFocused={onFocused} onEdit={actions.editStory} onCommitEpic={actions.commitEpic} onOpen={actions.selectStory}
               onApplySuggestion={onApplySuggestion} onDismissSuggestion={onDismissSuggestion} onMoveToProposed={onMoveToProposed} onDelete={actions.deleteSelected}
             />

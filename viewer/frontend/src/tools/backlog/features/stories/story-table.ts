@@ -26,6 +26,20 @@ export function visibleChecked(rows: readonly Story[], checked: ReadonlySet<numb
   return { ids, hiddenCount: checked.size - ids.size };
 }
 
+// The ids of the rows a tick may reach: frozen stories are read-only and cannot be ticked, alone, in a range or by select-all.
+export function tickableIds(rows: readonly Story[]): number[] {
+  return rows.filter((s) => !s.frozen).map((s) => s.id);
+}
+
+// The ids a click on row `id` ticks or unticks. With shift and an anchor still among the rows, the range between the anchor
+// and the row, in the order shown; otherwise just the row. Frozen rows are left out of the range.
+export function tickRange(rows: readonly Story[], id: number, anchor: number | null, shift: boolean): number[] {
+  const ids = rows.map((s) => s.id);
+  if (!shift || anchor === null || !ids.includes(anchor)) return tickableIds(rows.filter((s) => s.id === id));
+  const [from, to] = [ids.indexOf(anchor), ids.indexOf(id)].sort((a, b) => a - b);
+  return tickableIds(rows.slice(from, to + 1));
+}
+
 // Alphabetical by one column, ignoring case, with digit runs in numeric order (IAM-0002 before IAM-0010, 3 before 13).
 // Empty values go last either way. The sort is stable, so ties keep their incoming order. dir is 'asc' or 'desc'.
 export function sortStories(stories: Story[], key: string, dir: SortDir = 'asc'): Story[] {

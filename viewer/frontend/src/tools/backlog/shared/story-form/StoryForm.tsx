@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import type { ChangeEvent } from 'react';
 import type { Story } from '#shared/types.ts';
 import type { ReviewUnit } from '#shared/review/review.ts';
+import type { OtherBacklogsIndex } from '#shared/backlog/other-backlogs.ts';
 import type { Edit, ListFields, SetField, SetStoryPart, StoryPart } from './formTypes.ts';
 import { storyIssues } from '#shared/backlog/model.ts';
 import { issueClass } from '../issues.ts';
@@ -25,10 +26,11 @@ const distinct = (values: string[]) => [...new Set(values.map((v) => v.trim()).f
 // The proposed tab passes no suggestions, so it needs no suggestion handlers.
 const noop = () => {};
 
-export default function StoryForm({ story: s, stories, problems, suggestions = [], focusRequest, onFocused, onEdit, onCommitEpic, onOpen, onApplySuggestion = noop, onDismissSuggestion = noop, onMoveToProposed, onDelete, onBench }: {
+export default function StoryForm({ story: s, stories, problems, others, suggestions = [], focusRequest, onFocused, onEdit, onCommitEpic, onOpen, onApplySuggestion = noop, onDismissSuggestion = noop, onMoveToProposed, onDelete, onBench }: {
   story: Story;
   stories: Story[];
   problems: Map<number, string[]>;
+  others: OtherBacklogsIndex;
   suggestions?: ReviewUnit[];
   focusRequest: { id: string | undefined } | null;
   onFocused: () => void;
@@ -96,7 +98,7 @@ export default function StoryForm({ story: s, stories, problems, suggestions = [
 
       <CriteriaSection story={s} frozen={frozen} cues={cues} edit={edit} units={forField('User Acceptance Criteria')} listOf={listOf} />
 
-      <DependenciesSection story={s} stories={stories} frozen={frozen} edit={edit} list={list} onOpen={onOpen} />
+      <DependenciesSection story={s} stories={stories} others={others} frozen={frozen} edit={edit} list={list} onOpen={onOpen} />
 
       <fieldset>
         <legend>Notes</legend>

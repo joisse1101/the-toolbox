@@ -5,6 +5,7 @@ import {
   loadBacklog, serializeBacklog, newStory, newBacklogText, shouldSplit, storyIssues, storyLabel, COLUMNS,
   groupByEpic, displayOrder, applyBulk,
 } from '#shared/backlog/model.ts';
+import { idChanges } from '#shared/backlog/ids.ts';
 
 const load = (text: string, options: { placeholderIds?: boolean } = {}) => loadBacklog(text, { initials: 'B1', ...options });
 
@@ -356,4 +357,22 @@ test('"As an" survives load and save as typed', () => {
   assert.equal(s.rawUserStory, null);
   assert.equal(s.asA, 'an approver');
   assert.equal(parseCsv(serializeBacklog(b))[1][2], 'As an approver, I want to sign off, so that it is controlled');
+});
+
+test('loadBacklog returns the stories as parsed, so idChanges names the IDs the load renumbered', () => {
+  // The second row sits in the first one's place: the load renumbers both.
+  const text =
+    'ID,Epic,Title\r\n' +
+    'B1-B-0002,Billing,Second\r\n' +
+    'B1-B-0001,Billing,First\r\n';
+  const b = load(text);
+  assert.equal(b.changed, true);
+  assert.deepEqual(b.parsed.map((s) => s.code), ['B1-B-0002', 'B1-B-0001']);
+  assert.deepEqual(b.stories.map((s) => s.code), ['B1-B-0001', 'B1-B-0002']);
+  assert.deepEqual([...idChanges(b.parsed, b.stories)], [['B1-B-0002', 'B1-B-0001'], ['B1-B-0001', 'B1-B-0002']]);
+});
+
+test('loadBacklog: a file whose IDs are already right has an empty change list', () => {
+  const b = load('ID,Epic,Title\r\nB1-B-0001,Billing,First\r\nB1-B-0002,Billing,Second\r\n');
+  assert.equal(idChanges(b.parsed, b.stories).size, 0);
 });

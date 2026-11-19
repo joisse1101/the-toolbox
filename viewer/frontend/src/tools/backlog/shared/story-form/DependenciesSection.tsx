@@ -4,14 +4,17 @@ import type { Story } from '#shared/types.ts';
 import type { Edit, ListFields } from './formTypes.ts';
 import { storyLabel } from '#shared/backlog/model.ts';
 import { dependencyChoices, dependentsOf } from '#shared/backlog/ids.ts';
+import type { OtherBacklogsIndex } from '#shared/backlog/other-backlogs.ts';
 
-// "Depends on" (IDs, with a picker) and "Required by".
-export default function DependenciesSection({ story: s, stories, frozen, edit, list, onOpen }: { story: Story; stories: Story[]; frozen: boolean; edit: Edit; list: ListFields; onOpen: (id: number) => void }) {
+// "Depends on" (IDs, with a picker) and "Required by". A link to a story of another backlog shows that story's Title and
+// backlog (`others`); it cannot be opened here, because the Editor shows one backlog.
+export default function DependenciesSection({ story: s, stories, others, frozen, edit, list, onOpen }: { story: Story; stories: Story[]; others: OtherBacklogsIndex; frozen: boolean; edit: Edit; list: ListFields; onOpen: (id: number) => void }) {
   const [depInput, setDepInput] = useState('');
   // Dependencies are stored as IDs. The picker offers the stories that can still be linked without a cycle.
   const choices = dependencyChoices(stories, s);
   const byCode = new Map(stories.filter((o) => o.code).map((o) => [o.code, o]));
   const requiredBy = dependentsOf(stories, s.code);
+  const requiredByOthers = others.dependentsOf.get(s.code) ?? [];
   const pickDependency = (e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.trim();
     if (!choices.some((o) => o.code === value)) return setDepInput(e.target.value);
@@ -26,11 +29,12 @@ export default function DependenciesSection({ story: s, stories, frozen, edit, l
       <ul id="dependsOnList" className="dep-list">
         {s.dependsOn.map((code) => {
           const target = byCode.get(code);
+          const external = target ? undefined : others.byCode.get(code);
           return (
-            <li key={code} className={target ? '' : 'dangling'}>
-              {target
-                ? <button type="button" className="link-btn" title={storyLabel(target)} onClick={() => onOpen(target.id)}>{`${code} ${storyLabel(target)}`}</button>
-                : <span title={/^NEW-\d+$/.test(code) ? 'This story is still proposed' : 'No story has this ID'}>{code}</span>}
+            <li key={code} className={target || external ? '' : 'dangling'}>
+              {target && <button type="button" className="link-btn" title={storyLabel(target)} onClick={() => onOpen(target.id)}>{`${code} ${storyLabel(target)}`}</button>}
+              {external && <span title={`A story of the backlog ${external.backlog}`}>{`${code} ${storyLabel(external)} (${external.backlog})`}</span>}
+              {!target && !external && <span title={/^NEW-\d+$/.test(code) ? 'This story is still proposed' : 'No story has this ID'}>{code}</span>}
               <button type="button" className="remove" aria-label={`Remove ${code}`} disabled={frozen} onClick={() => edit((d) => { d.dependsOn = d.dependsOn.filter((c) => c !== code); })}>✕</button>
             </li>
           );
@@ -49,7 +53,10 @@ export default function DependenciesSection({ story: s, stories, frozen, edit, l
         {requiredBy.map((o) => (
           <li key={o.id}><button type="button" className="link-btn" onClick={() => onOpen(o.id)}>{`${o.code} ${storyLabel(o)}`}</button></li>
         ))}
-        {!requiredBy.length && <li className="muted">No story depends on this one.</li>}
+        {requiredByOthers.map((o) => (
+          <li key={`${o.backlog}/${o.code}`} title={`A story of the backlog ${o.backlog}`}>{`${o.code} ${storyLabel(o)} (${o.backlog})`}</li>
+        ))}
+        {!requiredBy.length && !requiredByOthers.length && <li className="muted">No story depends on this one.</li>}
       </ul>
     </fieldset>
   );

@@ -130,7 +130,7 @@ export function loadBacklog(text        , { placeholderIds = false, initials }  
   // Proposed stories are never frozen.
   const stories = placeholderIds ? loaded.map((s) => (s.frozen ? { ...s, frozen: false } : s)) : renumber(loaded, initials          );
   const changed = oldAt.size > 0 || (!placeholderIds && stories !== loaded);
-  return { headers, stories, hasBom: text.charCodeAt(0) === 0xfeff, changed };
+  return { headers, stories, hasBom: text.charCodeAt(0) === 0xfeff, changed, parsed: loaded };
 }
 
 // The text written into the User Story / User Acceptance Criteria cells (also feeds the previews).

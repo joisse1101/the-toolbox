@@ -2,7 +2,7 @@
 // Errors are thrown as FileApiError with a readable message; `locked` is true when the file
 // is held open by another program (for example Excel).
 
-import type { BacklogKind, SavedProject } from '#shared/types.ts';
+import type { BacklogKind, RelinkReply, SavedProject } from '#shared/types.ts';
 
 export class FileApiError extends Error {
   status: number;
@@ -191,6 +191,13 @@ export function applyProjectRelocation(target: FolderTarget, choice?: 'overwrite
 // Resolves to { copied, skipped: [{file, reason}], failed: [{file, message}] }.
 export function migrateOlderLayout() {
   return call<Migration>('POST', '/api/project/migrate');
+}
+
+// Follows changed story IDs into the other backlogs: `from` is the backlog whose IDs changed, `changes` maps old code -> new code
+// ('' = deleted), and `only` limits the run to the named backlogs (a retry). The reply names the backlogs it wrote and one entry
+// per file it could not rewrite; a refused call throws.
+export function relink(from: string, changes: ReadonlyMap<string, string>, only?: readonly string[]) {
+  return call<RelinkReply>('POST', '/api/relink', { json: { from, changes: Object.fromEntries(changes), only } }); // an undefined `only` is left out of the JSON
 }
 
 // `kind` is one of backlog, review, proposals, lexicon, lexicon-suggestions. Files are named by backlog, without ".csv".

@@ -8,13 +8,15 @@ import type { Column } from './storiesColumns.ts';
 import type { SortDir } from './story-table.ts';
 import type { Story } from '#shared/types.ts';
 
+const FROZEN_TICK_HINT = 'A frozen story cannot be changed in bulk';
+
 // A cell's tooltip: its full text (the cell may be cut off), then the row's completeness reasons.
 const cellTitle = (text: string, rowTip: string | undefined) => [text, rowTip].filter(Boolean).join('\n\n') || undefined;
 
 // The read-only table: tick column, sortable headers with resize handles, one row per story.
 // `wrapRef`, `tableRef` and `selectAllRef` are the refs StoriesTab measures and updates.
-export default function StoriesTable({ rows, problems, checked, shownChecked, sort, widthOf, wrapRef, tableRef, selectAllRef, onSort, onResize, onCommitWidths, onFit, onCheckAll, onTick, onOpen }: {
-  rows: Story[]; problems: ReadonlyMap<number, string[]>; checked: ReadonlySet<number>; shownChecked: number;
+export default function StoriesTable({ rows, tickable, problems, checked, shownChecked, sort, widthOf, wrapRef, tableRef, selectAllRef, onSort, onResize, onCommitWidths, onFit, onCheckAll, onTick, onOpen }: {
+  rows: Story[]; tickable: number[]; problems: ReadonlyMap<number, string[]>; checked: ReadonlySet<number>; shownChecked: number;
   sort: { key: string; dir: SortDir } | null; widthOf: (column: Column) => number;
   wrapRef: RefObject<HTMLDivElement | null>; tableRef: RefObject<HTMLTableElement | null>; selectAllRef: RefObject<HTMLInputElement | null>;
   onSort: (key: string) => void; onResize: (key: string, width: number) => void; onCommitWidths: () => void; onFit: (key: string) => void;
@@ -32,8 +34,8 @@ export default function StoriesTable({ rows, problems, checked, shownChecked, so
             <th className="check">
               <input
                 type="checkbox" id="selectAll" aria-label="Select all stories" ref={selectAllRef}
-                checked={rows.length > 0 && shownChecked === rows.length} disabled={!rows.length}
-                onChange={(e) => onCheckAll(e.target.checked, rows.map((r) => r.id))}
+                checked={tickable.length > 0 && shownChecked === tickable.length} disabled={!tickable.length}
+                onChange={(e) => onCheckAll(e.target.checked, tickable)}
               />
             </th>
             {COLUMNS.map((column) => {
@@ -67,6 +69,7 @@ export default function StoriesTable({ rows, problems, checked, shownChecked, so
                 <td className="check">
                   <input
                     type="checkbox" aria-label={`Select ${storyLabel(s)}`} checked={on}
+                    disabled={s.frozen} title={s.frozen ? FROZEN_TICK_HINT : undefined}
                     onChange={() => {}}
                     onClick={(e) => onTick(s.id, e.currentTarget.checked, e.shiftKey)}
                   />

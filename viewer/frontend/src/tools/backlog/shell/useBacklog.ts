@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
-import type { BacklogFile, ReviewRow, Story } from '#shared/types.ts';
+import type { Backlog, BacklogFile, ReviewRow, Story } from '#shared/types.ts';
 import { createFileStore, messageOf } from '#frontend/src/shared/api/files.ts';
 import { loadBacklog, newStory, displayOrder, applyBulk } from '#shared/backlog/model.ts';
 import { commitEpic, commitEpics, moveStory, moveGroup, gatherFeatures, recodedBetween, removeStory, removeStories, wouldCycle, renumber } from '#shared/backlog/ids.ts';
@@ -10,6 +10,7 @@ import { useConfirm } from '#frontend/src/shared/hooks/useConfirm.ts';
 
 const store = createFileStore('backlog');
 const NEW_BACKLOG_NAME = 'new-backlog';
+const storiesOf = (backlog: Backlog) => backlog.stories;
 
 export interface BacklogState {
   files: string[];
@@ -61,10 +62,11 @@ const initial: BacklogState = {
 };
 
 // Story objects are never mutated once they are in state: every change replaces the story (or all of them).
-// Deleted stories drop out of the ticked set.
+// Deleted and frozen stories drop out of the ticked set (a frozen story cannot be ticked). The same Set stays when nothing drops.
 function withStories(state: BacklogState, stories: Story[], extra: Partial<BacklogState> = {}): BacklogState {
-  const ids = new Set(stories.map((s) => s.id));
-  const checked = new Set([...state.checked].filter((id) => ids.has(id)));
+  const tickable = new Set(stories.filter((s) => !s.frozen).map((s) => s.id));
+  const kept = [...state.checked].filter((id) => tickable.has(id));
+  const checked = kept.length === state.checked.size ? state.checked : new Set(kept);
   return { ...state, backlog: { ...state.backlog!, stories }, checked, edits: state.edits + 1, ...extra };
 }
 
@@ -203,7 +205,9 @@ export function reducer(state: BacklogState, action: BacklogAction): BacklogStat
 }
 
 // The whole editor state for one open backlog, plus the actions that change it and keep it on disk.
-export function useBacklog() {
+// `onIdChanges` receives each save's story ID changes (old code -> new code, '' = deleted) once the backlog is written;
+// `onRelinked` is called after each relink job has rewritten the other backlogs.
+export function useBacklog({ onIdChanges, onRelinked }: { onIdChanges: (changes: ReadonlyMap<string, string>) => void; onRelinked: () => void }) {
   const [state, dispatch] = useReducer(reducer, initial);
   const [status, setStatus] = useState<StatusReport>({ kind: 'idle', detail: '' });
   const [message, setMessage] = useState<string | null>(null);
@@ -213,10 +217,13 @@ export function useBacklog() {
   stateRef.current = state;
 
   const ask = useConfirm();
-  const autosave = useAutosave({ store, stateRef, onStatus: setStatus, onMessage: setMessage });
+  const autosave = useAutosave({ store, stateRef, onStatus: setStatus, onMessage: setMessage, ids: { stories: storiesOf, onIdChanges, onRelinked } });
 
+  // Callers waiting for the render of an edit to mark the backlog dirty (see replaceStoriesAndSettle).
+  const renderWaiters = useRef<(() => void)[]>([]);
   useEffect(() => {
     if (state.edits > 0) autosave.markDirty();
+    renderWaiters.current.splice(0).forEach((resolve) => resolve());
   }, [state.edits, autosave]);
 
   const actions = useMemo(() => {
@@ -229,8 +236,8 @@ export function useBacklog() {
     // keepSelection: stay on the same position in the story list (a reload), rather than start at the top.
     async function loadFile(name: string, keepSelection = false) {
       const { content: text, initials } = await store.readBacklog(name);
-      autosave.loaded(text);
       const backlog = loadBacklog(text, { initials });
+      autosave.loaded(text, backlog.parsed); // the stories on disk, before the renumber on load
       dispatch({ type: 'loaded', name, backlog, initials, keepSelection });
       autosave.setStatus('saved');
       return backlog;
@@ -373,36 +380,34 @@ export function useBacklog() {
       commitEpic: (id: number) => dispatch({ type: 'commitEpic', id }),
       addDependency: (id: number, code: string) => dispatch({ type: 'addDependency', id, code }),
       removeDependency: (id: number, code: string) => dispatch({ type: 'removeDependency', id, code }),
-      // The three moves below resolve the old code -> new code of the stories whose ID changed, so the caller can
-      // make their review suggestions follow (review.retarget).
-      moveStory(id: number, epic: unknown, beforeId?: number | null) {
-        const { stories } = stateRef.current.backlog!;
-        const recoded = recodedBetween(stories, moveStory(stories, id, epic, beforeId, stateRef.current.initials));
-        dispatch({ type: 'move', id, epic, beforeId });
-        return recoded;
-      },
+      // Stories whose ID changes after a move, a group move or Renumber are followed by the save (useAutosave `ids`).
+      moveStory: (id: number, epic: unknown, beforeId?: number | null) => dispatch({ type: 'move', id, epic, beforeId }),
       // `group` is { epic } or { epic, feature }; beforeKey the epic or feature to land before (null = last).
-      moveGroup(group: GroupRef, beforeKey?: string | null) {
-        const { stories } = stateRef.current.backlog!;
-        const recoded = recodedBetween(stories, moveGroup(stories, group, beforeKey, stateRef.current.initials));
-        dispatch({ type: 'moveGroup', group, beforeKey });
-        return recoded;
-      },
-      // Asks first. Resolves the recoded map, or null when nothing changes or the user cancels.
+      moveGroup: (group: GroupRef, beforeKey?: string | null) => dispatch({ type: 'moveGroup', group, beforeKey }),
+      // Asks first; nothing changes when the user cancels.
       async renumberDisplayed() {
         const { stories } = stateRef.current.backlog!;
         const after = gatherFeatures(stories, stateRef.current.initials);
-        if (after === stories) return null;
+        if (after === stories) return;
         const recoded = recodedBetween(stories, after);
         const n = recoded.size;
         const effect = n ? `${n} ${n === 1 ? 'story gets' : 'stories get'} a new ID, and links to ${n === 1 ? 'it are' : 'them are'} updated.` : 'No ID changes; the rows are only put in the order shown.';
         const message = `Put the stories of each feature together, in the order shown, and renumber.\n\n${effect} Frozen stories keep their IDs.\n\nThis cannot be undone.`;
-        if (!(await ask({ title: 'Renumber the backlog?', message, confirmLabel: 'Renumber' }))) return null;
+        if (!(await ask({ title: 'Renumber the backlog?', message, confirmLabel: 'Renumber' }))) return;
         dispatch({ type: 'renumberDisplayed' });
-        return recoded;
       },
 
       replaceStories: (stories: Story[]) => dispatch({ type: 'replaceStories', stories }),
+      // Replaces the stories, waits until the edit has rendered (that is when the save is marked pending), then settles.
+      // Resolves true once the file and every other backlog are written, false if saving is failing.
+      async replaceStoriesAndSettle(stories: Story[]) {
+        const rendered = new Promise<void>((resolve) => renderWaiters.current.push(resolve));
+        dispatch({ type: 'replaceStories', stories });
+        await rendered;
+        return autosave.settle();
+      },
+      // The next save reports these old codes as moved to a new code in another backlog, not as deleted (a migration).
+      registerForwards: (forwards: ReadonlyMap<string, string>) => autosave.registerForwards(forwards),
 
       toggleChecked: (ids: Iterable<number>, on: boolean, anchor: number | null) => dispatch({ type: 'check', ids, on, anchor }),
       checkAll: (on: boolean, ids: Iterable<number>) => dispatch({ type: 'checkAll', on, ids }),

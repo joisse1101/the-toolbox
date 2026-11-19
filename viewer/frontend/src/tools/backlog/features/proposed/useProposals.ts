@@ -2,6 +2,7 @@ import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import type { Backlog, Proposal, Story } from '#shared/types.ts';
 import { FileApiError, createFileStore, messageOf } from '#frontend/src/shared/api/files.ts';
 import { COLUMNS, loadBacklog, newStory, proposalHeaders } from '#shared/backlog/model.ts';
+import { relinkStories } from '#shared/backlog/ids.ts';
 import { nextPlaceholder, removeProposed, moveProposed } from '#shared/backlog/proposals.ts';
 import { useAutosave } from '#frontend/src/shared/hooks/useAutosave.ts';
 import type { StatusReport } from '#frontend/src/shared/hooks/useAutosave.ts';
@@ -43,7 +44,8 @@ export type ProposalsAction =
   | { type: 'delete'; id: number }
   | { type: 'deleteMany'; ids: ReadonlySet<number> }
   | { type: 'move'; id: number; epic: unknown; beforeId?: number | null }
-  | { type: 'replaceStories'; stories: Proposal[] };
+  | { type: 'replaceStories'; stories: Proposal[] }
+  | { type: 'relink'; changes: ReadonlyMap<string, string> };
 
 const initial: ProposalsState = {
   current: null,
@@ -118,6 +120,12 @@ export function reducer(state: ProposalsState, action: ProposalsAction): Proposa
       const stories = action.stories;
       const keep = stories.some((s) => s.id === state.selectedId);
       return withStories(state, stories, { selectedId: keep ? state.selectedId : (stories[0]?.id ?? null) });
+    }
+    // The backlog's story IDs changed (old code -> new code, '' = deleted): the Depends On entries follow. Same state when none names one.
+    case 'relink': {
+      if (!state.backlog) return state;
+      const stories = relinkStories(state.backlog.stories, action.changes);
+      return stories === state.backlog.stories ? state : withStories(state, stories);
     }
     default:
       return state;
@@ -213,6 +221,7 @@ export function useProposals(current: string | null | undefined, headers: readon
       commitEpic: (id: number) => dispatch({ type: 'commitEpic', id }),
       moveStory: (id: number, epic: unknown, beforeId?: number | null) => dispatch({ type: 'move', id, epic, beforeId }),
       replaceStories: (stories: Proposal[]) => dispatch({ type: 'replaceStories', stories }),
+      relinkStories: (changes: ReadonlyMap<string, string>) => dispatch({ type: 'relink', changes }),
 
       // Asks first. `ids` is the set of ticked stories. Resolves true when they were deleted.
       async deleteMany(ids: ReadonlySet<number>) {
