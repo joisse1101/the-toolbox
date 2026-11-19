@@ -58,7 +58,7 @@ The open tab comes only from the address. `resolveTab` in `viewer/frontend/src/t
 - `shared/` holds what every tool may use: `ui/` (components), `hooks/`, `lib/` (pure logic), `api/` (the file API client) and `style.css`.
 - `viewer/frontend/src/tools/backlog/` holds the backlog tool: `BacklogTool.tsx` (the top component), `tabs.ts`, `backlog.css`, `shell/` (header, file bar, tab state, backlog and project state, shortcuts), `shared/` (code several backlog features use, such as `StoryList.tsx` and `story-form/`) and `features/<feature>/` (one folder per tab: `editor`, `stories`, `graph`, `proposed`, `lexicon`, `review`, `settings`).
 
-`viewer/test/zones.test.ts` enforces three import rules inside the frontend:
+The linter (`npm run lint`, rules in `viewer/eslint.config.mjs`) enforces three import rules inside the frontend:
 
 - Code in `viewer/frontend/src/shared/` imports nothing under `tools/` or `app/`.
 - A tool imports no other tool.
