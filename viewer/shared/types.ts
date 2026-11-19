@@ -50,8 +50,11 @@ export interface Backlog {
 }
 
 // What loadBacklog returns: `changed` says the file needs saving (an old column was dropped, or IDs were recomputed).
+// `parsed` is the story list as the file held it, before the renumber (same in-memory `id`s as `stories`), the baseline
+// for `idChanges` on open.
 export interface BacklogFile extends Backlog {
   changed: boolean;
+  parsed: Story[];
 }
 
 // The kinds of file a backlog folder holds (storage/backlog-paths.ts).

@@ -229,6 +229,43 @@ export function recodedBetween(before                  , after                  
   return recoded;
 }
 
+// Every ID change between two versions of a list, for the other backlogs' links: `recodedBetween` plus a '' entry for
+// each story with a unique code that is gone from `after` (matched by id). A code that more than one story had is left out.
+export function idChanges(before                  , after                  )                      {
+  const changes = recodedBetween(before, after);
+  const present = new Set(after.map((s) => s.id));
+  const count = new Map                ();
+  for (const s of before) if (s.code) count.set(s.code, (count.get(s.code) ?? 0) + 1);
+  for (const s of before) {
+    if (s.code && count.get(s.code) === 1 && !present.has(s.id)) changes.set(s.code, '');
+  }
+  return changes;
+}
+
+// The story fields `relinkStories` needs. A test or a text helper may pass a row that holds only these.
+                         
+                      
+                      
+ 
+
+// Rewrite each `Depends On` entry that exactly matches a key of `changes` (old code -> new code; '' = deleted, so the
+// entry is dropped) and remove repeats. Every entry is looked up once, so a swap A -> B, B -> A is applied once. Nothing
+// is renumbered. Same array when no story changes.
+export function relinkStories                  (stories     , changes                             )      {
+  let changed = false;
+  const out = stories.map((s) => {
+    if (!s.dependsOn.some((e) => changes.has(e))) return s;
+    const deps           = [];
+    for (const e of s.dependsOn) {
+      const target = changes.get(e) ?? e;
+      if (target && !deps.includes(target)) deps.push(target);
+    }
+    changed = true;
+    return { ...s, dependsOn: deps, ambiguous: s.ambiguous.filter((e) => deps.includes(e)) };
+  });
+  return changed ? out : stories;
+}
+
 // The Epic field was left. A changed epic moves the story to the bottom of it; a blank one takes its ID away.
 export function commitEpic(stories         , id        , initials        )          {
   const s = stories.find((x) => x.id === id);

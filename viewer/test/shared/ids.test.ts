@@ -4,7 +4,7 @@ import { parseCsv } from '#shared/backlog/csv.ts';
 import { loadBacklog, serializeBacklog, newStory, storyIssues, COLUMNS } from '#shared/backlog/model.ts';
 import type { Story } from '#shared/types.ts';
 import {
-  epicPrefix, renumber, moveStory, moveGroup, gatherFeatures, recodedBetween, commitEpic, commitEpics, removeStory, removeStories, freezeStories, dependentsOf, wouldCycle, dependencyChoices, backlogProblems,
+  epicPrefix, renumber, moveStory, moveGroup, gatherFeatures, recodedBetween, idChanges, relinkStories, commitEpic, commitEpics, removeStory, removeStories, freezeStories, dependentsOf, wouldCycle, dependencyChoices, backlogProblems,
 } from '#shared/backlog/ids.ts';
 
 const I = 'B1'; // the backlog initials of most tests
@@ -495,4 +495,67 @@ test('recodedBetween: a frozen story that keeps its code is not listed; a repeat
   assert.ok(![...recodedBetween(frozen, out).keys()].includes('B1-B-0002'));
   const twin = [{ ...stories[0] }, { ...stories[1], code: stories[0].code }];
   assert.equal(recodedBetween(twin, [{ ...twin[0], code: 'X-0001' }, { ...twin[1], code: 'X-0002' }]).size, 0);
+});
+
+test('idChanges: a renumbered story maps to its new code', () => {
+  const stories = rn([ft('Billing', 'Pay'), ft('Billing', 'Refund'), ft('Billing', 'Invoice')]);
+  const out = moveGroup(stories, { epic: 'Billing', feature: 'Invoice' }, 'Pay', I);
+  assert.deepEqual([...idChanges(stories, out)], [['B1-B-0001', 'B1-B-0002'], ['B1-B-0002', 'B1-B-0003'], ['B1-B-0003', 'B1-B-0001']]);
+});
+
+test('idChanges: a deleted story maps to an empty code, and the stories after it to their new codes', () => {
+  const stories = rn([st('Billing'), st('Billing'), st('Billing')]);
+  const { stories: out } = removeStories(stories, new Set([stories[0].id]), I);
+  assert.deepEqual([...idChanges(stories, out)], [['B1-B-0002', 'B1-B-0001'], ['B1-B-0003', 'B1-B-0002'], ['B1-B-0001', '']]);
+});
+
+test('idChanges: a story that lost its epic and a story taken out both map to an empty code', () => {
+  const stories = rn([st('Billing'), st('Billing')]);
+  const noEpic = [{ ...stories[0], code: '' }, stories[1]];
+  assert.equal(idChanges(stories, noEpic).get('B1-B-0001'), '');
+  assert.equal(idChanges(stories, [stories[1]]).get('B1-B-0001'), '');
+});
+
+test('idChanges: a code that more than one story had is left out, also when the story is gone', () => {
+  const twin = [{ ...st('Billing'), code: 'X-0001' }, { ...st('Billing'), code: 'X-0001' }];
+  assert.equal(idChanges(twin, [twin[0]]).size, 0);
+  assert.equal(idChanges(twin, [{ ...twin[0], code: 'X-0002' }, twin[1]]).size, 0);
+});
+
+test('idChanges: an unchanged list gives an empty map', () => {
+  const stories = rn([st('Billing'), st('Billing'), st('')]);
+  assert.equal(idChanges(stories, stories).size, 0);
+  assert.equal(idChanges([], []).size, 0);
+});
+
+test('relinkStories: rewrites entries that exactly match a key and leaves the others', () => {
+  const [a, b, c] = rn([st('Billing'), st('Billing'), st('Billing')]);
+  const linked = [{ ...c, dependsOn: [a.code, 'B1-B-00011', b.code], ambiguous: [a.code] }];
+  const out = relinkStories(linked, new Map([[a.code, 'Z-0001']]));
+  assert.deepEqual(out[0].dependsOn, ['Z-0001', 'B1-B-00011', b.code]);
+  assert.deepEqual(out[0].ambiguous, []); // the old entry is gone
+  assert.equal(out[0].code, c.code);
+});
+
+test('relinkStories: drops a deleted entry and repeats', () => {
+  const s = { ...st('Billing'), dependsOn: ['A', 'B', 'C'] };
+  const out = relinkStories([s], new Map([['A', ''], ['B', 'C']]));
+  assert.deepEqual(out[0].dependsOn, ['C']);
+  assert.deepEqual(s.dependsOn, ['A', 'B', 'C']); // the input is not changed
+});
+
+test('relinkStories: a swap A to B and B to A is applied once', () => {
+  const s = { ...st('Billing'), dependsOn: ['A', 'B'] };
+  const t = { ...st('Billing'), dependsOn: ['B'] };
+  const out = relinkStories([s, t], new Map([['A', 'B'], ['B', 'A']]));
+  assert.deepEqual(out[0].dependsOn, ['B', 'A']);
+  assert.deepEqual(out[1].dependsOn, ['A']);
+});
+
+test('relinkStories: returns the same array and stories when nothing changes', () => {
+  const list = [{ ...st('Billing'), dependsOn: ['A'] }, st('Billing')];
+  assert.equal(relinkStories(list, new Map([['Q', 'R']])), list);
+  assert.equal(relinkStories(list, new Map()), list);
+  const out = relinkStories([...list, { ...st('Billing'), dependsOn: ['Q'] }], new Map([['Q', 'R']]));
+  assert.equal(out[0], list[0]); // an untouched story is the same object
 });

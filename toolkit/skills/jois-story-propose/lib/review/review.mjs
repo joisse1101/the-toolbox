@@ -713,17 +713,29 @@ export const openUnitsFor = (rows                      , code        )          
 
 // Open rows follow their story when IDs are recomputed: `recoded` maps old code -> new code. Applied and dismissed rows
 // are history and stay as written. Depends On rows also name other stories, in Current and Suggested.
+// A '' in `recoded` means the story is gone. A row on such a story keeps its ID, so it is shown as out of date instead of
+// getting an empty ID, and a deleted entry leaves Current. Only an entry that is a key of `recoded` is rewritten, so the
+// text of a list that names none stays as written. Suggested holds one story, so it keeps its text when that story is gone.
 // Same array when nothing changes.
 export function retargetRows(rows             , recoded                             )              {
-  const to = (code        )         => recoded.get(code) ?? code;
-  const list = (text        )         => String(text).split(';').map((c) => to(c.trim())).join(';');
+  const to = (code        )         => recoded.get(code) || code;
+  const list = (text        )         => {
+    const entries = String(text).split(';').map((c) => c.trim());
+    if (!entries.some((c) => recoded.has(c))) return text;
+    const out           = [];
+    for (const c of entries) {
+      const target = recoded.get(c) ?? c;
+      if (target && !out.includes(target)) out.push(target);
+    }
+    return out.join(';');
+  };
   let changed = false;
   const out = rows.map((r) => {
     if (r.status !== 'open') return r;
     const next = { ...r, storyId: to(r.storyId) };
     if (r.field === 'Depends On') {
       next.current = list(r.current);
-      next.suggested = list(r.suggested);
+      next.suggested = list(r.suggested) || r.suggested;
     }
     if (next.storyId === r.storyId && next.current === r.current && next.suggested === r.suggested) return r;
     changed = true;

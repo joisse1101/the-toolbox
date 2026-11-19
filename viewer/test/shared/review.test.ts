@@ -413,6 +413,20 @@ test('retargetRows: open rows follow renumbered stories, history stays, Depends 
   assert.equal(retargetRows(rows, new Map()), rows);
 });
 
+test('retargetRows: a deleted story keeps its open rows, a deleted Depends On entry leaves Current, an untouched list keeps its text', () => {
+  const b = backlog();
+  const rows = rowsFor([
+    finding({ storyId: 'B1-IAM-0002', field: 'Title', suggested: 'X' }),
+    finding({ storyId: 'B1-IAM-0002', field: 'Depends On', action: 'add', suggested: 'B1-IAM-0003' }),
+  ], b);
+  rows[1].current = 'B1-IAM-0001; B1-IAM-0003';
+  const gone = retargetRows(rows, new Map([['B1-IAM-0002', ''], ['B1-IAM-0001', '']]));
+  assert.deepEqual(gone.map((r) => r.storyId), ['B1-IAM-0002', 'B1-IAM-0002']);
+  assert.equal(gone[1].current, 'B1-IAM-0003');
+  assert.equal(gone[1].suggested, 'B1-IAM-0003');
+  assert.equal(retargetRows(rows, new Map([['B1-IAM-0050', 'B1-IAM-0051']])), rows); // "A; B" is not rewritten
+});
+
 // ---------- frozen stories ----------
 
 // B1-IAM-0002 (Logout) frozen.
