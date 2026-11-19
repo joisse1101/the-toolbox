@@ -5,9 +5,9 @@ import { matchesQuery, findStories, searchReply, SEARCH_CAP } from '#shared/back
 import type { Story } from '#shared/types.ts';
 
 const CSV = [
-  'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes,Legacy Ref',
-  ',Billing,Invoices,Export,"As a lead, I want to export so that I can share",3,High,,"Given an invoice, when I export, then I get a file",needs csv,OLD-42',
-  ',Billing,Invoices,Other,,1,,,,,',
+  'ID,Epic,Feature,Title,User Story,Sprint points,Depends On,User Acceptance Criteria,Notes,Legacy Ref',
+  ',Billing,Invoices,Export,"As a lead, I want to export so that I can share",3,,"Given an invoice, when I export, then I get a file",needs csv,OLD-42',
+  ',Billing,Invoices,Other,,1,,,,',
 ].join('\n');
 
 const open = () => loadBacklog(CSV, { initials: 'B1' });
@@ -26,6 +26,12 @@ test('a word in a field the table does not show matches', () => {
 test('a column the tool does not know is searched', () => {
   assert.equal(hit(first, 'old-42'), true);
   assert.equal(hit(second, 'old-42'), false);
+});
+
+test('a word that appears only in an old Priority value finds nothing', () => {
+  const old = loadBacklog('ID,Epic,Title,Priority\n,Billing,Export,Zebrafish\n', { initials: 'B1' });
+  assert.equal(matchesQuery(old.stories[0], 'zebrafish', old.headers), false);
+  assert.equal(matchesQuery(old.stories[0], 'export', old.headers), true);
 });
 
 test('case is ignored', () => {

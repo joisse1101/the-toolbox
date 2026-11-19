@@ -41,13 +41,11 @@ export default function StoriesTable({ rows, problems, checked, shownChecked, so
               const sorted = sort?.key === key;
               const sortState = sorted ? (sort!.dir === 'asc' ? 'ascending' : 'descending') : 'none';
               return (
-                <th key={key} className={className} aria-sort={key === 'priority' ? undefined : sortState}>
-                  {key === 'priority' ? label : (
-                    <button type="button" className="link-btn" onClick={() => onSort(key)} title={`Sort by ${label}`}>
-                      {label}
-                      {sorted && <span className="sort-arrow" aria-hidden="true">{sort!.dir === 'asc' ? '▲' : '▼'}</span>}
-                    </button>
-                  )}
+                <th key={key} className={className} aria-sort={sortState}>
+                  <button type="button" className="link-btn" onClick={() => onSort(key)} title={`Sort by ${label}`}>
+                    {label}
+                    {sorted && <span className="sort-arrow" aria-hidden="true">{sort!.dir === 'asc' ? '▲' : '▼'}</span>}
+                  </button>
                   {!fixed && (
                     <ResizeHandle
                       className="column-handle" label={`Resize the ${label} column`} value={widthOf(column)} {...COLUMN_LIMITS}
@@ -78,7 +76,6 @@ export default function StoriesTable({ rows, problems, checked, shownChecked, so
                 <td title={cellTitle(s.feature, tip)}>{s.feature}</td>
                 <td title={cellTitle(storyLabel(s), tip)}><button type="button" className="link-btn" onClick={() => onOpen(s.id)}><StateMark kind={issueClass(errors, warnings)} iconOnly />{storyLabel(s)}</button></td>
                 <td className="num">{s.points}</td>
-                <td>{s.priority}</td>
                 <td title={cellTitle(s.dependsOn.join(', '), tip)}>{s.dependsOn.join(', ')}</td>
               </tr>
             );

@@ -1,11 +1,7 @@
-import { PRIORITIES } from '#shared/backlog/model.ts';
-
-export const KEEP = 'keep'; // bulk Priority "No change" ('' is "None", which clears)
-
 // The bulk edit bar: the fields and buttons for the ticked rows on screen, or a hint when nothing is ticked.
-export default function StoriesBulkBar({ checkedCount, n, hiddenChecked, priority, epic, feature, note, isEmpty, onPriority, onEpic, onFeature, onApply, onDelete, onDeselectAll }: {
-  checkedCount: number; n: number; hiddenChecked: number; priority: string; epic: string; feature: string; note: string; isEmpty: boolean;
-  onPriority: (value: string) => void; onEpic: (value: string) => void; onFeature: (value: string) => void;
+export default function StoriesBulkBar({ checkedCount, n, hiddenChecked, epic, feature, note, isEmpty, onEpic, onFeature, onApply, onDelete, onDeselectAll }: {
+  checkedCount: number; n: number; hiddenChecked: number; epic: string; feature: string; note: string; isEmpty: boolean;
+  onEpic: (value: string) => void; onFeature: (value: string) => void;
   onApply: () => void; onDelete: () => void; onDeselectAll: () => void;
 }) {
   return (
@@ -13,14 +9,6 @@ export default function StoriesBulkBar({ checkedCount, n, hiddenChecked, priorit
       {checkedCount > 0 && (
         <>
           <strong id="bulkCount">{`${n} selected${hiddenChecked ? `, ${hiddenChecked} hidden by the search or filters` : ''}`}</strong>
-          <div>
-            <label htmlFor="bulkPriority">Set priority</label>
-            <select id="bulkPriority" disabled={n === 0} value={priority} onChange={(e) => onPriority(e.target.value)}>
-              <option value={KEEP}>No change</option>
-              <option value="">None</option>
-              {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
-            </select>
-          </div>
           <div>
             <label htmlFor="bulkEpic">Set epic</label>
             <input type="text" id="bulkEpic" disabled={n === 0} list="bulkEpicList" autoComplete="off" placeholder="No change" value={epic} onChange={(e) => onEpic(e.target.value)} />

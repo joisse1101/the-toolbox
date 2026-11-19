@@ -131,7 +131,7 @@ The Stories table's bulk bar is quiet until a row is ticked: it has no accent bo
 
 ### Panel sizes
 
-`viewer/frontend/src/shared/hooks/usePanelSizes.ts` keeps the widths of the draggable list divider on the Editor, Proposed and Lexicon tabs (through `viewer/frontend/src/shared/hooks/useListWidth.ts`) and of the Stories table's Epic, Feature and Title columns (the ID, Points, Priority and Depends On columns have a fixed width, and Title takes the spare width). They are kept in `localStorage` under `planner.listWidth.<tab>` and `planner.colWidth.<column>`. `viewer/frontend/src/shared/ui/ResizeHandle.tsx` is the drag handle, and a double-click resets it. The limits are in `viewer/frontend/src/shared/lib/panel-size.ts`.
+`viewer/frontend/src/shared/hooks/usePanelSizes.ts` keeps the widths of the draggable list divider on the Editor, Proposed and Lexicon tabs (through `viewer/frontend/src/shared/hooks/useListWidth.ts`) and of the Stories table's Epic, Feature and Title columns (the ID, Points and Depends On columns have a fixed width, and Title takes the spare width). They are kept in `localStorage` under `planner.listWidth.<tab>` and `planner.colWidth.<column>`. `viewer/frontend/src/shared/ui/ResizeHandle.tsx` is the drag handle, and a double-click resets it. The limits are in `viewer/frontend/src/shared/lib/panel-size.ts`.
 
 ### Folded epics and features
 

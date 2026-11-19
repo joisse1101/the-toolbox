@@ -2,8 +2,7 @@
 // says to avoid, and overlap with the proposals. Feeds the review skill's `checks` section. Pure: no file access.
 //   backlogChecks({ stories, lexicon, proposals }) -> [{ storyId, title, frozen, kind, message }]
 // A problem about a lexicon term has `term` instead of `storyId` and `title`. Frozen stories are checked too, and marked
-// `frozen`, because the review uses them as context but does not review them. Priority is never checked.
-
+// `frozen`, because the review uses them as context but does not review them.
 import { backlogProblems } from './lib/backlog/ids.mjs';
 import { POINTS, SPLIT_ABOVE, storyIssues } from './lib/backlog/model.mjs';
 import { lexiconProblems } from './lib/lexicon/lexicon.mjs';

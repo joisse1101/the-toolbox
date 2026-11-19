@@ -12,7 +12,6 @@ const NAV_HINTS = [
   { label: 'Ctrl+Alt+Left / Right', action: 'Previous / next text field from anywhere in it' },
   { label: 'Up / Down', action: 'Previous / next field group' },
   { label: 'Left / Right (points)', action: 'Previous / next sprint point' },
-  { label: `${ALT}+Right / Left (points)`, action: 'Go to Priority / back to points' },
 ];
 
 interface Shortcut {

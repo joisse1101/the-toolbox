@@ -1,6 +1,6 @@
 import type { Filter, FilterKey } from './story-table.ts';
 
-// The search box, the Priority / Epic / Feature filters and the clear button.
+// The search box, the Epic / Feature filters and the clear button.
 export default function StoriesFilters({ query, filter, options, filtering, onQuery, onFilter, onClear }: {
   query: string; filter: Filter; options: Record<FilterKey, string[]>; filtering: boolean;
   onQuery: (query: string) => void; onFilter: (key: FilterKey, value: string) => void; onClear: () => void;
@@ -10,7 +10,7 @@ export default function StoriesFilters({ query, filter, options, filtering, onQu
       <div className="grow">
         <input id="storiesSearch" type="text" autoComplete="off" value={query} placeholder="Search any word in any field of a story" onChange={(e) => onQuery(e.target.value)} />
       </div>
-      {([['priority', 'Priority'], ['epic', 'Epic'], ['feature', 'Feature']] as const).map(([key, label]) => (
+      {([['epic', 'Epic'], ['feature', 'Feature']] as const).map(([key, label]) => (
         <div key={key}>
           <label htmlFor={`filter-${key}`}>{label}</label>
           <select id={`filter-${key}`} value={filter[key]} onChange={(e) => onFilter(key, e.target.value)}>

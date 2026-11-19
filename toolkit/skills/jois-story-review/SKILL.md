@@ -49,7 +49,7 @@ The scripts find the backlog data folder themselves, in the current folder only 
    - `sizing`: `references/sprint-points-guideline.md`, to judge whether a story's points fit.
    - `guidelines`: `references/product-backlog.md`, the rules for each level. Do not restate or replace them from memory.
    - every `epic-<n>` in the menu, each one, in turn (see "Review Epic by Epic"). Do not skip an Epic.
-3. The scope line reads `N of M stories submitted for review, K frozen (reference only)`. It is left out when the CSV cannot be read; then treat every story as submitted. An `epic-<n>` section is the CSV header row and that Epic's stories. Columns: `ID, Epic, Feature, Title, User Story, Sprint points, Priority, Depends On, User Acceptance Criteria, Notes, Frozen, Clarifications`.
+3. The scope line reads `N of M stories submitted for review, K frozen (reference only)`. It is left out when the CSV cannot be read; then treat every story as submitted. An `epic-<n>` section is the CSV header row and that Epic's stories. Columns: `ID, Epic, Feature, Title, User Story, Sprint points, Depends On, User Acceptance Criteria, Notes, Frozen, Clarifications`.
    - `Title` is the title of the user story. `Feature` is the functional component the story belongs to.
    - `User Story` is `As a <role>, I want <action>, so that <benefit>`.
    - `User Acceptance Criteria` is one `AC<n>: Given ..., when ..., then ...` per line inside the cell.
@@ -134,7 +134,7 @@ Read the `epic-<n>` sections one at a time. After each one, review its submitted
 | Wording, typo, weak "so that", Title that reads as a feature | `replace` on the field (`Title`, `User Story` with the full "As a..., I want..., so that..." text, `Feature`, ...) | ready |
 | Missing or vague acceptance criterion | `add` (one criterion line) or `replace` (starts with the label to replace, e.g. `AC3: Given..., when..., then...`) on `User Acceptance Criteria` | ready |
 | Duplicate or unwanted acceptance criterion | `remove` on `User Acceptance Criteria`, `suggested` = the label alone (e.g. `AC4`) | confirm |
-| A value only the user can decide (page size, threshold, missing points or priority) | `replace` with your proposed default | confirm |
+| A value only the user can decide (page size, threshold, missing points) | `replace` with your proposed default | confirm |
 | Story or Feature under the wrong Epic or Feature | `replace` on `Epic` or `Feature` | ready |
 | Dependency problem | `add` or `remove` on `Depends On`, `Suggested` = one story ID | ready |
 | Open question (single-story Feature, unclear scope, a case that needs a decision) | `append` the question to `Clarifications` (area may be `Clarification`); `Notes` is only for facts and decisions | confirm |
@@ -162,13 +162,12 @@ Build a JSON array, one object per row, with exactly these keys (no `current` an
 ]
 ```
 
-- `field`: Epic, Feature, Title, User Story, Sprint points, Depends On, User Acceptance Criteria, Notes, Clarifications (Priority is not accepted).
+- `field`: Epic, Feature, Title, User Story, Sprint points, Depends On, User Acceptance Criteria, Notes, Clarifications.
 - `action`: replace, add, remove, append, resolve, add-story. There is no `unlock` row: an old one already in a review file is shown as stale.
 - `pair`: only on a `resolve` row, the number of the question being resolved (for example `2`).
 - `area`: Hierarchy, INVEST, Acceptance criteria, Clarification, Consistency. A dependency problem is `INVEST`; a row from the cross-story, lexicon or proposal checks is `Consistency`.
 - `confidence`: ready, confirm. `reason` is one sentence and never names a criterion by its AC number (the numbers change when another suggestion is applied); quote the criterion's wording instead.
 - `Sprint points` must be 1, 2, 3, 5, 8, 13, 21, 34 or 55.
-- Ignore Priority: do not review it, report it as missing, or suggest a value for it.
 - A suggested rewording must not grow the story. Keep it to what the story already implies: do not add a capability, a user group, a permission or a rule (for example "only sees what they are entitled to" implies role-based access). If a better benefit would need new scope, use a modest benefit and raise the larger idea as a separate question in Clarifications.
 - Use story IDs exactly as `read-backlog.mjs` prints them: it prints the form the portal derives (epic initials and position, such as `R-0001`), which is the only form `write-review.mjs` accepts, even when the CSV file on disk holds another one.
 

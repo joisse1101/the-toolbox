@@ -22,7 +22,7 @@ Use the Editor, Graph and Stories tabs. The portal saves by itself, so the resul
 2. Fill in Epic, Feature and Title, the "As", "I want" and "So that" parts, the sprint points and the acceptance criteria, including a failure case. Use Clarifications for what is not decided yet.
 3. Set Depends On in the form, or switch to the **Graph** tab and drag from one story's dot to the story it depends on.
 4. Watch the save chip in the header until it reads "Saved". If it reads "Save failed", close the file in Excel and the portal retries.
-5. Use the **Stories** tab to check the whole backlog, to sort and filter it, and to set Priority, Epic or Feature on several stories at once. Stories that the plan skill has frozen are marked and stay as they are. The bulk bar stays quiet until you tick a row, and its actions apply only to ticked rows that the search and filters still show. If a search hides ticked rows, the bar says how many are hidden.
+5. Use the **Stories** tab to check the whole backlog, to sort and filter it, and to set Epic or Feature on several stories at once. Stories that the plan skill has frozen are marked and stay as they are. The bulk bar stays quiet until you tick a row, and its actions apply only to ticked rows that the search and filters still show. If a search hides ticked rows, the bar says how many are hidden.
 6. To change the initials that start every ID of the backlog, edit the **Initials** box next to the backlog name and leave it. The IDs of stories that are not frozen change and their links follow. A value another backlog uses is refused with that backlog's name.
 
 To work out stories in conversation first, use the skills as in the next flow. They do not write to `user-stories.csv`.

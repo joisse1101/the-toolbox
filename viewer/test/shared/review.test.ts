@@ -16,10 +16,10 @@ const INITIALS = 'B1';
 const load = (text: string) => loadBacklog(text, { initials: INITIALS });
 
 const CSV =
-  'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes\r\n' +
-  'B1-IAM-0001,Identity & Access Management,Auth,Login,"As a user, I want to log in, so that I can access the portal",5,High,,"AC1: Given a, when b, then c\nAC2: Given d, when e, then f",\r\n' +
-  'B1-IAM-0002,Identity & Access Management,Auth,Logout,"As a user, I want to log out, so that I end my session",3,High,B1-IAM-0001,"AC1: Given g, when h, then i",note one\r\n' +
-  'B1-IAM-0003,Identity & Access Management,SSO,SSO Login,"As a user, I want SSO, so that no credentials",55,,,,\r\n';
+  'ID,Epic,Feature,Title,User Story,Sprint points,Depends On,User Acceptance Criteria,Notes\r\n' +
+  'B1-IAM-0001,Identity & Access Management,Auth,Login,"As a user, I want to log in, so that I can access the portal",5,,"AC1: Given a, when b, then c\nAC2: Given d, when e, then f",\r\n' +
+  'B1-IAM-0002,Identity & Access Management,Auth,Logout,"As a user, I want to log out, so that I end my session",3,B1-IAM-0001,"AC1: Given g, when h, then i",note one\r\n' +
+  'B1-IAM-0003,Identity & Access Management,SSO,SSO Login,"As a user, I want SSO, so that no credentials",55,,,\r\n';
 
 const backlog = () => load(CSV);
 
@@ -76,7 +76,7 @@ test('action must fit the field', () => {
   assert.ok(errors.some((e) => e.includes('does not fit Field Title')));
 });
 
-test('value checks: user story syntax, points scale, priority, criterion shape', () => {
+test('value checks: user story syntax, points scale, unknown field, criterion shape', () => {
   const b = backlog();
   assert.ok(validateFindings([finding({ field: 'User Story', suggested: 'free text' })], b).length);
   assert.ok(validateFindings([finding({ field: 'Sprint points', suggested: '7' })], b).length);
@@ -209,7 +209,7 @@ test('Depends On add and remove, and a cycle is refused', () => {
 });
 
 // B1-IAM-0003 lists a missing code, itself, a proposed story and a real one.
-const DANGLING_CSV = CSV.replace('SSO Login,"As a user, I want SSO, so that no credentials",55,,,,', 'SSO Login,"As a user, I want SSO, so that no credentials",55,,B1-IAM-0099;B1-IAM-0003;NEW-4;B1-IAM-0001,,');
+const DANGLING_CSV = CSV.replace('SSO Login,"As a user, I want SSO, so that no credentials",55,,,', 'SSO Login,"As a user, I want SSO, so that no credentials",55,B1-IAM-0099;B1-IAM-0003;NEW-4;B1-IAM-0001,,');
 const danglingBacklog = () => load(DANGLING_CSV);
 const removeRow = (suggested: string, over: Finding = {}) => finding({ storyId: 'B1-IAM-0003', field: 'Depends On', action: 'remove', suggested, storyTitle: 'SSO Login', area: 'INVEST', ...over });
 
@@ -661,8 +661,8 @@ test('criterionNumberOf places a replace or remove row on the criterion its Curr
 
 const criteriaCsv = (count: number) => {
   const cells = Array.from({ length: count }, (_, i) => `AC${i + 1}: Given g${i + 1}, when w${i + 1}, then t${i + 1}`).join('\n');
-  return 'ID,Epic,Feature,Title,User Story,Sprint points,Priority,Depends On,User Acceptance Criteria,Notes\r\n' +
-    `B1-DAM-0001,Data Asset Management,Sets,Big,"As a user, I want data, so that I know",5,High,,"${cells}",\r\n`;
+  return 'ID,Epic,Feature,Title,User Story,Sprint points,Depends On,User Acceptance Criteria,Notes\r\n' +
+    `B1-DAM-0001,Data Asset Management,Sets,Big,"As a user, I want data, so that I know",5,,"${cells}",\r\n`;
 };
 const acRow = (action: string, suggested: string) => finding({ storyId: 'B1-DAM-0001', field: 'User Acceptance Criteria', action, suggested });
 const givens = (stories: Story[]) => stories.find((s) => s.code === 'B1-DAM-0001')!.criteria.map((c) => c.given);

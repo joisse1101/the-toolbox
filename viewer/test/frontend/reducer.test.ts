@@ -72,9 +72,9 @@ test('bulk epic change: moved stories go to the bottom of the new epic and links
   assert.deepEqual(state.backlog!.stories.map((s) => s.title), ['C', 'A', 'B']);
   assert.deepEqual(state.backlog!.stories.map((s) => s.code), ['B1-O-0001', 'B1-O-0002', 'B1-O-0003']);
   assert.deepEqual(state.backlog!.stories[0].dependsOn, ['B1-O-0002']);
-  // priority only: IDs untouched
-  const prio = reducer(state, { type: 'bulk', ids: state.checked, patch: { priority: 'High' } });
-  assert.deepEqual(prio.backlog!.stories.map((s) => s.code), ['B1-O-0001', 'B1-O-0002', 'B1-O-0003']);
+  // feature only: IDs untouched
+  const featured = reducer(state, { type: 'bulk', ids: state.checked, patch: { feature: 'Signup' } });
+  assert.deepEqual(featured.backlog!.stories.map((s) => s.code), ['B1-O-0001', 'B1-O-0002', 'B1-O-0003']);
   assert.ok(applyBulk);
 });
 
@@ -253,7 +253,7 @@ test('frozen story: every field edit and the Epic commit return the same state',
   const a = byTitle(state, 'A');
   assert.equal(a.frozen, true);
   const fields = {
-    epic: 'Onboarding', feature: 'F', title: 'A2', asA: 'x', iWant: 'y', soThat: 'z', points: '3', priority: 'High',
+    epic: 'Onboarding', feature: 'F', title: 'A2', asA: 'x', iWant: 'y', soThat: 'z', points: '3',
     dependsOn: ['B1-O-0001'], notes: 'n',
   };
   for (const [field, value] of Object.entries(fields)) {
@@ -301,11 +301,11 @@ test('frozen story: bulk edit skips it entirely and changes the others', () => {
   let state = opened(FROZEN_FILE);
   const [a, b] = state.backlog!.stories;
   state = reducer(state, { type: 'checkAll', on: true, ids: [a.id, b.id] });
-  state = reducer(state, { type: 'bulk', ids: state.checked, patch: { epic: 'Onboarding', priority: 'High' } });
+  state = reducer(state, { type: 'bulk', ids: state.checked, patch: { epic: 'Onboarding' } });
   const frozenA = state.backlog!.stories.find((s) => s.id === a.id)!;
-  assert.deepEqual([frozenA.epic, frozenA.priority, frozenA.code], ['Billing', '', 'B1-B-0001']);
+  assert.deepEqual([frozenA.epic, frozenA.code], ['Billing', 'B1-B-0001']);
   const changedB = state.backlog!.stories.find((s) => s.id === b.id)!;
-  assert.deepEqual([changedB.epic, changedB.priority], ['Onboarding', 'High']);
+  assert.equal(changedB.epic, 'Onboarding');
 });
 
 test('frozen story: applySuggestions on it leaves the state alone', () => {

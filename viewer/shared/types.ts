@@ -29,7 +29,6 @@ export interface Story {
   iWant: string;
   soThat: string;
   points: string;
-  priority: string;
   notes: string;
   benched: boolean; // proposed stories only
   frozen: boolean;

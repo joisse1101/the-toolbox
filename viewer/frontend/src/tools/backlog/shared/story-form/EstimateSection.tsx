@@ -1,16 +1,13 @@
 import type { Story } from '#shared/types.ts';
-import type { Cues, Edit, ListFields, SetField } from './formTypes.ts';
-import { POINTS, SPLIT_ABOVE, PRIORITIES } from '#shared/backlog/model.ts';
+import type { Cues, Edit, ListFields } from './formTypes.ts';
+import { POINTS, SPLIT_ABOVE } from '#shared/backlog/model.ts';
 import Info from '#frontend/src/shared/ui/Info.tsx';
 import guideline from '#shared/guidelines/sprint-points-guideline.md?raw';
 import { Row } from '#frontend/src/shared/ui/Layout.tsx';
-import { Label } from '#frontend/src/shared/ui/FormParts.tsx';
 
-// Sprint points (a radio group) and Priority.
-export default function EstimateSection({ story: s, frozen, cues, list, edit, setField }: { story: Story; frozen: boolean; cues: Cues; list: ListFields; edit: Edit; setField: SetField }) {
-  const { noValue, optional } = cues;
-  const priorityOptions = ['', ...PRIORITIES];
-  if (s.priority && !priorityOptions.includes(s.priority)) priorityOptions.push(s.priority); // never silently change a loaded value
+// Sprint points (a radio group).
+export default function EstimateSection({ story: s, frozen, cues, list, edit }: { story: Story; frozen: boolean; cues: Cues; list: ListFields; edit: Edit }) {
+  const { noValue } = cues;
   return (
     <fieldset>
       <legend>Estimate</legend>
@@ -35,13 +32,6 @@ export default function EstimateSection({ story: s, frozen, cues, list, edit, se
             ))}
           </div>
           {list('Sprint points')}
-        </div>
-        <div>
-          <Label htmlFor="priority" note={optional('priority') ? 'Not set' : null}>Priority</Label>
-          <select id="priority" className={optional('priority')} disabled={frozen} value={s.priority} onChange={setField('priority')}>
-            {priorityOptions.map((p) => <option key={p} value={p}>{p || 'None'}</option>)}
-          </select>
-          {list('Priority')}
         </div>
       </Row>
     </fieldset>
