@@ -48,8 +48,8 @@ def _hook_exit_code(command):
     return result.returncode
 
 
-def test_agent_tools_are_read_only_plus_bash():
-    assert _tools() == ["Read", "Grep", "Glob", "Bash"]
+def test_agent_tools_are_read_only_plus_bash_and_artifact():
+    assert _tools() == ["Read", "Grep", "Glob", "Bash", "Artifact"]
 
 
 def test_agent_has_a_turn_limit():

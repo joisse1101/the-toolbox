@@ -4,8 +4,8 @@ description: "Apply a slice one group of tasks at a time: hand each group to tas
 allowed-tools: Bash(git status:*), Bash(git diff:*), Bash(git add:*), Bash(git commit:*), Bash(git branch --show-current:*), Bash(git rev-parse:*), Bash(git ls-files:*), Bash(node *jois-story-plan*read-diagrams.mjs*), Skill, Read, Edit, Write(**/slices/*/review.md), Glob, Agent, Monitor, AskUserQuestion
 disable-model-invocation: true
 metadata:
-  version: "2.4.0"
-  last_updated: "2026-11-13"
+  version: "2.5.0"
+  last_updated: "2026-11-20"
 ---
 
 Apply a slice written by `jois-story-plan` by handing its tasks to the `task-applier` agent, one group at a time.
@@ -115,6 +115,7 @@ A slice is the folder `<backlog>/slices/<slice>/` of the data folder the plan sk
    - Start the watch (step 8) before you wait for the report.
    - Do nothing else until the report arrives.
    - The prompt carries `<backlog>/<slice>` as the name, the verbatim text of each pending task of the group with its `Satisfies:` and `Verify:` lines, and the path of `UC-<slice>.md`, to read first. The agent takes what each task satisfies and how to verify it from this brief, so the brief must carry all three.
+   - A task's `Design` line is copied into the brief unchanged, with the task's other lines. Never drop, shorten or paraphrase it: the agent opens each artboard link in it before it writes that screen's code.
    - Never paraphrase a task.
    - The prompt says the agent must not edit `tasks.md`.
    - The prompt says the agent must report as its own instructions say.
