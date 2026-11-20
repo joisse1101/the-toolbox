@@ -33,7 +33,7 @@ test('git status lists exactly the committed and user decides files of a mock .p
       .filter((row) => row.lifecycle.includes('committed') || row.lifecycle.includes('user decides'))
       .map((row) => `.plans/b1/${row.path.replace(/<slice>/g, 's1')}`).sort();
     assert.deepEqual(listed, expected);
-    assert.equal(expected.length, 9);
+    assert.equal(expected.length, 10);
   } finally {
     fs.rmSync(repo, { recursive: true });
   }
