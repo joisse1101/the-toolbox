@@ -1,25 +1,30 @@
 # Tasks
 
-## current-streak
+## see-current-streak
 
-- [ ] T-streaks-count-current Count and show the current streak
-  Satisfies: AC-streaks-current-streak (steps 1.2, 2.1, 2.2, 2.3, 2.4, 2.5)
-  Verify: With a habit whose checked days are the last 3 local days, currentStreak returns 3 and the habit list shows "3" next to it. With the same days ending yesterday, it still returns 3 (D2). With an unknown habit id it returns the error "habit not found" and the list shows that message (D3). Time to count 1000 checked days is under 100 ms.
+- [ ] T-streaks-current-count Add currentStreak to the habit data code
+  Satisfies: AC-streaks-current-shown (steps 1.3, 2.1, 2.2)
+  Design: https://claude.ai/artifact/HjAw3uh4iutuwMEG6F8Bco#artboard-streaks-list-default-desktop, https://claude.ai/artifact/HjAw3uh4iutuwMEG6F8Bco#artboard-streaks-list-default-mobile
+  Verify: in app/src/storage.test.ts, currentStreak(['2026-11-18','2026-11-19','2026-11-20'], '2026-11-20') returns 3, the same checks with today '2026-11-21' also return 3 (D-streaks-today), and an empty list returns 0.
 
-- [ ] T-streaks-local-day Use the local day for check-offs and streaks
-  Satisfies: AC-streaks-current-streak (steps 1.1, 2.3)
-  Verify: With the clock set to 23:30 local time on a day whose UTC date is the next day, a check-off is stored under the local date and counts for that evening (D1). The streak still holds when checks on the previous days were stored under their local dates.
+- [ ] T-streaks-current-show Show the current streak pill on each habit
+  Satisfies: AC-streaks-current-shown (steps 2.1, 3.1)
+  Design: https://claude.ai/artifact/HjAw3uh4iutuwMEG6F8Bco#artboard-streaks-list-default-desktop, https://claude.ai/artifact/HjAw3uh4iutuwMEG6F8Bco#artboard-streaks-list-default-mobile
+  Verify: in the dev server, with local storage holding checks for the last 3 days of a habit, the item shows "3-day streak"; a habit with no checks shows "No streak yet".
 
-## best-streak
+## see-best-streak
 
-- [ ] T-streaks-best-compute Find the best streak
-  Satisfies: AC-streaks-best-streak (steps 1.2, 1.3, 2.1, 2.2, 2.3, 2.8, 2.9)
-  Verify: With a habit whose longest run is 5 days and whose current streak is 2, bestStreak returns 5 and the list shows "5". With a habit that has no checked days it returns 0. With an unknown habit id it returns the same "habit not found" error as the current streak (D3).
+- [ ] T-streaks-best-count Add bestStreak to the habit data code
+  Satisfies: AC-streaks-best-shown (steps 1.3, 2.1, 2.2)
+  Design: https://claude.ai/artifact/HjAw3uh4iutuwMEG6F8Bco#artboard-streaks-list-best-desktop, https://claude.ai/artifact/HjAw3uh4iutuwMEG6F8Bco#artboard-streaks-list-best-mobile
+  Verify: in app/src/storage.test.ts, bestStreak for a run of 5 days, a gap, then a run of 2 days returns 5, and an empty list returns 0.
 
-- [ ] T-streaks-best-cache Keep the best streak in local storage
-  Satisfies: AC-streaks-best-streak (steps 2.4, 2.5, 2.6, 2.7')
-  Verify: After bestStreak runs, the saved state in a stand-in storage holds the best streak (D4). Change the check-offs and run it again: the cache holds the recomputed value. With a stand-in storage whose setItem throws a quota error, the best streak is still returned and shown and the failure is logged (D6).
+- [ ] T-streaks-best-show Show the best streak beside the current streak
+  Satisfies: AC-streaks-best-shown (steps 2.1, 3.1)
+  Design: https://claude.ai/artifact/HjAw3uh4iutuwMEG6F8Bco#artboard-streaks-list-best-desktop, https://claude.ai/artifact/HjAw3uh4iutuwMEG6F8Bco#artboard-streaks-list-best-mobile
+  Verify: in the dev server with local storage holding a 5-day run and a current streak of 2, the item shows "2-day streak" and "Best 5"; on a 390 px wide window "Best 5" sits under the habit name.
 
-- [ ] T-streaks-run-tests Run the project tests for the whole slice and fix failures
-  Satisfies: AC-streaks-best-streak (steps 2.3, 2.8, 2.9)
-  Verify: From app/, `npm test` and `npm run build` both exit with code 0 (type-check and unit tests for the current streak, the best streak, the local day and the cache, covering the whole slice).
+- [ ] T-streaks-tests Run the tests of the whole slice and fix what fails
+  Satisfies: AC-streaks-best-shown (steps 1.3, 2.2)
+  Design: https://claude.ai/artifact/HjAw3uh4iutuwMEG6F8Bco#artboard-streaks-list-best-desktop, https://claude.ai/artifact/HjAw3uh4iutuwMEG6F8Bco#artboard-streaks-list-best-mobile
+  Verify: from app/, npm test and npm run build both exit 0, with the streak tests of both stories counted in the Vitest summary.

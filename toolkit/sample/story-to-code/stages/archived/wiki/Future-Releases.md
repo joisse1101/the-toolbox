@@ -11,4 +11,6 @@ Ideas for features that are not built yet. Each one is a starting point to explo
 
 ## Released
 
-- **Streaks.** A count of consecutive days a habit was checked off, and the best such run. See [Streaks](Streaks.md).
+- **Streaks.** A count of consecutive days a habit was checked off, with the best run beside it. See [Streaks](streaks/overview.md).
+
+A feature moves here from Ideas when its slice is archived.
