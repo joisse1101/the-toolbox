@@ -263,13 +263,14 @@ writes one.
 
 One `## <flow>` group per flow of the document's `### Sequence: <flow>` headings, in the order of the
 document. A flow with no failure path still gets a group. Each task is a checkbox line followed by two
-indented lines:
+indented lines, and by a third, `Design:`, when the slice's scope is designed:
 
 ```
 ## <flow>
 
 - [ ] T-<slice>-<name> <title>
   Satisfies: AC-<slice>-<name>[, AC-<slice>-<name>] (steps <step ids>)
+  Design: <canvas url>#artboard-<stem>[, <canvas url>#artboard-<stem>]
   Verify: <how to verify the task>
 ```
 
@@ -277,6 +278,11 @@ indented lines:
 - The task id is `T-<slice>-<name>`, kebab-case and unique in the file.
 - `Satisfies` names one or more `AC id` rows of the acceptance-criteria table (section 4), and every step id
   exists in the sequence diagram of the task's flow.
+- `Design` sits between `Satisfies` and `Verify`. It holds comma-separated links, each
+  `<canvas url>#artboard-<stem>`, to the artboards that show the task's criteria. It is required only when
+  `<backlog>/designs.json` links the slice's scope to a canvas, and then every task whose criterion has
+  artboards in the story index names at least one of them. The writer reads `designs.json` and refuses a
+  designed scope that has no story index, or whose index is stale.
 - `Verify` is not empty. The writer checks only that it is there; the review of the complete text is where
   the user judges whether the verification is real.
 - The file may open with a `# Tasks` title line, and blank lines may separate tasks. The writer ignores text
