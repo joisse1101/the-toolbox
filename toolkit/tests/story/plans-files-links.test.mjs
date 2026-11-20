@@ -4,12 +4,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// "Each skill and command links to the table": the five story skills and the four jois-code commands each have a
+// "Each skill and command links to the table": the six story skills and the four jois-code commands each have a
 // "Files this skill/command writes" section with a link to the file table, and the link resolves to the shipped copy.
 const TOOLKIT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const read = (file) => fs.readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
 
-const SKILLS = ['explore', 'propose', 'review', 'plan', 'verify'].map((name) => ({
+const SKILLS = ['explore', 'propose', 'review', 'design', 'plan', 'verify'].map((name) => ({
   label: `jois-story-${name}`,
   file: path.join(TOOLKIT, 'skills', `jois-story-${name}`, 'SKILL.md'),
   heading: '## Files this skill writes',

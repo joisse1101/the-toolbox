@@ -34,6 +34,9 @@ const SUPPORT = ['skill-support/paths.ts', 'skill-support/write-atomic.ts', 'ski
 // The skills that may create `.plans` after asking (explore only reports, so it has no init-plans.mjs).
 const INIT = ['skill-support/init-plans.ts', 'skill-support/plans-files.ts'];
 const STORY_GUIDELINES = ['product-backlog.md', 'sprint-points-guideline.md', 'plans-files.md'];
+// Plan and design share the rules for story changes, the design canvas conventions and the story-index checker.
+const DESIGN_SHARED_GUIDELINES = ['story-changes.md', 'design-conventions.md'];
+const DESIGN_INDEX = 'skill-support/design-index.ts';
 
 // What each skill's scripts import (paths under viewer/shared/; the files those import come along). Diagram logic is
 // not here: it belongs to jois-story-plan and is not copied.
@@ -65,9 +68,14 @@ export const SKILLS: Record<string, SkillSpec> = {
     guidelines: STORY_GUIDELINES,
   },
   'jois-story-plan': {
-    // read-diagrams, write-diagram, write-context-map, write-freeze (the diagram logic is the skill's own)
-    logic: ['backlog/model.ts', 'backlog/ids.ts', 'backlog/story-ref.ts', 'storage/backlog-paths.ts', ...SUPPORT, ...INIT],
-    guidelines: [...STORY_GUIDELINES, 'diagram-conventions.md'],
+    // read-diagrams, write-diagram, write-context-map, write-freeze (the diagram logic is the skill's own), check-design-index
+    logic: ['backlog/model.ts', 'backlog/ids.ts', 'backlog/story-ref.ts', 'storage/backlog-paths.ts', DESIGN_INDEX, ...SUPPORT, ...INIT],
+    guidelines: [...STORY_GUIDELINES, 'diagram-conventions.md', ...DESIGN_SHARED_GUIDELINES],
+  },
+  'jois-story-design': {
+    // write-design-pointer, check-design-index (the design index logic is shared with plan)
+    logic: ['backlog/model.ts', 'backlog/ids.ts', 'backlog/story-ref.ts', 'storage/backlog-paths.ts', DESIGN_INDEX, ...SUPPORT, ...INIT],
+    guidelines: [...STORY_GUIDELINES, ...DESIGN_SHARED_GUIDELINES],
   },
 };
 
