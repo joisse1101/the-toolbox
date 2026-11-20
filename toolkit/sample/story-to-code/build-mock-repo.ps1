@@ -11,7 +11,7 @@ Everything it writes is under .scratch\mock-app\. It never touches ~\.claude or 
 and it starts no model session.
 
 .PARAMETER Stage
-One of: baseline, proposed, accepted, planned, built, validated, archived. Default: baseline.
+One of: baseline, proposed, accepted, designed, planned, built, validated, archived. Default: baseline.
 
 .PARAMETER Scope
 Only 'project' is accepted. The mock repo never gets a global install.
@@ -36,7 +36,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$Stages = @('baseline', 'proposed', 'accepted', 'planned', 'built', 'validated', 'archived')
+$Stages = @('baseline', 'proposed', 'accepted', 'designed', 'planned', 'built', 'validated', 'archived')
 $SampleDir = $PSScriptRoot
 $RepoRoot = (Resolve-Path (Join-Path $SampleDir '..\..\..')).Path
 $Mock = Join-Path $RepoRoot '.scratch\mock-app'

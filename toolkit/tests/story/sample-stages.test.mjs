@@ -12,11 +12,12 @@ import { parseLimits } from '../../skills/jois-story-plan/diagrams/limits.js';
 import { compareSource, scopeStories } from '../../skills/jois-story-plan/diagrams/source.js';
 import { checkSlice, formatProblems } from '../../skills/jois-story-plan/diagrams/checks.js';
 import { checkTasks } from '../../skills/jois-story-plan/diagrams/tasks.js';
+import { checkDesignPointer } from '../../skills/jois-story-design/write-design-pointer.mjs';
 import { compareContextMap, composeContextMap, epicNames } from '../../skills/jois-story-plan/diagrams/context-map.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SAMPLE_DIR = path.resolve(HERE, '..', '..', 'sample', 'story-to-code');
-const STAGES = ['proposed', 'accepted', 'planned', 'built', 'validated', 'archived'];
+const STAGES = ['proposed', 'accepted', 'designed', 'planned', 'built', 'validated', 'archived'];
 const BACKLOG = 'habits';
 const SLICE = 'streaks';
 const limits = parseLimits(fs.readFileSync(path.join(HERE, '..', '..', 'skills', 'jois-story-plan', 'references', 'diagram-conventions.md'), 'utf8'));
@@ -68,6 +69,40 @@ test('the proposals and the accepted backlog load with their initials', () => {
   for (const story of backlog.stories) assert.match(story.code, new RegExp(`^${INITIALS}-[A-Z0-9]+-\\d{4}$`), `stage accepted: the ID of "${story.title}"`);
 });
 
+test('stage designed: holds only a valid designs.json, and no stage holds artboard content', () => {
+  const root = path.join(SAMPLE_DIR, 'stages', 'designed');
+  const listed = [];
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else listed.push(path.relative(root, full).replace(/\\/g, '/'));
+    }
+  };
+  walk(root);
+  assert.deepEqual(listed, [plans('designs.json')], 'stage designed: only the pointer file');
+  const pointer = JSON.parse(fs.readFileSync(path.join(root, plans('designs.json')), 'utf8'));
+  assert.ok(pointer.designs.length > 0, 'stage designed: designs.json holds no entry');
+  for (const entry of pointer.designs) {
+    assert.deepEqual(Object.keys(entry).sort(), ['scope', 'url'], 'stage designed: an entry holds only scope and url');
+    const checked = checkDesignPointer({ dataDir: path.join(root, '.plans'), name: BACKLOG, input: JSON.stringify(entry) });
+    assert.deepEqual(checked.ok ? [] : checked.errors, [], 'stage designed: the entry passes the pointer check');
+    assert.equal(checked.action, 'unchanged', 'stage designed: the entry is the one designs.json holds');
+  }
+  for (const stage of STAGES) {
+    const hits = [];
+    const find = (dir) => {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) find(full);
+        else if (entry.name.endsWith('.dc.html') || entry.name === 'canvas.json') hits.push(full);
+      }
+    };
+    find(path.join(SAMPLE_DIR, 'stages', stage));
+    assert.deepEqual(hits, [], `stage ${stage}: no artboard content belongs in the sample`);
+  }
+});
+
 for (const stage of STAGES.slice(STAGES.indexOf('planned'))) {
   test(`stage ${stage}: the slice passes the checkers and its stories are in the backlog`, () => {
     const files = filesAt(stage);
@@ -89,8 +124,13 @@ for (const stage of STAGES.slice(STAGES.indexOf('planned'))) {
   });
 }
 
-test('stage planned: the context map covers the backlog Epics and its text is the generated one', () => {
+// The context map is optional in plan, so a recording that drew none has nothing to check.
+test('stage planned: a context map, when recorded, covers the backlog Epics and its text is the generated one', (t) => {
   const files = filesAt('planned');
+  if (!files.has(plans('context-map.json'))) {
+    t.skip('the recorded plan drew no context map');
+    return;
+  }
   const map = JSON.parse(files.get(plans('context-map.json')));
   const epics = epicNames(loadBacklog(files.get(plans('user-stories.csv')), { initials: INITIALS }).stories);
   assert.deepEqual(compareContextMap(map, epics), { missing: [], unknown: [] }, 'stage planned: context-map.json');
@@ -133,7 +173,9 @@ test('stage built: built.patch applies to the baseline app with git am', () => {
     }
     const am = git('am', '--quiet', path.join(SAMPLE_DIR, 'stages', 'built', 'built.patch'));
     assert.equal(am.status, 0, `stage built: built.patch does not apply to the baseline app: ${am.stderr}`);
-    assert.ok(fs.existsSync(path.join(dir, 'app', 'src', 'streak.ts')), 'stage built: the patch adds app/src/streak.ts');
+    const storage = fs.readFileSync(path.join(dir, 'app', 'src', 'storage.ts'), 'utf8');
+    assert.match(storage, /export function currentStreak/, 'stage built: the patch adds currentStreak');
+    assert.match(storage, /export function bestStreak/, 'stage built: the patch adds bestStreak');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

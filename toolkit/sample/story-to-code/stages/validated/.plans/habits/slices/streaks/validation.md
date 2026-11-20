@@ -1,16 +1,16 @@
 Run kind: full
-Date: 2026-11-12
-Tested commit: 05c0b725dc5f69a487c7b2db702c74aa7b990814
+Date: 2026-11-20
+Tested commit: f93dadf3394d6ed648ef51eb9d87f2b0403082b7
 Validated: yes (the latest full run has every claim met)
 
 Rule: a slice counts as validated only when its latest full run has every claim met. A partial run never validates it. Later code changes make this file stale.
 
 | Claim | Source | Verdict | Evidence |
 |---|---|---|---|
-| C1 | T-streaks-count-current | met | npm test exit 0 (2 files, 40 passed); tests cover 3 days, run ending yesterday, unknown id "habit not found", 1000 days under 100 ms |
-| C2 | T-streaks-local-day | met | npm test exit 0; test builds 23:30 local time, today() is local date, streak 3 across local-date days. It does not force a time zone where the UTC date differs |
-| C3 | T-streaks-best-compute | met | npm test exit 0; best 5 with current 2, 0 for no checks, "habit not found" for unknown id |
-| C4 | T-streaks-best-cache | met | npm test exit 0; cache holds value, then recomputed value; quota error logged and best streak still returned. Writing is a separate saveBestStreaks call, tested in two steps |
-| C5 | T-streaks-run-tests | met | npm test exit 0 (40 passed); npm run build exit 0 |
-| C6 | H1-HT-0001 AC1 | met | browser on mock data: page text "Three days / Streak 3 / Best 3" |
-| C7 | H1-HT-0002 AC1 | met | browser on mock data: page text "Best five / Streak 2 / Best 5" |
+| C1 | T-streaks-current-count | met | npm test exit 0 (1 file, 7 passed); currentStreak tests give 3 for the last 3 days with today 2026-11-20 and with today 2026-11-21, and 0 for an empty list |
+| C2 | T-streaks-current-show | met | browser on mock data at 1440 px and 390 px: "Read 10 pages / 3-day streak", "Stretch / No streak yet"; compared with https://claude.ai/artifact/HjAw3uh4iutuwMEG6F8Bco#artboard-streaks-list-default-desktop and https://claude.ai/artifact/HjAw3uh4iutuwMEG6F8Bco#artboard-streaks-list-default-mobile. Outside the criterion: the page also shows "Best 3", and on mobile the pill sits under the name as on the best-streak artboard |
+| C3 | T-streaks-best-count | met | npm test exit 0 (7 passed); bestStreak gives 5 for a run of 5, a gap and a run of 2, and 0 for an empty list |
+| C4 | T-streaks-best-show | met | browser on mock data: "2-day streak" and "Best 5", in a row at 1440 px and under the name, indented about 28 px, at 390 px; matches https://claude.ai/artifact/HjAw3uh4iutuwMEG6F8Bco#artboard-streaks-list-best-desktop and https://claude.ai/artifact/HjAw3uh4iutuwMEG6F8Bco#artboard-streaks-list-best-mobile |
+| C5 | T-streaks-tests | met | npm test exit 0 (7 passed: 4 currentStreak, 2 bestStreak, 1 storage); npm run build finished with no type error ("built in 399ms"), exit code inferred from a clean run |
+| C6 | H1-HT-0001 AC1 | met | browser on mock data at 1440 px and 390 px: page text "Read 10 pages / 3-day streak / Best 3 / Stretch / No streak yet" |
+| C7 | H1-HT-0002 AC1 | met | browser on mock data at 1440 px and 390 px: page shows "2-day streak" and "Best 5" |
