@@ -107,7 +107,7 @@ test('refused directories: the config is unchanged and no folder is created', as
     ['link into the repository', link],
     ['source folder of the repository', path.join(REPO, 'viewer', 'shared')],
     ['a file', SAMPLE],
-  ];
+  ] as [string, string][];
   for (const [label, dir] of cases) {
     for (const [method, url, body] of [['PUT', '/api/project', { dataDir: dir }], ['POST', '/api/project/init', { dir }], ['POST', '/api/project/copy', { dir }]] as [string, string, object][]) {
       const res = await call(method, url, body);
@@ -286,7 +286,7 @@ test('code base: confined on every route, config and served folder unchanged whe
     ['inside the repository', path.join(REPO, 'viewer', 'data')],
     ['missing folder', missing],
     ['.plans is a file', withFile],
-  ];
+  ] as [string, string][];
   for (const [label, codeBase] of cases) {
     for (const [method, url] of [['PUT', '/api/project'], ['POST', '/api/project/init'], ['POST', '/api/project/copy']]) {
       const res = await call(method, url, { codeBase });
