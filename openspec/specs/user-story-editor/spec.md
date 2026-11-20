@@ -417,7 +417,7 @@ The Stories tab SHALL have a search box above the table. While the box holds tex
 - **THEN** the story list shows every story
 
 ### Requirement: Multi-select in the Stories tab
-Each table row SHALL have a checkbox, and the header SHALL have a select-all checkbox that selects or clears every row shown. Shift-clicking a row's checkbox SHALL select every row shown between it and the last clicked checkbox. The tool SHALL show how many stories are selected. While a search hides some of the selected stories, the tool SHALL also show how many selected stories are hidden. Select-all, shift-click and clearing SHALL act only on the rows shown: they SHALL NOT select or deselect a story the search hides. A bulk edit and Delete selected SHALL apply to all selected stories, hidden ones included. The selection SHALL be separate from the story selected in the Editor tab, and SHALL be cleared when another backlog is opened. Stories removed from the backlog SHALL drop out of the selection.
+Each table row SHALL have a checkbox, and the header SHALL have a select-all checkbox that selects or clears every row shown. The checkbox of a frozen story SHALL be disabled, and select-all and shift-click SHALL skip frozen stories, so a frozen story is never selected. A story that becomes frozen while selected, for example after a refresh, SHALL drop out of the selection. Shift-clicking a row's checkbox SHALL select every row shown between it and the last clicked checkbox. The tool SHALL show how many stories are selected. While a search hides some of the selected stories, the tool SHALL also show how many selected stories are hidden. Select-all, shift-click and clearing SHALL act only on the rows shown: they SHALL NOT select or deselect a story the search hides. A bulk edit and Delete selected SHALL apply to all selected stories, hidden ones included. The selection SHALL be separate from the story selected in the Editor tab, and SHALL be cleared when another backlog is opened. Stories removed from the backlog SHALL drop out of the selection.
 
 #### Scenario: Select several
 - **WHEN** the user ticks three rows
@@ -427,9 +427,21 @@ Each table row SHALL have a checkbox, and the header SHALL have a select-all che
 - **WHEN** the user ticks the header checkbox
 - **THEN** every row is selected, and ticking it again clears them all
 
+#### Scenario: Select all skips frozen stories
+- **WHEN** six rows are shown, two of them frozen, and the user ticks the header checkbox
+- **THEN** the four stories that are not frozen are selected, "4 selected" is shown, and the header checkbox shows as fully ticked
+
+#### Scenario: Frozen checkbox disabled
+- **WHEN** a frozen story is shown
+- **THEN** its checkbox is disabled and cannot be ticked
+
 #### Scenario: Range select
 - **WHEN** the user ticks the second row and then shift-clicks the checkbox of the fifth row
 - **THEN** rows two to five are all selected
+
+#### Scenario: Range select over a frozen story
+- **WHEN** the fourth row is frozen and the user ticks the second row and then shift-clicks the fifth
+- **THEN** rows two, three and five are selected and row four is not
 
 #### Scenario: Selection independent of the editor
 - **WHEN** rows are ticked in the Stories tab and the user opens another story in the Editor tab and returns
@@ -925,7 +937,7 @@ A story is **frozen** when its `Frozen` cell holds `Yes`. Only `jois-story-plan`
 
 The form of a frozen story SHALL show every field read-only: Epic, Feature, Title, As a, I want, So that, Sprint points, its own Depends On, the acceptance criteria, Notes and Clarifications. The form SHALL say that the story is frozen because it is part of a slice, and that a change to it is made by a new story that supersedes it. The Depends On entries of other stories that name a frozen story SHALL stay editable, and a frozen story SHALL be offered in the Depends on picker of other stories like any other story. Ctrl+Up/Down SHALL select a frozen story like any other.
 
-A frozen story SHALL NOT be draggable (see "Reorder unfrozen stories by drag and drop"), SHALL NOT be moved to Proposed (see the `story-proposals` capability) and SHALL NOT be deleted: Alt+D SHALL do nothing for it and the user SHALL be told that a frozen story cannot be deleted, the Delete story button SHALL be disabled for it with the hint "A frozen story cannot be deleted", and Delete selected and Bulk edit SHALL skip it (see "Delete selected unfrozen stories" and "Bulk edit selected stories"). Applying a review suggestion to a frozen story is covered by the `backlog-review-suggestions` capability.
+A frozen story SHALL NOT be draggable (see "Reorder unfrozen stories by drag and drop"), SHALL NOT be moved to Proposed (see the `story-proposals` capability), SHALL NOT be migrated to another backlog (see the `story-migration` capability) and SHALL NOT be deleted: Alt+D SHALL do nothing for it and the user SHALL be told that a frozen story cannot be deleted, and the Delete story button SHALL be disabled for it with the hint "A frozen story cannot be deleted". Its checkbox in the Stories tab SHALL be disabled, so Delete selected, Bulk edit and Migrate never reach it (see "Multi-select in the Stories tab"). Applying a review suggestion to a frozen story is covered by the `backlog-review-suggestions` capability.
 
 #### Scenario: Form of a frozen story
 - **WHEN** the user opens a frozen story in the Editor tab
@@ -954,6 +966,10 @@ A frozen story SHALL NOT be draggable (see "Reorder unfrozen stories by drag and
 #### Scenario: Delete story disabled
 - **WHEN** a frozen story is open in the Editor tab
 - **THEN** the Delete story button is disabled and its hint says a frozen story cannot be deleted
+
+#### Scenario: Not selectable in the Stories tab
+- **WHEN** a frozen story is shown in the Stories tab
+- **THEN** its checkbox is disabled
 
 ### Requirement: Story IDs carry initials, epic prefix and number
 Every story with a non-blank Epic SHALL have an ID of the form `<INITIALS>-<PREFIX>-<NNNN>`, stored whole in the `ID` column, where `<NNNN>` is four digits. `<INITIALS>` SHALL be the initials of the backlog the story is in (see the `backlog-initials` capability); they hold no hyphen, so the parts of an ID can be told apart. `<PREFIX>` SHALL be the uppercased initials of the words of the story's Epic, ignoring `&` and other punctuation (`Identity & Access Management` gives `IAM`, `Data Delivery` gives `DD`), as fixed below. A story with a blank Epic SHALL have no ID. For an unfrozen story the number SHALL be the lowest number, counting from 1, that no frozen story with the same initials and prefix holds, taken in the order of the backlog's rows among the unfrozen stories with the same Epic.
@@ -1136,7 +1152,7 @@ In the story panel of the Editor tab, the user SHALL be able to drag an Epic hea
 - **THEN** nothing changes and nothing is saved
 
 ### Requirement: Delete selected unfrozen stories
-When at least one story is selected in the Stories tab, the bulk bar SHALL offer **Delete selected (N)**, N being the number of selected stories. It SHALL ask for confirmation naming how many stories will be deleted before changing anything. Deleting SHALL apply to every selected story, hidden ones included, except frozen stories, which SHALL be skipped and kept. Deleted stories SHALL have their IDs removed from the `Depends On` of the stories that remain, and the remaining stories SHALL be renumbered once as described in "Story IDs carry initials, epic prefix and number". When any frozen story was skipped the tool SHALL say how many ("n frozen stories were kept"). The deleted stories SHALL leave the selection, the remaining selection SHALL be kept, and the change SHALL save through the normal auto-save. If every selected story is frozen, nothing SHALL be deleted and the tool SHALL say so.
+When at least one story is selected in the Stories tab, the bulk bar SHALL offer **Delete selected (N)**, N being the number of selected stories. It SHALL ask for confirmation naming how many stories will be deleted before changing anything. Deleting SHALL apply to every selected story, hidden ones included. A frozen story cannot be selected (see "Multi-select in the Stories tab"), so it is never deleted this way. Deleted stories SHALL have their IDs removed from the `Depends On` of the stories that remain, and the remaining stories SHALL be renumbered once as described in "Story IDs carry initials, epic prefix and number". The deleted stories SHALL leave the selection, and the change SHALL save through the normal auto-save.
 
 #### Scenario: Delete several
 - **WHEN** four unfrozen stories are selected and the user clicks Delete selected (4) and confirms
@@ -1147,15 +1163,15 @@ When at least one story is selected in the Stories tab, the bulk bar SHALL offer
 - **THEN** no story is deleted and the selection is kept
 
 #### Scenario: Frozen stories are skipped
-- **WHEN** five stories are selected, two are frozen, and the user deletes and confirms
-- **THEN** the three unfrozen stories are deleted, the two frozen ones remain and stay selected, and the message says 2 frozen stories were kept
+- **WHEN** five stories are shown, two are frozen, and the user ticks select-all and deletes and confirms
+- **THEN** the three unfrozen stories are deleted, the two frozen ones remain, and the confirmation named 3 stories
 
 #### Scenario: Only frozen stories selected
-- **WHEN** every selected story is frozen and the user clicks Delete selected
-- **THEN** nothing is deleted and the message says the selected stories are frozen
+- **WHEN** every story shown is frozen and the user ticks the header checkbox
+- **THEN** no story is selected and Delete selected is not offered
 
 ### Requirement: Bulk edit selected unfrozen stories
-When at least one story is selected in the Stories tab, the tool SHALL show a bulk edit bar with an Epic text field and a Feature text field. The Epic and Feature fields SHALL suggest the values already used in the backlog, and an empty field SHALL mean "no change"; the tool SHALL NOT clear an Epic or Feature in bulk. The Apply button SHALL be disabled until at least one of the two is set. Applying SHALL first ask for confirmation naming what will change and how many stories are affected; when the Epic change gives stories new IDs, the confirmation SHALL say so. A bulk edit SHALL skip frozen stories whatever the field, because every field of a frozen story is read-only, and the confirmation SHALL say how many were skipped. On confirmation the tool SHALL set only the chosen fields on every selected unfrozen story, place the stories whose Epic changed at the bottom of the new Epic in their current row order, recompute IDs and rewrite dependencies as described in "Story IDs carry initials, epic prefix and number", leave all other fields and unselected stories untouched, keep the selection, reset the bar to "no change", and save through the normal auto-save. If every selected story is frozen, nothing SHALL change and the tool SHALL say so. If the user cancels, nothing SHALL change. There SHALL be no undo.
+When at least one story is selected in the Stories tab, the tool SHALL show a bulk edit bar with an Epic text field and a Feature text field. The Epic and Feature fields SHALL suggest the values already used in the backlog, and an empty field SHALL mean "no change"; the tool SHALL NOT clear an Epic or Feature in bulk. The Apply button SHALL be disabled until at least one of the two is set. Applying SHALL first ask for confirmation naming what will change and how many stories are affected; when the Epic change gives stories new IDs, the confirmation SHALL say so. A frozen story cannot be selected (see "Multi-select in the Stories tab"), so a bulk edit never reaches it. On confirmation the tool SHALL set only the chosen fields on every selected story, place the stories whose Epic changed at the bottom of the new Epic in their current row order, recompute IDs and rewrite dependencies as described in "Story IDs carry initials, epic prefix and number", leave all other fields and unselected stories untouched, keep the selection, reset the bar to "no change", and save through the normal auto-save. If the user cancels, nothing SHALL change. There SHALL be no undo.
 
 #### Scenario: Set priority only
 - **WHEN** 10 stories are selected and the bulk edit bar is shown
@@ -1183,7 +1199,7 @@ When at least one story is selected in the Stories tab, the tool SHALL show a bu
 
 #### Scenario: Several fields at once
 - **WHEN** Epic "Billing" and Feature "Invoices" are both set and confirmed
-- **THEN** both are applied to every selected unfrozen story
+- **THEN** both are applied to every selected story
 
 #### Scenario: Nothing to apply
 - **WHEN** stories are selected but the Epic and Feature fields are empty
@@ -1206,12 +1222,12 @@ When at least one story is selected in the Stories tab, the tool SHALL show a bu
 - **THEN** the bulk edit bar is not shown
 
 #### Scenario: Frozen stories skipped
-- **WHEN** 5 stories are selected, 2 are frozen, and Epic is set to "Billing" and confirmed
-- **THEN** the 3 unfrozen stories get Epic "Billing", the frozen ones are unchanged, and the confirmation said 2 were skipped
+- **WHEN** 5 stories are shown, 2 are frozen, and the user ticks select-all, sets Epic to "Billing" and confirms
+- **THEN** the 3 unfrozen stories get Epic "Billing" and the frozen ones are unchanged
 
 #### Scenario: Only frozen stories selected
-- **WHEN** every selected story is frozen and the user clicks Apply
-- **THEN** no story changes and the message says the selected stories are frozen
+- **WHEN** every story shown is frozen and the user ticks the header checkbox
+- **THEN** no story is selected and the bulk edit bar is not shown
 
 ### Requirement: Story CSV format
 Each story SHALL be stored as one row with exactly these columns: `ID, Epic, Feature, Title, User Story, Sprint points, Depends On, User Acceptance Criteria, Notes, Frozen, Clarifications`.
