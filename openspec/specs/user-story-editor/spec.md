@@ -591,11 +591,19 @@ Stories that neither depend on another story nor are depended on SHALL be listed
 - **THEN** the Editor tab opens on that story
 
 ### Requirement: Graph tolerates bad dependency data
-The graph SHALL NOT fail on dependency data that the tool flags as a problem.
+The graph SHALL NOT fail on dependency data that the tool flags as a problem. A `Depends On` entry that names an existing story of another backlog of the data folder SHALL NOT count as unresolved (see the `cross-backlog-links` capability).
 
 #### Scenario: Dangling reference
 - **WHEN** a story lists a Depends On ID that no story has
 - **THEN** the graph is drawn from the links that resolve, and a note lists the unresolved references
+
+#### Scenario: Link to another backlog is not dangling
+- **WHEN** a story lists `B3-BIL-0002`, an existing story of another backlog
+- **THEN** no note lists `B3-BIL-0002` as unresolved
+
+#### Scenario: Missing story with another backlog's initials
+- **WHEN** a story lists `B3-BIL-0099` and the backlog with initials `B3` has no such story
+- **THEN** the note lists `B3-BIL-0099` as unresolved
 
 #### Scenario: Cycle in the file
 - **WHEN** a file contains a dependency cycle
@@ -648,7 +656,7 @@ An arrow in the Graph tab SHALL NOT pass through a node other than the two it co
 - **THEN** the graph is still drawn and the arrow that closes the cycle is marked as before, and it need not avoid nodes
 
 ### Requirement: Graph detail levels
-The Graph tab SHALL offer three levels, switched by a control next to the zoom controls: Stories (the graph as described by the other graph requirements), Features and Epics. At Features level each node SHALL be one feature of one epic, and at Epics level one epic. A node SHALL show its name and the number of stories it holds. A story with no ID, or with no Epic (or, at Features level, no Feature), SHALL take no part in the coarse levels. Opening a backlog SHALL show the Stories level. The Features and Epics levels SHALL be read-only.
+The Graph tab SHALL offer four levels, switched by a control next to the zoom controls: Stories (the graph as described by the other graph requirements), Features, Epics and Backlogs. At Features level each node SHALL be one feature of one epic, at Epics level one epic, and at Backlogs level one backlog of the data folder (see the `cross-backlog-links` capability). A node SHALL show its name and the number of stories it holds. A story with no ID, or with no Epic (or, at Features level, no Feature), SHALL take no part in the Features and Epics levels. Opening a backlog SHALL show the Stories level. The Features, Epics and Backlogs levels SHALL be read-only.
 
 #### Scenario: Switch to Features
 - **WHEN** the user chooses Features while stories of feature "Login" depend on stories of feature "Session"
@@ -670,12 +678,16 @@ The Graph tab SHALL offer three levels, switched by a control next to the zoom c
 - **WHEN** the user chooses Epics
 - **THEN** each node is an epic, and an arrow joins two epics when any story of one depends on any story of the other
 
+#### Scenario: Switch to Backlogs
+- **WHEN** the user chooses Backlogs
+- **THEN** each node is a backlog of the data folder, and an arrow joins two backlogs when any story of one depends on any story of the other
+
 #### Scenario: Group with no link to another group
 - **WHEN** all dependencies of a feature are between its own stories, or it has none
 - **THEN** it is not drawn as a node and is listed under "No dependencies" with its story count
 
 #### Scenario: Zoom, pan and clusters at every level
-- **WHEN** the user zooms, pans, fits or selects a node at Features or Epics level
+- **WHEN** the user zooms, pans, fits or selects a node at Features, Epics or Backlogs level
 - **THEN** it behaves as at the Stories level, and connected groups are drawn together in one band labelled with its number and group count
 
 #### Scenario: Level kept while the backlog changes
