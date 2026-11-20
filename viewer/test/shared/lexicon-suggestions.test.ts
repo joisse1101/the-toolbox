@@ -110,7 +110,7 @@ test('applySuggestion: a rename accepts the Avoid word that names the term befor
   assert.equal(saveTerm(withChild, { ...findTerm(withChild, 'Role'), avoid: ['Role'] }).ok, false);
   const row = { term: 'Role', action: 'rename', newName: 'Privilege', avoid: ['Role'], status: 'open' } as Loose as LexiconSuggestion;
   const r = applySuggestion(withChild, row) as Saved & { errors?: string[] };
-  assert.equal(r.ok, true, r.errors?.join());
+  assert.equal(r.ok, true, r.errors?.join() ?? '');
   assert.deepEqual(r.lexicon.terms.map((t) => [t.name, t.partOf]), [['Privilege', ''], ['Admin role', 'Privilege']]);
   assert.deepEqual(findTerm(r.lexicon, 'Privilege')!.avoid, ['Role']);
   assert.equal(findTerm(withChild, 'Role')!.name, 'Role', 'the input is unchanged');
