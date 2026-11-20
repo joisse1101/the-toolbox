@@ -7,6 +7,7 @@ const FILE = 'tasks.md';
 const GROUP = /^##\s+(.*?)\s*$/;
 const TASK_LINE = /^- \[([ xX])\]\s*(\S*)\s*(.*?)\s*$/;
 const SATISFIES = /^\s+Satisfies:\s*(.*?)\s*$/;
+const DESIGN = /^\s+Design:\s*(.*?)\s*$/;
 const VERIFY = /^\s+Verify:\s*(.*?)\s*$/;
 const STEPS_PART = /^(.*?)\s*\(steps?\s+([^)]*)\)$/;
 const CHECKBOX = /^(- \[)[ xX](\])/;
@@ -18,8 +19,9 @@ const problem = (message, line) => ({ file: FILE, ...(line ? { line } : {}), mes
 const list = (text) => text.split(/[\s,]+/).filter(Boolean);
 const label = (task) => `${task.id}${task.title ? ` "${task.title}"` : ''}`;
 
-// tasks.md text -> { groups: [{ flow, line }], tasks: [{ id, title, done, flow, line, acIds, steps, verify }], problems }
-// `flow` is the group a task sits under (null before the first group). `verify` and `acIds` are empty when the line is missing.
+// tasks.md text -> { groups: [{ flow, line }], tasks: [{ id, title, done, flow, line, acIds, steps, design, verify }], problems }
+// `flow` is the group a task sits under (null before the first group). `verify` and `acIds` are empty when the line is missing;
+// `design` holds the artboard links of the optional "Design:" line, comma-separated (empty without the line).
 // Problems found here: a task before any group, a repeated task id, a task with no Satisfies, no steps or no Verify.
 export function parseTasks(text) {
   const groups = [];
@@ -41,7 +43,7 @@ export function parseTasks(text) {
     const head = TASK_LINE.exec(raw);
     if (head) {
       const [, mark, id, title] = head;
-      task = { id, title, done: mark !== ' ', flow, line: n, acIds: [], steps: [], verify: '', hasSatisfies: false };
+      task = { id, title, done: mark !== ' ', flow, line: n, acIds: [], steps: [], design: [], verify: '', hasSatisfies: false };
       tasks.push(task);
       if (flow === null) problems.push(problem(`the task ${label(task)} is not under a "## <flow>" group`, n));
       if (ids.has(id)) problems.push(problem(`the task id ${id} is used twice (lines ${ids.get(id)} and ${n})`, n));
@@ -55,6 +57,11 @@ export function parseTasks(text) {
       task.hasSatisfies = true;
       task.acIds = list(parts ? parts[1] : satisfies[1]);
       task.steps = parts ? list(parts[2]) : [];
+      return;
+    }
+    const design = DESIGN.exec(raw);
+    if (design) {
+      task.design = design[1].split(',').map((l) => l.trim()).filter(Boolean);
       return;
     }
     const verify = VERIFY.exec(raw);
@@ -104,9 +111,45 @@ function flowSteps(document) {
   return flows;
 }
 
+const norm = (s) => String(s ?? '').trim().toLowerCase();
+
+// The artboard links of a canvas for each AC row: Map AC id -> { text, links } where `links` are the `<url>#artboard-<stem>` of the
+// index criterion that has the row's story Title and criterion text verbatim (case and edge spaces of the Title aside).
+function designLinks(table, { url, index }) {
+  const byRow = new Map();
+  for (const row of table) {
+    const story = index.stories.find((s) => norm(s.title) === norm(row.story));
+    const criterion = story?.criteria.find((c) => c.text.trim() === row.text.trim());
+    byRow.set(row.id, { text: row.text, links: (criterion?.artboards ?? []).map((stem) => `${url}#artboard-${stem}`) });
+  }
+  return byRow;
+}
+
+// The two design rules (the slice-tasks spec): a task that satisfies a criterion with artboards names one of them, and every link of a
+// Design line is one of the links of a criterion the task satisfies, on the scope's canvas.
+function checkDesignLines(tasks, table, design) {
+  const problems = [];
+  const links = designLinks(table, design);
+  const prefix = `${design.url}#artboard-`;
+  for (const t of tasks) {
+    const gives = t.acIds.filter((ac) => links.get(ac)?.links.length);
+    const allowed = new Set(gives.flatMap((ac) => links.get(ac).links));
+    for (const link of t.design) {
+      if (!link.startsWith(prefix)) problems.push(problem(`the task ${label(t)} has the Design link ${link}, which is not an artboard of the canvas ${design.url} of the scope`, t.line));
+      else if (!allowed.has(link)) problems.push(problem(`the task ${label(t)} has the Design link ${link}, which is not an artboard of a criterion the task satisfies`, t.line));
+    }
+    if (t.design.length > 0) continue;
+    for (const ac of gives) {
+      problems.push(problem(`the task ${label(t)} satisfies the criterion ${ac} "${links.get(ac).text}", which the design gives ${links.get(ac).links.length} artboard(s), and has no "Design:" line; name at least one of ${links.get(ac).links.join(', ')}`, t.line));
+    }
+  }
+  return problems;
+}
+
 // The format and coverage checks (conventions, section 10). `document` is the markdown text of UC-<slice>.md.
+// `design` is { url, index } (the scope's canvas and its parsed story index) when designs.json links a canvas to the scope, else absent.
 // -> [{ file: 'tasks.md', line?, message }], the shape checks.js uses. Stories are named by Title.
-export function checkTasks({ tasksText, document, slice }) {
+export function checkTasks({ tasksText, document, slice, design }) {
   const { groups, tasks, problems } = parseTasks(tasksText);
   const flows = flowSteps(document);
   const table = criteriaTable(document);
@@ -130,6 +173,7 @@ export function checkTasks({ tasksText, document, slice }) {
   for (const row of table) {
     if (!named.has(row.id)) problems.push(problem(`the AC id ${row.id} (story "${row.story}") has no task; add a task that names it`));
   }
+  if (design) problems.push(...checkDesignLines(tasks, table, design));
   return problems;
 }
 
