@@ -127,6 +127,19 @@ export function useReview(current: string | null | undefined) {
     m.timer = setTimeout(flush, SAVE_DEBOUNCE_MS);
   }, [m, setAll, flush]);
 
+  // Delete the rows at these indexes (a migration moves them to another backlog's review) and save the file.
+  const remove = useCallback((indexes: Iterable<number>) => {
+    if (!m.name) return;
+    const set = new Set(indexes);
+    setAll(m.rows.filter((_, i) => !set.has(i)));
+    m.dirty = true;
+    m.dirtyName = m.name;
+    setNotice(null);
+    clearTimeout(m.timer);
+    clearTimeout(m.retry);
+    m.timer = setTimeout(flush, SAVE_DEBOUNCE_MS);
+  }, [m, setAll, flush]);
+
   // Delete every row, open, applied and dismissed alike, and save the empty file.
   const clear = useCallback(() => {
     if (!m.name) return;
@@ -158,7 +171,7 @@ export function useReview(current: string | null | undefined) {
   }, [m]);
 
   return useMemo(
-    () => ({ rows, exists, loaded, message, notice, notify: setNotice, decide, clear, retarget, settle, reload: load }),
-    [rows, exists, loaded, message, notice, decide, clear, retarget, settle, load],
+    () => ({ rows, exists, loaded, message, notice, notify: setNotice, decide, remove, clear, retarget, settle, reload: load }),
+    [rows, exists, loaded, message, notice, decide, remove, clear, retarget, settle, load],
   );
 }

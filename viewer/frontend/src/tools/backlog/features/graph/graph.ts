@@ -32,7 +32,12 @@ export interface GraphLayout<S extends GraphItem = GraphItem> {
   unresolved: Array<{ from: number; code: string }>;
   cyclic: boolean;
 }
-export type GraphLevel = 'stories' | 'features' | 'epics';
+// A story of another backlog drawn as a dashed node: a negative `id` (story ids are positive), its backlog and its title.
+export interface OtherStoryItem extends GraphItem {
+  backlog: string;
+  title: string;
+}
+export type GraphLevel = 'stories' | 'features' | 'epics' | 'backlogs';
 export interface GraphView {
   x: number;
   y: number;
@@ -55,6 +60,9 @@ export interface StoryGroup {
   storyIds: number[];
   internal: number;
   dependsOn: Set<string>;
+  other?: boolean; // Features and Epics: the group is another backlog (dashed)
+  initials?: string; // Backlogs level: the backlog's initials
+  open?: boolean; // Backlogs level: the open backlog
 }
 
 type Key = number | string;
@@ -146,6 +154,46 @@ export function layoutGraph<S extends GraphItem>(stories: S[]): GraphLayout<S> {
   return { nodes, edges, clusters, unlinked: stories.filter((s) => !linked.has(s.id)), unresolved, cyclic };
 }
 
+// The open backlog's stories plus one item per story of another backlog that is linked with them (design decision 1):
+// a story an open story depends on (no arrow of its own), or one that depends on an open story (only those entries kept,
+// so the other backlog's own links stay out). A story that is both is one item. The items are laid out like any story, so
+// they resolve open stories' entries and a cycle through them is found by `layoutGraph`.
+export function withOtherStories(
+  stories: readonly Story[],
+  others: ReadonlyArray<{ name: string; stories: readonly Story[] }>,
+): Array<Story | OtherStoryItem> {
+  const openCodes = new Set(stories.map((s) => s.code).filter(Boolean));
+  const otherByCode = new Map<string, { backlog: string; story: Story }>();
+  for (const { name, stories: list } of others) {
+    for (const s of list) if (s.code && !openCodes.has(s.code) && !otherByCode.has(s.code)) otherByCode.set(s.code, { backlog: name, story: s });
+  }
+
+  const items = new Map<string, OtherStoryItem>(); // code -> item
+  const itemFor = (code: string) => {
+    const found = items.get(code);
+    if (found) return found;
+    const { backlog, story } = otherByCode.get(code)!;
+    const item: OtherStoryItem = { id: -(items.size + 1), code, dependsOn: [], backlog, title: story.title };
+    items.set(code, item);
+    return item;
+  };
+  for (const s of stories) {
+    for (const code of s.dependsOn) if (otherByCode.has(code)) itemFor(code);
+  }
+  for (const [code, { story }] of otherByCode) {
+    const toOpen = [...new Set(story.dependsOn.filter((e) => openCodes.has(e)))];
+    if (toOpen.length) itemFor(code).dependsOn = toOpen;
+  }
+  return [...stories, ...items.values()];
+}
+
+// While a backlog cannot be read, its initials are unknown, so an unresolved code may belong to it. Keep only the codes of
+// the open backlog (those starting with its initials) then; with every backlog read, keep them all.
+export function visibleUnresolved<U extends { code: string }>(unresolved: readonly U[], openInitials: string, unreadableCount: number): U[] {
+  if (unreadableCount === 0) return [...unresolved];
+  return unresolved.filter((u) => u.code.startsWith(`${openInitials}-`));
+}
+
 const SWEEPS = 4;
 
 // Rows for one cluster. An edge that skips layers gets a waypoint in each layer it crosses, which takes a row like a
@@ -208,45 +256,39 @@ function arrangeCluster(group: GraphItem[], edges: GraphEdge[], layer: Map<numbe
 }
 
 const KEY_SEP = '\u0001';
+const OTHER_KEY = '\u0002'; // starts the group key of another backlog (design decision 2); no epic name holds it
 
-// Coarser view of the same stories, for the Features and Epics levels: one item per feature (epic + feature) or epic,
-// shaped like a story so `layoutGraph` can lay it out. A story with no ID, no Epic or (features) no Feature is left out.
-// Links between stories of one group are counted in the group, not made into edges. Returns:
-//   items   { id, code, dependsOn } for layoutGraph; `code` is the group key, `id` a small number
-//   groups  id -> { id, key, name, epic, storyIds, internal (links inside the group) }
-//   pairs   `${from}>${to}` group ids -> the story links { from, to } (story ids) behind that group edge
-//   mutual  [a, b] group ids that depend on each other
-export function groupStories(stories: Story[], level: 'features' | 'epics') {
-  const trim = (v: unknown) => String(v ?? '').trim();
-  const keyOf = (s: Story) => {
-    const epic = trim(s.epic);
-    if (!s.code || !epic) return null;
-    if (level === 'epics') return epic;
-    return trim(s.feature) ? `${epic}${KEY_SEP}${trim(s.feature)}` : null;
-  };
+// What grouping reads of a story, and what it fills in for the group.
+interface Member {
+  id: number;
+  code: string;
+  dependsOn: readonly string[];
+}
+type GroupFacts = Pick<StoryGroup, 'name' | 'epic' | 'other' | 'initials' | 'open'>;
 
+// Shared by every coarse level: put each member in the group `keyOf` names (null leaves it out), count the links inside a
+// group, and turn the links between groups into pairs. See `groupStories` for what comes back.
+function connectGroups(members: readonly Member[], keyOf: (m: Member) => string | null, factsOf: (m: Member) => GroupFacts) {
   const groups = new Map<string, StoryGroup>(); // key -> group
-  const groupOf = new Map<number, StoryGroup>(); // story id -> group
-  for (const s of stories) {
-    const key = keyOf(s);
+  const groupOf = new Map<number, StoryGroup>(); // member id -> group
+  for (const m of members) {
+    const key = keyOf(m);
     if (key === null) continue;
-    if (!groups.has(key)) {
-      groups.set(key, { id: groups.size + 1, key, name: trim(level === 'epics' ? s.epic : s.feature), epic: trim(s.epic), storyIds: [], internal: 0, dependsOn: new Set() });
-    }
-    groups.get(key)!.storyIds.push(s.id);
-    groupOf.set(s.id, groups.get(key)!);
+    if (!groups.has(key)) groups.set(key, { id: groups.size + 1, key, ...factsOf(m), storyIds: [], internal: 0, dependsOn: new Set() });
+    groups.get(key)!.storyIds.push(m.id);
+    groupOf.set(m.id, groups.get(key)!);
   }
 
-  const byCode = new Map<string, Story>();
-  for (const s of stories) if (s.code && !byCode.has(s.code)) byCode.set(s.code, s);
+  const byCode = new Map<string, Member>();
+  for (const m of members) if (m.code && !byCode.has(m.code)) byCode.set(m.code, m);
   const pairs = new Map<string, Array<{ from: number; to: number }>>();
-  for (const s of stories) {
-    const from = groupOf.get(s.id);
+  for (const m of members) {
+    const from = groupOf.get(m.id);
     if (!from) continue;
-    for (const code of new Set(s.dependsOn)) {
+    for (const code of new Set(m.dependsOn)) {
       const target = byCode.get(code);
       const to = target && groupOf.get(target.id);
-      if (!to || target.id === s.id) continue;
+      if (!to || target.id === m.id) continue;
       if (to === from) {
         from.internal++;
         continue;
@@ -254,7 +296,7 @@ export function groupStories(stories: Story[], level: 'features' | 'epics') {
       from.dependsOn.add(to.key);
       const edge = `${from.id}>${to.id}`;
       if (!pairs.has(edge)) pairs.set(edge, []);
-      pairs.get(edge)!.push({ from: s.id, to: target.id });
+      pairs.get(edge)!.push({ from: m.id, to: target.id });
     }
   }
 
@@ -270,6 +312,68 @@ export function groupStories(stories: Story[], level: 'features' | 'epics') {
     pairs,
     mutual,
   };
+}
+
+// Coarser view of the same stories, for the Features and Epics levels: one item per feature (epic + feature) or epic,
+// shaped like a story so `layoutGraph` can lay it out. A story with no ID, no Epic or (features) no Feature is left out.
+// The extra items of `withOtherStories` (negative id) are grouped by backlog, one group per backlog named after it.
+// Links between stories of one group are counted in the group, not made into edges. Returns:
+//   items   { id, code, dependsOn } for layoutGraph; `code` is the group key, `id` a small number
+//   groups  id -> { id, key, name, epic, storyIds, internal (links inside the group) }
+//   pairs   `${from}>${to}` group ids -> the story links { from, to } (story ids) behind that group edge
+//   mutual  [a, b] group ids that depend on each other
+export function groupStories(stories: ReadonlyArray<Story | OtherStoryItem>, level: 'features' | 'epics') {
+  const trim = (v: unknown) => String(v ?? '').trim();
+  const bySource = new Map<number, Story | OtherStoryItem>(stories.map((s) => [s.id, s]));
+  const otherOf = (m: Member) => {
+    const s = bySource.get(m.id)!;
+    return 'backlog' in s ? s : null;
+  };
+  const keyOf = (m: Member) => {
+    const other = otherOf(m);
+    if (other) return `${OTHER_KEY}${other.backlog}`;
+    const s = bySource.get(m.id) as Story;
+    const epic = trim(s.epic);
+    if (!m.code || !epic) return null;
+    if (level === 'epics') return epic;
+    return trim(s.feature) ? `${epic}${KEY_SEP}${trim(s.feature)}` : null;
+  };
+  const factsOf = (m: Member): GroupFacts => {
+    const other = otherOf(m);
+    if (other) return { name: other.backlog, epic: '', other: true };
+    const s = bySource.get(m.id) as Story;
+    return { name: trim(level === 'epics' ? s.epic : s.feature), epic: trim(s.epic) };
+  };
+  return connectGroups(stories, keyOf, factsOf);
+}
+
+// Backlogs level: one group per backlog, named after it. Each `Depends On` entry resolves against the codes of every
+// backlog, so a link between two other backlogs counts too. A story with no ID is counted in its backlog but links nothing.
+// Backlogs of different files reuse story ids, so the stories get ids of their own: the open backlog keeps its own
+// (positive), the others get negative ones. `members` maps each of those ids to its backlog and story. Returns what
+// `groupStories` returns, plus `members`.
+export function groupBacklogs(backlogs: ReadonlyArray<{ name: string; initials: string; stories: readonly Story[]; open?: boolean }>) {
+  const members = new Map<number, { backlog: string; story: Story }>();
+  const owner = new Map<number, (typeof backlogs)[number]>();
+  const list: Member[] = [];
+  let next = 0;
+  for (const b of backlogs) {
+    for (const story of b.stories) {
+      const id = b.open ? story.id : --next;
+      members.set(id, { backlog: b.name, story });
+      owner.set(id, b);
+      list.push({ id, code: story.code, dependsOn: story.code ? story.dependsOn : [] });
+    }
+  }
+  const grouped = connectGroups(
+    list,
+    (m) => owner.get(m.id)!.name,
+    (m) => {
+      const b = owner.get(m.id)!;
+      return { name: b.name, epic: '', initials: b.initials, open: Boolean(b.open) };
+    },
+  );
+  return { ...grouped, members };
 }
 
 // Ids of everything `id` depends on and everything that depends on it, directly or indirectly (not `id` itself).

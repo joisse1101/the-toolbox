@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { loadBacklog } from '#shared/backlog/model.ts';
 import {
   parseReview, serializeReview, validateFindings, fillCurrent, mergeStatus, suggestionState, applySuggestions,
-  unitsOf, unitState, acceptAll, acceptSummaryText, criterionNumberOf, displayRow, openCounts, openUnitsFor, retargetRows, reviewOverview, REVIEW_COLUMNS,
+  unitsOf, unitState, acceptAll, acceptSummaryText, criterionNumberOf, displayRow, openCounts, openUnitsFor, moveReviewRows, retargetRows, reviewOverview, REVIEW_COLUMNS,
 } from '#shared/review/review.ts';
 import type { ApplyResult, Finding, ReviewUnit, SkipReason } from '#shared/review/review.ts';
 import type { Criterion, ReviewRow, Story } from '#shared/types.ts';
@@ -862,4 +862,62 @@ test('a review file without Consistency rows loads as before', () => {
   const back = parseReview(text) as Parsed;
   assert.equal(back.ok, true);
   assert.equal((reviewOverview(back.rows, backlog().stories)).sections.find((s) => s.area === 'Consistency')!.units.length, 0);
+});
+
+test('moveReviewRows: the open suggestions of the moved stories move, the rest stay, IDs are kept', () => {
+  const b = backlog();
+  const rows = rowsFor([finding(), finding({ suggested: 'Second' }), finding({ storyId: 'B1-IAM-0002', field: 'Title', suggested: 'X' })], b);
+  const out = moveReviewRows(rows, [], ['B1-IAM-0001']);
+  assert.equal(out.moved, 2);
+  assert.deepEqual(out.indexes, [0, 1]);
+  assert.deepEqual(out.source, [rows[2]]);
+  assert.deepEqual(out.target, [rows[0], rows[1]]);
+  assert.equal(out.target[0].storyId, 'B1-IAM-0001');
+});
+
+test('moveReviewRows: a split group moves whole, with every row of its unit', () => {
+  const b = backlog();
+  const rows = rowsFor([
+    finding({ group: 'g1', confidence: 'confirm' }),
+    finding({ storyId: 'B1-IAM-0002', field: 'Title', suggested: 'X' }),
+    finding({ storyId: 'NEW-1', field: 'Title', action: 'add-story', suggested: 'Part', group: 'g1', confidence: 'confirm' }),
+  ], b);
+  const out = moveReviewRows(rows, [], ['B1-IAM-0001']);
+  assert.equal(out.moved, 2);
+  assert.deepEqual(out.indexes, [0, 2]);
+  assert.deepEqual(out.source, [rows[1]]);
+  assert.deepEqual(out.target.map((r) => r.group), ['g1', 'g1']);
+});
+
+test('moveReviewRows: a group name the target already uses becomes the first free <name>-<n>', () => {
+  const b = backlog();
+  const rows = rowsFor([finding({ group: 'g1', confidence: 'confirm' })], b);
+  const targetRow = { ...rows[0], storyId: 'T1-X-0001', group: 'g1' };
+  const taken = { ...rows[0], storyId: 'T1-X-0002', group: 'g1-2', status: 'applied' as const };
+  const out = moveReviewRows(rows, [targetRow, taken], ['B1-IAM-0001']);
+  assert.equal(out.target.at(-1)!.group, 'g1-3');
+  assert.deepEqual(out.target.slice(0, 2), [targetRow, taken]);
+  assert.equal(moveReviewRows(rows, [{ ...targetRow, group: 'other' }], ['B1-IAM-0001']).target.at(-1)!.group, 'g1');
+});
+
+test('moveReviewRows: applied and dismissed rows stay in the source', () => {
+  const b = backlog();
+  const rows = rowsFor([finding(), finding({ suggested: 'Second' }), finding({ suggested: 'Third' })], b);
+  rows[0].status = 'applied';
+  rows[1].status = 'dismissed';
+  const out = moveReviewRows(rows, [], ['B1-IAM-0001']);
+  assert.equal(out.moved, 1);
+  assert.deepEqual(out.source.map((r) => r.status), ['applied', 'dismissed']);
+  assert.equal(out.target[0].suggested, 'Third');
+});
+
+test('moveReviewRows: an empty target gets the moved rows alone, and nothing moves for a story with no open rows', () => {
+  const b = backlog();
+  const rows = rowsFor([finding()], b);
+  assert.deepEqual(moveReviewRows(rows, [], ['B1-IAM-0001']).target, rows);
+  const none = moveReviewRows(rows, [], ['B1-IAM-0003']);
+  assert.equal(none.moved, 0);
+  assert.deepEqual(none.source, rows);
+  assert.deepEqual(none.target, []);
+  assert.deepEqual(moveReviewRows([], [], ['B1-IAM-0001']), { source: [], target: [], moved: 0, indexes: [] });
 });

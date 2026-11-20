@@ -1,14 +1,14 @@
 import type { ReactNode } from 'react';
 import type { GraphLevel } from './graph.ts';
 
-const LEVELS = [['stories', 'Stories'], ['features', 'Features'], ['epics', 'Epics']] as const;
+const LEVELS = [['stories', 'Stories'], ['features', 'Features'], ['epics', 'Epics'], ['backlogs', 'Backlogs']] as const;
 
 // The strip above the graph: detail level, zoom, the Link / Remove / Open actions, the hint line and the legend.
 export default function GraphToolbar({
-  level, onChooseLevel, hasNodes, coarse, zoomPercent, onZoomOut, onZoomIn, onFit,
+  level, onChooseLevel, hasNodes, coarse, hasOther, zoomPercent, onZoomOut, onZoomIn, onFit,
   linking, canLink, onToggleLink, canRemove, onRemove, canOpen, onOpenInEditor, hint,
 }: {
-  level: GraphLevel; onChooseLevel: (level: GraphLevel) => void; hasNodes: boolean; coarse: boolean; zoomPercent: number;
+  level: GraphLevel; onChooseLevel: (level: GraphLevel) => void; hasNodes: boolean; coarse: boolean; hasOther: boolean; zoomPercent: number;
   onZoomOut: () => void; onZoomIn: () => void; onFit: () => void;
   linking: boolean; canLink: boolean; onToggleLink: () => void; canRemove: boolean; onRemove: () => void;
   canOpen: boolean; onOpenInEditor: () => void; hint: ReactNode;
@@ -44,7 +44,9 @@ export default function GraphToolbar({
           {!coarse && <li><span className="legend-swatch node" />Complete story</li>}
           {!coarse && <li><span className="legend-swatch node incomplete" />Incomplete: a required field is missing</li>}
           {!coarse && <li><span className="legend-swatch node warn" />Warning: see the tooltip</li>}
-          <li><span className="legend-swatch stripe" />Stripe colour: the epic</li>
+          {level !== 'backlogs' && <li><span className="legend-swatch stripe" />Stripe colour: the epic</li>}
+          {hasOther && <li><span className="legend-swatch node other" />{coarse ? 'Dashed border: another backlog, with the number of its linked stories; read-only here' : 'Dashed border: a story of another backlog, named above it; read-only here'}</li>}
+          {level === 'backlogs' && <li><span className="legend-swatch node open-backlog" />Accent fill and border: the open backlog</li>}
           <li><span className="legend-swatch node selected" />Selected: thick accent border; its dependencies and dependents stay bright and the rest fade</li>
           <li><span className="legend-swatch line" />Arrow: points at what the story depends on</li>
           <li><span className="legend-swatch line back" />Dashed red arrow: a dependency cycle</li>

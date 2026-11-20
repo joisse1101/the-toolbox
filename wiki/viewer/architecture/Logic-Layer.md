@@ -37,6 +37,8 @@ Other backlogs' links to a story must follow its ID, so `ids.ts` also holds the 
 
 `viewer/shared/review/review.ts` and `viewer/shared/backlog/proposals.ts` hold the review-suggestion and proposed-story logic. The proposal writer's `proposal-input.js` and the review skill's `backlog-checks.js` live in their skill folders in `toolkit/skills/`, not here.
 
+`moveReviewRows(source, target, codes)` in `review.ts` is the review half of a migration. It takes the open units of the stories in `codes` (their codes in the source backlog) out of the source rows and appends them to the target rows, and returns `{ source, target, moved, indexes }`: the source rows without them, the target rows with them, how many rows moved, and the moved rows' positions in the source rows (so a live review can drop them with `useReview.remove`). A split moves whole, applied and dismissed rows stay, and a Group name the target already uses becomes the first free `<name>-<n>`. The rows keep their IDs as written: the relink that follows the migration renames them in the target's file, in the same step that moves the story links.
+
 ## Lexicon module
 
 `viewer/shared/lexicon/lexicon.ts` handles the backlog's lexicon, `<backlog>/lexicon.csv`. It is a CSV with `Term`, `Part of`, `Definition`, `Avoid` and `Notes`, where `Avoid` is `;`-separated and unknown columns round-trip in `cells`. It has `parseLexicon` and `composeLexicon`, and it holds the term rules in one place for the Lexicon tab and the writer script:

@@ -285,7 +285,7 @@ export default function App() {
         <SettingsTab hidden={!showSettings} settingsState={settingsState} />
 
         <GraphTab
-          stories={stories} problems={problems} current={current} hidden={!current || tab !== 'graph'}
+          stories={stories} others={others.lists} unreadable={others.unreadable} initials={state.initials} problems={problems} current={current} hidden={!current || tab !== 'graph'}
           onOpen={openInEditor} onAddDependency={actions.addDependency} onRemoveDependency={actions.removeDependency}
         />
       </main>

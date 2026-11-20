@@ -1,6 +1,6 @@
 import type { KeyboardEvent, PointerEvent, RefObject } from 'react';
 import type { Story } from '#shared/types.ts';
-import type { GraphEdge, GraphLayout, GraphLevel, GraphNode, GraphView, Point, groupStories } from './graph.ts';
+import type { GraphEdge, GraphLayout, GraphLevel, GraphNode, GraphView, OtherStoryItem, Point, groupStories } from './graph.ts';
 import EmptyState from '#frontend/src/shared/ui/EmptyState.tsx';
 import { storyIssues, storyLabel as title } from '#shared/backlog/model.ts';
 import { issueClass, rowTooltip } from '#frontend/src/tools/backlog/shared/issues.ts';
@@ -12,7 +12,7 @@ import type { bandGeometry } from './graphGeometry.ts';
 // and every gesture it receives comes from GraphTab through props.
 export default function GraphCanvas({
   panelRef, hasNodes, stories, level, coarse, grouping, layout, bands, view, byId, nodeById, epicHue, problems,
-  selected, selectedEdge, linkFrom, drag, dragNode, lit, litEdge, groupLabel, activate,
+  otherById, codeOf, selected, selectedEdge, linkFrom, drag, dragNode, lit, litEdge, groupLabel, activate,
   clickNode, onPickEdge, onOpen, onKeyDown, onPointerDown, onPointerMove, onPointerUp, onPointerCancel,
 }: {
   panelRef: RefObject<HTMLDivElement | null>;
@@ -28,6 +28,8 @@ export default function GraphCanvas({
   nodeById: Map<number, GraphNode>;
   epicHue: Map<string, number>;
   problems: Map<number, string[]>;
+  otherById: Map<number, OtherStoryItem>; // dashed nodes: stories of other backlogs, by their negative id
+  codeOf: (id: number) => string | undefined;
   selected: GraphNode | null;
   selectedEdge: string | null;
   linkFrom: number | null;
@@ -109,7 +111,7 @@ export default function GraphCanvas({
             const { x, y } = pos(n);
             const hue = epicHue.get(g.epic);
             const counts = `${g.storyIds.length} ${g.storyIds.length === 1 ? 'story' : 'stories'}${g.internal ? ` · ${g.internal} internal` : ''}`;
-            const cls = ['graph-node', 'group', selected?.id === n.id ? 'selected' : '', lit(n.id) ? '' : 'dim'].filter(Boolean).join(' ');
+            const cls = ['graph-node', 'group', g.other ? 'other' : '', g.open ? 'open-backlog' : '', selected?.id === n.id ? 'selected' : '', lit(n.id) ? '' : 'dim'].filter(Boolean).join(' ');
             return (
               <g
                 key={n.id} className={cls} data-node={n.id} transform={`translate(${x} ${y})`} tabIndex={0} role="button"
@@ -117,15 +119,37 @@ export default function GraphCanvas({
                 onClick={() => clickNode(n.id)} onKeyDown={activate(() => clickNode(n.id))}
               >
                 <title>{`${groupLabel(n.id)}\n${counts}`}</title>
-                {level === 'features' && <text className="graph-node-epiclabel" x="0" y="-5">{clip(g.epic)}</text>}
+                {level === 'features' && !g.other && <text className="graph-node-epiclabel" x="0" y="-5">{clip(g.epic)}</text>}
+                {level === 'backlogs' && <text className="graph-node-epiclabel" x="0" y="-5">{clip(`${g.initials}${g.open ? ' · open backlog' : ''}`)}</text>}
                 <rect className="graph-node-box" width={NODE_W} height={NODE_H} rx="6" />
-                <rect className="graph-node-epic" width="6" height={NODE_H} rx="3" style={hue === undefined ? undefined : { fill: `hsl(${hue} 62% 52%)` }} />
+                {!g.other && level !== 'backlogs' && <rect className="graph-node-epic" width="6" height={NODE_H} rx="3" style={hue === undefined ? undefined : { fill: `hsl(${hue} 62% 52%)` }} />}
                 <text className="graph-node-code" x="16" y="18">{counts}</text>
                 <text className="graph-node-title" x="16" y="35">{clip(g.name)}</text>
               </g>
             );
           })}
           {!coarse && layout.nodes.map((n) => {
+            const other = otherById.get(n.id);
+            if (other) {
+              const { x, y } = pos(n);
+              const isSelected = selected?.id === n.id;
+              const cls = ['graph-node', 'other', isSelected ? 'selected' : '', lit(n.id) ? '' : 'dim'].filter(Boolean).join(' ');
+              return (
+                <g
+                  key={n.id} className={cls} data-node={n.id} transform={`translate(${x} ${y})`} tabIndex={0} role="button"
+                  aria-label={`${other.code} ${other.title}, a story of ${other.backlog}`} aria-pressed={isSelected}
+                  onClick={() => clickNode(n.id)} onKeyDown={activate(() => clickNode(n.id))}
+                >
+                  <title>{`${other.code} ${other.title}
+Backlog: ${other.backlog} (read-only here)`}</title>
+                  <text className="graph-node-epiclabel" x="0" y="-5">{clip(other.backlog)}</text>
+                  <rect className="graph-node-box" width={NODE_W} height={NODE_H} rx="6" />
+                  <text className="graph-node-code" x="16" y="18">{other.code}</text>
+                  {isSelected && <text className="graph-node-state" x={NODE_W - 8} y="18" textAnchor="end">Selected</text>}
+                  <text className="graph-node-title" x="16" y="35">{clip(other.title)}</text>
+                </g>
+              );
+            }
             const s = byId.get(n.id)!;
             const { x, y } = pos(n);
             const { errors, warnings } = storyIssues(s, problems.get(s.id));
@@ -157,7 +181,7 @@ export default function GraphCanvas({
             const on = selectedEdge === key;
             const label = coarse
               ? `${groupLabel(e.from)} depends on ${groupLabel(e.to)}`
-              : `${byId.get(e.from)!.code} depends on ${byId.get(e.to)!.code}`;
+              : `${codeOf(e.from)} depends on ${codeOf(e.to)}`;
             return (
               <g
                 key={key} className="graph-edge-key" data-edge-key={key} tabIndex={0} role="button" aria-label={label} aria-pressed={on}

@@ -1,15 +1,17 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, PointerEvent } from 'react';
 import type { Story } from '#shared/types.ts';
-import type { GraphEdge, GraphItem, GraphLayout, GraphLevel, GraphView, Point } from './graph.ts';
+import type { GraphEdge, GraphItem, GraphLayout, GraphLevel, GraphView, OtherStoryItem, Point } from './graph.ts';
+import type { OtherBacklog } from '#frontend/src/tools/backlog/shared/useOtherBacklogs.ts';
 import TabHeader from '#frontend/src/shared/ui/TabHeader.tsx';
 import GraphToolbar from './GraphToolbar.tsx';
 import GraphDetail from './GraphDetail.tsx';
+import type { ForeignStory } from './GraphDetail.tsx';
 import GraphCanvas from './GraphCanvas.tsx';
 import GraphUnlinked from './GraphUnlinked.tsx';
 import { storyLabel as title } from '#shared/backlog/model.ts';
 import { wouldCycle } from '#shared/backlog/ids.ts';
-import { layoutGraph, groupStories, relatedIds, fitView, zoomAt, panBy, toGraphPoint } from './graph.ts';
+import { layoutGraph, groupStories, groupBacklogs, withOtherStories, visibleUnresolved, relatedIds, fitView, zoomAt, panBy, toGraphPoint } from './graph.ts';
 import { edgeKey, bandGeometry } from './graphGeometry.ts';
 
 const KEY_PAN = 48;
@@ -21,8 +23,11 @@ const FIT_MIN_ZOOM = MIN_NODE_TEXT / SMALLEST_NODE_TEXT;
 // The pointer gesture in progress: dragging a link from a story's handle, or panning the background.
 type Gesture = { type: 'link'; id: number } | { type: 'pan'; last: Point; moved: number };
 
-export default function GraphTab({ stories, problems, current, hidden, onOpen, onAddDependency, onRemoveDependency }: {
+export default function GraphTab({ stories, others, unreadable, initials, problems, current, hidden, onOpen, onAddDependency, onRemoveDependency }: {
   stories: Story[];
+  others: readonly OtherBacklog[]; // the other backlogs that were read
+  unreadable: readonly string[]; // names of the other backlogs that could not be read
+  initials: string; // the open backlog's initials
   problems: Map<number, string[]>;
   current: string | null;
   hidden: boolean;
@@ -31,10 +36,30 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
   onRemoveDependency: (id: number, code: string) => void;
 }) {
   const [level, setLevel] = useState<GraphLevel>('stories');
-  const coarse = level !== 'stories'; // Features and Epics: groups of stories, read-only
-  const grouping = useMemo(() => (level !== 'stories' ? groupStories(stories, level) : null), [stories, level]);
-  const layout = useMemo<GraphLayout>(() => layoutGraph<GraphItem>(grouping ? grouping.items : stories), [stories, grouping]);
+  const coarse = level !== 'stories'; // Features, Epics and Backlogs: groups of stories, read-only
+  // The open stories plus a dashed item for each linked story of another backlog (negative id, read-only).
+  const storyItems = useMemo(() => withOtherStories(stories, others), [stories, others]);
+  // Backlogs level: the open backlog's in-memory stories (so an edit shows before it is saved) with the others' lists.
+  const backlogGrouping = useMemo(
+    () => (level === 'backlogs' ? groupBacklogs([{ name: current ?? '', initials, stories, open: true }, ...others]) : null),
+    [stories, others, level, current, initials],
+  );
+  const grouping = useMemo(
+    () => backlogGrouping ?? (level === 'stories' || level === 'backlogs' ? null : groupStories(storyItems, level)),
+    [backlogGrouping, storyItems, level],
+  );
+  const layout = useMemo<GraphLayout>(() => layoutGraph<GraphItem>(grouping ? grouping.items : storyItems), [storyItems, grouping]);
+  const otherById = useMemo(() => new Map(storyItems.filter((s): s is OtherStoryItem => s.id < 0 && 'backlog' in s).map((s) => [s.id, s] as const)), [storyItems]);
   const byId = useMemo(() => new Map(stories.map((s) => [s.id, s] as const)), [stories]);
+  // Stories of other backlogs that a coarse level's detail list names: the dashed items, or the Backlogs level's members.
+  const foreign = useMemo(() => {
+    const map = new Map<number, ForeignStory>();
+    for (const o of otherById.values()) map.set(o.id, { code: o.code, title: o.title, backlog: o.backlog });
+    for (const [id, m] of backlogGrouping?.members ?? []) if (id < 0) map.set(id, { code: m.story.code, title: title(m.story), backlog: m.backlog });
+    return map;
+  }, [otherById, backlogGrouping]);
+  const codeOf = (id: number) => (byId.get(id) ?? otherById.get(id))?.code;
+  const unresolved = useMemo(() => visibleUnresolved(layout.unresolved, initials, unreadable.length), [layout, initials, unreadable]);
   const nodeById = useMemo(() => new Map(layout.nodes.map((n) => [n.id, n] as const)), [layout]);
   const epicHue = useMemo(() => {
     const hues = new Map<string, number>();
@@ -130,7 +155,7 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
   // Features and Epics levels: the group names, and the story links behind the selected group or arrow.
   const groupLabel = (id: number) => {
     const g = grouping!.groups.get(id)!;
-    return level === 'features' ? `${g.epic} › ${g.name}` : g.name;
+    return level === 'features' && !g.other ? `${g.epic} › ${g.name}` : g.name;
   };
   const selectedGroup = coarse && selected ? grouping!.groups.get(selected.id) : null;
   const detailPairs: Array<{ from: number; to: number }> | null | undefined = !coarse
@@ -146,8 +171,12 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
     setLinkFrom(null);
     setNote('');
   };
+  // At the Backlogs level a node holds every story of its backlog, so Show stories lights only the stories of the open
+  // backlog that the links behind the selection name (another backlog's stories are not all drawn at the Stories level).
+  const linkedIds = detailPairs ? detailPairs.flatMap((p) => [p.from, p.to]) : [];
+  const canShowStories = level !== 'backlogs' || linkedIds.some((id) => id > 0);
   const showStories = () => {
-    const ids = edge ? detailPairs!.flatMap((p) => [p.from, p.to]) : selectedGroup!.storyIds;
+    const ids = level === 'backlogs' ? linkedIds.filter((id) => id > 0) : edge ? linkedIds : selectedGroup!.storyIds;
     chooseLevel('stories');
     setFocus(new Set(ids));
   };
@@ -159,6 +188,10 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
 
   // `fromId` comes to depend on `toId`.
   const link = (fromId: number, toId: number) => {
+    if (fromId < 0 || toId < 0) {
+      setLinkFrom(null);
+      return setNote('A link to a story of another backlog is added in the Editor, in the Depends On field.');
+    }
     const from = byId.get(fromId);
     const to = byId.get(toId);
     setLinkFrom(null);
@@ -172,11 +205,11 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
   };
 
   const removeEdge = (e: GraphEdge) => {
-    if (coarse) return;
+    if (coarse || e.from < 0) return; // only the open backlog stores a link from one of its stories
     const from = byId.get(e.from);
-    const to = byId.get(e.to);
-    if (!from || !to) return;
-    onRemoveDependency(from.id, to.code);
+    const toCode = codeOf(e.to);
+    if (!from || !toCode) return;
+    onRemoveDependency(from.id, toCode);
     setSelectedEdge(null);
     setNote('');
   };
@@ -262,6 +295,8 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
   const linkSource = linkFrom !== null ? byId.get(linkFrom) : null;
   const openStory = selected && !coarse ? byId.get(selected.id) : null;
   const dragNode = drag ? nodeById.get(drag.from) : null;
+  const selectedOther = selected ? otherById.get(selected.id) : undefined;
+  const edgeFromOther = edge ? otherById.get(edge.from) : undefined;
 
   const hint = coarse
     ? edge
@@ -274,14 +309,16 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
     : linkSource
       ? `${linkSource.code || title(linkSource)} depends on… choose a story (Escape cancels).`
       : edge
-        ? `${byId.get(edge.from)?.code} depends on ${byId.get(edge.to)?.code}.`
-        : selected
-          ? `${openStory?.code}: its dependencies and dependents are highlighted.`
-          : focus
-            ? 'The stories of the chosen group or link are highlighted. Select the background to clear.'
-            : hasNodes
-              ? 'Drag from a story’s dot onto the story it depends on to link them. Ctrl+wheel zooms, drag the background to pan.'
-              : '';
+        ? `${codeOf(edge.from)} depends on ${codeOf(edge.to)}.${edgeFromOther ? ` This link is stored in ${edgeFromOther.backlog}, so it cannot be removed here.` : ''}`
+        : selectedOther
+          ? `${selectedOther.code} is a story of ${selectedOther.backlog} (read-only): its links are highlighted. Open ${selectedOther.backlog} to edit it.`
+          : selected
+            ? `${openStory?.code}: its dependencies and dependents are highlighted.`
+            : focus
+              ? 'The stories of the chosen group or link are highlighted. Select the background to clear.'
+              : hasNodes
+                ? 'Drag from a story’s dot onto the story it depends on to link them. Ctrl+wheel zooms, drag the background to pan.'
+                : '';
 
   // Handlers the parts call: selecting an arrow, starting or cancelling a link, ending a gesture.
   const pickEdge = (key: string, clearNote: boolean) => {
@@ -303,18 +340,19 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
     <section id="graphView" className="card graph-view" role="tabpanel" aria-labelledby="tabGraph" hidden={hidden}>
       <TabHeader title="Dependency graph" />
       <GraphToolbar
-        level={level} onChooseLevel={chooseLevel} hasNodes={hasNodes} coarse={coarse} zoomPercent={Math.round(view.k * 100)}
+        level={level} onChooseLevel={chooseLevel} hasNodes={hasNodes} coarse={coarse} hasOther={coarse ? Boolean(grouping && [...grouping.groups.values()].some((g) => g.other)) : otherById.size > 0} zoomPercent={Math.round(view.k * 100)}
         onZoomOut={() => zoomBy(1 / ZOOM_STEP)} onZoomIn={() => zoomBy(ZOOM_STEP)} onFit={fit}
         linking={linkFrom !== null} canLink={Boolean(selected && openStory?.code)} onToggleLink={toggleLinkFromSelected}
-        canRemove={Boolean(edge) && !coarse} onRemove={() => edge && removeEdge(edge)}
-        canOpen={Boolean(selected)} onOpenInEditor={() => openStory && onOpen(openStory.id)} hint={hint}
+        canRemove={Boolean(edge) && !coarse && !edgeFromOther} onRemove={() => edge && removeEdge(edge)}
+        canOpen={Boolean(openStory)} onOpenInEditor={() => openStory && onOpen(openStory.id)} hint={hint}
       />
-      <GraphDetail detailPairs={detailPairs ?? null} byId={byId} onOpen={onOpen} onShowStories={showStories} />
+      <GraphDetail detailPairs={detailPairs ?? null} byId={byId} foreign={foreign} canShowStories={canShowStories} onOpen={onOpen} onShowStories={showStories} />
       {note && <p className="warning graph-note" role="alert">{note}</p>}
 
       <GraphCanvas
         panelRef={panel} hasNodes={hasNodes} stories={stories} level={level} coarse={coarse} grouping={grouping} layout={layout}
         bands={bands} view={view} byId={byId} nodeById={nodeById} epicHue={epicHue} problems={problems}
+        otherById={otherById} codeOf={codeOf}
         selected={selected} selectedEdge={selectedEdge} linkFrom={linkFrom} drag={drag} dragNode={dragNode}
         lit={lit} litEdge={litEdge} groupLabel={groupLabel} activate={activate}
         clickNode={clickNode} onPickEdge={pickEdge} onOpen={onOpen} onKeyDown={onKeyDown}
@@ -327,10 +365,15 @@ export default function GraphTab({ stories, problems, current, hidden, onOpen, o
           {grouping!.mutual.length === 0 && <li>Some {level} depend on each other in a circle.</li>}
         </ul>
       )}
-      {!coarse && (layout.cyclic || layout.unresolved.length > 0) && (
+      {unreadable.length > 0 && (
+        <ul className="warning graph-notes">
+          {unreadable.map((name) => <li key={name}>{name} could not be read, so its links are not shown, and codes with other initials are left out of the missing-story list.</li>)}
+        </ul>
+      )}
+      {!coarse && (layout.cyclic || unresolved.length > 0) && (
         <ul className="warning graph-notes">
           {layout.cyclic && <li>This backlog has a dependency cycle. The stories in it are marked.</li>}
-          {layout.unresolved.map((u) => <li key={`${u.from}-${u.code}`}>{byId.get(u.from)?.code} lists {u.code}, which no story has.</li>)}
+          {unresolved.map((u) => <li key={`${u.from}-${u.code}`}>{byId.get(u.from)?.code} lists {u.code}, which no story has.</li>)}
         </ul>
       )}
       <GraphUnlinked

@@ -244,6 +244,8 @@ legend { font-weight: 600; padding: 0 var(--space-2); }
 .graph-node:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
 .graph-node:focus-visible .graph-node-box { stroke-width: 3; }
 .graph-node.selected .graph-node-box, .graph-node.source .graph-node-box { stroke: var(--accent); stroke-width: 3; }
+.graph-node.other .graph-node-box { stroke: var(--muted); stroke-dasharray: 6 4; }
+.graph-node.open-backlog .graph-node-box { fill: var(--accent-tint); stroke: var(--accent); stroke-width: 2.5; }
 .graph-node.dim { opacity: 0.25; }
 .graph-node-code { font: var(--text-xs) ui-monospace, Consolas, monospace; fill: var(--muted); }
 .graph-node-title { font-size: var(--text-sm); fill: var(--text); }
@@ -257,6 +259,8 @@ legend { font-weight: 600; padding: 0 var(--space-2); }
 .legend-swatch.node { width: 16px; height: 12px; border: 1.5px solid var(--border); border-radius: 3px; background: var(--surface); }
 .legend-swatch.node.incomplete { background: var(--bad-bg); border-color: var(--bad-border); }
 .legend-swatch.node.warn { background: var(--warn-bg); border-color: var(--warn-border); }
+.legend-swatch.node.other { border: 1.5px dashed var(--muted); }
+.legend-swatch.node.open-backlog { background: var(--accent-tint); border: 2.5px solid var(--accent); }
 .legend-swatch.node.selected { border: 3px solid var(--accent); }
 .legend-swatch.stripe { width: 6px; height: 12px; border-radius: 3px; background: var(--muted); }
 .legend-swatch.line { width: 20px; border-top: 2px solid var(--muted); }
