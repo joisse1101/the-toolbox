@@ -2,7 +2,8 @@
 // and Mermaid diagrams), tasks.md (the build tasks, required, carried in the JSON `files` beside the document) and source.json.
 // Usage, the slice as JSON on stdin:
 //   node <skill folder>/write-diagram.mjs <backlog name> [--check] [--repo]
-// The JSON is { slice, scope, stories: [{ id, title }], files: [{ name, content }] }. --check runs the same preparation, the same
+// The JSON is { slice, scope, stories: [{ id, title }], files: [{ name, content }], design?: { url, index } }. `design` is required when
+// the backlog's designs.json links a canvas to the scope (see resolveDesign). --check runs the same preparation, the same
 // structural checks (diagrams/checks.js) and Mermaid's own parser on every diagram as the write, and writes nothing; --repo says
 // the skill read the repo, which lifts the limits of a slice without one. The stories come as { id, title } pairs and the story
 // hashes are computed here, never taken from the caller. Without the Mermaid packages (see parse-mermaid.mjs) it refuses.
@@ -20,6 +21,9 @@ import { describeParseError, writeAtomic } from './lib/skill-support/write-atomi
 import { loadStories, slicePath, readSliceFolder, readConventions, scopeText, SOURCE_FILE } from './read-diagrams.mjs';
 import { parseMermaid, mermaidMissing } from './parse-mermaid.mjs';
 import { dataDirOrThrow } from './lib/skill-support/resolve-data-dir.mjs';
+import { backlogDir } from './lib/storage/backlog-paths.mjs';
+import { shown } from './lib/skill-support/paths.mjs';
+import { parseIndexText, validateIndex, compareIndex, IndexError } from './lib/skill-support/design-index.mjs';
 
 import { GUIDELINES_DIR } from './lib/skill-support/paths.mjs';
 
@@ -46,9 +50,57 @@ function cleanScope(scope) {
   return { scope: clean };
 }
 
+const DESIGNS_FILE = 'designs.json';
+const isRecord = (v) => typeof v === 'object' && v !== null && !Array.isArray(v);
+
+// The canvas designs.json links to the scope, or null (no file or no entry: the slice is written as before).
+// -> { url } | null | { error }. The scope is compared as the pointer writer stores it, by JSON equality.
+function designPointer({ dataDir, name, scope }) {
+  const file = path.join(backlogDir(dataDir, name), DESIGNS_FILE);
+  if (!fs.existsSync(file)) return null;
+  let parsed;
+  try {
+    parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch (err) {
+    return { error: `${shown(dataDir, file)} is not valid JSON: ${err.message}. Fix it first.` };
+  }
+  if (!isRecord(parsed) || !Array.isArray(parsed.designs)) return { error: `${shown(dataDir, file)} must hold { "designs": [ ... ] }. Fix it first.` };
+  const entry = parsed.designs.find((d) => isRecord(d) && JSON.stringify(d.scope) === JSON.stringify(scope));
+  return entry ? { url: entry.url } : null;
+}
+
+// The design the scope is checked against: { url, index } when designs.json links a canvas to the scope, null when it does not.
+// -> { design } | { errors }. When it does, the input must carry `design: { url, index }` with the same url and a current index
+// (an object, or the text of Main.dc.html or bare JSON), so that leaving the field out cannot skip the design.
+function resolveDesign({ dataDir, name, scope, stories, given }) {
+  const pointer = designPointer({ dataDir, name, scope });
+  if (pointer?.error) return { errors: [pointer.error] };
+  if (!pointer) return { design: null };
+  if (!isRecord(given)) return { errors: [`${DESIGNS_FILE} links the canvas ${pointer.url} to the scope ${scopeText(scope)}, so the input needs a design field { "url", "index" } (the canvas's story index); the slice was not written.`] };
+  if (given.url !== pointer.url) return { errors: [`design.url ${JSON.stringify(given.url) ?? 'is missing'} is not the canvas ${pointer.url} that ${DESIGNS_FILE} links to the scope ${scopeText(scope)}.`] };
+  let index;
+  try {
+    index = typeof given.index === 'string' ? parseIndexText(given.index) : validateIndex(given.index);
+  } catch (err) {
+    if (err instanceof IndexError) return { errors: [`design.index is not a valid story index: ${err.message}`] };
+    throw err;
+  }
+  if (JSON.stringify(index.scope) !== JSON.stringify(scope)) return { errors: [`design.index is for the scope ${scopeText(index.scope)}, not ${scopeText(scope)}.`] };
+  const stale = compareIndex(index, stories);
+  if (stale.stale) {
+    const parts = [
+      ...stale.changed.map((c) => `changed: "${c.title}"`),
+      ...stale.missing.map((t) => `missing from the backlog: "${t}"`),
+      ...stale.new.map((t) => `new, not in the index: "${t}"`),
+    ];
+    return { errors: [`design.index is out of date with the backlog (${parts.join('; ')}). Run jois-story-design again for the scope.`] };
+  }
+  return { design: { url: pointer.url, index } };
+}
+
 // Everything both tools need, or { ok: false, errors } naming every problem found.
-//   input: { name, slice, scope, stories: [{ id, title }], files: [{ name, content }], repo?: {} (the skill read the repo) }
-async function prepare({ dataDir = dataDirOrThrow(), guidelinesDir = GUIDELINES_DIR, name, slice, scope: rawScope, stories: pairs, files: fileList, repo = null, now = () => new Date().toISOString() }) {
+//   input: { name, slice, scope, stories: [{ id, title }], files: [{ name, content }], design?: { url, index }, repo?: {} (the skill read the repo) }
+async function prepare({ dataDir = dataDirOrThrow(), guidelinesDir = GUIDELINES_DIR, name, slice, scope: rawScope, stories: pairs, files: fileList, design: givenDesign, repo = null, now = () => new Date().toISOString() }) {
   const missing = mermaidMissing();
   if (missing) return { ok: false, errors: [missing] };
   const loaded = loadStories({ dataDir, name });
@@ -83,6 +135,9 @@ async function prepare({ dataDir = dataDirOrThrow(), guidelinesDir = GUIDELINES_
   }
   if (errors.length) return { ok: false, errors };
 
+  const resolved = resolveDesign({ dataDir, name, scope, stories: loaded.stories, given: givenDesign });
+  if (resolved.errors) return { ok: false, errors: resolved.errors };
+
   const existing = fs.existsSync(sliceDir) ? readSliceFolder(sliceDir) : null;
   if (existing?.source?.scope && !sameScope(existing.source.scope, scope)) {
     return { ok: false, errors: [`The slice "${slice}" already exists for another scope (${scopeText(existing.source.scope)}); it is not overwritten. Choose another slice name.`] };
@@ -100,7 +155,7 @@ async function prepare({ dataDir = dataDirOrThrow(), guidelinesDir = GUIDELINES_
   const checked = checkSlice({ slice, files: documentFiles, stories: inScope, limits, repo });
   const taskProblems = [];
   if (tasksText === undefined) taskProblems.push({ file: TASKS_FILE, message: `is missing: a slice is written with its ${TASKS_FILE} (conventions, section 10)` });
-  else if (specName in documentFiles) taskProblems.push(...checkTasks({ tasksText, document: documentFiles[specName], slice }));
+  else if (specName in documentFiles) taskProblems.push(...checkTasks({ tasksText, document: documentFiles[specName], slice, design: resolved.design ?? undefined }));
   const parsed = await Promise.all(checked.diagrams.map(async (d) => ({ d, result: await parseMermaid(d.text) })));
   const parserProblems = parsed.filter(({ result }) => !result.ok).map(({ d, result }) => ({ file: specName, line: d.line + (result.line ?? 0), message: `${d.heading}: does not parse as Mermaid: ${result.message}` }));
   const all = [...checked.problems, ...taskProblems, ...parserProblems];
@@ -193,7 +248,7 @@ if (isMain) {
     } catch (err) {
       throw new Error(describeParseError(err, raw, 'slice'));
     }
-    const input = { dataDir: dataDirOrThrow(), name: names[0], slice: body.slice, scope: body.scope, stories: body.stories, files: body.files, repo: flags.includes('--repo') ? {} : null };
+    const input = { dataDir: dataDirOrThrow(), name: names[0], slice: body.slice, scope: body.scope, stories: body.stories, files: body.files, design: body.design, repo: flags.includes('--repo') ? {} : null };
     result = await (flags.includes('--check') ? checkDiagram : writeDiagram)(input);
   } catch (err) {
     console.error(`Nothing was written. ${err.message}`);
