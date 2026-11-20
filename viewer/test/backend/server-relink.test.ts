@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { tempConfig } from '../helpers/temp-config.ts';
+import { SAMPLE_BACKLOG_CSV } from '../helpers/backlog-tree.ts';
 import { parseCsv, toCsv } from '#shared/backlog/csv.ts';
 import { parseReview, serializeReview } from '#shared/review/review.ts';
 import type { ReviewRow, RelinkReply } from '#shared/types.ts';
@@ -153,4 +154,27 @@ test('a review file that does not parse is listed in failed and the backlog is n
   assert.deepEqual(reply.updated, ['b', 'd']);
   assert.deepEqual(reply.failed.map((f) => [f.name, f.file]), [['b', 'user-stories/review.csv']]);
   assert.deepEqual(dependsOf(read('b', 'user-stories.csv')), ['A-9;A-3', '']);
+});
+
+test('a migration forward reaches the proposals and open review rows of a third backlog; dismissed rows stay', async () => {
+  build();
+  // `from` is a copy of the sample backlog, the one that gave up B1-IAM-0002 (it moved to B3 as B3-IAM-0007).
+  fs.mkdirSync(path.dirname(file('sample', 'user-stories.csv')), { recursive: true });
+  fs.copyFileSync(SAMPLE_BACKLOG_CSV, file('sample', 'user-stories.csv'));
+  const dismissed = review({ storyId: 'T-1', field: 'Depends On', action: 'add', current: '', suggested: 'B1-IAM-0002', status: 'dismissed' });
+  write(toCsv([['ID', 'Depends On'], ['T-1', 'B1-IAM-0002']]), 'third', 'user-stories.csv');
+  write(toCsv([['ID', 'Depends On', 'Benched'], ['NEW-1', 'B1-IAM-0002', 'No']]), 'third', 'user-stories', 'proposals.csv');
+  write(serializeReview([
+    review({ storyId: 'T-1', field: 'Depends On', action: 'add', current: '', suggested: 'B1-IAM-0002' }),
+    dismissed,
+  ]), 'third', 'user-stories', 'review.csv');
+
+  const res = await relink({ from: 'sample', changes: { 'B1-IAM-0002': 'B3-IAM-0007' }, only: ['third'] });
+  assert.deepEqual(await res.json(), { updated: ['third'], failed: [] } satisfies RelinkReply);
+
+  assert.deepEqual(dependsOf(read('third', 'user-stories.csv')), ['B3-IAM-0007']);
+  assert.deepEqual(dependsOf(read('third', 'user-stories', 'proposals.csv')), ['B3-IAM-0007']);
+  const rows = (parseReview(read('third', 'user-stories', 'review.csv')) as { rows: ReviewRow[] }).rows;
+  assert.deepEqual(rows.map((r) => [r.suggested, r.status]), [['B3-IAM-0007', 'open'], ['B1-IAM-0002', 'dismissed']]);
+  assert.deepEqual(rows[1], dismissed, 'the dismissed row is unchanged');
 });
