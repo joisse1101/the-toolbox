@@ -1,14 +1,28 @@
 import { useCallback, useRef, useState } from 'react';
-import type { ReviewRow, ReviewStatus, Story } from '#shared/types.ts';
+import type { ReviewRow, Story } from '#shared/types.ts';
 import type { Ask } from '#frontend/src/shared/hooks/useConfirm.ts';
 import type { BacklogActions } from '#frontend/src/tools/backlog/shell/useBacklog.ts';
-import { createFileStore, messageOf, relink } from '#frontend/src/shared/api/files.ts';
+import { FileApiError, createFileStore, messageOf, relink } from '#frontend/src/shared/api/files.ts';
 import { idChanges, relinkStories } from '#shared/backlog/ids.ts';
 import { loadBacklog, serializeBacklog } from '#shared/backlog/model.ts';
 import { migrateStories } from '#shared/backlog/proposals.ts';
-import { openUnitsFor } from '#shared/review/review.ts';
+import { moveReviewRows, parseReview, serializeReview } from '#shared/review/review.ts';
 
 const store = createFileStore('backlog');
+const reviewFiles = createFileStore('review');
+
+// A target without a review file gains one (the file API's write never creates a file).
+const reviewStore = {
+  ...reviewFiles,
+  async write(name: string, text: string) {
+    try {
+      await reviewFiles.write(name, text);
+    } catch (err) {
+      if (!(err instanceof FileApiError) || err.code !== 'not-found') throw err;
+      await reviewFiles.create(name, text);
+    }
+  },
+};
 
 // A backlog the stories can move to: its folder name and its initials.
 export interface MigrateTarget {
@@ -22,8 +36,9 @@ export interface MigrateNote {
 }
 
 // The "Migrate" action of the Stories tab: moves the ticked stories into another backlog of the data folder.
-// The order matters (design decision 7): settle the open backlog, read the target fresh, work out the move, ask, write the
-// target, and only then change the open backlog, so a failed target write leaves everything as it was. The flow then waits
+// The order matters (design decision 7): settle the open backlog, read the target and its review file fresh, work out the move,
+// ask, write the target and its review file, and only then change the open backlog, so a failed target write leaves everything
+// as it was. The open review suggestions of the moved stories move with them (removed from the source review). The flow then waits
 // for the open backlog's save, which writes the source and relinks every other backlog once (see useAutosave `registerForwards`).
 // `review` is the slice of the review result this flow uses (a feature never imports another feature).
 export function useMigrateFlow({ current, stories, headers, initials, files, actions, review, ask, onIdChanges, onMoved }: {
@@ -33,7 +48,7 @@ export function useMigrateFlow({ current, stories, headers, initials, files, act
   initials: string;
   files: readonly string[];
   actions: BacklogActions;
-  review: { rows: ReviewRow[]; decide: (indexes: Iterable<number>, status: ReviewStatus) => void };
+  review: { rows: ReviewRow[]; remove: (indexes: Iterable<number>) => void };
   ask: Ask;
   // Makes the open backlog's proposals and review rows follow ID changes made outside its own save (the target's renumber).
   onIdChanges: (changes: ReadonlyMap<string, string>) => void;
@@ -81,6 +96,12 @@ export function useMigrateFlow({ current, stories, headers, initials, files, act
       } catch (err) {
         return fail(`Nothing was moved: ${targetName} could not be read. ${messageOf(err)}`);
       }
+      let targetReviewText;
+      try {
+        targetReviewText = await reviewStore.read(targetName); // a backlog with no review file reads as empty
+      } catch (err) {
+        return fail(`Nothing was moved: the review suggestions of ${targetName} could not be read. ${messageOf(err)}`);
+      }
       const target = loadBacklog(read.content, { initials: read.initials });
       // The target's own IDs changed on load (its file was out of order): every other backlog must follow them too.
       const targetChanges = idChanges(target.parsed, target.stories);
@@ -95,11 +116,13 @@ export function useMigrateFlow({ current, stories, headers, initials, files, act
       if ('error' in result) return fail(result.error);
 
       const moved = sourceStories.filter((s) => ids.has(s.id));
-      const units = moved.flatMap((s) => openUnitsFor(now.review.rows, s.code));
+      const parsedReview = parseReview(targetReviewText);
+      const movedRows = moveReviewRows(now.review.rows, parsedReview.ok ? parsedReview.rows : [], moved.map((s) => s.code));
+      if (movedRows.moved && !parsedReview.ok) return fail(`Nothing was moved: the review file of ${targetName} could not be read. ${parsedReview.error}`);
       const count = moved.length;
       const noun = count === 1 ? 'story' : 'stories';
-      const suggestions = units.length
-        ? `\n\n${units.length} open review suggestion${units.length === 1 ? '' : 's'} on ${count === 1 ? 'it' : 'them'} will be dismissed.`
+      const suggestions = movedRows.moved
+        ? `\n\n${movedRows.moved} open review suggestion${movedRows.moved === 1 ? '' : 's'} on ${count === 1 ? 'it' : 'them'} will move with ${count === 1 ? 'it' : 'them'}.`
         : '';
       const message = `${count} ${noun} will move from ${source} to ${targetName} and get new IDs there. Links in the other backlogs are updated.${suggestions}\n\nThis cannot be undone.`;
       if (!(await ask({ title: `Migrate ${count} ${noun} to ${targetName}?`, message, confirmLabel: 'Migrate' }))) return;
@@ -109,6 +132,13 @@ export function useMigrateFlow({ current, stories, headers, initials, files, act
         await store.write(targetName, serializeBacklog({ headers: result.targetHeaders, stories: result.target, hasBom: target.hasBom }));
       } catch (err) {
         return fail(`Nothing was moved. ${messageOf(err)}`);
+      }
+      if (movedRows.moved) {
+        try {
+          await reviewStore.write(targetName, serializeReview(movedRows.target));
+        } catch (err) {
+          return fail(`The ${count === 1 ? 'story is' : 'stories are'} now in both ${source} and ${targetName}, but the review suggestions could not be written to ${targetName}. ${messageOf(err)} Delete the ${count === 1 ? 'story' : 'stories'} from ${source} to finish the move, or delete ${count === 1 ? 'it' : 'them'} from ${targetName} before you migrate again.`);
+        }
       }
       if (targetChanges.size) {
         // Not the open backlog: its files are in memory and it was relinked above.
@@ -123,7 +153,7 @@ export function useMigrateFlow({ current, stories, headers, initials, files, act
 
       actions.registerForwards(result.forwards);
       const sourceSaved = actions.replaceStoriesAndSettle(result.source); // the moved stories leave the ticked set with it
-      if (units.length) now.review.decide(units.flatMap((u) => u.indexes), 'dismissed');
+      if (movedRows.moved) now.review.remove(movedRows.indexes);
       // The source is written and every other backlog relinked before the note shows (design decision 7, step 7): a
       // reload right after the note then finds the backlogs consistent.
       await sourceSaved;

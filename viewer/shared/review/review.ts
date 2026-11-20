@@ -710,6 +710,38 @@ export function openCounts(rows: readonly ReviewRow[], stories: readonly Story[]
 // Applied and dismissed rows are not units. Dismiss them with `indexes`.
 export const openUnitsFor = (rows: readonly ReviewRow[], code: string): ReviewUnit[] => unitsOf(rows).filter((u) => code && unitStoryCode(u) === code);
 
+// A migration takes the open units of the stories in `codes` (their codes in the source) from the source review to the
+// target review. A split group moves whole; applied and dismissed rows stay in the source. The rows keep their IDs as
+// written: the relink that follows the migration renames them in the target's file. A Group name the target already
+// uses becomes the first free `<name>-<n>`. Returns the source rows without the moved ones, the target rows with them
+// appended, how many moved, and `indexes` (the moved rows' positions in the source rows, for removing them from a live review).
+export function moveReviewRows(
+  source: readonly ReviewRow[],
+  target: readonly ReviewRow[],
+  codes: Iterable<string>,
+): { source: ReviewRow[]; target: ReviewRow[]; moved: number; indexes: number[] } {
+  const wanted = new Set(codes);
+  const units = unitsOf(source).filter((u) => wanted.has(unitStoryCode(u) ?? ''));
+  const indexes = units.flatMap((u) => u.indexes).sort((a, b) => a - b);
+  const leaving = new Set(indexes);
+
+  const taken = new Set([...target, ...source.filter((_, i) => leaving.has(i))].map((r) => r.group).filter(Boolean));
+  const renamed = new Map<string, string>();
+  for (const u of units) {
+    if (!u.group || !target.some((r) => r.group === u.group)) continue;
+    let n = 2;
+    while (taken.has(`${u.group}-${n}`)) n++;
+    renamed.set(u.group, `${u.group}-${n}`);
+    taken.add(`${u.group}-${n}`);
+  }
+
+  const moving = indexes.map((i) => {
+    const row = source[i];
+    return renamed.has(row.group) ? { ...row, group: renamed.get(row.group)! } : row;
+  });
+  return { source: source.filter((_, i) => !leaving.has(i)), target: [...target, ...moving], moved: moving.length, indexes };
+}
+
 // Open rows follow their story when IDs are recomputed: `recoded` maps old code -> new code. Applied and dismissed rows
 // are history and stay as written. Depends On rows also name other stories, in Current and Suggested.
 // A '' in `recoded` means the story is gone. A row on such a story keeps its ID, so it is shown as out of date instead of
