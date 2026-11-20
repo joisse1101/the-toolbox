@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 // command that starts with `node`; `*` stands for any text.
 
 const TOOLKIT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const SKILLS = ['jois-story-explore', 'jois-story-propose', 'jois-story-review', 'jois-story-plan', 'jois-story-verify'];
+const SKILLS = ['jois-story-explore', 'jois-story-propose', 'jois-story-review', 'jois-story-design', 'jois-story-plan', 'jois-story-verify'];
 const COMMANDS = ['propose', 're-read', 'review', 'verify'];
 
 const FILES = [

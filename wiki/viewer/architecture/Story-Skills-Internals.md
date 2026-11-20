@@ -1,6 +1,6 @@
 # Story Skills Internals
 
-How the five story skills work inside. The skills are global toolkit items in `toolkit/skills/`: `jois-story-explore`, `jois-story-propose`, `jois-story-review`, `jois-story-plan` and `jois-story-verify`. Their commands are `/jois-story:propose`, `/jois-story:re-read`, `/jois-story:review` and `/jois-story:verify`, in `toolkit/commands/jois-story/`. Each skill but `jois-story-verify` carries its scripts and a copy of what it shares with the viewer, so an installed skill needs nothing from this repo. The specs are `toolkit-story-skills` and the capability spec for each writer. The files the skills write are described on [Data Folder](Data-Folder.md).
+How the six story skills work inside. The skills are global toolkit items in `toolkit/skills/`: `jois-story-explore`, `jois-story-propose`, `jois-story-review`, `jois-story-design`, `jois-story-plan` and `jois-story-verify`. Their commands are `/jois-story:propose`, `/jois-story:re-read`, `/jois-story:review` and `/jois-story:verify`, in `toolkit/commands/jois-story/`. Each skill but `jois-story-verify` carries its scripts and a copy of what it shares with the viewer, so an installed skill needs nothing from this repo. The specs are `toolkit-story-skills` and the capability spec for each writer. The files the skills write are described on [Data Folder](Data-Folder.md).
 
 ## Where the data folder comes from
 
