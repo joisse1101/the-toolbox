@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import type { Story } from '#shared/types.ts';
 import type { GraphItem, GraphLayout } from '#frontend/src/tools/backlog/features/graph/graph.ts';
-import { layoutGraph, relatedIds, fitView, zoomAt, panBy, toGraphPoint, MIN_ZOOM, MAX_ZOOM } from '#frontend/src/tools/backlog/features/graph/graph.ts';
+import { layoutGraph, withOtherStories, visibleUnresolved, relatedIds, fitView, zoomAt, panBy, toGraphPoint, MIN_ZOOM, MAX_ZOOM } from '#frontend/src/tools/backlog/features/graph/graph.ts';
 
 let n = 0;
 const story = (code: string, dependsOn: string[] = []): GraphItem => ({ id: ++n, code, dependsOn });
@@ -169,4 +170,82 @@ test('zoomAt: keeps the point under the pointer fixed and clamps the zoom', () =
 
 test('panBy: moves the view without changing the zoom', () => {
   assert.deepEqual(panBy({ x: 1, y: 2, k: 1.5 }, 10, -5), { x: 11, y: -3, k: 1.5 });
+});
+
+// Stories of several backlogs for the dashed-node tests.
+let nextStoryId = 1000;
+const full = (code: string, title: string, dependsOn: string[] = []): Story => ({
+  id: ++nextStoryId, cells: [], code, dependsOn, ambiguous: [], epic: 'E', codedEpic: 'E', feature: '', title,
+  asA: '', iWant: '', soThat: '', points: '', notes: '', benched: false, frozen: false, criteria: [],
+  rawUserStory: null, rawCriteria: null, clarifications: [], rawClarifications: null,
+});
+const backlog = (name: string, stories: Story[]) => ({ name, stories });
+const arrows = (items: GraphItem[]) => layoutGraph(items).edges.map((e) => {
+  const code = (id: number) => items.find((s) => s.id === id)!.code;
+  return `${code(e.from)}>${code(e.to)}`;
+}).sort();
+
+test('withOtherStories: a dependency becomes a negative-id item with no arrow of its own', () => {
+  const mine = full('B1-IAM-0004', 'Mine', ['B3-BIL-0002']);
+  const items = withOtherStories([mine], [backlog('payments', [full('B3-BIL-0002', 'Export invoices', ['B3-BIL-0001']), full('B3-BIL-0001', 'Other')])]);
+  assert.equal(items.length, 2);
+  const extra = items[1]! as GraphItem & { backlog: string; title: string };
+  assert.ok(extra.id < 0);
+  assert.deepEqual([extra.code, extra.backlog, extra.title, extra.dependsOn], ['B3-BIL-0002', 'payments', 'Export invoices', []]);
+  assert.deepEqual(arrows(items), ['B1-IAM-0004>B3-BIL-0002']);
+});
+
+test('withOtherStories: a dependent becomes one item that keeps only its open-backlog entries', () => {
+  const mine = full('B1-IAM-0004', 'Mine');
+  const dependent = full('B2-REP-0002', 'Report', ['B1-IAM-0004', 'B2-REP-0001', 'B3-BIL-0002']);
+  const items = withOtherStories([mine], [backlog('reporting', [dependent, full('B2-REP-0001', 'Sibling')]), backlog('payments', [full('B3-BIL-0002', 'Pay')])]);
+  assert.equal(items.length, 2);
+  assert.deepEqual(items[1]!.dependsOn, ['B1-IAM-0004']);
+  assert.deepEqual(arrows(items), ['B2-REP-0002>B1-IAM-0004']);
+});
+
+test('withOtherStories: links between two other backlogs are left out', () => {
+  const items = withOtherStories([full('B1-IAM-0001', 'Mine')], [
+    backlog('reporting', [full('B2-REP-0001', 'R', ['B3-BIL-0001'])]), backlog('payments', [full('B3-BIL-0001', 'P')]),
+  ]);
+  assert.equal(items.length, 1);
+});
+
+test('withOtherStories: a link to an existing story of another backlog is not unresolved, a missing one still is', () => {
+  const mine = full('B1-IAM-0004', 'Mine', ['B3-BIL-0002', 'B3-BIL-0099']);
+  const items = withOtherStories([mine], [backlog('payments', [full('B3-BIL-0002', 'Export invoices')])]);
+  assert.deepEqual(layoutGraph(items).unresolved, [{ from: mine.id, code: 'B3-BIL-0099' }]);
+});
+
+test('withOtherStories: a cycle through another backlog sets cyclic', () => {
+  const mine = full('B1-IAM-0001', 'Mine', ['B3-BIL-0002']);
+  const items = withOtherStories([mine], [backlog('payments', [full('B3-BIL-0002', 'Pay', ['B1-IAM-0001'])])]);
+  const g = layoutGraph(items);
+  assert.equal(items.length, 2);
+  assert.equal(g.cyclic, true);
+  assert.deepEqual(arrows(items), ['B1-IAM-0001>B3-BIL-0002', 'B3-BIL-0002>B1-IAM-0001']);
+});
+
+test('withOtherStories: two linked stories, one migrated, seen from both backlogs', () => {
+  // core kept B1-IAM-0004 (was 0005), which depends on the migrated story, now B3-IAM-0007 in payments.
+  const core = full('B1-IAM-0004', 'Kept', ['B3-IAM-0007']);
+  const moved = full('B3-IAM-0007', 'Moved');
+  const fromCore = withOtherStories([core], [backlog('payments', [full('B3-IAM-0007', 'Moved')])]);
+  assert.deepEqual(arrows(fromCore), ['B1-IAM-0004>B3-IAM-0007']);
+  const extra = fromCore[1]! as GraphItem & { backlog: string };
+  assert.equal(extra.backlog, 'payments');
+
+  const fromPayments = withOtherStories([moved], [backlog('core', [full('B1-IAM-0004', 'Kept', ['B3-IAM-0007'])])]);
+  assert.deepEqual(arrows(fromPayments), ['B1-IAM-0004>B3-IAM-0007']);
+  assert.equal((fromPayments[1]! as GraphItem & { backlog: string }).backlog, 'core');
+});
+
+test('visibleUnresolved: lists every code when all backlogs are read', () => {
+  const list = [{ from: 1, code: 'B3-BIL-0099' }, { from: 1, code: 'B1-IAM-0099' }];
+  assert.deepEqual(visibleUnresolved(list, 'B1', 0), list);
+});
+
+test('visibleUnresolved: while a backlog is unreadable, keeps only codes of the open backlog', () => {
+  const list = [{ from: 1, code: 'B3-BIL-0099' }, { from: 1, code: 'B1-IAM-0099' }];
+  assert.deepEqual(visibleUnresolved(list, 'B1', 1), [{ from: 1, code: 'B1-IAM-0099' }]);
 });
