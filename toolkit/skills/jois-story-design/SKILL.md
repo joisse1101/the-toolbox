@@ -3,7 +3,7 @@ name: jois-story-design
 description: Design the accepted stories of one Epic, one Feature or one story of a backlog (a folder of the data folder that holds `user-stories.csv`) as one Claude Design canvas, with the Artifact tool. The canvas's first artboard, `Main`, is a cover page that lists the flows and artboards with links. The story index, every acceptance criterion with the artboards that show it, lives in `<backlog>/design-index.csv`, written through this skill's writer. The other artboards show each screen state at desktop and mobile size, with the behaviour the criteria describe (validation, error messages, flows that click through), in the project's own colours, type and spacing when the folder holds them. Decides the scope with the user, leaves out stories with open clarifications, shows the list of artboards, asks one yes/no and publishes only after the user confirms, records the canvas link in `<backlog>/designs.json`, then reviews the artboards with `jois-design-ui-principles` and the index and fixes its own design problems for up to 2 rounds. Reports a story index that is stale because stories changed, and has an update-index mode that fixes reworded criteria in the file after one yes/no, with no Artifact tool and nothing published. Never changes a story, the lexicon, the reviews or the repo outside its two files, and copies no artboard into the repo. A full design run needs the Artifact tool, so it runs only in an interactive session. Use when the user wants to design, mock up or draw the screens of accepted stories, to redesign a canvas, or to update the story index after criteria changed.
 allowed-tools: Bash(node *write-design-pointer.mjs*), Bash(node *write-design-index.mjs*), Bash(node *check-design-index.mjs*), Bash(node *init-plans.mjs*), AskUserQuestion, Skill, Artifact, Read, Grep, Glob
 metadata:
-  version: "2.0.0"
+  version: "2.0.1"
   last_updated: "2026-11-23"
 ---
 
@@ -166,7 +166,7 @@ When a design exists for the backlog (or the user asks whether a design is curre
 
 - **Changed criteria**: the **update-index mode** below, which fixes the rows without redrawing.
 - **A new story, or a criterion that needs a screen**: a full design run, which draws it.
-- **A missing story**: name it. Its rows stay until the story's rows are removed in the file or the design is redone, because the writer refuses an ID that is not in the backlog.
+- **A missing story**: name it, and say that its rows are for a story that was deleted, split or moved. The **update-index mode** below drops them. A story that was moved took its rows with it through the portal, so a missing story with rows left is a deleted or split one.
 
 Redesign only when the user asks: a redesign changes the existing canvas and keeps what still holds. A story left out for an open clarification is never reported as new. When the script cannot read a file, say which row and column it names and stop: never guess an index.
 
@@ -174,7 +174,7 @@ Redesign only when the user asks: a redesign changes the existing canvas and kee
 
 Run this mode when the user **asks to update the story index**, or when the stale check reports changed stories and the user **chooses an update**. It rewrites rows in `design-index.csv` so they match the backlog again, **without redrawing and without touching the canvas**. It **needs no Artifact tool and publishes nothing**: never call `Artifact` in this mode, and end the run saying nothing was published.
 
-1. Run `check-design-index.mjs <backlog>`. The changed stories are the ones to work on. Read each one in `user-stories.csv` (with Read) for its current criteria in order, its Title and its `Frozen` cell.
+1. Run `check-design-index.mjs <backlog>`. The changed stories are the ones to work on, and each **missing** story is one whose rows are to be dropped: list it in step 6 as "story deleted, N rows dropped" with its ID and Title (the checker names them), and name it in step 7 with an empty `"criteria"` list, which the writer accepts for a story that is no longer in the backlog. Read each changed story in `user-stories.csv` (with Read) for its current criteria in order, its Title and its `Frozen` cell.
 2. **A frozen story is not rewritten.** When a changed story has `Yes` in `Frozen`, leave its rows alone, say that it is read-only and that a change needs a **superseding story**, and offer that through `jois-story-propose`.
 3. **Pair the criteria of each other changed story.** Keep every row whose text still matches a current criterion exactly. Then pair what is left: the old texts in the index (in row order) against the new texts in the backlog (in criterion order).
    - **Equal counts**: pair them by position and show each pair for confirmation.

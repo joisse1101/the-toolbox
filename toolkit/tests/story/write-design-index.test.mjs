@@ -99,6 +99,28 @@ test('an empty criteria list removes the story, and removing a story with no row
   assert.deepEqual(fs.readFileSync(indexPath(root)), once);
 });
 
+test('the rows of a story deleted from the backlog are dropped by an empty criteria list, and the summary says the story is gone', () => {
+  const root = temp();
+  const csv = path.join(backlogPath(root, 'sample'), 'user-stories.csv');
+  const text = fs.readFileSync(csv, 'utf8');
+  fs.writeFileSync(csv, text.split('\n').filter((l) => !l.includes('See the best streak')).join('\n'));
+  const before = rowsOf(root);
+  assert.ok(before.some((x) => x.storyId === 'H1-HT-0002'));
+  // Naming it with criteria is still refused, and the refusal tells the way out; nothing is written.
+  const refused = write(root, request([{ storyId: 'H1-HT-0002', criteria: [criterion(AC_2)] }]));
+  assert.equal(refused.ok, false);
+  assert.match(refused.errors.join('\n'), /not in the backlog sample; to drop the rows of a deleted story send it with an empty "criteria" list/);
+  assert.equal(rowsOf(root).length, before.length);
+  const r = write(root, request([{ storyId: 'H1-HT-0002', criteria: [] }]));
+  assert.equal(r.ok, true);
+  assert.match(r.text, /remove H1-HT-0002: the story is no longer in the backlog, \d+ rows? dropped/);
+  assert.deepEqual(rowsOf(root).map((x) => x.storyId), before.filter((x) => x.storyId !== 'H1-HT-0002').map((x) => x.storyId));
+  // A story that is neither in the backlog nor in the file has nothing to drop, and says so.
+  const none = write(root, request([{ storyId: 'H1-HT-9999', criteria: [] }]));
+  assert.equal(none.ok, false);
+  assert.match(none.errors.join('\n'), /H1-HT-9999 is not in the backlog sample and has no rows to drop/);
+});
+
 test('the same request twice is unchanged and leaves the file as it was', () => {
   const root = temp(false);
   const body = request([{ storyId: 'H1-HT-0001', criteria: [criterion(AC_1)] }]);

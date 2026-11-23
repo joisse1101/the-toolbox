@@ -21,11 +21,15 @@ Each row's `Viewports` column SHALL hold `desktop`, `mobile` or `desktop;mobile`
 - **THEN** every row of that design has `Viewports` `desktop` and lists only desktop stems
 
 ### Requirement: The index is written only through the design skill's writer
-Design SHALL write `design-index.csv` only through a bundled writer script that checks the rows before writing, writes atomically and reads the file back. The writer SHALL refuse a row whose story is not in the backlog, a second row for the same story and criterion, a `Kind` other than `main` or `failure`, and an empty `Criterion`. It SHALL have a check mode that writes nothing.
+Design SHALL write `design-index.csv` only through a bundled writer script that checks the rows before writing, writes atomically and reads the file back. The writer SHALL refuse a row whose story is not in the backlog (except that a story no longer in the backlog, named with no criteria, has its rows dropped and is reported as gone), a second row for the same story and criterion, a `Kind` other than `main` or `failure`, and an empty `Criterion`. It SHALL have a check mode that writes nothing.
 
 #### Scenario: Row for an unknown story
 - **WHEN** the writer is given a row whose story ID is not in the backlog
 - **THEN** it refuses, names the row and writes nothing
+
+#### Scenario: Rows of a deleted story
+- **WHEN** the writer is given a story ID that is not in the backlog, with an empty criteria list, and the file holds rows for it
+- **THEN** it drops those rows and reports that the story is no longer in the backlog and how many rows were dropped
 
 #### Scenario: Check mode
 - **WHEN** the writer runs in check mode

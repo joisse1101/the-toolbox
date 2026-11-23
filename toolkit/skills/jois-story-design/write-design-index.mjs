@@ -10,6 +10,8 @@
 // "viewports" is optional and defaults to the request's. "artboards" may be empty (update mode writes a row that still has no
 // artboard; the checker reports it). The Story column is the story's Title in the backlog. A column the file holds that this script
 // does not know is kept on the rows that stay, and on a row whose story and criterion text are written again.
+// A story ID that is no longer in the backlog is accepted only with an empty criteria list and only when the file holds rows for it:
+// that drops the rows of a deleted story and the summary says the story is gone.
 // Refused, with nothing written and the problem named: a story ID that is not in the backlog or is named twice, a criterion that
 // is empty or repeats within its story, a Kind that is not main or failure, a viewport that is not desktop or mobile, an artboard
 // stem that is not lowercase kebab-case ending in one of its row's viewports, a canvas that is not a claude.ai artifact link, and
@@ -133,6 +135,7 @@ function prepare({ dataDir, name, input }) {
   const keepExtra = (storyId, text) => oldRows.find((r) => r.storyId === storyId && r.criterion === text)?.extra ?? {};
 
   const replacement = new Map(); // story ID -> the rows that replace its rows ([] removes the story)
+  const gone = new Set(); // IDs of removed stories that are no longer in the backlog
   for (const [i, entry] of request.stories.entries()) {
     const where = `stories[${i}]`;
     if (!isRecord(entry) || !isText(entry.storyId) || !Array.isArray(entry.criteria)) {
@@ -145,7 +148,13 @@ function prepare({ dataDir, name, input }) {
     }
     const story = stories.find((s) => s.code === entry.storyId);
     if (!story) {
-      errors.push(`${where}: story ${entry.storyId} is not in the backlog ${path.basename(dir)}`);
+      // A deleted story can only have its rows dropped: an empty criteria list removes them, anything else is refused.
+      if (entry.criteria.length === 0 && oldRows.some((r) => r.storyId === entry.storyId)) {
+        replacement.set(entry.storyId, []);
+        gone.add(entry.storyId);
+      } else {
+        errors.push(`${where}: story ${entry.storyId} is not in the backlog ${path.basename(dir)}${entry.criteria.length === 0 ? ' and has no rows to drop' : '; to drop the rows of a deleted story send it with an empty "criteria" list'}`);
+      }
       continue;
     }
     const built = storyRows({ entry, story, canvas: request.canvas, defaults: defaults.viewports, keepExtra });
@@ -172,6 +181,7 @@ function prepare({ dataDir, name, input }) {
   const changed = expected !== serializeDesignIndex(oldRows);
   const summary = [...replacement].map(([storyId, rowsOfStory]) => {
     const before = oldRows.filter((r) => r.storyId === storyId).length;
+    if (gone.has(storyId)) return `remove ${storyId}: the story is no longer in the backlog, ${before} row${before === 1 ? '' : 's'} dropped`;
     if (rowsOfStory.length === 0) return before ? `remove ${storyId}: ${before} row${before === 1 ? '' : 's'} dropped` : `remove ${storyId}: it has no rows, nothing to drop`;
     return `${before ? 'replace' : 'add'} ${storyId}: ${before} row${before === 1 ? '' : 's'} -> ${rowsOfStory.length} row${rowsOfStory.length === 1 ? '' : 's'}`;
   });
