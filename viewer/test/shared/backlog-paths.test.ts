@@ -19,7 +19,8 @@ test('backlogFile maps each kind to its fixed file in the backlog folder', () =>
   assert.equal(bp.backlogFile(D, 'iam', 'proposals'), path.join(D, 'iam', 'user-stories', 'proposals.csv'));
   assert.equal(bp.backlogFile(D, 'iam', 'lexicon'), path.join(D, 'iam', 'lexicon.csv'));
   assert.equal(bp.backlogFile(D, 'iam', 'lexicon-suggestions'), path.join(D, 'iam', 'lexicon', 'lexicon-suggestions.csv'));
-  assert.deepEqual(bp.KINDS, ['backlog', 'review', 'proposals', 'lexicon', 'lexicon-suggestions']);
+  assert.equal(bp.backlogFile(D, 'iam', 'design-index'), path.join(D, 'iam', 'design-index.csv'));
+  assert.deepEqual(bp.KINDS, ['backlog', 'review', 'proposals', 'lexicon', 'lexicon-suggestions', 'design-index']);
 });
 
 test('the other paths of a backlog', () => {

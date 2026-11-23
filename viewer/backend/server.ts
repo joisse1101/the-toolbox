@@ -1,5 +1,5 @@
 // Local server for the team-lead tools: the built app from dist/ plus a CSV file API
-// restricted to the five kinds of file of a backlog folder (shared/storage/backlog-paths.ts). Node built-ins only.
+// restricted to the six kinds of file of a backlog folder (shared/storage/backlog-paths.ts). Node built-ins only.
 
 import http from 'node:http';
 import fs from 'node:fs';
@@ -12,7 +12,7 @@ import { codeOf, messageOf } from './storage/errors.ts';
 import { validateInitials, readInitials, writeInitials, findConflict, defaultInitials } from '#shared/storage/backlog-initials.ts';
 import { PLANS_DIR, KINDS, BACKLOG_FILE, backlogDir, backlogFile, listBacklogs, detectOlderLayout } from '#shared/storage/backlog-paths.ts';
 import { loadBacklog } from '#shared/backlog/model.ts';
-import { relinkBacklogText, relinkProposalsText, relinkReviewText } from '#shared/backlog/relink-text.ts';
+import { relinkBacklogText, relinkProposalsText, relinkReviewText, relinkDesignIndexText } from '#shared/backlog/relink-text.ts';
 import {
   ROOT, loadConfig, saveConfig, configPath, confineDir, confineCodeBase, checkFolder, checkCodeBase, initFolders, initCodeBase, copyData, copyToCodeBase, planCopy, migrateOlderLayout,
 } from './storage/project-config.ts';
@@ -42,9 +42,9 @@ const PORT = Number(process.env.PORT) || 3000;
 const DIST_DIR = process.env.VIEWER_DIST_DIR ? path.resolve(process.env.VIEWER_DIST_DIR) : path.join(import.meta.dirname, '..', 'frontend', 'dist');
 const MAX_BODY = 10 * 1024 * 1024;
 
-// Allow-list of the kinds of file the API reaches: `backlog`, `review`, `proposals`, `lexicon` and `lexicon-suggestions`.
+// Allow-list of the kinds of file the API reaches: `backlog`, `review`, `proposals`, `lexicon`, `lexicon-suggestions` and `design-index`.
 // A request names a backlog, and shared/storage/backlog-paths.ts maps (backlog, kind) to the fixed file in the backlog's folder.
-// `slices` and `logs` are not kinds, so the API cannot reach them.
+// `slices`, `designs` (designs.json) and `logs` are not kinds, so the API cannot reach them.
 const STORES = new Set<string>(KINDS);
 
 // Number of requests that write (file save, create, rename, init, copy) and have not finished.
@@ -210,11 +210,18 @@ const RELINK_FILES = [
   { kind: 'backlog', relink: relinkBacklogText },
   { kind: 'proposals', relink: relinkProposalsText },
   { kind: 'review', relink: relinkReviewText },
+  { kind: 'design-index', relink: relinkDesignIndexText },
 ] as const;
+
+// The one file of the changing backlog itself that the request rewrites: no screen holds its design index, so the frontend
+// cannot follow the IDs for it. It is not idempotent under a swap of two IDs, so it runs once per change list (see relinkBacklogs).
+const OWN_RELINK_FILES = RELINK_FILES.filter(({ kind }) => kind === 'design-index');
 
 // Validates the body of POST /api/relink. Returns `from`, the ID changes as a Map and the backlogs to update (every other
 // backlog of the data folder, or those `only` names).
-function parseRelinkBody(dataDir: string, body: Body): { changes: Map<string, string>; targets: string[] } {
+// `from` is the changing backlog and `own` says whether its own design index is rewritten in this request: when the request has
+// no `only` list, or `only` names `from` itself (the retry of a failed own file).
+function parseRelinkBody(dataDir: string, body: Body): { from: string; changes: Map<string, string>; targets: string[]; own: boolean } {
   const refuse = (message: string) => new HttpError(400, message, 'refused');
   const backlogs = listBacklogs(dataDir);
   if (typeof body.from !== 'string' || !body.from) throw refuse('from must name a backlog.');
@@ -227,6 +234,7 @@ function parseRelinkBody(dataDir: string, body: Body): { changes: Map<string, st
   if (entries.some(([, to]) => typeof to !== 'string')) throw refuse('changes must map each old ID to a new ID, or to "" when deleted.');
 
   let targets = backlogs.filter((name) => name !== from);
+  let own = true;
   if (body.only !== undefined) {
     const { only } = body;
     if (!Array.isArray(only) || only.some((n) => typeof n !== 'string')) throw refuse('only must be a list of backlog names.');
@@ -234,8 +242,9 @@ function parseRelinkBody(dataDir: string, body: Body): { changes: Map<string, st
     const unknown = names.find((n) => !backlogs.includes(n));
     if (unknown !== undefined) throw refuse(`${unknown} was not found`);
     targets = targets.filter((name) => names.includes(name));
+    own = names.includes(from);
   }
-  return { changes: new Map(entries as [string, string][]), targets };
+  return { from, changes: new Map(entries as [string, string][]), targets, own };
 }
 
 // Writes `content` to a temp file beside `file`, then renames it over `file`; the temp file is removed when either step fails.
@@ -251,15 +260,17 @@ async function writeAtomic(file: string, content: string): Promise<void> {
 }
 
 // POST /api/relink: { from, changes: { oldCode: newCode ('' = deleted) }, only? }. Rewrites the links to the changed IDs in the
-// stories, proposals and review files of every other backlog (or of `only`). Writes only the files that change; a missing
-// proposals or review file is skipped, never created. A file that fails is listed in `failed` and the other files go on.
+// stories, proposals, review and design index files of every other backlog (or of `only`), and the design index of `from`
+// itself (once per change list, see parseRelinkBody). Writes only the files that change; a missing proposals, review or design
+// index file is skipped, never created. A file that fails is listed in `failed` and the other files go on.
 async function relinkBacklogs(dataDir: string, body: Body): Promise<RelinkReply> {
-  const { changes, targets } = parseRelinkBody(dataDir, body);
+  const { from, changes, targets, own } = parseRelinkBody(dataDir, body);
   const reply: RelinkReply = { updated: [], failed: [] };
   if (!changes.size) return reply;
-  for (const name of targets) {
+  const jobs = [...targets.map((name) => ({ name, files: RELINK_FILES })), ...(own ? [{ name: from, files: OWN_RELINK_FILES }] : [])];
+  for (const { name, files } of jobs) {
     let written = false;
-    for (const { kind, relink } of RELINK_FILES) {
+    for (const { kind, relink } of files) {
       const full = backlogFile(dataDir, name, kind);
       const file = path.relative(backlogDir(dataDir, name), full).split(path.sep).join('/');
       try {

@@ -45,10 +45,10 @@ Use this to move stories from the open backlog to another backlog of the same da
 1. Close the CSV files of the other backlogs if they are open in Excel, because the portal rewrites links in them.
 2. Open the **Stories** tab, and tick the stories to move. Frozen stories cannot be ticked.
 3. Press **Migrate (N)**, choose the target backlog in the dialog, and press **Migrate**.
-4. Read the confirmation (the count, the target, the new IDs and the open review suggestions that will move with the stories), and confirm. It cannot be undone.
+4. Read the confirmation (the count, the target, the new IDs, the open review suggestions and the design rows of `design-index.csv` that will move with the stories), and confirm. It cannot be undone.
 5. Check the note above the table. A refusal, for example a locked target file, leaves everything as it was and names the file.
 
-The target is written first, then the open backlog, and then the links in every other backlog follow the changed IDs. The open review suggestions of the moved stories go to the target's review file right after the target backlog. If the browser closes, or the target's review file is locked, before the open backlog changes, the stories are in both backlogs, so none is lost, and you delete the copies in the open backlog by hand.
+The target is written first, then the open backlog, and then the links in every other backlog follow the changed IDs. The open review suggestions of the moved stories go to the target's review file right after the target backlog, and their design rows go from the open backlog's `design-index.csv` to the target's, which gains the file when it has none. A story without design rows writes neither file. The rows keep their canvas link and take the story's new ID, and later renumbering of either backlog keeps them correct. If the browser closes, or the target's review file or `design-index.csv` is locked, before the open backlog changes, the stories are in both backlogs, so none is lost, and you delete the copies in the open backlog by hand.
 
 ## Review and apply suggestions
 

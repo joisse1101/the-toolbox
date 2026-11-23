@@ -58,7 +58,7 @@ export interface BacklogFile extends Backlog {
 }
 
 // The kinds of file a backlog folder holds (storage/backlog-paths.ts).
-export type BacklogKind = 'backlog' | 'review' | 'proposals' | 'lexicon' | 'lexicon-suggestions';
+export type BacklogKind = 'backlog' | 'review' | 'proposals' | 'lexicon' | 'lexicon-suggestions' | 'design-index';
 
 // ---------- review (review/review.ts) ----------
 

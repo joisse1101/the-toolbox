@@ -1,10 +1,11 @@
 // Runs a story migration over in-memory backlog files, in the order the Migrate flow uses (useMigrateFlow.ts and the autosave
 // relink it hands forwards to). Not a test file: the tests of migrate-edge-cases.test.ts and others import it.
 //
-// A "disk" maps a backlog name to the text of its three files. The steps, as the flow does them:
+// A "disk" maps a backlog name to the text of its four files (the design index is '' when the backlog has none). The steps, as the flow does them:
 //   1. load the source and the target; the target's own renumber (`idChanges`) is relinked into the source in memory
 //      and into every other backlog's files;
-//   2. `migrateStories` and `moveReviewRows`; the target's backlog and review files are written;
+//   2. `migrateStories`, `moveReviewRows` and `moveDesignRows`; the target's backlog, review and design files are written
+//      (the target's own design rows follow its renumber first), then the source's design file without the moved rows;
 //   3. the source save: its ID changes are `idChanges(before, after)` with the forwards in place of the '' of each migrated
 //      story; the source's stories are written, its proposals and review follow in memory (moved rows removed first), and
 //      the `relink*Text` functions rewrite the files of every other backlog, the target included.
@@ -14,7 +15,9 @@ import { COLUMNS, BENCHED_COLUMN, loadBacklog, serializeBacklog } from '#shared/
 import { toCsv } from '#shared/backlog/csv.ts';
 import { idChanges, relinkStories } from '#shared/backlog/ids.ts';
 import { migrateStories } from '#shared/backlog/proposals.ts';
-import { relinkBacklogText, relinkProposalsText, relinkReviewText } from '#shared/backlog/relink-text.ts';
+import { relinkBacklogText, relinkProposalsText, relinkReviewText, relinkDesignIndexText } from '#shared/backlog/relink-text.ts';
+import { moveDesignRows, parseDesignIndexCsv, retargetDesignRows, serializeDesignIndex } from '#shared/design/design-index-csv.ts';
+import type { DesignIndexRow } from '#shared/design/design-index-csv.ts';
 import { moveReviewRows, parseReview, retargetRows, serializeReview } from '#shared/review/review.ts';
 import type { ReviewRow } from '#shared/types.ts';
 
@@ -23,6 +26,7 @@ export interface Files {
   stories: string;
   proposals: string;
   review: string;
+  design: string;
 }
 export type Disk = Map<string, Files>;
 
@@ -48,7 +52,7 @@ function csvOf(headers: readonly string[], specs: readonly StorySpec[]): string 
 }
 
 // The files of a backlog, written as the portal would write them (IDs filled in). Proposals carry NEW-<n> codes.
-export function makeBacklog(initials: string, stories: StorySpec[], proposals: StorySpec[] = [], review: ReviewRow[] = []): Files {
+export function makeBacklog(initials: string, stories: StorySpec[], proposals: StorySpec[] = [], review: ReviewRow[] = [], design: DesignIndexRow[] = []): Files {
   const backlog = loadBacklog(csvOf(COLUMNS, stories), { initials });
   const proposed = loadBacklog(csvOf([...COLUMNS, BENCHED_COLUMN], proposals), { placeholderIds: true });
   return {
@@ -56,8 +60,14 @@ export function makeBacklog(initials: string, stories: StorySpec[], proposals: S
     stories: serializeBacklog({ headers: backlog.headers, stories: backlog.stories, hasBom: false }),
     proposals: serializeBacklog({ headers: proposed.headers, stories: proposed.stories, hasBom: false }),
     review: serializeReview(review),
+    design: design.length ? serializeDesignIndex(design) : '',
   };
 }
+
+export const designRow = (over: Partial<DesignIndexRow>): DesignIndexRow => ({
+  storyId: '', story: 'A story', criterion: 'It works.', kind: 'main', artboards: ['home-desktop'], viewports: ['desktop'],
+  canvas: 'https://canvas.example/mock', extra: {}, ...over,
+});
 
 export const reviewRow = (over: Partial<ReviewRow>): ReviewRow => ({
   storyId: '', field: 'Title', action: 'replace', current: 'x', suggested: 'y', reason: 'r',
@@ -82,6 +92,7 @@ export const storyLinks = (disk: Disk, name: string): Record<string, string[]> =
 export const proposalLinks = (disk: Disk, name: string): Record<string, string[]> =>
   Object.fromEntries(loadBacklog(file(disk, name).proposals, { placeholderIds: true }).parsed.map((s) => [s.code, s.dependsOn]));
 export const reviewRowsOf = (disk: Disk, name: string): ReviewRow[] => rowsOf(file(disk, name).review);
+export const designRowsOf = (disk: Disk, name: string): DesignIndexRow[] => parseDesignIndexCsv(file(disk, name).design);
 
 // Every code a backlog's files name in Depends On (stories, proposals, open and decided review rows' Current/Suggested).
 export function namedCodes(disk: Disk, name: string): string[] {
@@ -97,10 +108,24 @@ export interface MigrationOutcome {
   forwards: Map<string, string>;
   changes: Map<string, string>;
   moved: number;
+  designMoved: number;
+}
+
+// The file a mock write refuses, as a locked file does: the flow stops there and names it.
+export class LockedFile extends Error {
+  backlog: string;
+  file: string;
+  constructor(backlog: string, file: string) {
+    super(`${backlog}/${file} is open in another program`);
+    this.backlog = backlog;
+    this.file = file;
+  }
 }
 
 // Moves the stories of `source` whose codes are in `codes` to `target`, rewriting `disk` as the flow would. Throws on a refusal.
-export function migrate(disk: Disk, sourceName: string, targetName: string, codes: readonly string[]): MigrationOutcome {
+// `locked` names a file the mock refuses to write as `<backlog>/<file>` (a LockedFile is thrown at that write; what was written
+// before it stays, as on a real disk). The two design-index writes happen once per migration, so a story with no rows has none.
+export function migrate(disk: Disk, sourceName: string, targetName: string, codes: readonly string[], locked?: string): MigrationOutcome {
   const src = file(disk, sourceName);
   const tgt = file(disk, targetName);
   const source = loadBacklog(src.stories, { initials: src.initials });
@@ -108,6 +133,11 @@ export function migrate(disk: Disk, sourceName: string, targetName: string, code
   let reviewRows = rowsOf(src.review);
   const target = loadBacklog(tgt.stories, { initials: tgt.initials });
   const targetReview = rowsOf(tgt.review);
+  const sourceDesign = parseDesignIndexCsv(src.design);
+  const targetDesign = parseDesignIndexCsv(tgt.design);
+  const refuse = (backlog: string, name: string) => {
+    if (locked === `${backlog}/${name}`) throw new LockedFile(backlog, name);
+  };
 
   const relinkOthers = (changes: ReadonlyMap<string, string>, skip: readonly string[]) => {
     for (const [name, f] of disk) {
@@ -117,6 +147,7 @@ export function migrate(disk: Disk, sourceName: string, targetName: string, code
         stories: relinkBacklogText(f.stories, changes) ?? f.stories,
         proposals: relinkProposalsText(f.proposals, changes) ?? f.proposals,
         review: relinkReviewText(f.review, changes) ?? f.review,
+        design: relinkDesignIndexText(f.design, changes) ?? f.design,
       });
     }
   };
@@ -138,12 +169,30 @@ export function migrate(disk: Disk, sourceName: string, targetName: string, code
   const moved = sourceStories.filter((s) => ids.has(s.id));
   const movedRows = moveReviewRows(reviewRows, targetReview, moved.map((s) => s.code));
 
-  // Target first, then its review file, then the target's own renumber reaches the other backlogs and the open one.
+  // The target's own design rows follow its renumber (the server's relink skips the target), then the moved rows join them.
+  const targetOwnRows = retargetDesignRows(targetDesign, targetChanges);
+  const designMove = moveDesignRows(sourceDesign, targetOwnRows, moved.map((s) => s.code));
+  const writesTargetDesign = designMove.moved > 0 || targetOwnRows !== targetDesign;
+
+  // Target first, then its review file and design index, then the target's own renumber reaches the other backlogs and the open one.
+  refuse(targetName, 'user-stories.csv');
   disk.set(targetName, {
     ...tgt,
     stories: serializeBacklog({ headers: result.targetHeaders, stories: result.target, hasBom: target.hasBom }),
-    review: movedRows.moved ? serializeReview(movedRows.target) : tgt.review,
   });
+  if (movedRows.moved) {
+    refuse(targetName, 'review.csv');
+    disk.set(targetName, { ...file(disk, targetName), review: serializeReview(movedRows.target) });
+  }
+  if (writesTargetDesign) {
+    refuse(targetName, 'design-index.csv');
+    disk.set(targetName, { ...file(disk, targetName), design: serializeDesignIndex(designMove.target) });
+  }
+  if (designMove.moved) {
+    // The open backlog's own design index loses the moved rows before its save, or the save's relink would rename them.
+    refuse(sourceName, 'design-index.csv');
+    disk.set(sourceName, { ...file(disk, sourceName), design: serializeDesignIndex(designMove.source) });
+  }
   if (targetChanges.size) {
     relinkOthers(targetChanges, [sourceName, targetName]);
     followInSource(targetChanges);
@@ -162,6 +211,9 @@ export function migrate(disk: Disk, sourceName: string, targetName: string, code
     review: serializeReview(reviewRows),
   });
   relinkOthers(changes, [sourceName]);
+  // The server also rewrites the open backlog's own design index once per change list.
+  const own = file(disk, sourceName);
+  disk.set(sourceName, { ...own, design: relinkDesignIndexText(own.design, changes) ?? own.design });
 
-  return { forwards: result.forwards, changes, moved: movedRows.moved };
+  return { forwards: result.forwards, changes, moved: movedRows.moved, designMoved: designMove.moved };
 }

@@ -114,3 +114,13 @@ test('an empty queue runs to ok without calling the server', async () => {
   assert.deepEqual(await createRelinkQueue(relink).run(), { ok: true });
   assert.equal(calls.length, 0);
 });
+
+test('a failure of the backlog\'s own design index is retried with only naming that backlog', async () => {
+  const failure = { name: 'a', file: 'design-index.csv', message: 'locked' };
+  const { calls, relink } = stub((_call, n) => (n === 0 ? { updated: ['b'], failed: [failure] } : ok));
+  const queue = createRelinkQueue(relink);
+  queue.enqueue('a', new Map([['A1', 'A2'], ['A2', 'A1']]));
+  assert.equal((await queue.run()).ok, false);
+  assert.deepEqual(await queue.run(), { ok: true });
+  assert.deepEqual(calls.map((c) => c.only), [undefined, ['a']]);
+});

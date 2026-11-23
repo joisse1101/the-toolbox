@@ -6,6 +6,7 @@
 //   <dataDir>/<name>/user-stories/proposals.csv             kind `proposals`
 //   <dataDir>/<name>/lexicon.csv                            kind `lexicon`
 //   <dataDir>/<name>/lexicon/lexicon-suggestions.csv        kind `lexicon-suggestions`
+//   <dataDir>/<name>/design-index.csv                       kind `design-index` (written by the design skill, never created at New)
 //   <dataDir>/<name>/slices/<slice>/                        slices
 
 import fs from 'node:fs';
@@ -27,6 +28,7 @@ export const KIND_FILES: Record<BacklogKind, string[]> = {
   proposals: ['user-stories', 'proposals.csv'],
   lexicon: ['lexicon.csv'],
   'lexicon-suggestions': ['lexicon', 'lexicon-suggestions.csv'],
+  'design-index': ['design-index.csv'],
 };
 export const KINDS = Object.keys(KIND_FILES) as BacklogKind[];
 

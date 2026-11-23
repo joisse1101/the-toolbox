@@ -1,5 +1,5 @@
-// Text-level relinking of the files of a backlog that is not open: the backlog CSV, its proposals CSV and its review
-// CSV. Each helper takes the file's text and the ID changes of another backlog (old code -> new code, '' = deleted, see
+// Text-level relinking of the files of a backlog that is not open: the backlog CSV, its proposals CSV, its review
+// CSV and its design index. Each helper takes the file's text and the ID changes of another backlog (old code -> new code, '' = deleted, see
 // `idChanges` in ids.ts) and returns the new text, or `null` when the text would not change, so the caller writes nothing.
 // Pure, no file access. Nothing is renumbered: only the entries that name a changed ID are rewritten.
 
@@ -7,6 +7,7 @@ import { parseCsv, toCsv } from './csv.ts';
 import { relinkStories } from './ids.ts';
 import type { Linked } from './ids.ts';
 import { parseReview, retargetRows, serializeReview } from '../review/review.ts';
+import { parseDesignIndexCsv, retargetDesignRows, serializeDesignIndex } from '../design/design-index-csv.ts';
 
 const BOM = '﻿';
 const DEPENDS_ON = 'depends on';
@@ -50,4 +51,15 @@ export function relinkReviewText(text: string, changes: ReadonlyMap<string, stri
   if (!parsed.ok) throw new Error(parsed.error);
   const rows = retargetRows(parsed.rows, changes);
   return rows === parsed.rows ? null : serializeReview(rows);
+}
+
+// The backlog's `design-index.csv`: rows follow their story's new ID, and the rows of a story whose change is '' are dropped.
+// A file that does not read throws an IndexError that names the row and column, so the caller can report that file. A leading
+// BOM is kept, because a person may have saved the file from Excel.
+export function relinkDesignIndexText(text: string, changes: ReadonlyMap<string, string>): string | null {
+  if (!changes.size) return null;
+  const rows = parseDesignIndexCsv(text);
+  const next = retargetDesignRows(rows, changes);
+  if (next === rows) return null;
+  return (text.charCodeAt(0) === 0xfeff ? BOM : '') + serializeDesignIndex(next);
 }

@@ -15,7 +15,8 @@ const BOM = '﻿';
 const headerOnly = (columns: string[]) => BOM + toCsv([columns]);
 
 // A proposals file carries the Benched column that the backlog file has not (see proposalHeaders in model.ts).
-export function startingFiles(): { kind: BacklogKind; text: string }[] {
+// The design index is not one of them: the design skill writes it.
+export function startingFiles(): { kind: Exclude<BacklogKind, 'design-index'>; text: string }[] {
   return [
     { kind: 'backlog', text: headerOnly(COLUMNS) },
     { kind: 'review', text: headerOnly(REVIEW_COLUMNS) },

@@ -7,22 +7,36 @@ import { idChanges, relinkStories } from '#shared/backlog/ids.ts';
 import { loadBacklog, serializeBacklog } from '#shared/backlog/model.ts';
 import { migrateStories } from '#shared/backlog/proposals.ts';
 import { moveReviewRows, parseReview, serializeReview } from '#shared/review/review.ts';
+import { moveDesignRows, parseDesignIndexCsv, retargetDesignRows, serializeDesignIndex } from '#shared/design/design-index-csv.ts';
+import type { DesignIndexRow } from '#shared/design/design-index-csv.ts';
 
 const store = createFileStore('backlog');
-const reviewFiles = createFileStore('review');
 
-// A target without a review file gains one (the file API's write never creates a file).
-const reviewStore = {
-  ...reviewFiles,
-  async write(name: string, text: string) {
-    try {
-      await reviewFiles.write(name, text);
-    } catch (err) {
-      if (!(err instanceof FileApiError) || err.code !== 'not-found') throw err;
-      await reviewFiles.create(name, text);
-    }
-  },
-};
+// A target without the file gains one (the file API's write never creates a file).
+function creatingStore(files: ReturnType<typeof createFileStore>) {
+  return {
+    ...files,
+    async write(name: string, text: string) {
+      try {
+        await files.write(name, text);
+      } catch (err) {
+        if (!(err instanceof FileApiError) || err.code !== 'not-found') throw err;
+        await files.create(name, text);
+      }
+    },
+  };
+}
+const reviewStore = creatingStore(createFileStore('review'));
+const designStore = creatingStore(createFileStore('design-index'));
+
+// The rows of a design-index.csv text, or the reason it cannot be read.
+function readDesignRows(text: string): { ok: true; rows: DesignIndexRow[] } | { ok: false; error: string } {
+  try {
+    return { ok: true, rows: parseDesignIndexCsv(text) };
+  } catch (err) {
+    return { ok: false, error: messageOf(err) };
+  }
+}
 
 // A backlog the stories can move to: its folder name and its initials.
 export interface MigrateTarget {
@@ -36,9 +50,12 @@ export interface MigrateNote {
 }
 
 // The "Migrate" action of the Stories tab: moves the ticked stories into another backlog of the data folder.
-// The order matters (design decision 7): settle the open backlog, read the target and its review file fresh, work out the move,
-// ask, write the target and its review file, and only then change the open backlog, so a failed target write leaves everything
-// as it was. The open review suggestions of the moved stories move with them (removed from the source review). The flow then waits
+// The order matters (design decision 7): settle the open backlog, read the target, its review file and the two design indexes
+// fresh, work out the move, ask, write the target, its review file and its design index, and only then change the open backlog
+// (its design index first), so a failed target write leaves everything as it was. The open review suggestions of the moved
+// stories move with them (removed from the source review), and so do their design rows. The open backlog's own design index
+// loses them before its save, because the relink of that save would rename them there instead of dropping them; the moved rows
+// keep the source's IDs until that relink renames them in the target. The flow then waits
 // for the open backlog's save, which writes the source and relinks every other backlog once (see useAutosave `registerForwards`).
 // `review` is the slice of the review result this flow uses (a feature never imports another feature).
 export function useMigrateFlow({ current, stories, headers, initials, files, actions, review, ask, onIdChanges, onMoved }: {
@@ -102,6 +119,13 @@ export function useMigrateFlow({ current, stories, headers, initials, files, act
       } catch (err) {
         return fail(`Nothing was moved: the review suggestions of ${targetName} could not be read. ${messageOf(err)}`);
       }
+      let targetDesignText;
+      let sourceDesignText;
+      try {
+        [targetDesignText, sourceDesignText] = await Promise.all([designStore.read(targetName), designStore.read(source)]);
+      } catch (err) {
+        return fail(`Nothing was moved: a design index could not be read. ${messageOf(err)}`);
+      }
       const target = loadBacklog(read.content, { initials: read.initials });
       // The target's own IDs changed on load (its file was out of order): every other backlog must follow them too.
       const targetChanges = idChanges(target.parsed, target.stories);
@@ -119,12 +143,23 @@ export function useMigrateFlow({ current, stories, headers, initials, files, act
       const parsedReview = parseReview(targetReviewText);
       const movedRows = moveReviewRows(now.review.rows, parsedReview.ok ? parsedReview.rows : [], moved.map((s) => s.code));
       if (movedRows.moved && !parsedReview.ok) return fail(`Nothing was moved: the review file of ${targetName} could not be read. ${parsedReview.error}`);
+      const sourceDesign = readDesignRows(sourceDesignText);
+      if (!sourceDesign.ok) return fail(`Nothing was moved: design-index.csv of ${source} could not be read. ${sourceDesign.error}`);
+      // The target's own rows follow its renumber (the server's relink skips the target), then the moved rows join them.
+      const targetDesign = readDesignRows(targetDesignText);
+      const targetOwnRows = targetDesign.ok ? retargetDesignRows(targetDesign.rows, targetChanges) : [];
+      const designMove = moveDesignRows(sourceDesign.rows, targetOwnRows, moved.map((s) => s.code));
+      if (!targetDesign.ok && designMove.moved) return fail(`Nothing was moved: design-index.csv of ${targetName} could not be read. ${targetDesign.error}`);
+      const writesTargetDesign = designMove.moved > 0 || (targetDesign.ok && targetOwnRows !== targetDesign.rows);
       const count = moved.length;
       const noun = count === 1 ? 'story' : 'stories';
       const suggestions = movedRows.moved
         ? `\n\n${movedRows.moved} open review suggestion${movedRows.moved === 1 ? '' : 's'} on ${count === 1 ? 'it' : 'them'} will move with ${count === 1 ? 'it' : 'them'}.`
         : '';
-      const message = `${count} ${noun} will move from ${source} to ${targetName} and get new IDs there. Links in the other backlogs are updated.${suggestions}\n\nThis cannot be undone.`;
+      const designRows = designMove.moved
+        ? `\n\n${designMove.moved} design row${designMove.moved === 1 ? '' : 's'} will move with ${count === 1 ? 'it' : 'them'}.`
+        : '';
+      const message = `${count} ${noun} will move from ${source} to ${targetName} and get new IDs there. Links in the other backlogs are updated.${suggestions}${designRows}\n\nThis cannot be undone.`;
       if (!(await ask({ title: `Migrate ${count} ${noun} to ${targetName}?`, message, confirmLabel: 'Migrate' }))) return;
 
       // The target is written first. If that fails, nothing has changed and the stories stay where they are.
@@ -138,6 +173,20 @@ export function useMigrateFlow({ current, stories, headers, initials, files, act
           await reviewStore.write(targetName, serializeReview(movedRows.target));
         } catch (err) {
           return fail(`The ${count === 1 ? 'story is' : 'stories are'} now in both ${source} and ${targetName}, but the review suggestions could not be written to ${targetName}. ${messageOf(err)} Delete the ${count === 1 ? 'story' : 'stories'} from ${source} to finish the move, or delete ${count === 1 ? 'it' : 'them'} from ${targetName} before you migrate again.`);
+        }
+      }
+      if (writesTargetDesign) {
+        try {
+          await designStore.write(targetName, serializeDesignIndex(designMove.target));
+        } catch (err) {
+          return fail(`The ${count === 1 ? 'story is' : 'stories are'} now in both ${source} and ${targetName}, but the design index could not be written to ${targetName}. ${messageOf(err)} Delete the ${count === 1 ? 'story' : 'stories'} from ${source} to finish the move, or delete ${count === 1 ? 'it' : 'them'} from ${targetName} before you migrate again.`);
+        }
+      }
+      if (designMove.moved) {
+        try {
+          await designStore.write(source, serializeDesignIndex(designMove.source));
+        } catch (err) {
+          return fail(`The ${count === 1 ? 'story is' : 'stories are'} now in both ${source} and ${targetName}, and the design rows are in both too: design-index.csv of ${source} could not be written. ${messageOf(err)} Close the file and migrate again, or delete ${count === 1 ? 'the story' : 'the stories'} from ${targetName}.`);
         }
       }
       if (targetChanges.size) {
