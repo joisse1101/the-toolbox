@@ -113,30 +113,33 @@ function flowSteps(document) {
 
 const norm = (s) => String(s ?? '').trim().toLowerCase();
 
-// The artboard links of a canvas for each AC row: Map AC id -> { text, links } where `links` are the `<url>#artboard-<stem>` of the
-// index criterion that has the row's story Title and criterion text verbatim (case and edge spaces of the Title aside).
-function designLinks(table, { url, index }) {
+// The artboard links for each AC row: Map AC id -> { text, links } where `links` are the `<Canvas>#artboard-<stem>` of the rows of
+// design-index.csv that have the row's story ID and criterion text verbatim. The document names a story by Title, so `design.stories`
+// ({ id, title } of the slice's stories) gives its ID. Each row's own Canvas builds its links, so a migrated row keeps its canvas.
+function designLinks(table, { rows, stories }) {
   const byRow = new Map();
   for (const row of table) {
-    const story = index.stories.find((s) => norm(s.title) === norm(row.story));
-    const criterion = story?.criteria.find((c) => c.text.trim() === row.text.trim());
-    byRow.set(row.id, { text: row.text, links: (criterion?.artboards ?? []).map((stem) => `${url}#artboard-${stem}`) });
+    const story = stories.find((s) => norm(s.title) === norm(row.story));
+    const matching = story ? rows.filter((r) => r.storyId === story.id && r.criterion.trim() === row.text.trim()) : [];
+    byRow.set(row.id, { text: row.text, links: matching.flatMap((r) => r.artboards.map((stem) => `${r.canvas}#artboard-${stem}`)) });
   }
   return byRow;
 }
 
 // The two design rules (the slice-tasks spec): a task that satisfies a criterion with artboards names one of them, and every link of a
-// Design line is one of the links of a criterion the task satisfies, on the scope's canvas.
+// Design line is one of the links of a criterion the task satisfies, built from that row's Canvas.
 function checkDesignLines(tasks, table, design) {
   const problems = [];
   const links = designLinks(table, design);
-  const prefix = `${design.url}#artboard-`;
+  const canvases = [...new Set(design.rows.map((r) => r.canvas))];
   for (const t of tasks) {
     const gives = t.acIds.filter((ac) => links.get(ac)?.links.length);
     const allowed = new Set(gives.flatMap((ac) => links.get(ac).links));
     for (const link of t.design) {
-      if (!link.startsWith(prefix)) problems.push(problem(`the task ${label(t)} has the Design link ${link}, which is not an artboard of the canvas ${design.url} of the scope`, t.line));
-      else if (!allowed.has(link)) problems.push(problem(`the task ${label(t)} has the Design link ${link}, which is not an artboard of a criterion the task satisfies`, t.line));
+      if (allowed.has(link)) continue;
+      const known = canvases.some((url) => link.startsWith(`${url}#artboard-`));
+      if (!known) problems.push(problem(`the task ${label(t)} has the Design link ${link}, which is not an artboard of the canvas ${canvases.join(' or ')} of the design`, t.line));
+      else problems.push(problem(`the task ${label(t)} has the Design link ${link}, which is not an artboard of a criterion the task satisfies`, t.line));
     }
     if (t.design.length > 0) continue;
     for (const ac of gives) {
@@ -147,7 +150,8 @@ function checkDesignLines(tasks, table, design) {
 }
 
 // The format and coverage checks (conventions, section 10). `document` is the markdown text of UC-<slice>.md.
-// `design` is { url, index } (the scope's canvas and its parsed story index) when designs.json links a canvas to the scope, else absent.
+// `design` is { rows, stories } when the scope has a design, else absent: `rows` are the parsed rows of design-index.csv for the slice's
+// stories, and `stories` are their { id, title } pairs, which tie the document's story Titles to the rows' story IDs.
 // -> [{ file: 'tasks.md', line?, message }], the shape checks.js uses. Stories are named by Title.
 export function checkTasks({ tasksText, document, slice, design }) {
   const { groups, tasks, problems } = parseTasks(tasksText);

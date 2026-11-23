@@ -1,0 +1,12 @@
+{
+  "designs": [
+    {
+      "scope": {
+        "type": "feature",
+        "epic": "Habit tracking",
+        "feature": "Streaks"
+      },
+      "url": "https://claude.ai/artifact/mockhabits0001"
+    }
+  ]
+}

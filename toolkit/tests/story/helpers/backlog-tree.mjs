@@ -37,9 +37,10 @@ export function putSampleInitials(dataDir, name) {
   fs.copyFileSync(SAMPLE_BACKLOG_SETTINGS, path.join(dir, 'backlog.json'));
 }
 
-// A temp data folder holding the sample backlog `sample` and, on request, the mock slice and the mock context map.
+// A temp data folder holding the sample backlog `sample` and, on request, the mock slice, the mock context map and the mock
+// design files (design-index.csv and designs.json, with a made-up canvas link).
 // `into` names an existing data folder to fill, such as a temp project's `.plans`.
-export function sampleTree({ withSlice = false, withMap = false, into } = {}) {
+export function sampleTree({ withSlice = false, withMap = false, withDesign = false, into } = {}) {
   const root = into ?? tempData('sample-tree-');
   putFile(root, 'sample', 'backlog', fs.readFileSync(FIXTURE_BACKLOG_CSV, 'utf8'));
   const dir = bp.backlogDir(root, 'sample');
@@ -47,6 +48,9 @@ export function sampleTree({ withSlice = false, withMap = false, into } = {}) {
   if (withSlice) fs.cpSync(SAMPLE_SLICE, path.join(bp.slicesDir(root, 'sample'), SAMPLE_SLICE_NAME), { recursive: true });
   if (withMap) {
     for (const f of ['context-map.json', 'context-map.md']) fs.copyFileSync(path.join(FIXTURES, f), path.join(dir, f));
+  }
+  if (withDesign) {
+    for (const f of ['design-index.csv', 'designs.json']) fs.copyFileSync(path.join(FIXTURES, f), path.join(dir, f));
   }
   return root;
 }

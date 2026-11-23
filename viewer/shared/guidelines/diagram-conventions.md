@@ -277,10 +277,12 @@ indented lines, and by a third, `Design:`, when the slice's scope is designed:
 - `Satisfies` names one or more `AC id` rows of the acceptance-criteria table (section 4), and every step id
   exists in the sequence diagram of the task's flow.
 - `Design` sits between `Satisfies` and `Verify`. It holds comma-separated links, each
-  `<canvas url>#artboard-<stem>`, to the artboards that show the task's criteria. It is required only when
-  `<backlog>/designs.json` links the slice's scope to a canvas, and then every task whose criterion has
-  artboards in the story index names at least one of them. The writer reads `designs.json` and refuses a
-  designed scope that has no story index, or whose index is stale.
+  `<canvas url>#artboard-<stem>`, to the artboards that show the task's criteria. The link is a row's
+  `Canvas` plus one of its artboard stems, from `<backlog>/design-index.csv`. It is required only when the
+  file holds rows for the slice's stories or `<backlog>/designs.json` links the slice's scope to a canvas,
+  and then every task whose criterion has artboards in the file names at least one of them. The writer
+  reads both files itself and refuses a designed scope with a story that has no rows, a story whose rows
+  no longer match its criteria, and a link that is not an artboard of a criterion the task satisfies.
 - `Verify` is not empty. The writer checks only that it is there; the review of the complete text is where
   the user judges whether the verification is real.
 - The file may open with a `# Tasks` title line, and blank lines may separate tasks. The writer ignores text

@@ -2,8 +2,8 @@
 // and Mermaid diagrams), tasks.md (the build tasks, required, carried in the JSON `files` beside the document) and source.json.
 // Usage, the slice as JSON on stdin:
 //   node <skill folder>/write-diagram.mjs <backlog name> [--check] [--repo]
-// The JSON is { slice, scope, stories: [{ id, title }], files: [{ name, content }], design?: { url, index } }. `design` is required when
-// the backlog's designs.json links a canvas to the scope (see resolveDesign). --check runs the same preparation, the same
+// The JSON is { slice, scope, stories: [{ id, title }], files: [{ name, content }] }. The writer reads the design itself: the backlog's
+// design-index.csv and designs.json (see resolveDesign). An input that still carries the old `design` field is refused. --check runs the same preparation, the same
 // structural checks (diagrams/checks.js) and Mermaid's own parser on every diagram as the write, and writes nothing; --repo says
 // the skill read the repo, which lifts the limits of a slice without one. The stories come as { id, title } pairs and the story
 // hashes are computed here, never taken from the caller. Without the Mermaid packages (see parse-mermaid.mjs) it refuses.
@@ -23,7 +23,8 @@ import { parseMermaid, mermaidMissing } from './parse-mermaid.mjs';
 import { dataDirOrThrow } from './lib/skill-support/resolve-data-dir.mjs';
 import { backlogDir } from './lib/storage/backlog-paths.mjs';
 import { shown } from './lib/skill-support/paths.mjs';
-import { parseIndexText, validateIndex, compareIndex, IndexError } from './lib/skill-support/design-index.mjs';
+import { parseDesignIndexCsv } from './lib/design/design-index-csv.mjs';
+import { buildDesignIndex, compareIndex, parseDesignsText, storiesInDesigns } from './lib/skill-support/design-index.mjs';
 
 import { GUIDELINES_DIR } from './lib/skill-support/paths.mjs';
 
@@ -51,58 +52,55 @@ function cleanScope(scope) {
 }
 
 const DESIGNS_FILE = 'designs.json';
-const isRecord = (v) => typeof v === 'object' && v !== null && !Array.isArray(v);
+const INDEX_FILE = 'design-index.csv';
 
-// The canvas designs.json links to the scope, or null (no file or no entry: the slice is written as before).
-// -> { url } | null | { error }. The scope is compared as the pointer writer stores it, by JSON equality.
-function designPointer({ dataDir, name, scope }) {
-  const file = path.join(backlogDir(dataDir, name), DESIGNS_FILE);
-  if (!fs.existsSync(file)) return null;
-  let parsed;
+// Reads one design file of the backlog and parses it. -> { value } | { error } (the error names the file). A missing file is
+// { value: fallback }.
+function readDesignFile({ dataDir, dir, file, parse, fallback }) {
+  const target = path.join(dir, file);
+  if (!fs.existsSync(target)) return { value: fallback };
   try {
-    parsed = JSON.parse(fs.readFileSync(file, 'utf8'));
+    return { value: parse(fs.readFileSync(target, 'utf8')) };
   } catch (err) {
-    return { error: `${shown(dataDir, file)} is not valid JSON: ${err.message}. Fix it first.` };
+    return { error: `${shown(dataDir, target)} cannot be read: ${err.message}. Fix it first.` };
   }
-  if (!isRecord(parsed) || !Array.isArray(parsed.designs)) return { error: `${shown(dataDir, file)} must hold { "designs": [ ... ] }. Fix it first.` };
-  const entry = parsed.designs.find((d) => isRecord(d) && JSON.stringify(d.scope) === JSON.stringify(scope));
-  return entry ? { url: entry.url } : null;
 }
 
-// The design the scope is checked against: { url, index } when designs.json links a canvas to the scope, null when it does not.
-// -> { design } | { errors }. When it does, the input must carry `design: { url, index }` with the same url and a current index
-// (an object, or the text of Main.dc.html or bare JSON), so that leaving the field out cannot skip the design.
-function resolveDesign({ dataDir, name, scope, stories, given }) {
-  const pointer = designPointer({ dataDir, name, scope });
-  if (pointer?.error) return { errors: [pointer.error] };
-  if (!pointer) return { design: null };
-  if (!isRecord(given)) return { errors: [`${DESIGNS_FILE} links the canvas ${pointer.url} to the scope ${scopeText(scope)}, so the input needs a design field { "url", "index" } (the canvas's story index); the slice was not written.`] };
-  if (given.url !== pointer.url) return { errors: [`design.url ${JSON.stringify(given.url) ?? 'is missing'} is not the canvas ${pointer.url} that ${DESIGNS_FILE} links to the scope ${scopeText(scope)}.`] };
-  let index;
-  try {
-    index = typeof given.index === 'string' ? parseIndexText(given.index) : validateIndex(given.index);
-  } catch (err) {
-    if (err instanceof IndexError) return { errors: [`design.index is not a valid story index: ${err.message}`] };
-    throw err;
+// The design the slice is checked against, read from design-index.csv and designs.json of the backlog.
+// -> { design: { rows, stories } | null } | { errors }. There is a design when the file holds rows for a story of the slice or when a
+// designs.json entry covers the scope (its own, or the Epic or Feature that holds it). A covered story with no rows, and a story whose
+// rows no longer match its criteria, are refused. A row's own Canvas is used, so a migrated row needs no designs.json entry.
+function resolveDesign({ dataDir, dir, inScope }) {
+  const rowsRead = readDesignFile({ dataDir, dir, file: INDEX_FILE, parse: parseDesignIndexCsv, fallback: [] });
+  if (rowsRead.error) return { errors: [rowsRead.error] };
+  const designsRead = readDesignFile({ dataDir, dir, file: DESIGNS_FILE, parse: parseDesignsText, fallback: [] });
+  if (designsRead.error) return { errors: [designsRead.error] };
+  const ids = new Set(inScope.map((s) => s.code));
+  const rows = rowsRead.value.filter((r) => ids.has(r.storyId));
+  const covered = new Set(storiesInDesigns(inScope, designsRead.value));
+  if (rows.length === 0 && covered.size === 0) return { design: null };
+
+  const withRows = new Set(rows.map((r) => r.storyId));
+  const errors = inScope
+    .filter((s) => covered.has(s) && !withRows.has(s.code))
+    .map((s) => `The story "${s.title.trim()}" (${s.code}) is in a scope that ${DESIGNS_FILE} links to a canvas, and ${INDEX_FILE} has no row for it. Run jois-story-design for it.`);
+  const stale = compareIndex(buildDesignIndex(rows), inScope, []);
+  for (const c of stale.changed) {
+    errors.push(`${INDEX_FILE} is out of date for "${c.title}" (${c.storyId}): its criteria or title changed since the rows were written. Use the update-index mode of jois-story-design.`);
   }
-  if (JSON.stringify(index.scope) !== JSON.stringify(scope)) return { errors: [`design.index is for the scope ${scopeText(index.scope)}, not ${scopeText(scope)}.`] };
-  const stale = compareIndex(index, stories);
-  if (stale.stale) {
-    const parts = [
-      ...stale.changed.map((c) => `changed: "${c.title}"`),
-      ...stale.missing.map((t) => `missing from the backlog: "${t}"`),
-      ...stale.new.map((t) => `new, not in the index: "${t}"`),
-    ];
-    return { errors: [`design.index is out of date with the backlog (${parts.join('; ')}). Run jois-story-design again for the scope.`] };
-  }
-  return { design: { url: pointer.url, index } };
+  if (errors.length) return { errors };
+  return { design: { rows, stories: inScope.map((s) => ({ id: s.code, title: s.title.trim() })) } };
 }
 
 // Everything both tools need, or { ok: false, errors } naming every problem found.
-//   input: { name, slice, scope, stories: [{ id, title }], files: [{ name, content }], design?: { url, index }, repo?: {} (the skill read the repo) }
-async function prepare({ dataDir = dataDirOrThrow(), guidelinesDir = GUIDELINES_DIR, name, slice, scope: rawScope, stories: pairs, files: fileList, design: givenDesign, repo = null, now = () => new Date().toISOString() }) {
+//   input: { name, slice, scope, stories: [{ id, title }], files: [{ name, content }], repo?: {} (the skill read the repo) }
+//   The old `design` field is refused: the writer reads design-index.csv itself, so a stale index cannot be sent.
+async function prepare({ dataDir = dataDirOrThrow(), guidelinesDir = GUIDELINES_DIR, name, slice, scope: rawScope, stories: pairs, files: fileList, design: oldDesignField, repo = null, now = () => new Date().toISOString() }) {
   const missing = mermaidMissing();
   if (missing) return { ok: false, errors: [missing] };
+  if (oldDesignField !== undefined) {
+    return { ok: false, errors: [`The input carries a design field, which is no longer read: the writer reads ${INDEX_FILE} and ${DESIGNS_FILE} of the backlog itself. Remove the field and send the slice again.`] };
+  }
   const loaded = loadStories({ dataDir, name });
   if (!loaded.ok) return loaded;
   const errors = [];
@@ -135,7 +133,7 @@ async function prepare({ dataDir = dataDirOrThrow(), guidelinesDir = GUIDELINES_
   }
   if (errors.length) return { ok: false, errors };
 
-  const resolved = resolveDesign({ dataDir, name, scope, stories: loaded.stories, given: givenDesign });
+  const resolved = resolveDesign({ dataDir, dir: backlogDir(dataDir, name), inScope });
   if (resolved.errors) return { ok: false, errors: resolved.errors };
 
   const existing = fs.existsSync(sliceDir) ? readSliceFolder(sliceDir) : null;

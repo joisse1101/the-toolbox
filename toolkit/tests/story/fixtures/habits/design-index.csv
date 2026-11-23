@@ -1,0 +1,3 @@
+Story ID,Story,Criterion,Kind,Artboards,Viewports,Canvas
+H1-HT-0001,See the current streak,"Given a habit checked off on each of the last 3 days, when I open the habit list, then it shows a streak of 3.",main,streaks-list-default-desktop;streaks-list-default-mobile,desktop;mobile,https://claude.ai/artifact/mockhabits0001
+H1-HT-0002,See the best streak,"Given a habit whose longest run was 5 days and whose current streak is 2, when I open the habit list, then it shows a best streak of 5.",failure,streaks-best-error-desktop,desktop,https://claude.ai/artifact/mockhabits0001
