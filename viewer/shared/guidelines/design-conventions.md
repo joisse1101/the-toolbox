@@ -1,58 +1,50 @@
 # Design conventions
 
-The single statement of the rules for a **design canvas**: the Claude Design canvas that `jois-story-design` makes for one scope (an Epic, a Feature or a story), and that `jois-story-plan`, apply and validate read. The design skill and plan cite this page and do not restate it. The canvas lives on claude.ai and the repo holds only a pointer to it (`<backlog>/designs.json`, see [the file table](plans-files.md)), never an artboard.
+The single statement of the rules for a **design canvas**: the Claude Design canvas that `jois-story-design` makes for one scope (an Epic, a Feature or a story), and that `jois-story-plan`, apply and validate read. The design skill and plan cite this page and do not restate it. The canvas lives on claude.ai. The repo holds a pointer to it (`<backlog>/designs.json`) and the story index (`<backlog>/design-index.csv`, section 1), see [the file table](plans-files.md), and never an artboard.
 
-A canvas is a set of files. `project/canvas.json` lists the artboards and their pages, and each artboard (one screen in one state at one size) is one file, `project/<name>.dc.html`. The first artboard in `order` opens first. `Main` is always that first artboard.
+A canvas is a set of files. `project/canvas.json` lists the artboards and their pages, and each artboard (one screen in one state at one size) is one file, `project/<name>.dc.html`. The first artboard in `order` opens first. `Main` is always that first artboard, and it is a cover page (end of section 1).
 
-## 1. The story index
+## 1. The story index file
 
-`project/Main.dc.html` is the **story index**. It holds the index as one object inside the component's `renderVals()`, written as `const index = { ... };`, and renders that same object as a readable table with `<sc-for>` loops. People, Claude and the checker therefore read one source, and the table can never differ from the data.
+The **story index** is the file `<backlog>/design-index.csv`. It has one row per acceptance criterion of each designed story, so scripts, the portal and Claude read one source, and a reworded criterion is fixed by a row edit and not by redrawing the canvas. The file is a CSV like the backlog's other files: RFC 4180, CRLF line endings, and it opens in Excel. A column the code does not know is kept when the file is read and written. Design writes it only through its writer script (`write-design-index.mjs`), which checks the rows, writes atomically and reads the file back.
 
-The object must be **strict JSON**: double-quoted keys, no comments, no trailing commas. The checker cuts the object out by finding `const index = ` and scanning to its matching brace outside strings, then reads it with `JSON.parse`, so anything JSON does not allow makes the index unreadable and the checker names the line at fault.
+The header is `Story ID,Story,Criterion,Kind,Artboards,Viewports,Canvas`.
 
-```json
-{
-  "version": 1,
-  "backlog": "habits",
-  "scope": { "type": "feature", "epic": "Habits", "feature": "Streaks" },
-  "viewports": ["desktop", "mobile"],
-  "stories": [
-    {
-      "title": "See my current streak",
-      "criteria": [
-        {
-          "text": "Given ... when ... then the card shows the current streak",
-          "kind": "main",
-          "artboards": ["streaks-card-default-desktop", "streaks-card-default-mobile"]
-        }
-      ]
-    }
-  ]
-}
+```csv
+Story ID,Story,Criterion,Kind,Artboards,Viewports,Canvas
+H1-HT-0001,See my current streak,Given ... when ... then the card shows the current streak,main,streaks-card-default-desktop;streaks-card-default-mobile,desktop;mobile,https://claude.ai/artifact/abc123
+H1-HT-0001,See my current streak,Given ... when ... then it says the name is taken,failure,streaks-card-error-desktop;streaks-card-error-mobile,desktop;mobile,https://claude.ai/artifact/abc123
 ```
 
-### Fields
+### Columns
 
-| Field | Type | Meaning |
-|---|---|---|
-| `version` | number | The shape of the index. Always `1` for now; a reader refuses another value. |
-| `backlog` | string | The backlog's folder name under the data folder. |
-| `scope` | object | What the canvas designs, in the words plan uses for a slice's scope (below). |
-| `viewports` | array | The sizes drawn: `["desktop", "mobile"]` by default, or one of them when the user asked for one size. This is how "desktop only" is recorded. |
-| `stories` | array | One entry per story designed, in backlog order. A story left out for an open clarification has no entry. |
-| `stories[].title` | string | The story's Title, verbatim from the backlog. The index is keyed by Title. |
-| `stories[].criteria` | array | One entry per acceptance criterion of the story, in the story's order. |
-| `stories[].criteria[].text` | string | The criterion's text verbatim, as written after its `AC<n>:` label. |
-| `stories[].criteria[].kind` | string | `main` or `failure` (below). |
-| `stories[].criteria[].artboards` | array | The file stems of the artboards that show the criterion, one per screen state and viewport. |
+| Column | Meaning |
+|---|---|
+| `Story ID` | The story's ID in the backlog. With `Criterion` it is the row's key. The portal rewrites this column when a story is renumbered or deleted, and moves the rows with a story that migrates to another backlog. |
+| `Story` | The story's Title, for a person reading the file. It is not a key, and a Title that no longer matches the backlog is reported as a change. |
+| `Criterion` | The criterion's text verbatim, as written after its `AC<n>:` label. A row is found by this exact text. |
+| `Kind` | `main` or `failure` (below). |
+| `Artboards` | The file stems of the artboards that show the criterion, one per screen state and viewport, joined by `;`. It may be empty (a design problem, below). |
+| `Viewports` | `desktop`, `mobile` or `desktop;mobile`: the sizes drawn for this row. A stem in `Artboards` ends in one of these. A design for one size only is recorded as that value on every row of the design. |
+| `Canvas` | The canvas link, repeated on every row. A row that migrates with its story keeps the link of the canvas that holds its artboards. |
 
-The `scope` object is `{ "type": "epic", "epic": "..." }`, `{ "type": "feature", "epic": "...", "feature": "..." }` or `{ "type": "story", "epic": "...", "feature": "...", "title": "..." }`, where `title` is the story's Title. These are the same fields as the `scope` of a slice's `source.json`, so the two can be compared directly.
+A list column (`Artboards`, `Viewports`) joins its items with `;` and no space. A cell with a comma or a quote is wrapped in double quotes and a quote inside it is doubled, as in any CSV.
 
-A criterion has **no stored id**, because the slice's `AC-<slice>-<name>` ids are assigned by plan later and do not exist yet. A criterion is found by its verbatim `text`. The readable table shows each criterion's position number within its story (`AC 1`, `AC 2`, ...), computed in `renderVals()` from the array order, as the id a person sees.
+### Keys and scope
 
-### The `kind` values
+A row is keyed by its `Story ID` and the exact text of its `Criterion`, and a story's rows keep the story's criterion order. A criterion has **no stored id**, because the slice's `AC-<slice>-<name>` ids are assigned by plan later and do not exist yet. The readable position (`AC 1`, `AC 2`, ...) is the criterion's place among its story's rows.
 
-`main` marks a criterion that describes what happens on the way to the goal. `failure` marks a criterion that describes what happens when something goes wrong, such as a name already taken or a rejected input. A failure criterion must point to at least one **error-state artboard**, one whose name holds `error` as its state (section 2), so the user sees the message. A criterion of either kind with an empty `artboards` list is a design problem.
+A row does not store the scope. `designs.json` holds `{ scope, url }` for each canvas, and a row's `Canvas` joins to the entry with the same `url`. The scope is `{ "type": "epic", "epic": "..." }`, `{ "type": "feature", "epic": "...", "feature": "..." }` or `{ "type": "story", "epic": "...", "feature": "...", "title": "..." }`, the same fields as the `scope` of a slice's `source.json`. A story with an open clarification is left out of a design on purpose and has no rows. A row whose `Canvas` has no entry in this backlog's `designs.json` (a migrated story) is checked for changes only, and never makes its backlog report new stories.
+
+### The `Kind` values
+
+`main` marks a criterion that describes what happens on the way to the goal. `failure` marks a criterion that describes what happens when something goes wrong, such as a name already taken or a rejected input. A failure criterion must point to at least one **error-state artboard**, one whose name holds `error` as its state (section 2), so the user sees the message. A criterion of either kind with an empty `Artboards` cell is a design problem.
+
+### `Main`, the cover page
+
+`project/Main.dc.html` is a **cover page** for a person who opens the canvas. It lists the canvas's flows and the name of each artboard, with `<a href="<stem>.dc.html">` links to them. It lists no acceptance criterion and holds no story index as data, so a reworded criterion never needs an artboard to change. Design reads the story index from `design-index.csv`, never from `Main`.
+
+A canvas made before the index moved to the file keeps its old `Main` (a `const index = { ... };` object in `renderVals()`) until the next design run on its scope. That run reads the old index out of `Main` once, writes its rows to `design-index.csv`, and replaces `Main` with the cover page.
 
 ## 2. Artboards
 

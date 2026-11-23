@@ -9,7 +9,7 @@ Nothing here is installed by the toolkit installer, and nothing in it imports a 
 - `app/`: the baseline app (Vite, TypeScript, Tailwind CSS, browser local storage) with a habit list and daily check-off, a Pomodoro timer and a task category picker. It plays no sound.
 - `wiki/`: the app's wiki. `wiki/Future-Releases.md` lists features not built yet, so a rerun of the flow always has something to add.
 - `CLAUDE.md`: the mock repo's instructions (test command, where the docs live).
-- `stages/<stage>/`: what one stage of the flow writes, laid out as it sits in the mock repo. The stages are `baseline`, `proposed`, `accepted`, `planned`, `built`, `validated` and `archived`. The `baseline` stage is the `app/`, `wiki/` and `CLAUDE.md` above, so it has no folder.
+- `stages/<stage>/`: what one stage of the flow writes, laid out as it sits in the mock repo. The stages are `baseline`, `proposed`, `accepted`, `designed`, `planned`, `built`, `validated` and `archived`. The `baseline` stage is the `app/`, `wiki/` and `CLAUDE.md` above, so it has no folder.
 - `build-mock-repo.ps1` (and `build-mock-repo.bat`, which only calls it): builds the mock repo.
 
 The backlog is named `habits` with initials `H1`, so story IDs look like `H1-HAB-0001`.
@@ -24,7 +24,7 @@ toolkit\sample\story-to-code\build-mock-repo.ps1 -Stage planned
 
 The script builds `.scratch/mock-app/` as its own git repository on the branch `sample`, installs the toolkit into it at project scope, and runs `npm ci` inside it. It writes nothing outside that folder, leaves `~/.claude` alone and calls no model. Start Claude inside `.scratch/mock-app/` because the story skills look for their data folder (`.plans/`) in the current folder only.
 
-- `-Stage` is one of the seven names above. The default is `baseline`. An unknown name stops the script and lists the valid ones.
+- `-Stage` is one of the eight names above. The default is `baseline`. An unknown name stops the script and lists the valid ones.
 - `-Reset` deletes an existing `.scratch/mock-app/` first. Without it the script stops and deletes nothing.
 - `-Scope global` is refused.
 
@@ -73,6 +73,7 @@ About $6.45 in total, from `total_cost_usd` in each call's JSON (the figure `/co
 | --- | --- | --- |
 | Explore | $0.22 | writes nothing |
 | Propose | $0.20 + $0.26 | the first try found no backlog file |
+| Design | none | recorded by hand from the existing canvas "Habits Streaks design", so no model cost: `designs.json` and `design-index.csv` |
 | Plan | $0.58 | the slice, the freeze and verify |
 | Apply | $1.04 + $2.10 | four tasks, then review rounds and fixes, test task, validation |
 | Validate | $0.62 + $0.58 | run again after the docs checker commit |

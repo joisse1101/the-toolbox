@@ -33,7 +33,8 @@ test('git status lists exactly the committed and user decides files of a mock .p
       .filter((row) => row.lifecycle.includes('committed') || row.lifecycle.includes('user decides'))
       .map((row) => `.plans/b1/${row.path.replace(/<slice>/g, 's1')}`).sort();
     assert.deepEqual(listed, expected);
-    assert.equal(expected.length, 10);
+    assert.equal(expected.length, 11);
+    assert.ok(listed.includes('.plans/b1/design-index.csv'), 'design-index.csv is untracked and not ignored');
   } finally {
     fs.rmSync(repo, { recursive: true });
   }

@@ -13,7 +13,7 @@ const storyChanges = fs.readFileSync(new URL('../../../viewer/shared/guidelines/
 test('the skill is named jois-story-plan, versioned, and allows only its six scripts, the init script and the file tools', () => {
   const meta = frontmatter(skill);
   assert.equal(meta.name, 'jois-story-plan');
-  assert.match(body, /metadata:\n  version: "1\.12\.0"\n  last_updated: "2026-11-20"/);
+  assert.match(body, /metadata:\n  version: "1\.13\.0"\n  last_updated: "2026-11-23"/);
   assert.deepEqual(meta['allowed-tools'].split(/,\s*/).sort(), [
     'Artifact', 'AskUserQuestion', 'Bash(git add *slices*)', 'Bash(git check-ignore:*)', 'Bash(git commit:*)', 'Bash(git rev-parse:*)', 'Bash(node *check-design-index.mjs*)', 'Bash(node *init-plans.mjs*)', 'Bash(node *read-context-map.mjs*)', 'Bash(node *read-diagrams.mjs*)', 'Bash(node *write-context-map.mjs*)', 'Bash(node *write-diagram.mjs*)', 'Bash(node *write-freeze.mjs*)', 'Glob', 'Grep', 'Read', 'Skill',
   ]);
@@ -235,4 +235,14 @@ test('the skill verifies the written slice before it freezes any story', () => {
   assert.match(verify, /Stop after 2 rounds/);
   assert.match(verify, /never block the freeze/);
   assert.match(body, /verify left no critical finding open/);
+});
+
+test('the skill reads design-index.csv itself, names the canvas from the rows, sends nothing to the writer, points a stale index to update mode and needs no Artifact tool for it', () => {
+  assert.match(body, /read `<backlog>\/design-index\.csv` and `<backlog>\/designs\.json`/);
+  assert.match(body, /the `Canvas` of the rows/);
+  assert.match(body, /Send nothing to the checker, and send no index to the writer/);
+  assert.match(body, /update-index mode of `jois-story-design`/);
+  assert.match(body, /full design run/);
+  assert.match(body, /This step needs no Artifact tool/);
+  assert.match(body, /input has \*\*no `design` field\*\*/);
 });

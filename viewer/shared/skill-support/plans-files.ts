@@ -27,6 +27,7 @@ export const PLANS_FILES: PlansFile[] = [
   { path: 'context-map.json', writer: 'jois-story-plan', lifecycle: ['committed'] },
   { path: 'context-map.md', writer: 'jois-story-plan', lifecycle: ['committed'] },
   { path: 'designs.json', writer: 'jois-story-design', lifecycle: ['committed'] },
+  { path: 'design-index.csv', writer: 'jois-story-design', lifecycle: ['committed'] },
   { path: 'user-stories/proposals.csv', writer: 'jois-story-propose', lifecycle: ['local'] },
   { path: 'user-stories/review.csv', writer: 'jois-story-review, jois-story-propose, portal', lifecycle: ['local'] },
   { path: 'user-stories/review.csv.decided', writer: 'jois-story-review, jois-story-propose, portal', lifecycle: ['local'] },

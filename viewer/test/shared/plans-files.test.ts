@@ -18,6 +18,7 @@ const EXPECTED_PLANS_BLOCK = `# planner data: committed files only (printed by j
 !.plans/*/context-map.json
 !.plans/*/context-map.md
 !.plans/*/designs.json
+!.plans/*/design-index.csv
 !.plans/*/slices/
 .plans/*/slices/*
 !.plans/*/slices/*/
@@ -33,6 +34,7 @@ const root = path.resolve('some', 'project');
 test('the rows hold the paths and lifecycles of the spec', () => {
   assert.deepEqual(pathsWith('committed'), [
     'user-stories.csv', 'lexicon.csv', 'backlog.json', 'context-map.json', 'context-map.md', 'designs.json',
+    'design-index.csv',
     'slices/<slice>/ARCHIVED.md', 'slices/<slice>/source.json',
   ]);
   assert.deepEqual(pathsWith('local'), [
@@ -42,7 +44,7 @@ test('the rows hold the paths and lifecycles of the spec', () => {
   assert.deepEqual(pathsWith('local, removed by archive'), [
     'slices/<slice>/review.md', 'slices/<slice>/validation.md', 'slices/<slice>/validation.partial.md',
   ]);
-  assert.equal(PLANS_FILES.length, 17);
+  assert.equal(PLANS_FILES.length, 18);
   assert.deepEqual(lifecycleOf('slices/<slice>/tasks.md'), ['user decides', 'removed by archive']);
 });
 

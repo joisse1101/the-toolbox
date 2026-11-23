@@ -36,7 +36,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$Stages = @('baseline', 'proposed', 'accepted', 'planned', 'built', 'validated', 'archived')
+$Stages = @('baseline', 'proposed', 'accepted', 'designed', 'planned', 'built', 'validated', 'archived')
 $SampleDir = $PSScriptRoot
 $RepoRoot = (Resolve-Path (Join-Path $SampleDir '..\..\..')).Path
 $Mock = Join-Path $RepoRoot '.scratch\mock-app'

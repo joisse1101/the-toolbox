@@ -12,6 +12,7 @@ This page lists every file the story skills, the `jois-code` commands and the pl
 | `context-map.json` | jois-story-plan | committed |
 | `context-map.md` | jois-story-plan | committed |
 | `designs.json` | jois-story-design | committed |
+| `design-index.csv` | jois-story-design | committed |
 | `user-stories/proposals.csv` | jois-story-propose | local |
 | `user-stories/review.csv` | jois-story-review, jois-story-propose, portal | local |
 | `user-stories/review.csv.decided` | jois-story-review, jois-story-propose, portal | local |

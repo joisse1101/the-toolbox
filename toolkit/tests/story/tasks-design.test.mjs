@@ -10,18 +10,13 @@ const ERROR = `${URL}#artboard-current-list-default-mobile`;
 const BEST_BOARD = `${URL}#artboard-best-list-default-desktop`;
 
 const [currentRow, bestRow] = criteriaTable(document);
-const entry = (row, artboards) => ({ title: row.story, criteria: [{ text: row.text, kind: 'main', artboards }] });
+const STORIES = [{ id: 'H1-HT-0001', title: currentRow.story }, { id: 'H1-HT-0002', title: bestRow.story }];
+const rowOf = (storyId, row, artboards, canvas = URL) => ({ storyId, story: row.story, criterion: row.text, kind: 'main', artboards, viewports: ['desktop', 'mobile'], canvas, extra: {} });
 
-// The index: the current criterion has two artboards, the best criterion has none unless `best` names some.
-const designOf = ({ best = [] } = {}) => ({
-  url: URL,
-  index: {
-    version: 1,
-    backlog: 'sample',
-    scope: { type: 'feature', epic: 'Habit tracking', feature: 'Streaks' },
-    viewports: ['desktop', 'mobile'],
-    stories: [entry(currentRow, ['current-list-default-desktop', 'current-list-default-mobile']), entry(bestRow, best)],
-  },
+// The design: the current criterion has two artboards, the best criterion has none unless `best` names some. `canvas` is the Canvas of the current row.
+const designOf = ({ best = [], canvas = URL } = {}) => ({
+  stories: STORIES,
+  rows: [rowOf('H1-HT-0001', currentRow, ['current-list-default-desktop', 'current-list-default-mobile'], canvas), rowOf('H1-HT-0002', bestRow, best)],
 });
 
 const withDesign = (text, task, links) => text.replace(new RegExp(String.raw`(- \[ \] ${task} .*\n  Satisfies: .*\n)`), `$1  Design: ${links}\n`);
@@ -72,4 +67,18 @@ test('a link to an artboard of a criterion the task does not satisfy is refused 
 
 test('a link to an unknown artboard of the right canvas is refused', () => {
   assert.match(messages(withDesign(tasksText(), CURRENT_TASK, `${URL}#artboard-nope`)), /Design link .*#artboard-nope, which is not an artboard of a criterion the task satisfies/);
+});
+
+test('a row matches by story ID and exact criterion text, so a row for another ID or a reworded text gives no link', () => {
+  const otherId = { stories: STORIES, rows: [rowOf('H1-HT-0099', currentRow, ['current-list-default-desktop'])] };
+  assert.deepEqual(check(tasksText(), otherId), []);
+  const reworded = { stories: STORIES, rows: [rowOf('H1-HT-0001', { ...currentRow, text: `${currentRow.text} Also more.` }, ['current-list-default-desktop'])] };
+  assert.deepEqual(check(tasksText(), reworded), []);
+});
+
+test('a link built from the Canvas of a migrated row passes even when no designs.json lists that canvas', () => {
+  const migrated = designOf({ canvas: OTHER_URL });
+  const link = `${OTHER_URL}#artboard-current-list-default-desktop`;
+  assert.deepEqual(check(withDesign(tasksText(), CURRENT_TASK, link), migrated), []);
+  assert.match(messages(withDesign(tasksText(), CURRENT_TASK, `https://claude.ai/artifact/third01#artboard-x`), migrated), /Design link .*, which is not an artboard of the canvas https:\/\/claude\.ai\/artifact\/zzz999 or /);
 });

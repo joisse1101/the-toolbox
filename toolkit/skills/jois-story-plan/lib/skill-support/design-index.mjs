@@ -1,239 +1,88 @@
 // GENERATED. Do not edit this copy.
-// The story index of a design canvas (viewer/shared/guidelines/design-conventions.md): reads it out of `Main.dc.html` (or
-// from bare JSON), checks its shape, compares it with the backlog's stories and checks that every criterion has an artboard.
-// Pure: no file is read or written, so jois-story-design and jois-story-plan each run it from their own script. The
-// comparison uses the same categories as read-diagrams.mjs (changed, missing, new); a story with an open clarification
-// is left out of a design on purpose, so it is never reported as new.
+// The story index of a design (viewer/shared/guidelines/design-conventions.md): builds it from the rows of `design-index.csv`
+// (see ../design/design-index-csv.ts), compares it with the backlog's stories by story ID and exact criterion text, and checks
+// that every criterion has an artboard. Pure: no file is read or written, so jois-story-design and jois-story-plan each run it
+// from their own script. The comparison uses the categories of read-diagrams.mjs (changed, missing, new); a story with an open
+// clarification is left out of a design on purpose, so it is never reported as new.
 
                                          
 import { clarificationsCellText } from '../backlog/model.mjs';
 import { sameTitle } from '../backlog/story-ref.mjs';
 import { openCount, parseClarifications } from '../backlog/story-text.mjs';
+import { IndexError } from '../design/design-index-csv.mjs';
+                                                                                             
 
-                                            
-                                               
+export { IndexError };
+                                        
 
                          
                                   
                                                       
                                                                     
 
+// One entry of `<backlog>/designs.json`: the scope a canvas designs and the canvas link, which a row's Canvas joins to.
+                              
+                     
+              
+ 
+
+const SCOPE_FIELDS                           = { epic: ['epic'], feature: ['epic', 'feature'], story: ['epic', 'feature', 'title'] };
+const isRecord = (v         )                               => typeof v === 'object' && v !== null && !Array.isArray(v);
+const isText = (v         )              => typeof v === 'string' && v.trim() !== '';
+
+// The entries of the text of `designs.json`. Throws an Error that names what is wrong, so a caller can put the file's name before it.
+export function parseDesignsText(text        )                {
+  let parsed         ;
+  try {
+    parsed = JSON.parse(text);
+  } catch (err) {
+    throw new Error(`it is not valid JSON: ${err instanceof Error ? err.message : String(err)}`, { cause: err });
+  }
+  if (!isRecord(parsed) || !Array.isArray(parsed.designs)) throw new Error('it must hold { "designs": [ ... ] }');
+  const designs            = parsed.designs;
+  designs.forEach((entry, i) => {
+    const scope = isRecord(entry) && isRecord(entry.scope) ? entry.scope : undefined;
+    const fields = scope ? SCOPE_FIELDS[String(scope.type)] : undefined;
+    if (!scope || !fields || !fields.every((f) => isText(scope[f])) || !isRecord(entry) || !isText(entry.url)) {
+      throw new Error(`designs[${i}] must hold a scope (epic, feature or story) and a url`);
+    }
+  });
+  return designs                 ;
+}
+
                                  
                
                       
                       
+                        
  
 
                              
+                  
                 
+                                                             
                              
  
 
                               
-             
-                  
-                     
-                        
                         
  
 
-// An index that cannot be read. `line` (1-based, in the text given to parseIndexText) is set when the fault has a place
-// in the text; `field` names the part of the object that is wrong, such as `stories[0].criteria[1].kind`.
-export class IndexError extends Error {
-  line         ;
-  field         ;
-  constructor(message        , { line, field }                                    = {}) {
-    super(line === undefined ? message : `line ${line}: ${message}`);
-    this.name = 'IndexError';
-    this.line = line;
-    this.field = field;
-  }
-}
-
-const INDEX_MARKER = 'const index = ';
-const VIEWPORTS                      = ['desktop', 'mobile'];
-const KINDS                           = ['main', 'failure'];
 const ERROR_STATE = 'error';
 
-const lineAt = (text        , offset        )         => text.slice(0, offset).split('\n').length;
-
-// The offset one past the brace that closes the object opening at `start`, scanning outside double-quoted strings.
-function matchingBrace(text        , start        )         {
-  let depth = 0;
-  let inString = false;
-  for (let i = start; i < text.length; i++) {
-    const ch = text[i];
-    if (inString) {
-      if (ch === '\\') i++;
-      else if (ch === '"') inString = false;
-      continue;
+// The index the rows hold: one entry per story ID, in the order its first row appears, with its criteria in row order.
+export function buildDesignIndex(rows                           )              {
+  const stories = new Map                    ();
+  for (const row of rows) {
+    let story = stories.get(row.storyId);
+    if (!story) {
+      story = { storyId: row.storyId, title: row.story, canvases: [], criteria: [] };
+      stories.set(row.storyId, story);
     }
-    if (ch === '"') inString = true;
-    else if (ch === '{') depth++;
-    else if (ch === '}' && --depth === 0) return i + 1;
+    if (!story.canvases.includes(row.canvas)) story.canvases.push(row.canvas);
+    story.criteria.push({ text: row.criterion, kind: row.kind, artboards: row.artboards, viewports: row.viewports });
   }
-  throw new IndexError('the index object is never closed: no matching "}" outside a string', { line: lineAt(text, start) });
-}
-
-// The JSON text of the index inside `text` and the offset where it starts: the object after `const index = ` in a
-// Main.dc.html file, or the whole text when it is bare JSON.
-function cutIndex(text        )                                   {
-  const at = text.indexOf(INDEX_MARKER);
-  if (at === -1) {
-    const offset = text.length - text.trimStart().length;
-    if (!text.trimStart().startsWith('{')) throw new IndexError(`found no "${INDEX_MARKER}{" in the text and it is not a bare JSON object`);
-    return { json: text.slice(offset), offset };
-  }
-  const start = at + INDEX_MARKER.length;
-  if (text[start] !== '{') throw new IndexError(`"${INDEX_MARKER}" is not followed by "{"`, { line: lineAt(text, start) });
-  return { json: text.slice(start, matchingBrace(text, start)), offset: start };
-}
-
-const WHITESPACE = /^[ \t\n\r]$/;
-
-// The offset of the first character that strict JSON does not allow in `json`, or -1 when it is all valid. Node's own
-// error text names no position, so the line of a fault comes from this scan.
-function jsonFault(json        )         {
-  let i = 0;
-  const skipSpace = ()       => {
-    while (WHITESPACE.test(json[i] ?? 'x')) i++;
-  };
-  const literal = (word        )         => (json.startsWith(word, i) ? ((i += word.length), -1) : i);
-  const string = ()         => {
-    i++;
-    while (i < json.length && json[i] !== '"') {
-      if (json[i] === '\n') return i;
-      i += json[i] === '\\' ? 2 : 1;
-    }
-    return i >= json.length ? i : ((i += 1), -1);
-  };
-  const number = ()         => {
-    const match = /^-?(0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?/.exec(json.slice(i));
-    return match ? ((i += match[0].length), -1) : i;
-  };
-  const list = (close        , item              )         => {
-    i++;
-    skipSpace();
-    if (json[i] === close) return (i++, -1);
-    for (;;) {
-      const bad = item();
-      if (bad !== -1) return bad;
-      skipSpace();
-      if (json[i] === close) return (i++, -1);
-      if (json[i] !== ',') return i;
-      i++;
-      skipSpace();
-    }
-  };
-  const member = ()         => {
-    if (json[i] !== '"') return i;
-    const bad = string();
-    if (bad !== -1) return bad;
-    skipSpace();
-    if (json[i] !== ':') return i;
-    i++;
-    skipSpace();
-    return value();
-  };
-  const value = ()         => {
-    const ch = json[i];
-    if (ch === '{') return list('}', member);
-    if (ch === '[') return list(']', value);
-    if (ch === '"') return string();
-    if (ch === 't') return literal('true');
-    if (ch === 'f') return literal('false');
-    if (ch === 'n') return literal('null');
-    return number();
-  };
-  skipSpace();
-  const bad = value();
-  if (bad !== -1) return bad;
-  skipSpace();
-  return i < json.length ? i : -1;
-}
-
-// Reads the index out of the full text of Main.dc.html, or out of a bare JSON object, and checks its shape.
-// Throws an IndexError that names the line of a JSON fault, or the field of a shape fault.
-export function parseIndexText(text        )              {
-  const source = text.replace(/\r\n/g, '\n');
-  const { json, offset } = cutIndex(source);
-  let value         ;
-  try {
-    value = JSON.parse(json);
-  } catch (err) {
-    const reason = err instanceof Error ? err.message : String(err);
-    const line = lineAt(source, offset + Math.max(jsonFault(json), 0));
-    throw new IndexError(`the index is not valid JSON (${reason}); it must be strict JSON: double-quoted keys, no comments, no trailing commas`, { line });
-  }
-  return validateIndex(value);
-}
-
-const isRecord = (v         )                               => typeof v === 'object' && v !== null && !Array.isArray(v);
-const isText = (v         )              => typeof v === 'string' && v.trim() !== '';
-
-function fail(field        , rule        )        {
-  throw new IndexError(`${field} ${rule}`, { field });
-}
-
-function textField(obj                         , key        , path        )         {
-  const v = obj[key];
-  if (!isText(v)) fail(`${path}${key}`, 'must be a non-empty string');
-  return v;
-}
-
-function validateScope(value         )              {
-  if (!isRecord(value)) return fail('scope', 'must be an object');
-  const epic = textField(value, 'epic', 'scope.');
-  if (value.type === 'epic') return { type: 'epic', epic };
-  if (value.type === 'feature') return { type: 'feature', epic, feature: textField(value, 'feature', 'scope.') };
-  if (value.type === 'story') return { type: 'story', epic, feature: textField(value, 'feature', 'scope.'), title: textField(value, 'title', 'scope.') };
-  return fail('scope.type', 'must be "epic", "feature" or "story"');
-}
-
-function validateViewports(value         )             {
-  if (!Array.isArray(value) || value.length === 0) return fail('viewports', 'must be a non-empty array');
-  const viewports             = [];
-  value.forEach((v, i) => {
-    const found = VIEWPORTS.find((known) => known === v);
-    if (!found) fail(`viewports[${i}]`, `must be "desktop" or "mobile"`);
-    if (viewports.includes(found)) fail(`viewports[${i}]`, `repeats "${found}"`);
-    viewports.push(found);
-  });
-  return viewports;
-}
-
-function validateCriterion(value         , path        )                 {
-  if (!isRecord(value)) return fail(path, 'must be an object');
-  const kind = KINDS.find((known) => known === value.kind);
-  if (!kind) return fail(`${path}.kind`, 'must be "main" or "failure"');
-  const list = value.artboards;
-  if (!Array.isArray(list)) return fail(`${path}.artboards`, 'must be an array of artboard file stems');
-  const artboards = list.map((stem, i) => {
-    if (!isText(stem)) fail(`${path}.artboards[${i}]`, 'must be a non-empty string');
-    return stem;
-  });
-  return { text: textField(value, 'text', `${path}.`), kind, artboards };
-}
-
-function validateStory(value         , path        )             {
-  if (!isRecord(value)) return fail(path, 'must be an object');
-  const title = textField(value, 'title', `${path}.`);
-  if (!Array.isArray(value.criteria)) return fail(`${path}.criteria`, 'must be an array');
-  return { title, criteria: value.criteria.map((c, i) => validateCriterion(c, `${path}.criteria[${i}]`)) };
-}
-
-// Checks the shape of a parsed index; throws an IndexError that names the field at fault.
-export function validateIndex(value         )              {
-  if (!isRecord(value)) return fail('the index', 'must be an object');
-  if (value.version !== 1) fail('version', `must be 1 (found ${JSON.stringify(value.version) ?? 'nothing'})`);
-  if (!Array.isArray(value.stories)) fail('stories', 'must be an array');
-  return {
-    version: 1,
-    backlog: textField(value, 'backlog', ''),
-    scope: validateScope(value.scope),
-    viewports: validateViewports(value.viewports),
-    stories: value.stories.map((s, i) => validateStory(s, `stories[${i}]`)),
-  };
+  return { stories: [...stories.values()] };
 }
 
 const norm = (s         )         => String(s ?? '').trim().toLowerCase();
@@ -261,6 +110,13 @@ export function criterionTexts(story       )           {
     .map((c) => `Given ${c.given.trim()}, when ${c.when.trim()}, then ${c.then.trim()}`);
 }
 
+// The stories of the backlog that the scope of any `designs.json` entry covers, each once.
+export function storiesInDesigns(backlogStories                  , designs                        )          {
+  const found = new Set       ();
+  for (const { scope } of designs) for (const story of storiesInScope(backlogStories, scope)) if (story.code) found.add(story);
+  return [...found];
+}
+
 // A story with an open question is left out of a design on purpose. A clarification cell that does not parse counts as
 // not open, as in the freeze writer.
 function hasOpenClarification(story       )          {
@@ -269,48 +125,64 @@ function hasOpenClarification(story       )          {
 }
 
                                
+                  
+                                                        
+                                                                      
+                                                                                      
+                                                                    
+ 
+
+                            
+                  
                 
-                                                                                        
-                                                                       
  
 
                                   
                           
-                                                                        
-                                                                                                                    
+                                                                                                   
+                                                                                                               
                  
  
 
 const sameTexts = (a                   , b                   )          => a.length === b.length && a.every((t, i) => t.trim() === b[i].trim());
 
-// The index against the stories of the backlog the index's scope covers. `backlogStories` is every story of the backlog
-// (loadBacklog's stories); the scope narrows it.
-export function compareIndex(index             , backlogStories                  )                  {
-  const inScope = storiesInScope(backlogStories, index.scope);
-  const taken = new Set       ();
+// The rows' index against the stories of the backlog (loadBacklog's stories). A story is matched by its ID. It is `missing`
+// when its ID is not in the backlog, and `changed` when its criteria texts or its Title differ from the rows. A story is `new`
+// when it is in the scope of a `designs.json` entry, has no rows and has no open clarification. Only the scopes of `designs`
+// are searched, so a row whose Canvas has no entry (a migrated story) is checked for changed and missing and never makes its
+// backlog report `new` stories.
+export function compareIndex(index             , backlogStories                  , designs                        )                  {
   const changed                 = [];
-  const missing           = [];
+  const missing              = [];
+  const indexed = new Set(index.stories.map((entry) => entry.storyId));
   for (const entry of index.stories) {
-    const story = inScope.find((s) => !taken.has(s) && sameTitle(s.title, entry.title));
+    const story = backlogStories.find((s) => s.code === entry.storyId);
     if (!story) {
-      missing.push(entry.title);
+      missing.push({ storyId: entry.storyId, title: entry.title });
       continue;
     }
-    taken.add(story);
-    const indexed = entry.criteria.map((c) => c.text);
+    const indexedTexts = entry.criteria.map((c) => c.text);
     const current = criterionTexts(story);
-    if (sameTexts(indexed, current)) continue;
+    const retitled = !sameTitle(story.title, entry.title);
+    if (!retitled && sameTexts(indexedTexts, current)) continue;
     changed.push({
-      title: entry.title,
-      removed: indexed.filter((t) => !current.some((c) => c.trim() === t.trim())),
-      added: current.filter((c) => !indexed.some((t) => t.trim() === c.trim())),
+      storyId: entry.storyId,
+      title: story.title.trim(),
+      oldTitle: retitled ? entry.title : null,
+      removed: indexedTexts.filter((t) => !current.some((c) => c.trim() === t.trim())),
+      added: current.filter((c) => !indexedTexts.some((t) => t.trim() === c.trim())),
     });
   }
-  const added = inScope.filter((s) => !taken.has(s) && !hasOpenClarification(s)).map((s) => s.title.trim());
-  return { changed, missing, new: added, stale: changed.length > 0 || missing.length > 0 || added.length > 0 };
+  const fresh = new Map                   ();
+  for (const story of storiesInDesigns(backlogStories, designs)) {
+    if (indexed.has(story.code) || fresh.has(story.code) || hasOpenClarification(story)) continue;
+    fresh.set(story.code, { storyId: story.code, title: story.title.trim() });
+  }
+  return { changed, missing, new: [...fresh.values()], stale: changed.length > 0 || missing.length > 0 || fresh.size > 0 };
 }
 
                                   
+                  
                 
                     
  
@@ -328,7 +200,7 @@ export function checkCoverage(index             )                {
   const noErrorArtboard                    = [];
   for (const story of index.stories) {
     for (const criterion of story.criteria) {
-      const problem = { story: story.title, criterion: criterion.text };
+      const problem = { storyId: story.storyId, story: story.title, criterion: criterion.text };
       if (criterion.artboards.length === 0) noArtboard.push(problem);
       if (criterion.kind === 'failure' && !criterion.artboards.some((stem) => stem.includes(ERROR_STATE))) noErrorArtboard.push(problem);
     }
