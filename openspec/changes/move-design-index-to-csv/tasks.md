@@ -44,4 +44,4 @@
 ## Workflow follow-up
 
 - Archive `add-story-design-stage` first, so that its specs are in `openspec/specs/`, then archive this change. Until then `openspec validate` reports three deltas as unable to apply, as information only.
-- Record the sample's `designed` stage, which `add-story-design-stage` lists as done but this checkout lacks, with a `design-index.csv` next to its `designs.json`. That needs the user's approval because it publishes to claude.ai.
+- Done in this change after the live tests: the sample's `designed` stage is recorded from the existing canvas, and its `Main` is the cover page.

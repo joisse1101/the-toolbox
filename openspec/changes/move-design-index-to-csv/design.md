@@ -88,11 +88,11 @@ Plan's stale stop (the checker's `changed`, `missing`, `new`) stays and points t
 
 The size rule suggests splitting the file format and skills from the portal's ID-following. They share the file shape, and a migration without the relink would leave stale rows, so they ship together. The tasks put the portal in its own group, so the apply flow commits it as its own concern, and it can be moved into a separate change if the review prefers.
 
-### D10. Tests use mock design files, and the sample is left alone
+### D10. Unit tests use mock design files, and the sample records its `designed` stage from the existing canvas
 
-The sample's `designed` stage is not in this checkout: there is no `stages/designed/`, `build-mock-repo.ps1` has no `designed` stage, and the pull request that merged the design skill (#147) did not carry them, although `add-story-design-stage` lists them as done. Without a recorded canvas there is nothing real to derive rows from, and re-recording publishes to claude.ai and costs model tokens, which needs the user's approval.
+The sample's `designed` stage was not in this checkout (no `stages/designed/`, no `designed` in `build-mock-repo.ps1`), although `add-story-design-stage` lists it as done. The canvas it recorded exists: the artifact "Habits Streaks design". So this change records the stage by hand from that canvas, without a model run and without a new canvas: `designs.json` and `design-index.csv` (rows read from the old `Main` index), the stage added to the build script, the README and the stage test, and `Main` on that canvas replaced with the cover page. The planned and later stages are not re-recorded, because the plan checkers accept them as they are.
 
-So this change adds a mock `design-index.csv` and `designs.json` (a made-up canvas link) next to the `habits` fixture in `toolkit/tests/story/fixtures/`, and the unit tests and the live tests both use them. The live tests build the mock repo at the sample's existing `accepted` stage and copy the fixture files in. The sample, its README and its stage test are not changed. Recording the `designed` stage stays open work of `add-story-design-stage`, and the proposal notes that it must then hold `design-index.csv`.
+So this change adds a mock `design-index.csv` and `designs.json` (a made-up canvas link) next to the `habits` fixture in `toolkit/tests/story/fixtures/`, and the unit tests and the live tests both use them. The live tests build the mock repo at the sample's existing `accepted` stage and copy the fixture files in. The fixtures keep a made-up link and a failure criterion so the unit tests cover cases the real canvas does not, and they are separate from the sample's `designed` stage.
 
 ## Risks / Trade-offs
 

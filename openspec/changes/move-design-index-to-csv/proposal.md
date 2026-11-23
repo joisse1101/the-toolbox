@@ -33,7 +33,7 @@ None. The file belongs to the design skill, the backlog layout and the portal's 
 
 The requirements of `story-design-skill`, `slice-tasks` and the design parts of `plan-stories-skill` exist today only in the unarchived change `add-story-design-stage`. That change must be archived before this one, so that its specs are in `openspec/specs/` and these deltas have requirements to modify.
 
-The sample project is not changed. Its `designed` stage, which `add-story-design-stage` describes, is not in this checkout (no `stages/designed/`, no `designed` in `build-mock-repo.ps1`). When that stage is recorded, it must hold `design-index.csv` next to `designs.json`.
+The sample project gains its `designed` stage, which `add-story-design-stage` describes but this checkout lacked. It is recorded by hand from the existing canvas "Habits Streaks design" (`designs.json`, `design-index.csv`, the build script, the README and the stage test), and that canvas's `Main` is replaced with the cover page, so the sample follows the flow as the flow changes. The planned and later stages are not re-recorded.
 
 ## Impact
 

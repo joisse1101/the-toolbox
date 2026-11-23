@@ -12,11 +12,13 @@ import { parseLimits } from '../../skills/jois-story-plan/diagrams/limits.js';
 import { compareSource, scopeStories } from '../../skills/jois-story-plan/diagrams/source.js';
 import { checkSlice, formatProblems } from '../../skills/jois-story-plan/diagrams/checks.js';
 import { checkTasks } from '../../skills/jois-story-plan/diagrams/tasks.js';
+import { parseDesignIndexCsv } from '../../skills/jois-story-plan/lib/design/design-index-csv.mjs';
+import { buildDesignIndex, compareIndex, checkCoverage, parseDesignsText } from '../../skills/jois-story-plan/lib/skill-support/design-index.mjs';
 import { compareContextMap, composeContextMap, epicNames } from '../../skills/jois-story-plan/diagrams/context-map.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SAMPLE_DIR = path.resolve(HERE, '..', '..', 'sample', 'story-to-code');
-const STAGES = ['proposed', 'accepted', 'planned', 'built', 'validated', 'archived'];
+const STAGES = ['proposed', 'accepted', 'designed', 'planned', 'built', 'validated', 'archived'];
 const BACKLOG = 'habits';
 const SLICE = 'streaks';
 const limits = parseLimits(fs.readFileSync(path.join(HERE, '..', '..', 'skills', 'jois-story-plan', 'references', 'diagram-conventions.md'), 'utf8'));
@@ -48,6 +50,7 @@ test('every stage folder holds the files the spec lists', () => {
   const expected = {
     proposed: [plans('backlog.json'), plans('user-stories/proposals.csv')],
     accepted: [plans('user-stories.csv')],
+    designed: [plans('designs.json'), plans('design-index.csv')],
     planned: [sliceFile(`UC-${SLICE}.md`), sliceFile('tasks.md'), sliceFile('source.json')],
     built: [sliceFile('tasks.md'), sliceFile('review.md'), 'built.patch'],
     validated: [sliceFile('validation.md')],
@@ -137,4 +140,14 @@ test('stage built: built.patch applies to the baseline app with git am', () => {
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('the designed stage holds an index that matches the accepted backlog and has an artboard for every criterion', () => {
+  const files = filesAt('designed');
+  const stories = loadBacklog(files.get(plans('user-stories.csv')), { initials: INITIALS }).stories;
+  const index = buildDesignIndex(parseDesignIndexCsv(files.get(plans('design-index.csv'))));
+  const stale = compareIndex(index, stories, parseDesignsText(files.get(plans('designs.json'))));
+  assert.equal(stale.stale, false, 'stage designed: the index is stale against the backlog');
+  const coverage = checkCoverage(index);
+  assert.deepEqual([coverage.noArtboard.length, coverage.noErrorArtboard.length], [0, 0], 'stage designed: a criterion has no artboard');
 });
