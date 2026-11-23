@@ -70,5 +70,6 @@ test('leaves a backlog it did not make alone when a later create fails', async (
 
   assert.deepEqual(listBacklogs(dataDir), ['kept']);
   assert.equal(fs.readdirSync(path.join(dataDir, 'kept')).length > 0, true);
-  assert.equal(KINDS.every((kind: string) => fs.existsSync(backlogFile(dataDir, 'kept', kind))), true);
+  const started = KINDS.filter((kind) => kind !== 'design-index'); // the design skill writes design-index, not New
+  assert.equal(started.every((kind: string) => fs.existsSync(backlogFile(dataDir, 'kept', kind))), true);
 });

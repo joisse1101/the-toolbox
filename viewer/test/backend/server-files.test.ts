@@ -61,7 +61,7 @@ test('read and write go to the fixed file of the kind; a write never creates', a
 
 test('a missing optional file of an existing backlog reads as empty; a missing backlog is still not found', async () => {
   put('stories-only', 'user-stories.csv', 'ID\r\n');
-  for (const kind of ['proposals', 'lexicon', 'lexicon-suggestions', 'review']) {
+  for (const kind of ['proposals', 'lexicon', 'lexicon-suggestions', 'review', 'design-index']) {
     const res = await fetch(`${origin}/api/${kind}/files/stories-only`);
     assert.equal(res.status, 200, kind);
     assert.deepEqual(await res.json(), { name: 'stories-only', content: '' }, kind);
@@ -87,9 +87,10 @@ test('unsafe names are rejected and touch nothing', async () => {
 });
 
 test('other kinds and routes are unknown: slices, logs, backups and a store-style name', async () => {
-  for (const kind of ['slices', 'logs', 'backups', 'backlogs', 'lexicons']) {
+  for (const kind of ['slices', 'logs', 'backups', 'backlogs', 'lexicons', 'designs']) {
     assert.equal((await fetch(`${origin}/api/${kind}/files`)).status, 404, kind);
   }
+  assert.equal((await fetch(`${origin}/api/designs/files/a`)).status, 404, 'designs.json is not reachable');
   assert.equal((await call('POST', '/api/backup/a')).status, 404);
   assert.equal((await fetch(`${origin}/api/backup/a`)).status, 404);
 });
@@ -133,6 +134,23 @@ test('create of another kind: in an existing backlog only, never over an existin
   assert.equal(fs.readFileSync(path.join(root, 'a', 'user-stories', 'proposals.csv'), 'utf8'), 'P\r\n');
   assert.equal((await call('POST', '/api/proposals/files', { name: 'ghost', content: 'x' })).status, 404);
   assert.equal(fs.existsSync(path.join(root, 'ghost')), false, 'no folder is made for a missing backlog');
+});
+
+test('design-index: reads an existing file and a missing one as empty, creates one, and designs.json stays out of reach', async () => {
+  put('di', 'user-stories.csv', 'ID\r\n');
+  assert.deepEqual(await (await fetch(`${origin}/api/design-index/files/di`)).json(), { name: 'di', content: '' }, 'a missing file reads as empty');
+  assert.deepEqual(await listed('design-index'), [], 'no backlog has the file yet');
+
+  const made = await call('POST', '/api/design-index/files', { name: 'di', content: 'Story ID\r\n' });
+  assert.equal(made.status, 201);
+  assert.equal(fs.readFileSync(path.join(root, 'di', 'design-index.csv'), 'utf8'), 'Story ID\r\n');
+  assert.deepEqual(await (await fetch(`${origin}/api/design-index/files/di`)).json(), { name: 'di', content: 'Story ID\r\n' }, 'an existing file is read');
+  assert.deepEqual(await listed('design-index'), ['di']);
+
+  put('di', 'designs.json', '[]');
+  const refused = await fetch(`${origin}/api/designs/files/di`);
+  assert.equal(refused.status, 404);
+  assert.equal((await refused.json()).code, 'unknown-store');
 });
 
 test('rename: the folder moves with all its files and slices; the target must be free and valid', async () => {

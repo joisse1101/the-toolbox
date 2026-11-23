@@ -11,8 +11,9 @@ import { KINDS } from '#shared/storage/backlog-paths.ts';
 
 const textOf = (kind: string) => startingFiles().find((f) => f.kind === kind)!.text;
 
-test('startingFiles returns one entry for each kind of file, in the order of KINDS', () => {
-  assert.deepEqual(startingFiles().map((f) => f.kind), KINDS);
+// The design index is written by the design skill, so a new backlog does not start with one.
+test('startingFiles returns one entry for each kind of file except design-index, in the order of KINDS', () => {
+  assert.deepEqual(startingFiles().map((f) => f.kind), KINDS.filter((kind) => kind !== 'design-index'));
 });
 
 test('each starting file is a BOM and its own header row, with no rows', () => {

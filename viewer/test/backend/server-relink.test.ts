@@ -9,6 +9,8 @@ import { SAMPLE_BACKLOG_CSV } from '../helpers/backlog-tree.ts';
 import { parseCsv, toCsv } from '#shared/backlog/csv.ts';
 import { parseReview, serializeReview } from '#shared/review/review.ts';
 import type { ReviewRow, RelinkReply } from '#shared/types.ts';
+import { parseDesignIndexCsv, serializeDesignIndex } from '#shared/design/design-index-csv.ts';
+import type { DesignIndexRow } from '#shared/design/design-index-csv.ts';
 
 // POST /api/relink. Mock data only: a temp data folder built here, one folder per backlog.
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'server-relink-test-'));
@@ -177,4 +179,92 @@ test('a migration forward reaches the proposals and open review rows of a third 
   const rows = (parseReview(read('third', 'user-stories', 'review.csv')) as { rows: ReviewRow[] }).rows;
   assert.deepEqual(rows.map((r) => [r.suggested, r.status]), [['B3-IAM-0007', 'open'], ['B1-IAM-0002', 'dismissed']]);
   assert.deepEqual(rows[1], dismissed, 'the dismissed row is unchanged');
+});
+
+// ---------- design-index.csv ----------
+
+const design = (storyId: string, criterion = 'It works.', canvas = 'https://canvas.example/mock'): DesignIndexRow => ({
+  storyId, story: `Story ${storyId}`, criterion, kind: 'main', artboards: ['home-desktop'], viewports: ['desktop'], canvas, extra: {},
+});
+const designText = (...ids: string[]) => serializeDesignIndex(ids.map((id) => design(id)));
+const designIds = (text: string) => parseDesignIndexCsv(text).map((r) => r.storyId);
+
+test('the changing backlog\'s own design index follows a renumber and drops the rows of a deleted story', async () => {
+  build();
+  write(designText('A-1', 'A-2', 'A-3'), 'from', 'design-index.csv');
+  const res = await relink({ from: 'from', changes: CHANGES });
+  assert.deepEqual(await res.json(), { updated: ['b', 'd', 'from'], failed: [] } satisfies RelinkReply);
+  assert.deepEqual(designIds(read('from', 'design-index.csv')), ['A-9', 'A-3'], 'A-1 renamed, A-2 dropped');
+  assert.equal(parseDesignIndexCsv(read('from', 'design-index.csv'))[0].canvas, 'https://canvas.example/mock', 'the canvas stays on the row');
+  assert.deepEqual(fs.readdirSync(file('from')).filter((n) => n.endsWith('.tmp')), []);
+});
+
+test('a swap of two IDs is applied once to the own design index, and a retry for another backlog does not apply it again', async (t) => {
+  build();
+  write(designText('A-1', 'A-2'), 'from', 'design-index.csv');
+  const swap = { 'A-1': 'A-2', 'A-2': 'A-1' };
+  const real = fs.promises.rename;
+  t.mock.method(fs.promises, 'rename', async (from: fs.PathLike, to: fs.PathLike) => {
+    if (String(to) === file('b', 'user-stories.csv')) throw Object.assign(new Error('EBUSY: resource busy or locked, rename'), { code: 'EBUSY' });
+    return real(from, to);
+  });
+  const first = await (await relink({ from: 'from', changes: swap })).json() as RelinkReply;
+  t.mock.restoreAll();
+  assert.deepEqual(first.failed.map((f) => [f.name, f.file]), [['b', 'user-stories.csv']]);
+  assert.deepEqual(designIds(read('from', 'design-index.csv')), ['A-2', 'A-1'], 'swapped once');
+
+  const retry = await (await relink({ from: 'from', changes: swap, only: ['b'] })).json() as RelinkReply;
+  assert.deepEqual(retry.failed, []);
+  assert.deepEqual(designIds(read('from', 'design-index.csv')), ['A-2', 'A-1'], 'the retry for b did not swap it again');
+});
+
+test('a locked own design index is reported in failed under the backlog\'s own name, and a retry that names it writes it once', async (t) => {
+  build();
+  write(designText('A-1', 'A-2'), 'from', 'design-index.csv');
+  const before = read('from', 'design-index.csv');
+  const swap = { 'A-1': 'A-2', 'A-2': 'A-1' };
+  const real = fs.promises.rename;
+  t.mock.method(fs.promises, 'rename', async (from: fs.PathLike, to: fs.PathLike) => {
+    if (String(to) === file('from', 'design-index.csv')) throw Object.assign(new Error('EBUSY: resource busy or locked, rename'), { code: 'EBUSY' });
+    return real(from, to);
+  });
+  const first = await (await relink({ from: 'from', changes: swap })).json() as RelinkReply;
+  t.mock.restoreAll();
+  assert.deepEqual(first.failed.map((f) => [f.name, f.file]), [['from', 'design-index.csv']]);
+  assert.match(first.failed[0].message, /locked/);
+  assert.equal(read('from', 'design-index.csv'), before, 'the locked file keeps its text');
+
+  const retry = await (await relink({ from: 'from', changes: swap, only: ['from'] })).json() as RelinkReply;
+  assert.deepEqual(retry, { updated: ['from'], failed: [] });
+  assert.deepEqual(designIds(read('from', 'design-index.csv')), ['A-2', 'A-1']);
+});
+
+test('an own design index that names none of the IDs, and one that is missing, are not written', async () => {
+  build();
+  write(designText('Z-1'), 'from', 'design-index.csv');
+  fs.utimesSync(file('from', 'design-index.csv'), PAST, PAST);
+  const res = await relink({ from: 'from', changes: CHANGES });
+  assert.deepEqual((await res.json() as RelinkReply).updated, ['b', 'd']);
+  assert.equal(fs.statSync(file('from', 'design-index.csv')).mtime.getTime(), PAST.getTime(), 'untouched file keeps its time');
+  assert.equal(fs.existsSync(file('b', 'design-index.csv')), false, 'a missing file is not created');
+});
+
+test('the design index of another backlog follows IDs that its rows name; a file that names none is not written', async () => {
+  build();
+  write(designText('A-1', 'S-1'), 'b', 'design-index.csv'); // a migrated row names the source's old ID
+  write(designText('Q-1'), 'd', 'design-index.csv');
+  fs.utimesSync(file('d', 'design-index.csv'), PAST, PAST);
+  const res = await relink({ from: 'from', changes: { 'A-1': 'B3-0007' } });
+  assert.deepEqual((await res.json() as RelinkReply).failed, []); // d's stories change, its design index does not
+  assert.deepEqual(designIds(read('b', 'design-index.csv')), ['B3-0007', 'S-1']);
+  assert.equal(fs.statSync(file('d', 'design-index.csv')).mtime.getTime(), PAST.getTime());
+});
+
+test('a design index that does not read is listed in failed with its row and column', async () => {
+  build();
+  write('Story ID,Story,Criterion,Kind,Artboards,Viewports,Canvas\r\nA-1,S,c,sideways,,desktop,u\r\n', 'b', 'design-index.csv');
+  const reply = await (await relink({ from: 'from', changes: CHANGES })).json() as RelinkReply;
+  assert.deepEqual(reply.failed.map((f) => [f.name, f.file]), [['b', 'design-index.csv']]);
+  assert.match(reply.failed[0].message, /row 2/);
+  assert.match(reply.failed[0].message, /Kind/);
 });
